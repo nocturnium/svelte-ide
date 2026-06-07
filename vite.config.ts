@@ -17,6 +17,10 @@ export default defineConfig({
 		}
 	},
 	optimizeDeps: {
-		include: ['yjs', 'y-codemirror.next', 'lib0']
+		// yjs (peer dep) ships CJS that benefits from pre-bundling; lib0 is its
+		// transitive dep. (y-codemirror.next is intentionally absent — this
+		// library does not use CodeMirror, and listing it produced a noisy
+		// "Failed to resolve dependency" error on every dev start.)
+		include: ['yjs', 'lib0']
 	}
 });
