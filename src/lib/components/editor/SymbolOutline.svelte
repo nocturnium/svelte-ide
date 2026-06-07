@@ -582,13 +582,6 @@
 		font-size: 12px;
 	}
 
-	.symbol-group {
-		/* Container for symbol + children */
-	}
-
-	.symbol-group--nested {
-		/* Nested group styling */
-	}
 
 	.symbol-item {
 		display: flex;
@@ -683,9 +676,6 @@
 		margin-left: auto;
 	}
 
-	.symbol-children {
-		/* Children container */
-	}
 
 	/* Hover preview */
 	.outline-preview {

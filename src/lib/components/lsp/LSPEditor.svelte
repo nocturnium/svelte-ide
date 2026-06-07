@@ -423,6 +423,9 @@
 	});
 </script>
 
+<!-- Editor surface: role="application" delegates keyboard to the editor; the mouse
+	 handlers drive hover tooltips. Genuinely an interactive canvas, not a static div. -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	bind:this={editorContainer}
 	class="lsp-editor {className}"

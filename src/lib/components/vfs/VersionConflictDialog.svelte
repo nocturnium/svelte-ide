@@ -27,6 +27,9 @@ let { conflict, onResolve, onCancel }: Props = $props();
 
 // View state
 let activeView = $state<'side-by-side' | 'unified' | 'local' | 'server'>('side-by-side');
+// Editable merge buffer is intentionally seeded once from the prop: the dialog is
+// mounted per-conflict, so resetting the user's edits if `conflict` changed would be wrong.
+// svelte-ignore state_referenced_locally
 let mergedContent = $state(conflict.localContent);
 let showMergeEditor = $state(false);
 
