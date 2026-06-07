@@ -1,0 +1,79 @@
+# Publish @nocturnium/svelte-ide to npm using Trusted Publishing (OIDC).
+#
+# No long-lived npm token is stored anywhere: GitHub Actions mints a short-lived
+# OIDC credential that npm verifies against the package's configured trusted
+# publisher. Provenance attestations are generated automatically (public repo).
+#
+# ── One-time setup on npmjs.com (required before this works) ──────────────────
+#   1. The package must already exist on npm. Publish the FIRST version manually
+#      with a granular token (`npm publish --tag rc` for the current 1.0.0-rc.x);
+#      trusted publishing can only be configured after the package exists.
+#   2. npmjs.com → @nocturnium/svelte-ide → Settings → Trusted Publisher → add a
+#      GitHub Actions publisher with:
+#         Organization/user: nocturnium
+#         Repository:        svelte-ide
+#         Workflow filename: release.yml   (this file — npm authorizes the
+#                                            workflow that TRIGGERS the run)
+#   After that, publishing the version is fully tokenless.
+#
+# ── Releasing ─────────────────────────────────────────────────────────────────
+#   Bump the version + tag, then publish a GitHub Release (or run this workflow
+#   manually). Prerelease versions (e.g. 1.0.0-rc.1) go to a matching dist-tag
+#   (rc/beta/next…); stable versions go to "latest".
+#
+# Third-party actions are pinned to a commit SHA (trailing # vX.Y.Z is the
+# human-readable version). Bump the SHA and the comment together.
+name: Release (npm)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Least privilege + the scope OIDC trusted publishing needs.
+permissions:
+  contents: read
+  id-token: write # required for npm Trusted Publishing (OIDC)
+
+concurrency:
+  group: release-npm
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "22.x"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      - name: Use a Trusted-Publishing-capable npm
+        # Node 22 ships npm 10.x; OIDC trusted publishing needs npm >= 11.5.1.
+        run: npm install -g npm@^11.5.1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Publish (OIDC — no token)
+        # Do NOT set NODE_AUTH_TOKEN: OIDC is used instead. `prepublishOnly`
+        # (npm run check && npm run package + publint) runs as part of publish, so
+        # the tarball is built and validated here.
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$VERSION" == *-* ]]; then
+            PRE="${VERSION#*-}"
+            TAG="${PRE%%.*}"   # 1.0.0-rc.1 -> rc, 1.0.0-beta.2 -> beta
+            echo "Prerelease $VERSION → dist-tag '$TAG'"
+            npm publish --provenance --access public --tag "$TAG"
+          else
+            echo "Stable $VERSION → dist-tag 'latest'"
+            npm publish --provenance --access public
+          fi
