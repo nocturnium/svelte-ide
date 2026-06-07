@@ -239,7 +239,8 @@ export { formatPrice, summarize };`);
 				</div>
 
 				<div class="echo-visualization">
-					<div class="editor-mock">
+					<div class="editor-mock-wrap">
+						<div class="editor-mock">
 						{#each Array(12) as _, i}
 							<div class="mock-line">
 								<span class="line-num">{i + 1}</span>
@@ -257,6 +258,10 @@ export { formatPrice, summarize };`);
 								<span class="echo-label">{cursor.label} ({cursor.delayMs}ms)</span>
 							</div>
 						{/each}
+						</div>
+						<p class="mock-caption" role="note">
+							Illustrative preview — use the buttons above to drive echoes.
+						</p>
 					</div>
 
 					<div class="keystroke-log">
@@ -563,6 +568,11 @@ export { formatPrice, summarize };`);
 		gap: 1rem;
 	}
 
+	.editor-mock-wrap {
+		/* Allow the 1fr grid column to shrink instead of forcing overflow. */
+		min-width: 0;
+	}
+
 	.editor-mock {
 		position: relative;
 		background: rgba(0, 0, 0, 0.3);
@@ -571,6 +581,14 @@ export { formatPrice, summarize };`);
 		font-family: monospace;
 		font-size: 13px;
 		overflow: hidden;
+	}
+
+	/* Clarifies that the editor is a non-interactive preview driven by the buttons. */
+	.mock-caption {
+		margin: 0.5rem 0 0;
+		font-size: 0.75rem;
+		font-style: italic;
+		color: var(--ide-text-muted, #9b9bb0);
 	}
 
 	.mock-line {
@@ -628,7 +646,11 @@ export { formatPrice, summarize };`);
 	}
 
 	.keystroke-log {
+		display: flex;
+		flex-direction: column;
+		min-height: 140px;
 		background: rgba(0, 0, 0, 0.2);
+		border: 1px solid var(--ide-border, #333);
 		border-radius: 8px;
 		padding: 1rem;
 	}
@@ -640,6 +662,11 @@ export { formatPrice, summarize };`);
 	}
 
 	.log-empty {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
 		font-size: 0.75rem;
 		color: var(--ide-text-muted, #9b9bb0);
 		font-style: italic;
@@ -982,6 +1009,18 @@ export { formatPrice, summarize };`);
 
 		.demo-section {
 			padding: 1.25rem 1rem;
+		}
+
+		/* Tighter tab padding so all three short labels are more likely to fit
+		   without scrolling, plus a wider right-edge fade so the third demo
+		   ("Plugin Sandbox") stays discoverable when the strip does scroll. */
+		.demo-tabs {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+		}
+
+		.tab {
+			padding: 0.75rem 1rem;
 		}
 
 		/* Stack control rows so they don't wrap awkwardly mid-label. */

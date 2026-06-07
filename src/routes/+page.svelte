@@ -537,6 +537,7 @@ const editor = mount(CustomEditor, {
 		font-weight: 800;
 		line-height: 1.05;
 		letter-spacing: -0.03em;
+		text-wrap: balance;
 		margin: 0 0 var(--ide-spacing-md);
 	}
 	.grad {
@@ -577,6 +578,9 @@ const editor = mount(CustomEditor, {
 	}
 	.stat {
 		margin: 0;
+		/* Keep the repeat(2, 1fr) tracks truly equal on mobile so the wider
+		   "Svelte 5" cell can't push the columns out of balance. */
+		min-width: 0;
 	}
 	.stat-value {
 		font-size: var(--ide-font-size-2xl);
@@ -1012,6 +1016,15 @@ const editor = mount(CustomEditor, {
 	}
 
 	@media (max-width: 640px) {
+		/* Give the brand lockup and nav links room to breathe instead of jamming
+		   against the viewport edges: tighten the side padding and drop the
+		   "Svelte IDE" sub-label so the nav isn't fighting it for horizontal space. */
+		.topbar {
+			padding: var(--ide-spacing-lg) var(--ide-spacing-md);
+		}
+		.brand-sub {
+			display: none;
+		}
 		.topnav {
 			gap: var(--ide-spacing-md);
 		}
@@ -1019,6 +1032,11 @@ const editor = mount(CustomEditor, {
 		   only the secondary "Editor" shortcut collapses (it's the hero CTA anyway). */
 		.topnav-secondary {
 			display: none;
+		}
+		/* Fluid headline so it scales down and breaks evenly instead of stranding
+		   "5." (and the gradient word) on its own line. */
+		h1 {
+			font-size: clamp(2rem, 9vw, var(--ide-font-size-4xl));
 		}
 		.hero-stats {
 			grid-template-columns: repeat(2, 1fr);
@@ -1036,8 +1054,14 @@ const editor = mount(CustomEditor, {
 		.code-block code {
 			font-size: var(--ide-font-size-xs);
 		}
-		/* Soft right-edge fade as a scroll affordance where lines still overflow. */
-		.hero-static,
+		/* Soft-wrap the static hero paint on phones so long lines fold at whitespace
+		   rather than getting clipped mid-token (which can read as truncated). Once
+		   wrapped it no longer scrolls horizontally, so it skips the fade mask below. */
+		.hero-static code {
+			white-space: pre-wrap;
+		}
+		/* Soft right-edge fade as a scroll affordance where the quick-start code
+		   still overflows horizontally. */
 		.code-block {
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
 			mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);

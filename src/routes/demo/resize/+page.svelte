@@ -460,6 +460,8 @@
 		/* Tighten the empty-space ratio now that panels are full-width */
 		.panel__readout {
 			font-size: 1.875rem;
+			/* Lift the watermark off the legibility floor on the darkest panels */
+			opacity: 0.26;
 		}
 
 		.vertical-split-demo {

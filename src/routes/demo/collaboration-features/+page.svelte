@@ -562,7 +562,9 @@ export function applyDiscount(order: Order, percent: number): Order {
 		padding: 0.5rem 1rem;
 		background: var(--color-nocturnium-wave);
 		color: var(--color-nocturnium-night);
-		border: none;
+		/* Transparent border reserves the box so the outlined secondary button
+		   stays the same height as the filled ones (no row misalignment). */
+		border: 1px solid transparent;
 		border-radius: 6px;
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -583,6 +585,9 @@ export function applyDiscount(order: Order, percent: number): Order {
 	.demo-btn--secondary {
 		background: var(--ide-bg-elevated);
 		color: var(--ide-text-secondary);
+		/* Outline so the secondary action still reads as a button even when
+		   disabled (e.g. 'Clear All' on first load), not an empty/error state. */
+		border-color: var(--ide-border);
 	}
 
 	/* Users List */
@@ -815,6 +820,27 @@ export function applyDiscount(order: Order, percent: number): Order {
 		/* Conflict cards: keep probability + details readable when narrow */
 		.conflict-card {
 			gap: 0.75rem;
+		}
+
+		/* Balanced control group on phones: the primary action spans the full
+		   width and the two secondary actions share an even second row, so the
+		   group never looks unbalanced/incomplete on first load. */
+		.conflict-controls {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.5rem;
+		}
+
+		.conflict-controls .demo-btn:first-child {
+			grid-column: 1 / -1;
+		}
+
+		/* Right-edge scroll affordance for the horizontally scrollable code,
+		   matching the power-features code preview. Signals the editor pane
+		   scrolls sideways when sample lines run past the narrow column. */
+		.editor-container :global(.custom-editor) {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
 		}
 	}
 </style>

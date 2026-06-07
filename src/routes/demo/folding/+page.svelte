@@ -180,7 +180,7 @@ def process_batch(items, batch_size=100):
 			Hover over lines to see fold indicators. Click the arrows to collapse or expand regions.
 		</p>
 
-		<div class="controls">
+		<div class="controls" role="toolbar" aria-label="Demo controls">
 			<div class="control-group">
 				<span class="control-label">Language:</span>
 				<button
@@ -312,9 +312,16 @@ def process_batch(items, batch_size=100):
 
 	.controls {
 		display: flex;
-		gap: 2rem;
+		align-items: center;
+		gap: 1.25rem 1.5rem;
 		margin-bottom: 1rem;
 		flex-wrap: wrap;
+		/* Group the Language + Folding controls into a single bordered toolbar so
+		   they read as one intentional unit (mirrors the editor demo's toolbar). */
+		padding: 0.5rem 0.75rem;
+		background: color-mix(in srgb, var(--ide-bg-secondary) 60%, transparent);
+		border: 1px solid var(--ide-border);
+		border-radius: var(--ide-radius-md);
 	}
 
 	.control-group {
@@ -496,6 +503,14 @@ def process_batch(items, batch_size=100):
 
 		.control-group {
 			flex-wrap: wrap;
+		}
+
+		/* Long code lines extend past the viewport on phones, and touch platforms
+		   hide the horizontal scrollbar until the user drags. Fade the right edge of
+		   the code surface so it reads as "scrolls sideways" instead of an abrupt cut. */
+		.editor-container :global(.custom-editor__content) {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 		}
 	}
 </style>

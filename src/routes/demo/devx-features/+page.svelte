@@ -432,7 +432,7 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.demo-header {
 		text-align: left;
-		margin-bottom: 2rem;
+		margin-bottom: 2.5rem;
 	}
 
 	.demo-eyebrow {
@@ -450,7 +450,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.demo-header h1 {
-		margin: 0 0 0.5rem;
+		margin: 0 0 0.4rem;
 		font-size: 2rem;
 		font-weight: 700;
 		background: linear-gradient(135deg, #e8e8f0 0%, #c084fc 100%);
@@ -895,12 +895,6 @@ export function DataComponent({ userId }: { userId: string }) {
 		.snippets-content {
 			grid-template-columns: 1fr;
 		}
-
-		/* Right-edge fade hints that the code preview scrolls horizontally */
-		.editor-preview {
-			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
-			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
-		}
 	}
 
 	/* ===== Responsive: phones ===== */
@@ -913,10 +907,36 @@ export function DataComponent({ userId }: { userId: string }) {
 			font-size: 1.6rem;
 		}
 
-		/* Stack the snippet preview/categories and snippet sub-categories */
-		.snippets-content,
-		.snippet-categories {
+		/* Stack the snippet preview above categories; the preview is first
+		   in DOM order, so it stays pinned at the top on phones. */
+		.snippets-content {
 			grid-template-columns: 1fr;
+		}
+
+		/* Category cards become a horizontal scroll row (matching the tab
+		   strip pattern) so the 'pick category -> see preview' relationship
+		   stays legible instead of becoming a tall equal-weight stack. The
+		   partial peek of the next card signals that more can be scrolled to. */
+		.snippet-categories {
+			display: flex;
+			flex-wrap: nowrap;
+			gap: 0.75rem;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: thin;
+			padding-bottom: 0.25rem;
+		}
+
+		.category {
+			flex: 0 0 78%;
+			min-width: 0;
+		}
+
+		/* Right-edge fade hints the code preview scrolls horizontally, applied
+		   only at phone widths where lines genuinely exceed the viewport. */
+		.editor-preview {
+			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
 		}
 
 		/* Keep tab tap targets >= 44px and a clear scroll affordance */

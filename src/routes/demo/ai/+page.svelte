@@ -429,7 +429,7 @@
 						onclick={handleSendStreaming}
 					>
 						{#if isStreaming}
-							<Icon name="loader" size={14} />
+							<span class="spin"><Icon name="loader" size={14} /></span>
 						{:else}
 							<Icon name="send" size={14} />
 						{/if}
@@ -646,6 +646,8 @@ registerTool({
 
 	.control-group input[type="range"] {
 		width: 100px;
+		accent-color: var(--color-nocturnium-wave);
+		cursor: pointer;
 	}
 
 	.control-group span {
@@ -654,6 +656,11 @@ registerTool({
 	}
 
 	.checkbox-label {
+		cursor: pointer;
+	}
+
+	.checkbox-label input[type="checkbox"] {
+		accent-color: var(--color-nocturnium-wave);
 		cursor: pointer;
 	}
 
@@ -741,6 +748,18 @@ registerTool({
 	@keyframes bounce {
 		0%, 60%, 100% { transform: translateY(0); }
 		30% { transform: translateY(-4px); }
+	}
+
+	/* Keep the in-flight Send button's loader visibly alive while streaming. */
+	.spin {
+		display: inline-flex;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.demo-input {
@@ -867,6 +886,30 @@ registerTool({
 		.demo-controls {
 			flex-direction: column;
 			align-items: stretch;
+		}
+
+		.control-group {
+			width: 100%;
+		}
+
+		/* Let the slider rows span the full mobile column: label text pins left,
+		   the value pins right, and the range fills the space between so the row
+		   reads tidily instead of leaving a ragged gap. Scoped to the slider
+		   labels so the checkbox row keeps its natural left-aligned layout. */
+		.control-group label:not(.checkbox-label) {
+			justify-content: space-between;
+			width: 100%;
+		}
+
+		.control-group label:not(.checkbox-label) input[type="range"] {
+			flex: 1;
+			width: auto;
+			min-width: 0;
+		}
+
+		.control-group label:not(.checkbox-label) span {
+			min-width: 0;
+			text-align: right;
 		}
 
 		.control-buttons {

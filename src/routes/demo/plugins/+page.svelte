@@ -170,17 +170,18 @@
 		}
 	];
 
-	const statuses: PluginStatus[] = [
+	// Forward lifecycle, in order — mirrors the Plugin Lifecycle stepper below.
+	const lifecycleStatuses: PluginStatus[] = [
 		'draft',
 		'submitted',
 		'reviewing',
 		'approved',
 		'testing',
 		'deploying',
-		'deployed',
-		'rejected',
-		'rolled_back'
+		'deployed'
 	];
+	// Terminal / negative outcomes, separated to express the state model.
+	const terminalStatuses: PluginStatus[] = ['rejected', 'rolled_back'];
 </script>
 
 <div class="demo-page">
@@ -216,13 +217,29 @@
 		<h2>Status Badges</h2>
 		<p class="section-desc">Plugin lifecycle status indicators</p>
 
-		<div class="status-grid">
-			{#each statuses as status}
-				<div class="status-item">
-					<PluginStatusBadge {status} />
-					<span class="status-label">{status}</span>
+		<div class="status-groups">
+			<div class="status-group">
+				<span class="status-group-label">Lifecycle</span>
+				<div class="status-grid">
+					{#each lifecycleStatuses as status}
+						<div class="status-item">
+							<PluginStatusBadge {status} />
+							<span class="status-label">{status}</span>
+						</div>
+					{/each}
 				</div>
-			{/each}
+			</div>
+			<div class="status-group status-group--terminal">
+				<span class="status-group-label">Terminal</span>
+				<div class="status-grid">
+					{#each terminalStatuses as status}
+						<div class="status-item">
+							<PluginStatusBadge {status} />
+							<span class="status-label">{status}</span>
+						</div>
+					{/each}
+				</div>
+			</div>
 		</div>
 	</section>
 
@@ -436,6 +453,32 @@ await unloadPlugin('prettier-format');`}</code></pre>
 		gap: 1rem;
 	}
 
+	.status-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.status-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.625rem;
+	}
+
+	/* Set terminal/negative states apart from the forward lifecycle. */
+	.status-group--terminal {
+		padding-top: 1rem;
+		border-top: 1px solid var(--ide-border);
+	}
+
+	.status-group-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--ide-text-muted);
+	}
+
 	.status-grid {
 		display: flex;
 		flex-wrap: wrap;
@@ -470,6 +513,14 @@ await unloadPlugin('prettier-format');`}</code></pre>
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
 		text-align: center;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease;
+	}
+
+	.category-card:hover {
+		border-color: var(--color-nocturnium-wave);
+		background: var(--ide-bg-tertiary);
 	}
 
 	.category-icon {
@@ -494,6 +545,9 @@ await unloadPlugin('prettier-format');`}</code></pre>
 	}
 
 	.lifecycle {
+		/* Single source of truth for the step circle size; the mobile rail
+		   offsets below are derived from it so they stay self-correcting. */
+		--step-circle: 28px;
 		display: flex;
 		align-items: center;
 		flex-wrap: wrap;
@@ -511,8 +565,8 @@ await unloadPlugin('prettier-format');`}</code></pre>
 	}
 
 	.step-number {
-		width: 28px;
-		height: 28px;
+		width: var(--step-circle);
+		height: var(--step-circle);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -575,10 +629,12 @@ await unloadPlugin('prettier-format');`}</code></pre>
 
 	/* Mobile: keep the embedded panel and lifecycle legible on narrow screens */
 	@media (max-width: 768px) {
-		/* Reduce the embedded PluginPanel so it doesn't dominate the scroll, and
-		   let its internal tab bar wrap/scroll rather than cramming on one line. */
+		/* Give the embedded PluginPanel enough height to surface more proposal
+		   rows so the page doesn't trap the user in a tiny nested scroll region,
+		   while still capping it so it doesn't swallow short viewports. Let its
+		   internal tab bar wrap rather than cramming onto one line. */
 		.panel-container {
-			height: 420px;
+			height: min(78vh, 500px);
 		}
 
 		.panel-container :global(.plugin-panel__tabs) {
@@ -599,13 +655,16 @@ await unloadPlugin('prettier-format');`}</code></pre>
 		.lifecycle-step {
 			position: relative;
 			border-radius: 0;
+			/* The contiguous left borders (gap is 0) form one unbroken rail. */
 			border-left: 2px solid var(--ide-border);
 			border-top: none;
 			border-right: none;
 			border-bottom: none;
 			background: transparent;
-			padding: 0.625rem 0.75rem 0.625rem 1.25rem;
-			margin-left: 13px;
+			/* Offsets are derived from the circle size so a font/padding tweak
+			   can't drift the numbers off the rail. */
+			padding: 0.625rem 0.75rem 0.625rem calc(var(--step-circle) / 2 + 0.75rem);
+			margin-left: calc(var(--step-circle) / 2);
 		}
 
 		.lifecycle-step:first-child {
@@ -618,7 +677,9 @@ await unloadPlugin('prettier-format');`}</code></pre>
 
 		.step-number {
 			position: absolute;
-			left: -14px;
+			/* Center the circle horizontally on the 2px rail (its center sits
+			   1px inside the padding box, hence the -1px). */
+			left: calc(var(--step-circle) / -2 - 1px);
 			top: 0.5rem;
 		}
 	}
@@ -637,8 +698,30 @@ await unloadPlugin('prettier-format');`}</code></pre>
 			grid-template-columns: 1fr;
 		}
 
+		/* On the narrowest phones, drop the cramped two-up icon grid for a
+		   single-column labeled list: icon on the left, name + description
+		   left-aligned and comfortably legible — reads as taxonomy, not filler. */
 		.categories-grid {
-			grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+			grid-template-columns: 1fr;
+			gap: 0.5rem;
+		}
+
+		.category-card {
+			display: grid;
+			grid-template-columns: auto 1fr;
+			align-items: center;
+			column-gap: 0.875rem;
+			text-align: left;
+			padding: 0.75rem 0.875rem;
+		}
+
+		.category-icon {
+			grid-row: 1 / span 2;
+			margin-bottom: 0;
+		}
+
+		.category-card strong {
+			margin-bottom: 0.125rem;
 		}
 
 		.status-grid {

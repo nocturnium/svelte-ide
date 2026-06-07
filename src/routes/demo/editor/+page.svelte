@@ -908,12 +908,21 @@ A **zero-dependency** IDE component library for Svelte 5.
 		.file-row {
 			width: auto;
 		}
+		/* In the wrapped chip cluster every file reads as a flat pill, so the faint
+		   desktop fill alone can get lost. Keep the accent fill but add an accent
+		   ring (inset shadow = no size shift) so the current file is unmistakable. */
+		.file-row.active {
+			background: color-mix(in srgb, var(--ide-accent) 20%, transparent);
+			box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ide-accent) 40%, transparent);
+		}
 		/* On mobile the .ide is height:auto so .editor-pane's height:100% resolves to
 		   auto, and flex:1 1 0 with min-height:0 can collapse to 0px when the flex
 		   container has no fixed size.  Give .editor-pane an explicit height so the
 		   flex children (tabs + editor-host + status-bar) distribute correctly. */
 		.editor-pane {
 			height: 420px;
+			/* Anchor the scroll-affordance chevron to the tab strip's top-right. */
+			position: relative;
 		}
 		.editor-host {
 			/* Explicit height is a fallback; the flex:1 1 0 will fill whatever the
@@ -940,6 +949,23 @@ A **zero-dependency** IDE component library for Svelte 5.
 		.editor-pane :global(.editor-tabs) {
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
 			mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+		}
+		/* The fade alone is easy to miss on the dark theme with no visible scrollbar.
+		   Pair it with a faint right-pointing chevron, vertically centered on the
+		   fixed-height tab strip, so the off-screen tabs are unmistakable on touch.
+		   It sits on top of the masked strip (painted after) and ignores pointer
+		   events so it never blocks a tab tap. */
+		.editor-pane::after {
+			content: '';
+			position: absolute;
+			top: calc(var(--ide-tab-height) / 2);
+			right: 7px;
+			width: 6px;
+			height: 6px;
+			transform: translateY(-50%) rotate(45deg);
+			border-top: 1.5px solid var(--ide-text-muted);
+			border-right: 1.5px solid var(--ide-text-muted);
+			pointer-events: none;
 		}
 
 		/* Let the status line wrap rather than crowd against the panel edges. */

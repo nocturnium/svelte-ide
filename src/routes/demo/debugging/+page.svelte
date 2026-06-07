@@ -785,10 +785,10 @@ function privateHelper(value) {
 				transparent;
 			-webkit-mask-image: linear-gradient(
 				to right,
-				#000 calc(100% - 28px),
+				#000 calc(100% - 18px),
 				transparent 100%
 			);
-			mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+			mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent 100%);
 		}
 
 		.demo-tabs::-webkit-scrollbar {
@@ -804,19 +804,11 @@ function privateHelper(value) {
 			flex: 0 0 auto;
 			scroll-snap-align: start;
 			min-height: 44px;
+			/* Tighter horizontal padding lets the next tab peek into view on tablets */
+			padding-inline: 1.1rem;
 		}
 
-		/* Right-edge fade signalling horizontal scroll on code preview */
-		.editor-container {
-			position: relative;
-			-webkit-mask-image: linear-gradient(
-				to right,
-				#000 calc(100% - 24px),
-				transparent 100%
-			);
-			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
-		}
-
+		/* Allow the code preview to scroll horizontally on tablets/phones */
 		.editor-preview {
 			overflow-x: auto;
 			-webkit-overflow-scrolling: touch;
@@ -865,6 +857,17 @@ function privateHelper(value) {
 			border-radius: 0;
 			padding: 1rem 0 0;
 			margin-bottom: 0.75rem;
+		}
+
+		/* Right-edge fade signalling horizontal scroll, only where code truly overflows */
+		.editor-container {
+			position: relative;
+			-webkit-mask-image: linear-gradient(
+				to right,
+				#000 calc(100% - 24px),
+				transparent 100%
+			);
+			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
 		}
 
 		/* Smaller code font so more of each line fits */

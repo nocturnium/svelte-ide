@@ -243,6 +243,15 @@ export const capitalize = (str: string): string =>
 
 	// Mobile: collapsible Structure Map
 	let structureMapOpen = $state(false);
+
+	// Symbol count surfaced on the collapsed mobile accordion toggle so its value
+	// is legible before expanding. Mirrors the structural categories StructureMap
+	// renders (see StructureMap.svelte structuralCategories) so the badge matches
+	// what's inside.
+	const STRUCTURE_CATEGORIES = ['function', 'class', 'exports', 'types', 'tests', 'imports'];
+	let structureSymbolCount = $derived(
+		semanticRegions.filter((r) => STRUCTURE_CATEGORIES.includes(r.category)).length
+	);
 </script>
 
 <div class="demo-page">
@@ -387,6 +396,7 @@ export const capitalize = (str: string): string =>
 					<rect x="14" y="14" width="7" height="7"/>
 				</svg>
 				Structure Map
+				<span class="structure-accordion__badge">{structureSymbolCount} {structureSymbolCount === 1 ? 'symbol' : 'symbols'}</span>
 				<svg class="structure-accordion__chevron" class:structure-accordion__chevron--open={structureMapOpen} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
 					<path d="M6 9l6 6 6-6"/>
 				</svg>
@@ -802,6 +812,15 @@ export const capitalize = (str: string): string =>
 		.structure-accordion__icon {
 			flex-shrink: 0;
 			color: var(--ide-interactive);
+		}
+
+		.structure-accordion__badge {
+			padding: 2px 8px;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 10px;
+			font-size: 0.75rem;
+			font-weight: 500;
+			color: var(--ide-text-muted);
 		}
 
 		.structure-accordion__chevron {

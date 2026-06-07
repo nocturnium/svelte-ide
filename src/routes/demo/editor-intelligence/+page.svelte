@@ -797,7 +797,8 @@ export const DEFAULT_CONFIG = {
 
 	.demo-header h1 {
 		margin: 0 0 0.5rem;
-		font-size: 2rem;
+		font-size: 2.25rem;
+		letter-spacing: -0.01em;
 		color: var(--ide-text-primary, #e8e8f0);
 	}
 
@@ -816,11 +817,20 @@ export const DEFAULT_CONFIG = {
 		padding-bottom: 0.5rem;
 		overflow-x: auto;
 		-webkit-overflow-scrolling: touch;
-		scrollbar-width: none;
+		/* Show a thin accent thumb so the off-screen tabs read as
+		   scrollable, not just technically reachable. Renders only when
+		   the strip overflows (i.e. on narrow/phone widths). */
+		scrollbar-width: thin;
+		scrollbar-color: rgba(168, 85, 247, 0.5) transparent;
 	}
 
 	.demo-tabs::-webkit-scrollbar {
-		display: none;
+		height: 4px;
+	}
+
+	.demo-tabs::-webkit-scrollbar-thumb {
+		background: rgba(168, 85, 247, 0.5);
+		border-radius: 2px;
 	}
 
 	.tab {
@@ -858,13 +868,16 @@ export const DEFAULT_CONFIG = {
 
 	.section-header h2 {
 		margin: 0 0 0.5rem;
-		font-size: 1.25rem;
+		font-size: 1.35rem;
+		letter-spacing: -0.01em;
 		color: var(--ide-text-primary, #e8e8f0);
 	}
 
 	.section-header p {
 		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
+		/* Lift the lead-in copy one step toward primary so the eye lands
+		   on the demo content rather than washing into the chrome. */
+		color: color-mix(in srgb, var(--ide-text-secondary, #aaa) 55%, var(--ide-text-primary, #e8e8f0));
 		font-size: 0.9rem;
 	}
 
@@ -1250,10 +1263,19 @@ export const DEFAULT_CONFIG = {
 			flex-direction: column;
 		}
 
+		/* Once the 100px minimap stacks under the code, centre it and swap
+		   its side border for a top border so it reads as a deliberate
+		   scaled overview rather than a clipped sidebar. */
+		.editor-container :global(.minimap) {
+			align-self: center;
+			border-left: none;
+			border-top: 1px solid var(--ide-border, #333);
+		}
+
 		.editor-preview {
 			overflow-x: auto;
 			-webkit-overflow-scrolling: touch;
-			font-size: 11px;
+			font-size: 12px;
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 		}
@@ -1261,7 +1283,7 @@ export const DEFAULT_CONFIG = {
 		.editor-preview-small {
 			overflow-x: auto;
 			-webkit-overflow-scrolling: touch;
-			font-size: 11px;
+			font-size: 12px;
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 		}

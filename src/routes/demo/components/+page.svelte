@@ -18,6 +18,59 @@
 	}
 </script>
 
+{#snippet iconPlus()}
+	<svg
+		width="1em"
+		height="1em"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+		focusable="false"
+	>
+		<line x1="12" y1="5" x2="12" y2="19" />
+		<line x1="5" y1="12" x2="19" y2="12" />
+	</svg>
+{/snippet}
+
+{#snippet iconCheck()}
+	<svg
+		width="1em"
+		height="1em"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+		focusable="false"
+	>
+		<polyline points="20 6 9 17 4 12" />
+	</svg>
+{/snippet}
+
+{#snippet iconX()}
+	<svg
+		width="1em"
+		height="1em"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		stroke-width="2"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+		focusable="false"
+	>
+		<line x1="18" y1="6" x2="6" y2="18" />
+		<line x1="6" y1="6" x2="18" y2="18" />
+	</svg>
+{/snippet}
+
 <div class="demo-page">
 	<header class="page-header">
 		<h1>Core Components</h1>
@@ -62,9 +115,9 @@
 		<div class="demo-group">
 			<h3>Icon Buttons</h3>
 			<div class="demo-row">
-				<Button variant="ghost" size="sm">+ Add</Button>
-				<Button variant="ghost" size="sm">✓ Save</Button>
-				<Button variant="danger" size="sm">✕ Delete</Button>
+				<Button variant="ghost" size="sm" icon={iconPlus}>Add</Button>
+				<Button variant="ghost" size="sm" icon={iconCheck}>Save</Button>
+				<Button variant="danger" size="sm" icon={iconX}>Delete</Button>
 			</div>
 		</div>
 	</section>
@@ -90,7 +143,10 @@
 			<h3>States</h3>
 			<div class="input-demos">
 				<Input placeholder="Error state" error="This field is required" />
-				<Input placeholder="Success state" />
+				<label class="field input-success">
+					<Input placeholder="Success state" />
+					<span class="field__success">{@render iconCheck()} Looks good</span>
+				</label>
 				<label class="field">
 					<Input placeholder="With helper" />
 					<span class="field__helper">Must be at least 8 characters</span>
@@ -242,16 +298,22 @@
 			<h3>Positions</h3>
 			<div class="demo-row tooltip-row">
 				<Tooltip content="Tooltip on top" position="top">
-					<Button variant="ghost">Top</Button>
+					<Button variant="ghost" aria-label="Hover to show a tooltip above the button">Top</Button>
 				</Tooltip>
 				<Tooltip content="Tooltip on right" position="right">
-					<Button variant="ghost">Right</Button>
+					<Button variant="ghost" aria-label="Hover to show a tooltip to the right of the button">
+						Right
+					</Button>
 				</Tooltip>
 				<Tooltip content="Tooltip on bottom" position="bottom">
-					<Button variant="ghost">Bottom</Button>
+					<Button variant="ghost" aria-label="Hover to show a tooltip below the button">
+						Bottom
+					</Button>
 				</Tooltip>
 				<Tooltip content="Tooltip on left" position="left">
-					<Button variant="ghost">Left</Button>
+					<Button variant="ghost" aria-label="Hover to show a tooltip to the left of the button">
+						Left
+					</Button>
 				</Tooltip>
 			</div>
 		</div>
@@ -262,6 +324,7 @@
 	.demo-page {
 		padding: 2rem 3rem;
 		max-width: 1000px;
+		margin-inline: auto;
 	}
 
 	.page-header {
@@ -347,6 +410,18 @@
 	.field__helper {
 		font-size: 0.75rem;
 		color: var(--ide-text-muted);
+	}
+
+	.input-success :global(.ide-input) {
+		border-color: var(--ide-success);
+	}
+
+	.field__success {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: 0.75rem;
+		color: var(--ide-success);
 	}
 
 	.kbd-label {

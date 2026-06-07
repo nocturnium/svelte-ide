@@ -250,6 +250,10 @@ MIT License - see LICENSE file for details
 	// Responsive: below 860px the shell becomes single-pane with drawer overlays.
 	let isMobile = $state(false);
 
+	// First-run affordance: pulse the Explorer rail icon on mobile until the user
+	// opens any drawer, signalling that files/AI live behind the activity rail.
+	let railHintSeen = $state(false);
+
 	$effect(() => {
 		const mql = window.matchMedia('(max-width: 860px)');
 		const apply = (matches: boolean) => {
@@ -269,6 +273,7 @@ MIT License - see LICENSE file for details
 
 	// On mobile, only one drawer may be open at a time (single-pane overlay model).
 	function openLeft(panel: 'files' | 'plugins') {
+		railHintSeen = true;
 		if (leftPanel === panel && leftPanelOpen) {
 			leftPanelOpen = false;
 			return;
@@ -279,6 +284,7 @@ MIT License - see LICENSE file for details
 	}
 
 	function toggleRight() {
+		railHintSeen = true;
 		rightPanelOpen = !rightPanelOpen;
 		if (rightPanelOpen && isMobile) leftPanelOpen = false;
 	}
@@ -374,6 +380,7 @@ MIT License - see LICENSE file for details
 		<button
 			class="activity-btn"
 			class:active={leftPanelOpen && leftPanel === 'files'}
+			class:activity-btn--hint={isMobile && !railHintSeen}
 			onclick={() => openLeft('files')}
 			aria-label="Toggle Explorer"
 			aria-pressed={leftPanelOpen && leftPanel === 'files'}
@@ -584,7 +591,7 @@ MIT License - see LICENSE file for details
 		</div>
 		<div class="status-right">
 			<span class="status-item">{language}</span>
-			<span class="status-item">UTF-8</span>
+			<span class="status-item status-item--secondary">UTF-8</span>
 			<span class="status-item">Ln 1, Col 1</span>
 		</div>
 	</div>
@@ -651,6 +658,30 @@ MIT License - see LICENSE file for details
 		/* Dark glyph on the wave-blue fill for AA contrast */
 		color: var(--color-nocturnium-night);
 		background: var(--color-nocturnium-wave);
+	}
+
+	/* First-run hint: a few soft wave-tinted pulses draw the eye to the rail on
+	   mobile, then settle. Cleared as soon as the user opens any drawer. */
+	.activity-btn--hint {
+		opacity: 1;
+		color: var(--ide-text-primary);
+		animation: rail-hint 1.8s ease-out 3;
+	}
+
+	@keyframes rail-hint {
+		0%,
+		100% {
+			box-shadow: 0 0 0 0 transparent;
+		}
+		50% {
+			box-shadow: 0 0 8px 1px color-mix(in srgb, var(--color-nocturnium-wave) 55%, transparent);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.activity-btn--hint {
+			animation: none;
+		}
 	}
 
 	.activity-spacer {
@@ -972,6 +1003,12 @@ MIT License - see LICENSE file for details
 
 		.status-bar {
 			padding: 0 0.5rem;
+		}
+
+		/* Shed secondary status metrics on phones so the bar doesn't crowd;
+		   keep Connected/main and the active language as the priority. */
+		.status-item--secondary {
+			display: none;
 		}
 	}
 </style>

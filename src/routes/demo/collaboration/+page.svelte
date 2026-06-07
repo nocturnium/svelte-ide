@@ -82,9 +82,12 @@ class CollaborationSession {
 		<div class="status-demo">
 			<div class="status-row">
 				<span class="status-label">Status:</span>
-				<Badge variant={connectionStatus === 'connected' ? 'success' : 'warning'}>
-					{connectionStatus}
-				</Badge>
+				<span class="status-value" data-status={connectionStatus}>
+					<span class="status-dot" aria-hidden="true"></span>
+					<Badge variant={connectionStatus === 'connected' ? 'success' : 'warning'}>
+						{connectionStatus}
+					</Badge>
+				</span>
 			</div>
 			<div class="status-row">
 				<span class="status-label">Synced:</span>
@@ -98,6 +101,7 @@ class CollaborationSession {
 					{#each collaborators as user}
 						<Avatar name={user.name} color={user.color} isAI={user.isAI} size="sm" />
 					{/each}
+					<span class="collab-count">{collaborators.length} online</span>
 				</div>
 			</div>
 		</div>
@@ -348,9 +352,52 @@ proposeAIChange(session.id, {
 		min-width: 100px;
 	}
 
+	.status-value {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex-shrink: 0;
+		background: var(--ide-text-muted);
+	}
+
+	.status-value[data-status='connected'] .status-dot {
+		background: var(--ide-success);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--ide-success) 22%, transparent);
+	}
+
+	.status-value[data-status='connecting'] .status-dot {
+		background: var(--ide-warning);
+	}
+
+	.status-value[data-status='disconnected'] .status-dot {
+		background: var(--ide-error);
+	}
+
 	.collaborators-list {
 		display: flex;
-		gap: 0.5rem;
+		align-items: center;
+	}
+
+	/* Overlapping presence stack with live count */
+	.collaborators-list :global(.ide-avatar) {
+		margin-left: -0.5rem;
+		box-shadow: 0 0 0 2px var(--ide-bg-secondary);
+	}
+
+	.collaborators-list :global(.ide-avatar:first-child) {
+		margin-left: 0;
+	}
+
+	.collab-count {
+		margin-left: 0.625rem;
+		font-size: 0.75rem;
+		color: var(--ide-text-muted);
 	}
 
 	.editor-header {
@@ -437,6 +484,10 @@ proposeAIChange(session.id, {
 
 	@media (prefers-reduced-motion: no-preference) {
 		.cursor-indicator {
+			animation: pulse 1.5s infinite;
+		}
+
+		.status-value[data-status='connected'] .status-dot {
 			animation: pulse 1.5s infinite;
 		}
 
@@ -556,10 +607,27 @@ proposeAIChange(session.id, {
 		border-radius: 8px;
 		padding: 1.25rem;
 		overflow-x: auto;
+		scrollbar-width: thin;
+		scrollbar-color: var(--ide-border) transparent;
+	}
+
+	.config-demo::-webkit-scrollbar {
+		height: 8px;
+	}
+
+	.config-demo::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.config-demo::-webkit-scrollbar-thumb {
+		background: var(--ide-border);
+		border-radius: 4px;
 	}
 
 	.config-demo pre {
 		margin: 0;
+		/* Keep the fade mask over trailing padding so the last glyph is never clipped */
+		padding-right: 1.75rem;
 	}
 
 	.config-demo code {
@@ -596,12 +664,19 @@ proposeAIChange(session.id, {
 		}
 
 		.session-actions {
-			flex-wrap: wrap;
+			display: grid;
+			grid-template-columns: 1fr 1fr;
 		}
 
 		.session-actions :global(button) {
-			flex: 1 1 auto;
+			width: 100%;
 			min-height: 44px;
+		}
+
+		/* Primary 'Accept All' spans the full width; secondary + destructive
+		   share the row below so the danger button is never orphaned. */
+		.session-actions :global(button:first-child) {
+			grid-column: 1 / -1;
 		}
 	}
 
