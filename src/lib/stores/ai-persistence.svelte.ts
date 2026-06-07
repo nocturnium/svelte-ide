@@ -25,11 +25,15 @@ const DEFAULT_CONFIG: PersistenceConfig = {
 	autoSaveDebounceMs: 1000
 };
 
-// State
-let config = $state<PersistenceConfig>({ ...DEFAULT_CONFIG });
-let db = $state<IDBDatabase | null>(null);
-let initialized = $state(false);
-let error = $state<string | null>(null);
+// Internal plumbing — intentionally NOT reactive ($state). These are written
+// synchronously inside initPersistence(); if they were reactive, any $effect that
+// transitively calls saveConversation() (e.g. AIPanel's auto-save) would read and
+// then write them in the same tick, looping until effect_update_depth_exceeded.
+// They are surfaced only through the plain getters below, never read reactively.
+let config: PersistenceConfig = { ...DEFAULT_CONFIG };
+let db: IDBDatabase | null = null;
+let initialized = false;
+let error: string | null = null;
 
 // Debounce timer for auto-save
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -122,7 +126,9 @@ export async function saveConversation(conversation: AIConversation & { starred?
 /**
  * Auto-save with debounce
  */
-export function autoSaveConversation(conversation: AIConversation): void {
+export function autoSaveConversation(
+	conversation: AIConversation & { starred?: boolean }
+): void {
 	if (!config.autoSave) return;
 
 	if (saveTimer) {
@@ -370,7 +376,8 @@ function setLocalStorageConversations(conversations: AIConversation[]): void {
 	}
 }
 
-// Getters for reactive state
+// Accessors for the internal (non-reactive) persistence state. These return the
+// current value; they are not reactive sources — read them imperatively.
 export function isInitialized(): boolean {
 	return initialized;
 }

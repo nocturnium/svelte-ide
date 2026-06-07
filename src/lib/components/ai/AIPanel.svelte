@@ -17,6 +17,7 @@
 	import {
 		initPersistence,
 		saveConversation,
+		autoSaveConversation,
 		loadConversations,
 		deleteConversation as deletePersisted,
 		toggleStarConversation,
@@ -72,11 +73,13 @@
 		}
 	});
 
-	// Auto-save conversation when messages change
+	// Auto-save conversation when messages change. Use the debounced helper (not
+	// saveConversation) so a burst of streamed tokens collapses into one write and
+	// the persistence call is deferred out of this effect's synchronous run.
 	$effect(() => {
 		const conv = getActiveConversation();
 		if (conv && getMessages().length > 0) {
-			saveConversation(conv);
+			autoSaveConversation(conv);
 		}
 	});
 
