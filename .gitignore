@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.svelte-kit/
+dist/
+build/
+
+# Package
+*.tgz
+package/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# OS
+Thumbs.db
+
+# Go backend (lsp-bridge) build artifacts
+backend/lsp-bridge
+backend/lsp-bridge-*
+backend/dist/
+*.exe
+*.test
+*.out
+
+# Misc
+*.local
+.cache/

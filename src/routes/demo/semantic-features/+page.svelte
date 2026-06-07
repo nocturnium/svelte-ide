@@ -1,0 +1,681 @@
+<script lang="ts">
+	/**
+	 * Semantic Features Demo
+	 *
+	 * Demonstrates Phase 2 features:
+	 * - Semantic Fold Zones
+	 * - Context Lens
+	 * - Live Structure Map
+	 */
+
+	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
+	import ContextLens from '$lib/components/editor/ContextLens.svelte';
+	import StructureMap from '$lib/components/editor/StructureMap.svelte';
+	import {
+		type ComplexityMetrics,
+		type SemanticRegion,
+		getSemanticAnalyzer,
+		DEFAULT_FOLD_PRESETS,
+		type FoldPreset
+	} from '$lib/components/editor/core';
+
+	// Sample TypeScript code with various semantic regions
+	const sampleCode = `// Import statements
+import { createServer } from 'http';
+import { readFile, writeFile } from 'fs/promises';
+import { EventEmitter } from 'events';
+
+// Type definitions
+interface User {
+	id: string;
+	name: string;
+	email: string;
+	role: 'admin' | 'user' | 'guest';
+	createdAt: Date;
+}
+
+interface ApiResponse<T> {
+	success: boolean;
+	data: T;
+	error?: string;
+}
+
+// Constants
+const MAX_RETRIES = 3;
+const API_TIMEOUT = 5000;
+const CACHE_TTL = 60000;
+
+/**
+ * UserService - Manages user operations
+ * Handles CRUD operations and caching
+ */
+export class UserService extends EventEmitter {
+	private cache: Map<string, User> = new Map();
+	private retryCount = 0;
+
+	constructor(private apiUrl: string) {
+		super();
+		this.initializeCache();
+	}
+
+	private async initializeCache(): Promise<void> {
+		try {
+			const users = await this.fetchAllUsers();
+			users.forEach(user => this.cache.set(user.id, user));
+			console.log('Cache initialized with', this.cache.size, 'users');
+		} catch (error) {
+			console.error('Failed to initialize cache:', error);
+		}
+	}
+
+	/**
+	 * Get user by ID
+	 */
+	async getUser(id: string): Promise<User | null> {
+		// Check cache first
+		if (this.cache.has(id)) {
+			return this.cache.get(id)!;
+		}
+
+		try {
+			const response = await fetch(\`\${this.apiUrl}/users/\${id}\`);
+			if (!response.ok) {
+				throw new Error(\`HTTP \${response.status}\`);
+			}
+			const user = await response.json();
+			this.cache.set(id, user);
+			return user;
+		} catch (error) {
+			console.error('Failed to fetch user:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Create a new user
+	 */
+	async createUser(data: Omit<User, 'id' | 'createdAt'>): Promise<ApiResponse<User>> {
+		try {
+			const response = await fetch(\`\${this.apiUrl}/users\`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+
+			if (!response.ok) {
+				throw new Error(\`HTTP \${response.status}\`);
+			}
+
+			const user = await response.json();
+			this.cache.set(user.id, user);
+			this.emit('user:created', user);
+
+			return { success: true, data: user };
+		} catch (error) {
+			console.error('Failed to create user:', error);
+			return {
+				success: false,
+				data: null as unknown as User,
+				error: String(error)
+			};
+		}
+	}
+
+	private async fetchAllUsers(): Promise<User[]> {
+		const response = await fetch(\`\${this.apiUrl}/users\`);
+		return response.json();
+	}
+
+	private _privateMethod(): void {
+		// Private implementation detail
+		console.log('Private method called');
+	}
+}
+
+// Test suite
+describe('UserService', () => {
+	let service: UserService;
+
+	beforeEach(() => {
+		service = new UserService('http://api.example.com');
+	});
+
+	afterEach(() => {
+		// Cleanup
+	});
+
+	it('should get user by id', async () => {
+		const user = await service.getUser('123');
+		expect(user).toBeDefined();
+	});
+
+	it('should create a new user', async () => {
+		const result = await service.createUser({
+			name: 'Test User',
+			email: 'test@example.com',
+			role: 'user'
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('should handle errors gracefully', async () => {
+		const result = await service.getUser('invalid');
+		expect(result).toBeNull();
+	});
+});
+
+// Utility functions
+export function formatDate(date: Date): string {
+	return date.toISOString().split('T')[0];
+}
+
+export const capitalize = (str: string): string =>
+	str.charAt(0).toUpperCase() + str.slice(1);
+`;
+
+	let content = $state(sampleCode);
+	let cursorLine = $state(0);
+	let cursorColumn = $state(0);
+	let complexityMetrics = $state<ComplexityMetrics | null>(null);
+	let scrollLine = $state(0);
+
+	// Get semantic regions
+	const analyzer = getSemanticAnalyzer();
+	let semanticRegions = $derived(
+		analyzer.analyze(
+			content.split('\n').map((text, i) => ({ text, number: i + 1 })),
+			'typescript'
+		)
+	);
+
+	// Group regions by category for display
+	let regionsByCategory = $derived.by(() => {
+		const groups = new Map<string, SemanticRegion[]>();
+		for (const region of semanticRegions) {
+			const existing = groups.get(region.category) || [];
+			existing.push(region);
+			groups.set(region.category, existing);
+		}
+		return groups;
+	});
+
+	// Active preset
+	let activePreset = $state<FoldPreset | null>(null);
+
+	function applyPreset(preset: FoldPreset) {
+		activePreset = preset;
+		// In a real implementation, this would control folding
+	}
+
+	function clearPreset() {
+		activePreset = null;
+	}
+
+	// Get category color
+	function getCategoryColor(category: string): string {
+		const colors: Record<string, string> = {
+			imports: '#6b7280',
+			exports: '#22c55e',
+			types: '#f59e0b',
+			function: '#3b82f6',
+			class: '#8b5cf6',
+			tests: '#06b6d4',
+			'error-handling': '#ef4444',
+			logging: '#f97316',
+			comments: '#64748b',
+			private: '#94a3b8',
+			constants: '#eab308'
+		};
+		return colors[category] || '#888';
+	}
+
+	// Handle scroll
+	function handleScroll(e: Event) {
+		const target = e.target as HTMLElement;
+		scrollLine = Math.floor(target.scrollTop / 20); // Approximate line height
+	}
+
+	// Navigate to line
+	function navigateToLine(line: number) {
+		cursorLine = line;
+		// In real implementation, scroll editor to line
+	}
+</script>
+
+<div class="demo-page">
+	<header class="page-header">
+		<h1>Semantic Features</h1>
+		<p>Phase 2: Intelligent code understanding with semantic folding, context lens, and structure map</p>
+	</header>
+
+	<!-- Semantic Regions Overview -->
+	<section class="component-section">
+		<h2>Semantic Analysis</h2>
+		<p class="section-desc">
+			The semantic analyzer identifies meaningful code regions beyond simple syntax.
+		</p>
+
+		<div class="regions-overview">
+			{#each [...regionsByCategory.entries()] as [category, regions]}
+				<div class="region-group">
+					<div class="region-group__header">
+						<span class="region-group__color" style="background: {getCategoryColor(category)}"></span>
+						<span class="region-group__name">{category}</span>
+						<span class="region-group__count">{regions.length}</span>
+					</div>
+					<ul class="region-group__list">
+						{#each regions.slice(0, 3) as region}
+							<li>
+								<button class="region-item" onclick={() => navigateToLine(region.startLine)}>
+									<span class="region-item__label">{region.label || category}</span>
+									<span class="region-item__lines">L{region.startLine + 1}-{region.endLine + 1}</span>
+								</button>
+							</li>
+						{/each}
+						{#if regions.length > 3}
+							<li class="region-more">+{regions.length - 3} more</li>
+						{/if}
+					</ul>
+				</div>
+			{/each}
+		</div>
+	</section>
+
+	<!-- Fold Presets -->
+	<section class="component-section">
+		<h2>Fold Presets</h2>
+		<p class="section-desc">
+			One-click folding based on semantic understanding. Hide tests, show only exports, focus on debugging.
+		</p>
+
+		<div class="presets-grid">
+			{#each DEFAULT_FOLD_PRESETS as preset}
+				<button
+					class="preset-card"
+					class:preset-card--active={activePreset?.id === preset.id}
+					onclick={() => applyPreset(preset)}
+				>
+					<span class="preset-card__icon">{preset.icon}</span>
+					<div class="preset-card__content">
+						<span class="preset-card__name">{preset.name}</span>
+						<span class="preset-card__desc">{preset.description}</span>
+					</div>
+					{#if activePreset?.id === preset.id}
+						<span
+							class="preset-card__clear"
+							role="button"
+							tabindex={0}
+							onclick={(e) => { e.stopPropagation(); clearPreset(); }}
+							onkeydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); clearPreset(); } }}
+						>
+							\u{2715}
+						</span>
+					{/if}
+				</button>
+			{/each}
+		</div>
+
+		{#if activePreset}
+			<div class="active-preset-info">
+				<strong>Active:</strong> {activePreset.name} -
+				Showing: {activePreset.show.join(', ')} |
+				Hiding: {activePreset.hide.join(', ')}
+			</div>
+		{/if}
+	</section>
+
+	<!-- Editor with Structure Map -->
+	<section class="component-section">
+		<h2>Live Demo</h2>
+		<p class="section-desc">
+			Editor with Context Lens (hover over functions) and Structure Map (right panel).
+		</p>
+
+		<div class="editor-with-map">
+			<div class="editor-pane" onscroll={handleScroll}>
+				<CustomEditor
+					content={content}
+					onChange={(value) => (content = value)}
+					language="typescript"
+					readonly={false}
+					complexityHighlighting={true}
+					onCursorChange={(line, col) => {
+						cursorLine = line;
+						cursorColumn = col;
+					}}
+					onComplexityChange={(metrics) => {
+						complexityMetrics = metrics;
+					}}
+				/>
+			</div>
+
+			<div class="structure-pane">
+				<StructureMap
+					lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
+					scrollLine={scrollLine}
+					visibleLines={25}
+					totalLines={content.split('\n').length}
+					cursorLine={cursorLine}
+					complexityMetrics={complexityMetrics}
+					language="typescript"
+					width={180}
+					enabled={true}
+					onNodeClick={navigateToLine}
+				/>
+			</div>
+		</div>
+	</section>
+
+	<!-- Feature Cards -->
+	<section class="component-section">
+		<h2>Feature Highlights</h2>
+		<div class="features-grid">
+			<div class="feature-card">
+				<div class="feature-icon" style="color: #8b5cf6">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M4 6h16M4 12h10M4 18h16"/>
+					</svg>
+				</div>
+				<h3>Semantic Folding</h3>
+				<p>Fold by meaning, not syntax. "Hide all tests" or "Show only exports" with one click.</p>
+			</div>
+
+			<div class="feature-card">
+				<div class="feature-icon" style="color: #3b82f6">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<circle cx="12" cy="12" r="10"/>
+						<path d="M12 16v-4M12 8h.01"/>
+					</svg>
+				</div>
+				<h3>Context Lens</h3>
+				<p>Inline type information appears as you navigate. See function signatures without hovering.</p>
+			</div>
+
+			<div class="feature-card">
+				<div class="feature-icon" style="color: #22c55e">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<rect x="3" y="3" width="7" height="7"/>
+						<rect x="14" y="3" width="7" height="7"/>
+						<rect x="3" y="14" width="7" height="7"/>
+						<rect x="14" y="14" width="7" height="7"/>
+					</svg>
+				</div>
+				<h3>Structure Map</h3>
+				<p>Semantic minimap replacement. See functions, classes, and complexity at a glance.</p>
+			</div>
+
+			<div class="feature-card">
+				<div class="feature-icon" style="color: #f59e0b">
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+					</svg>
+				</div>
+				<h3>Fold Presets</h3>
+				<p>Save and share folding configurations. Perfect for code review, debugging, or documentation.</p>
+			</div>
+		</div>
+	</section>
+</div>
+
+<style>
+	.demo-page {
+		padding: 2rem 3rem;
+		max-width: 1200px;
+	}
+
+	.page-header {
+		margin-bottom: 2.5rem;
+	}
+
+	.page-header h1 {
+		font-size: 2rem;
+		font-weight: 700;
+		color: var(--ide-text-primary);
+		margin-bottom: 0.5rem;
+	}
+
+	.page-header p {
+		color: var(--ide-text-secondary);
+	}
+
+	.component-section {
+		margin-bottom: 3rem;
+		padding-bottom: 2rem;
+		border-bottom: 1px solid var(--ide-border);
+	}
+
+	.component-section:last-child {
+		border-bottom: none;
+	}
+
+	.component-section h2 {
+		font-size: 1.5rem;
+		font-weight: 600;
+		color: var(--ide-text-primary);
+		margin-bottom: 0.25rem;
+	}
+
+	.section-desc {
+		color: var(--ide-text-secondary);
+		font-size: 0.875rem;
+		margin-bottom: 1.5rem;
+	}
+
+	/* Regions Overview */
+	.regions-overview {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		gap: 1rem;
+	}
+
+	.region-group {
+		background: var(--ide-bg-secondary);
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.region-group__header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 10px 12px;
+		background: rgba(255, 255, 255, 0.03);
+		border-bottom: 1px solid var(--ide-border);
+	}
+
+	.region-group__color {
+		width: 10px;
+		height: 10px;
+		border-radius: 3px;
+	}
+
+	.region-group__name {
+		flex: 1;
+		font-weight: 600;
+		font-size: 0.8125rem;
+		color: var(--ide-text-primary);
+		text-transform: capitalize;
+	}
+
+	.region-group__count {
+		padding: 2px 8px;
+		background: rgba(255, 255, 255, 0.1);
+		border-radius: 10px;
+		font-size: 0.75rem;
+		color: var(--ide-text-muted);
+	}
+
+	.region-group__list {
+		list-style: none;
+		padding: 8px;
+		margin: 0;
+	}
+
+	.region-item {
+		display: flex;
+		justify-content: space-between;
+		width: 100%;
+		padding: 6px 8px;
+		background: none;
+		border: none;
+		border-radius: 4px;
+		color: var(--ide-text-secondary);
+		font-size: 0.75rem;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.region-item:hover {
+		background: rgba(255, 255, 255, 0.05);
+		color: var(--ide-text-primary);
+	}
+
+	.region-item__lines {
+		color: var(--ide-text-muted);
+		font-family: var(--ide-font-mono);
+	}
+
+	.region-more {
+		padding: 4px 8px;
+		font-size: 0.75rem;
+		color: var(--ide-text-muted);
+		font-style: italic;
+	}
+
+	/* Fold Presets */
+	.presets-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.preset-card {
+		display: flex;
+		align-items: flex-start;
+		gap: 12px;
+		padding: 12px 16px;
+		background: var(--ide-bg-secondary);
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
+		cursor: pointer;
+		text-align: left;
+		transition: all 0.15s ease;
+	}
+
+	.preset-card:hover {
+		border-color: var(--ide-interactive);
+		background: var(--ide-bg-hover);
+	}
+
+	.preset-card--active {
+		border-color: var(--ide-interactive);
+		background: rgba(74, 158, 255, 0.1);
+	}
+
+	.preset-card__icon {
+		font-size: 1.5rem;
+		line-height: 1;
+	}
+
+	.preset-card__content {
+		flex: 1;
+	}
+
+	.preset-card__name {
+		display: block;
+		font-weight: 600;
+		color: var(--ide-text-primary);
+		margin-bottom: 2px;
+	}
+
+	.preset-card__desc {
+		display: block;
+		font-size: 0.75rem;
+		color: var(--ide-text-muted);
+	}
+
+	.preset-card__clear {
+		padding: 4px 8px;
+		background: rgba(255, 255, 255, 0.1);
+		border: none;
+		border-radius: 4px;
+		color: var(--ide-text-muted);
+		cursor: pointer;
+	}
+
+	.preset-card__clear:hover {
+		background: rgba(255, 255, 255, 0.2);
+		color: var(--ide-text-primary);
+	}
+
+	.active-preset-info {
+		padding: 12px 16px;
+		background: rgba(74, 158, 255, 0.1);
+		border: 1px solid rgba(74, 158, 255, 0.3);
+		border-radius: 6px;
+		font-size: 0.875rem;
+		color: var(--ide-text-secondary);
+	}
+
+	.active-preset-info strong {
+		color: var(--ide-text-primary);
+	}
+
+	/* Editor with Map */
+	.editor-with-map {
+		display: flex;
+		height: 500px;
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.editor-pane {
+		flex: 1;
+		overflow: auto;
+	}
+
+	.structure-pane {
+		flex-shrink: 0;
+	}
+
+	/* Features Grid */
+	.features-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		gap: 1rem;
+	}
+
+	.feature-card {
+		padding: 1.25rem;
+		background: var(--ide-bg-secondary);
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
+		transition: border-color 0.15s ease;
+	}
+
+	.feature-card:hover {
+		border-color: var(--ide-interactive);
+	}
+
+	.feature-icon {
+		margin-bottom: 0.75rem;
+		color: var(--ide-interactive);
+	}
+
+	.feature-card h3 {
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--ide-text-primary);
+		margin-bottom: 0.5rem;
+	}
+
+	.feature-card p {
+		font-size: 0.8125rem;
+		color: var(--ide-text-secondary);
+		line-height: 1.5;
+		margin: 0;
+	}
+</style>

@@ -1,0 +1,547 @@
+# Editor Guide
+
+The editor is the heart of `@nocturnium/svelte-ide`: a custom-built, zero-dependency code editor for Svelte 5 with its own tokenizer, code folding, and multi-cursor editing — no CodeMirror, no Monaco. This guide covers the two component layers you will actually use (`Editor` and `CustomEditor`), every prop and callback they expose, controlled-vs-uncontrolled patterns with runes, the multi-file `EditorPane` / `EditorTabs` components, and the low-level `editor-core` utilities (`createEditorState`, `createNavigation`, `createKeyboardHandler`, `createDefaultKeybindings`) for when you need to drive an editing surface yourself.
+
+> Components ship **unstyled**. Import the theme once in your app root so the design tokens resolve:
+>
+> ```ts
+> import "@nocturnium/svelte-ide/theme.css";
+> ```
+>
+> See [Theming](../theming.md) for how to retheme via CSS custom properties.
+
+---
+
+## `Editor` vs `CustomEditor`
+
+There are two components, and the distinction matters:
+
+| | `Editor` | `CustomEditor` |
+| --- | --- | --- |
+| Role | Thin, stable wrapper | Full implementation |
+| Surface area | Small, curated prop set | Every feature flag |
+| Use when | You want a code editor and sensible defaults | You need folding flags, multi-cursor limits, complexity highlighting, AI-presence layers, or per-cursor callbacks |
+
+`Editor` simply wraps `CustomEditor`, forwarding `content`, `language`, `readonly`, `preferences`, `onChange`, `onCursorChange`, and `onSave`, and applying the `.ide-editor` container. It is the recommended entry point — start here and reach for `CustomEditor` only when you need a prop that `Editor` does not surface.
+
+Both are exported from the package root and from the `./components/editor` subpath:
+
+```svelte
+<script lang="ts">
+  // Either import path works — root re-exports everything.
+  import { Editor } from "@nocturnium/svelte-ide";
+  // or: import { Editor } from "@nocturnium/svelte-ide/components/editor";
+
+  let code = $state(`function greet(name) {\n  return "Hello, " + name;\n}\n`);
+</script>
+
+<div style="height: 400px;">
+  <Editor
+    content={code}
+    language="javascript"
+    onChange={(value) => (code = value)}
+  />
+</div>
+```
+
+> The editor fills its container (`width: 100%; height: 100%`). Always give the parent element an explicit height, or the editor will collapse.
+
+---
+
+## `Editor` props and callbacks
+
+These are the exact props from the `Editor` component's `Props` interface:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `content` | `string` | — (required) | Document text to display. |
+| `language` | `string` | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"rust"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set. |
+| `readonly` | `boolean` | `false` | Disables editing; navigation/selection keybindings still work. |
+| `preferences` | `Partial<EditorPreferences>` | `{}` | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences). |
+| `class` | `string` | `""` | Extra CSS class applied to the editor container. |
+| `onChange` | `(content: string) => void` | — | Fired (debounced) whenever the document text changes. |
+| `onCursorChange` | `(line: number, column: number) => void` | — | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them. |
+| `onSave` | `() => void` | — | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs. |
+
+There are no Svelte `createEventDispatcher` events on these components — all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
+
+---
+
+## `CustomEditor` props and callbacks
+
+`CustomEditor` is a superset of `Editor`. It accepts everything `Editor` does **plus** the following feature flags and extra callbacks (defaults shown are the component's own defaults):
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `folding` | `boolean` | `true` | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md). |
+| `multiCursor` | `boolean` | `true` | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md). |
+| `maxCursors` | `number` | `100` | Upper bound on simultaneous cursors. |
+| `complexityHighlighting` | `boolean` | `true` | Highlights high-complexity regions inline. |
+| `complexityThreshold` | `number` | `50` | Minimum complexity score before highlighting is drawn. |
+| `aiAgents` | `AIAwareness[]` | `[]` | AI agents to visualize (Ghost Pair cursors / focus regions). See [AI and agents](./ai-and-agents.md). |
+| `showAILabels` | `boolean` | `true` | Show name labels next to AI cursors. |
+| `showAIFocusRegions` | `boolean` | `true` | Shade the region an AI agent is focused on. |
+| `onCursorsChange` | `(cursors: readonly Cursor[]) => void` | — | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`. |
+| `onComplexityChange` | `(metrics: ComplexityMetrics \| null) => void` | — | Fired when computed complexity metrics change. |
+
+> The `AIAwareness` and `ComplexityMetrics` types named in the table above are not re-exported from the package root; if you need to import them, pull them from the editor subpath: `import type { AIAwareness, ComplexityMetrics } from "@nocturnium/svelte-ide/components/editor"`.
+
+Reach for `CustomEditor` directly when you want, for example, to cap cursors, disable folding, or wire up AI presence:
+
+```svelte
+<script lang="ts">
+  import { CustomEditor } from "@nocturnium/svelte-ide";
+  import type { Cursor } from "@nocturnium/svelte-ide";
+
+  let source = $state("const answer = 42;\n");
+  let cursorCount = $state(1);
+</script>
+
+<div style="height: 480px;">
+  <CustomEditor
+    content={source}
+    language="typescript"
+    folding={true}
+    multiCursor={true}
+    maxCursors={8}
+    complexityHighlighting={false}
+    onChange={(value) => (source = value)}
+    onCursorsChange={(cursors) => (cursorCount = cursors.length)}
+  />
+</div>
+
+<p>{cursorCount} cursor{cursorCount === 1 ? "" : "s"} active</p>
+```
+
+---
+
+## Editor preferences
+
+`preferences` is a `Partial<EditorPreferences>`; any keys you omit fall back to the editor's defaults. The full shape (from `EditorPreferences`):
+
+```ts
+interface EditorPreferences {
+  fontSize: number;
+  fontFamily: string;
+  tabSize: number;
+  insertSpaces: boolean;
+  wordWrap: "off" | "on" | "wordWrapColumn";
+  wordWrapColumn: number;
+  lineNumbers: "on" | "off" | "relative";
+  minimap: boolean;
+  bracketMatching: boolean;
+  autoCloseBrackets: boolean;
+  highlightActiveLine: boolean;
+  renderWhitespace: "none" | "boundary" | "all";
+  theme: string;
+}
+```
+
+The defaults applied when a key is not provided:
+
+```ts
+{
+  fontSize: 14,
+  fontFamily: "JetBrains Mono",
+  tabSize: 2,
+  insertSpaces: false,
+  wordWrap: "off",
+  wordWrapColumn: 80,
+  lineNumbers: "on",
+  minimap: false,
+  bracketMatching: true,
+  autoCloseBrackets: true,
+  highlightActiveLine: true,
+  renderWhitespace: "none",
+  theme: "nocturnium",
+}
+```
+
+The constant is exported as `DEFAULT_EDITOR_PREFERENCES` if you want to start from it:
+
+```svelte
+<script lang="ts">
+  import { Editor } from "@nocturnium/svelte-ide";
+  import { DEFAULT_EDITOR_PREFERENCES } from "@nocturnium/svelte-ide/types";
+
+  let code = $state("");
+
+  const prefs = {
+    ...DEFAULT_EDITOR_PREFERENCES,
+    fontSize: 16,
+    tabSize: 4,
+    insertSpaces: true,
+    wordWrap: "on" as const,
+    lineNumbers: "relative" as const,
+  };
+</script>
+
+<div style="height: 400px;">
+  <Editor content={code} language="python" preferences={prefs} onChange={(v) => (code = v)} />
+</div>
+```
+
+The `EditorPreferences` **type** is available from the package root and from the `./types` subpath. The runtime constant `DEFAULT_EDITOR_PREFERENCES` is a value, so import it from the `./types` subpath (`@nocturnium/svelte-ide/types`) as shown above — the package root re-exports editor types only, not this value. See [Types and utils](../api/types-and-utils.md).
+
+---
+
+## Controlled vs uncontrolled usage with runes
+
+The editor maintains its own internal document state, so you get to choose how tightly your component mirrors it.
+
+### Controlled
+
+You hold the source of truth in `$state` and write back to it inside `onChange`. The `content` prop reflects your state; your state reflects user edits. This is the right default — it keeps your model authoritative and lets you transform, validate, or persist on every change.
+
+```svelte
+<script lang="ts">
+  import { Editor } from "@nocturnium/svelte-ide";
+
+  let code = $state("// start typing\n");
+
+  // Derived values stay in sync automatically.
+  let lineCount = $derived(code.split("\n").length);
+</script>
+
+<div style="height: 400px;">
+  <Editor content={code} language="javascript" onChange={(value) => (code = value)} />
+</div>
+
+<footer>{lineCount} lines</footer>
+```
+
+Because `code` drives `content`, you can also mutate it from outside the editor (load a new file, run a formatter, reset to a template) and the editor re-renders to match:
+
+```svelte
+<button onclick={() => (code = "")}>Clear</button>
+<button onclick={() => (code = templateFor(language))}>Reset to template</button>
+```
+
+> Avoid feedback loops: update `code` *from* `onChange`, but do not re-derive `content` from a value you also mutate inside `onChange`. Keep one piece of `$state` as the single source of truth.
+
+### Uncontrolled
+
+If you only need the final value at specific moments (on save, on submit), let the editor own the buffer and capture the value through `onChange` (or `onSave`) without binding it back to `content` on every keystroke:
+
+```svelte
+<script lang="ts">
+  import { Editor } from "@nocturnium/svelte-ide";
+
+  // `initial` seeds the editor once; latestValue is updated but not fed back to `content`.
+  const initial = "SELECT * FROM users;\n";
+  let latestValue = initial;
+
+  function handleSave() {
+    void persist(latestValue);
+  }
+</script>
+
+<div style="height: 320px;">
+  <Editor
+    content={initial}
+    language="sql"
+    onChange={(value) => (latestValue = value)}
+    onSave={handleSave}
+  />
+</div>
+```
+
+### Read-only
+
+Pass `readonly` for a viewer. Cursor movement and text selection still work (handy for copying), but edits are blocked:
+
+```svelte
+<Editor content={logOutput} language="plaintext" readonly />
+```
+
+---
+
+## Multi-file editing: `EditorPane` and `EditorTabs`
+
+For a multi-file experience, the library ships a tab-aware pair backed by the editor store. `EditorPane` renders the tab strip plus the active buffer; `EditorTabs` is the tab strip on its own if you want to compose it yourself.
+
+### `EditorPane`
+
+`EditorPane` is **store-driven**: it reads open tabs, the active tab, and the active buffer straight from the editor store, so you manage files by calling store actions (`openFile`, `setActiveTab`, `closeTab`, …) rather than passing tab arrays in as props. Its props are small:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `preferences` | `Partial<EditorPreferences>` | `{}` | Forwarded to the underlying editor. |
+| `onSave` | `(path: string, content: string) => Promise<void>` | — | Called with the active tab's path and content when Ctrl/Cmd+S fires. The pane marks the tab clean after your promise resolves. |
+| `class` | `string` | `""` | Extra CSS class on the pane container. |
+
+`EditorPane` already wires content edits and cursor moves back into the store and shows a "No files open" empty state when there are no tabs. A tab whose `aiEditing` flag is set is rendered read-only.
+
+Open files through the store and the pane updates itself:
+
+```svelte
+<script lang="ts">
+  import { EditorPane } from "@nocturnium/svelte-ide";
+  import { openFile } from "@nocturnium/svelte-ide/stores";
+
+  // Seed some tabs (e.g. after loading from your backend).
+  openFile("src/app.ts", "export const app = createApp();\n", { language: "typescript" });
+  openFile("README.md", "# My Project\n", { language: "markdown" });
+
+  async function save(path: string, content: string) {
+    await fetch(`/api/files?path=${encodeURIComponent(path)}`, {
+      method: "PUT",
+      body: content,
+    });
+  }
+</script>
+
+<div style="height: 600px;">
+  <EditorPane onSave={save} />
+</div>
+```
+
+The editor store actions you will use most (all exported from `@nocturnium/svelte-ide/stores`):
+
+- `openFile(path, content, options?)` — open or focus a tab. `options` is `{ language?: string; focus?: boolean }`. Returns the tab id; language is auto-detected from the filename when omitted.
+- `setActiveTab(tabId)` / `nextTab()` / `prevTab()` — switch the focused tab.
+- `closeTab(tabId)` / `closeOtherTabs(keepTabId)` / `closeAllTabs()` — close tabs (dirty tabs are protected; `forceCloseTab` skips that check).
+- `updateContent(tabId, content)` / `markSaved(tabId, newContent?)` — mutate buffer / clear the dirty flag.
+- `updatePreferences(updates)` / `resetPreferences()` — global preference state.
+
+> The cursor-update action is exported under a renamed alias (`updateEditorCursor`) to avoid clashing with the collaboration and agent stores; the same is true of a few other names (e.g. `editorError`, `setEditorError`). `EditorPane` calls these internally, so you rarely need them directly.
+
+Reactive store getters are exposed both as plain getter functions (`getTabs()`, `getActiveTab()`, `getHasDirtyTabs()`) and as `.current` accessors so they work inside `$derived`:
+
+```svelte
+<script lang="ts">
+  import { tabs, activeTab, hasDirtyTabs } from "@nocturnium/svelte-ide/stores";
+
+  let openCount = $derived(tabs.current.length);
+  let currentPath = $derived(activeTab.current?.path ?? "—");
+  let unsaved = $derived(hasDirtyTabs.current);
+</script>
+
+<status-bar>{currentPath} · {openCount} open {unsaved ? "· unsaved changes" : ""}</status-bar>
+```
+
+See [Stores reference](../api/stores.md) for the full editor-store API.
+
+### `EditorTabs`
+
+`EditorTabs` is the presentational tab strip. Unlike `EditorPane`, it is fully **prop-driven** — pass it the tab list and callbacks, and it owns no store coupling. Useful when you maintain tab state yourself or want the tab UI without the editor body.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `tabs` | `EditorTab[]` | — (required) | Tabs to render. |
+| `activeTabId` | `string \| null` | — (required) | Id of the active tab. |
+| `onSelect` | `(tabId: string) => void` | — (required) | Called when a tab is clicked / activated by keyboard. |
+| `onClose` | `(tabId: string) => void` | — (required) | Called when a tab's close button is clicked. |
+| `onContextMenu` | `(tabId: string, event: MouseEvent) => void` | — | Optional right-click handler. |
+| `class` | `string` | `""` | Extra CSS class. |
+
+Each tab renders a `FileIcon`, the name (italicized when `isDirty`), a dirty dot, a sparkles indicator when `aiEditing` is set, and a close button.
+
+```svelte
+<script lang="ts">
+  import { EditorTabs } from "@nocturnium/svelte-ide";
+  import type { EditorTab } from "@nocturnium/svelte-ide";
+
+  let tabs = $state<EditorTab[]>([
+    { id: "1", path: "a.ts", name: "a.ts", content: "", language: "typescript", isDirty: false },
+    { id: "2", path: "b.css", name: "b.css", content: "", language: "css", isDirty: true },
+  ]);
+  let activeTabId = $state<string | null>("1");
+</script>
+
+<EditorTabs
+  {tabs}
+  {activeTabId}
+  onSelect={(id) => (activeTabId = id)}
+  onClose={(id) => (tabs = tabs.filter((t) => t.id !== id))}
+/>
+```
+
+The `EditorTab` shape (from the package types):
+
+```ts
+interface EditorTab {
+  id: string;
+  path: string;
+  name: string;
+  content: string;
+  language: string;
+  isDirty: boolean;
+  cursorPosition?: { line: number; column: number };
+  scrollPosition?: { top: number; left: number };
+  aiEditing?: boolean; // tab is being edited by an AI agent
+  version?: number;    // CRDT conflict-resolution version
+}
+```
+
+### `FileExplorer` and `FileIcon`
+
+A file tree (`FileExplorer`) and a per-extension icon (`FileIcon`) round out a typical IDE shell. `FileExplorer` is prop-driven over a `FileNode[]` tree and emits `onSelect` / `onOpen` (double-click) callbacks, among others (`onToggle`, `onNewFile`, `onNewFolder`, `onRename`, `onDelete`, `onLock`, `onUnlock`). Wire `onOpen` to `openFile` to feed the `EditorPane`:
+
+```svelte
+<script lang="ts">
+  import { FileExplorer, EditorPane } from "@nocturnium/svelte-ide";
+  import { openFile } from "@nocturnium/svelte-ide/stores";
+
+  // FileNode is exported from the FileExplorer module.
+  const files = [
+    {
+      id: "1", name: "src", type: "folder", path: "src", expanded: true,
+      children: [
+        { id: "2", name: "app.ts", type: "file", path: "src/app.ts" },
+      ],
+    },
+  ];
+
+  async function loadAndOpen(node: { path: string; type: string }) {
+    if (node.type !== "file") return;
+    const content = await fetch(`/api/files?path=${node.path}`).then((r) => r.text());
+    openFile(node.path, content);
+  }
+</script>
+
+<div style="display: grid; grid-template-columns: 240px 1fr; height: 600px;">
+  <FileExplorer {files} onOpen={loadAndOpen} />
+  <EditorPane onSave={async () => {}} />
+</div>
+```
+
+`FileExplorer` also accepts lock/agent/status maps (`lockStatuses`, `agentsByFile`, `fileStatuses`) for collaborative scenarios — see the [VFS](../api/services.md) and [collaboration](./collaboration.md) docs.
+
+---
+
+## Editor-core utilities
+
+Everything above is built on a headless core under `./components/editor/core`, re-exported from the package root. Use it directly when you are building a bespoke editing surface, embedding the model in a non-standard view, or writing tools/tests against editor state. These are plain TypeScript classes and factories — no Svelte required.
+
+The four factories you will reach for:
+
+```ts
+import {
+  createEditorState,
+  createNavigation,
+  createKeyboardHandler,
+  createDefaultKeybindings,
+} from "@nocturnium/svelte-ide";
+import type {
+  EditorState,
+  Navigation,
+  KeyboardHandler,
+  Keybinding,
+  Position,
+  Selection,
+  Cursor,
+} from "@nocturnium/svelte-ide";
+```
+
+### `createEditorState(config?)`
+
+Creates the document model — content, cursors, selections, and undo/redo history. It is multi-cursor aware and merges overlapping cursors automatically.
+
+```ts
+const state = createEditorState({
+  content: "function add(a, b) {\n  return a + b;\n}\n",
+  language: "javascript",
+  tabSize: 2,
+  insertSpaces: true,
+  maxCursors: 100,
+});
+
+state.getContent();          // current text
+state.setContent("...");     // replace whole document
+state.setLanguage("python"); // change tokenizer
+state.undo();                // -> boolean (true if a change was reverted)
+state.redo();
+```
+
+`EditorStateConfig` accepts `content`, `language`, `maxHistorySize`, `tabSize`, `insertSpaces`, and `maxCursors`. Subscribe to changes with the listener methods, e.g. `state.onSelectionChange((selection) => { ... })`, which returns an unsubscribe function.
+
+### `createNavigation(state)`
+
+Wraps an `EditorState` with cursor movement. Every movement method takes an optional `extend` boolean — pass `true` to extend the selection instead of collapsing it.
+
+```ts
+const nav = createNavigation(state);
+
+nav.moveLeft();           // collapse + move
+nav.moveRight(true);      // extend selection right
+nav.moveUp();
+nav.moveDown();
+nav.moveToLineStart();
+nav.moveToLineEnd(true);
+nav.moveWordLeft();
+nav.moveWordRight(true);
+nav.moveToDocumentStart();
+nav.moveToDocumentEnd();
+nav.movePageUp(20);       // pageSize lines
+nav.movePageDown(20, true);
+nav.selectWord();
+nav.selectLine();
+```
+
+### `createKeyboardHandler()` and `createDefaultKeybindings(state, nav, options?)`
+
+`createDefaultKeybindings` returns the standard `Keybinding[]` (arrows, word/line/document motions, selection extension, save, etc.). `createKeyboardHandler` is the dispatcher that matches a `KeyboardEvent` against a binding list and runs the handler. Wire them together and feed it `keydown`:
+
+```ts
+const state = createEditorState({ content: "", language: "javascript" });
+const nav = createNavigation(state);
+
+const handler = createKeyboardHandler();
+handler.setKeybindings(
+  createDefaultKeybindings(state, nav, {
+    onSave: () => persist(state.getContent()),
+    readonly: false,
+    pageSize: 20,
+  }),
+);
+
+element.addEventListener("keydown", (event) => {
+  // returns true (and calls preventDefault) when a binding handled the event
+  handler.handleKeyDown(event, /* readonly */ false);
+});
+```
+
+The handler also lets you extend or trim the binding set at runtime:
+
+```ts
+handler.addKeybinding({
+  key: "d",
+  modifiers: { ctrl: true },
+  description: "Duplicate line",
+  handler: () => duplicateCurrentLine(state),
+});
+
+handler.removeKeybinding("d", { ctrl: true });
+handler.setEnabled(false); // temporarily ignore all keys
+handler.getKeybindings();  // introspect for a shortcut cheatsheet
+```
+
+A `Keybinding` is:
+
+```ts
+interface Keybinding {
+  key: string;                       // e.g. "ArrowLeft", "Enter", "s"
+  modifiers?: { ctrl?: boolean; shift?: boolean; alt?: boolean; meta?: boolean };
+  handler: () => boolean | void;     // return false to let the event fall through
+  description?: string;              // shown in help / cheatsheets
+  readonly?: boolean;                // also runs while the editor is read-only
+}
+```
+
+> Modifier matching treats Cmd (meta) on macOS as Ctrl, so a binding with `{ ctrl: true }` fires on Ctrl (Windows/Linux) and Cmd (macOS) alike. Returning `false` from a `handler` signals "not handled" and lets the original key event proceed.
+
+Beyond these four, the `core` barrel also exports utilities for folding (`createFoldManager`), search, multi-cursor management, CRDT binding (`createCRDTBinding`), and more — covered in [Code folding](./code-folding.md), [Multi-cursor](./multi-cursor.md), and [Collaboration](./collaboration.md).
+
+---
+
+## Related guides
+
+- [Getting started](../getting-started.md) — install, theme, and your first editor.
+- [Syntax highlighting](./syntax-highlighting.md) — the tokenizer, supported languages, and token classes.
+- [Code folding](./code-folding.md) — folding strategies and the fold manager.
+- [Multi-cursor](./multi-cursor.md) — multi-cursor editing and selections.
+- [LSP](./lsp.md) — `LSPEditor` and connecting to an LSP-over-WebSocket bridge.
+- [Collaboration](./collaboration.md) — CRDT / Yjs realtime editing with `CollaborativeEditor`.
+- [AI and agents](./ai-and-agents.md) — AI presence layers and the AI panel.
+- API reference: [Components](../api/components.md) · [Stores](../api/stores.md) · [Types and utils](../api/types-and-utils.md).

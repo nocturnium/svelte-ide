@@ -1,0 +1,1151 @@
+<script lang="ts">
+	/**
+	 * Phase 6: Editor Intelligence Features Demo
+	 *
+	 * Demonstrates Minimap, Breadcrumbs, Quick Actions, and Symbol Outline.
+	 */
+
+	import { onMount } from 'svelte';
+	import Minimap from '$lib/components/editor/Minimap.svelte';
+	import Breadcrumbs, { type BreadcrumbSymbol } from '$lib/components/editor/Breadcrumbs.svelte';
+	import QuickActionsMenu from '$lib/components/editor/QuickActionsMenu.svelte';
+	import SymbolOutline, { type DocumentSymbol } from '$lib/components/editor/SymbolOutline.svelte';
+	import {
+		createQuickActionsManager,
+		type QuickActionsManager,
+		type CodeAction
+	} from '$lib/components/editor/core/quick-actions';
+
+	// Demo state
+	let activeDemo = $state<'minimap' | 'breadcrumbs' | 'quickactions' | 'outline'>('minimap');
+
+	// Sample code for all demos
+	const sampleCode = `import { useState, useEffect, useCallback } from 'react';
+import { fetchUserData, updateUserProfile } from '../api/users';
+import { Logger } from '../utils/logger';
+import type { User, UserProfile, ApiResponse } from '../types';
+
+const logger = new Logger('UserManager');
+
+/**
+ * User profile management component
+ * Handles loading, displaying, and updating user profiles
+ */
+interface UserManagerProps {
+  userId: string;
+  onProfileUpdate?: (profile: UserProfile) => void;
+  enableNotifications?: boolean;
+}
+
+export class UserManager {
+  private cache: Map<string, User> = new Map();
+  private logger: Logger;
+
+  constructor(private config: { cacheTimeout: number }) {
+    this.logger = new Logger('UserManager');
+  }
+
+  async getUser(id: string): Promise<User | null> {
+    if (this.cache.has(id)) {
+      return this.cache.get(id)!;
+    }
+
+    try {
+      const response = await fetchUserData(id);
+      if (response.success) {
+        this.cache.set(id, response.data);
+        return response.data;
+      }
+    } catch (error) {
+      this.logger.error('Failed to fetch user:', error);
+    }
+
+    return null;
+  }
+
+  async updateProfile(id: string, updates: Partial<UserProfile>): Promise<boolean> {
+    try {
+      const response = await updateUserProfile(id, updates);
+      if (response.success) {
+        const user = this.cache.get(id);
+        if (user) {
+          this.cache.set(id, { ...user, profile: { ...user.profile, ...updates } });
+        }
+        return true;
+      }
+    } catch (error) {
+      this.logger.error('Failed to update profile:', error);
+    }
+    return false;
+  }
+
+  clearCache(): void {
+    this.cache.clear();
+    this.logger.info('Cache cleared');
+  }
+}
+
+export function useUserProfile(userId: string) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadUser = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchUserData(userId);
+      setUser(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load user');
+      logger.error('Load failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) return false;
+
+    try {
+      await updateUserProfile(user.id, updates);
+      setUser({ ...user, profile: { ...user.profile, ...updates } });
+      return true;
+    } catch (err) {
+      logger.error('Update failed:', err);
+      return false;
+    }
+  };
+
+  return { user, loading, error, updateProfile, reload: loadUser };
+}
+
+export const DEFAULT_CONFIG = {
+  cacheTimeout: 5000,
+  maxRetries: 3,
+  enableLogging: true
+};`;
+
+	const sampleLines = sampleCode.split('\n');
+	const lineHeight = 20;
+	const editorHeight = 400;
+
+	// Minimap state
+	let minimapScrollTop = $state(0);
+	let minimapHighlights = $state<
+		Array<{ line: number; type: 'search' | 'error' | 'warning' | 'change' }>
+	>([
+		{ line: 5, type: 'change' },
+		{ line: 6, type: 'change' },
+		{ line: 35, type: 'error' },
+		{ line: 42, type: 'warning' },
+		{ line: 67, type: 'search' },
+		{ line: 68, type: 'search' },
+		{ line: 69, type: 'search' }
+	]);
+
+	// Breadcrumbs state
+	let breadcrumbPath = $state<BreadcrumbSymbol[]>([
+		{
+			id: 'class-usermanager',
+			name: 'UserManager',
+			type: 'class',
+			line: 18,
+			siblings: [
+				{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 18 },
+				{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 62 }
+			]
+		},
+		{
+			id: 'method-getuser',
+			name: 'getUser',
+			type: 'method',
+			line: 24,
+			detail: '(id: string): Promise<User | null>',
+			siblings: [
+				{
+					id: 'method-getuser',
+					name: 'getUser',
+					type: 'method',
+					line: 24,
+					detail: '(id: string): Promise<User>'
+				},
+				{
+					id: 'method-updateprofile',
+					name: 'updateProfile',
+					type: 'method',
+					line: 41,
+					detail: '(id, updates): Promise<boolean>'
+				},
+				{ id: 'method-clearcache', name: 'clearCache', type: 'method', line: 56, detail: '(): void' }
+			]
+		}
+	]);
+	let cursorLine = $state(28);
+
+	// Quick Actions state
+	let quickActionsManager = $state<QuickActionsManager>(null!);
+	let quickActionsEnabled = $state(true);
+	let lastAction = $state<string | null>(null);
+
+	// Symbol Outline state
+	let symbols = $state<DocumentSymbol[]>([
+		{
+			id: 'imports',
+			name: 'Imports',
+			kind: 'module',
+			line: 0,
+			endLine: 3,
+			children: [
+				{ id: 'imp-react', name: 'react', kind: 'import', line: 0 },
+				{ id: 'imp-users', name: 'users', kind: 'import', line: 1 },
+				{ id: 'imp-logger', name: 'Logger', kind: 'import', line: 2 },
+				{ id: 'imp-types', name: 'types', kind: 'import', line: 3 }
+			]
+		},
+		{
+			id: 'const-logger',
+			name: 'logger',
+			kind: 'constant',
+			line: 5,
+			detail: 'Logger'
+		},
+		{
+			id: 'interface-props',
+			name: 'UserManagerProps',
+			kind: 'interface',
+			line: 11,
+			endLine: 15,
+			children: [
+				{ id: 'prop-userid', name: 'userId', kind: 'property', line: 12, detail: 'string' },
+				{
+					id: 'prop-onupdate',
+					name: 'onProfileUpdate',
+					kind: 'property',
+					line: 13,
+					detail: '(profile) => void'
+				},
+				{
+					id: 'prop-notifications',
+					name: 'enableNotifications',
+					kind: 'property',
+					line: 14,
+					detail: 'boolean'
+				}
+			]
+		},
+		{
+			id: 'class-usermanager',
+			name: 'UserManager',
+			kind: 'class',
+			line: 17,
+			endLine: 59,
+			children: [
+				{
+					id: 'prop-cache',
+					name: 'cache',
+					kind: 'property',
+					line: 18,
+					detail: 'Map<string, User>',
+					visibility: 'private'
+				},
+				{
+					id: 'prop-logger',
+					name: 'logger',
+					kind: 'property',
+					line: 19,
+					detail: 'Logger',
+					visibility: 'private'
+				},
+				{ id: 'method-constructor', name: 'constructor', kind: 'method', line: 21, detail: '(config)' },
+				{
+					id: 'method-getuser',
+					name: 'getUser',
+					kind: 'method',
+					line: 25,
+					endLine: 39,
+					detail: '(id): Promise<User | null>'
+				},
+				{
+					id: 'method-updateprofile',
+					name: 'updateProfile',
+					kind: 'method',
+					line: 41,
+					endLine: 54,
+					detail: '(id, updates): Promise<boolean>'
+				},
+				{ id: 'method-clearcache', name: 'clearCache', kind: 'method', line: 56, detail: '(): void' }
+			]
+		},
+		{
+			id: 'fn-useuserprofile',
+			name: 'useUserProfile',
+			kind: 'function',
+			line: 62,
+			endLine: 93,
+			detail: '(userId: string)',
+			children: [
+				{ id: 'var-user', name: 'user', kind: 'variable', line: 63, detail: 'User | null' },
+				{ id: 'var-loading', name: 'loading', kind: 'variable', line: 64, detail: 'boolean' },
+				{ id: 'var-error', name: 'error', kind: 'variable', line: 65, detail: 'string | null' },
+				{
+					id: 'fn-loaduser',
+					name: 'loadUser',
+					kind: 'function',
+					line: 67,
+					detail: 'useCallback async'
+				},
+				{ id: 'fn-updateprofile', name: 'updateProfile', kind: 'function', line: 82, detail: 'async' }
+			]
+		},
+		{
+			id: 'const-config',
+			name: 'DEFAULT_CONFIG',
+			kind: 'constant',
+			line: 95,
+			detail: '{ cacheTimeout, maxRetries, enableLogging }'
+		}
+	]);
+	let activeSymbolId = $state<string>('method-getuser');
+	let outlineSortBy = $state<'position' | 'name' | 'kind'>('position');
+
+	onMount(() => {
+		// Initialize quick actions manager
+		quickActionsManager = createQuickActionsManager();
+
+		// Set initial context
+		quickActionsManager.updateContext({
+			position: { line: cursorLine, column: 10 },
+			diagnostics: [],
+			lineContent: sampleLines[cursorLine] || '',
+			language: 'typescript',
+			content: sampleCode
+		});
+
+		return () => {
+			quickActionsManager?.destroy();
+		};
+	});
+
+	function handleMinimapNavigate(line: number) {
+		minimapScrollTop = line;
+		cursorLine = line;
+	}
+
+	function handleBreadcrumbNavigate(symbol: BreadcrumbSymbol) {
+		cursorLine = symbol.line;
+	}
+
+	function handleQuickActionExecute(action: CodeAction) {
+		lastAction = action.title;
+		setTimeout(() => (lastAction = null), 2000);
+	}
+
+	function handleSymbolNavigate(symbol: DocumentSymbol) {
+		cursorLine = symbol.line;
+		activeSymbolId = symbol.id;
+
+		// Update breadcrumb path based on selected symbol
+		if (symbol.kind === 'class') {
+			breadcrumbPath = [{ ...symbol, type: symbol.kind }];
+		} else if (symbol.kind === 'method' || symbol.kind === 'function') {
+			// Find parent class if exists
+			const parentClass = symbols.find(
+				(s) => s.kind === 'class' && s.children?.some((c: DocumentSymbol) => c.id === symbol.id)
+			);
+			if (parentClass) {
+				breadcrumbPath = [
+					{ ...parentClass, type: 'class' },
+					{ ...symbol, type: symbol.kind }
+				];
+			} else {
+				breadcrumbPath = [{ ...symbol, type: symbol.kind }];
+			}
+		}
+	}
+</script>
+
+<div class="intelligence-demo">
+	<header class="demo-header">
+		<h1>Phase 6: Editor Intelligence</h1>
+		<p>Minimap, Breadcrumbs, Quick Actions, and Symbol Outline</p>
+	</header>
+
+	<!-- Demo tabs -->
+	<div class="demo-tabs">
+		<button
+			class="tab"
+			class:active={activeDemo === 'minimap'}
+			onclick={() => (activeDemo = 'minimap')}
+		>
+			Minimap
+		</button>
+		<button
+			class="tab"
+			class:active={activeDemo === 'breadcrumbs'}
+			onclick={() => (activeDemo = 'breadcrumbs')}
+		>
+			Breadcrumbs
+		</button>
+		<button
+			class="tab"
+			class:active={activeDemo === 'quickactions'}
+			onclick={() => (activeDemo = 'quickactions')}
+		>
+			Quick Actions
+		</button>
+		<button
+			class="tab"
+			class:active={activeDemo === 'outline'}
+			onclick={() => (activeDemo = 'outline')}
+		>
+			Symbol Outline
+		</button>
+	</div>
+
+	<!-- Minimap Demo -->
+	{#if activeDemo === 'minimap'}
+		<section class="demo-section">
+			<div class="section-header">
+				<h2>Minimap</h2>
+				<p>A scaled-down overview of the document with highlights and click-to-navigate.</p>
+			</div>
+
+			<div class="minimap-demo">
+				<div class="editor-container">
+					<div class="editor-preview" style="height: {editorHeight}px;">
+						<div
+							class="code-viewport"
+							style="transform: translateY(-{minimapScrollTop * lineHeight}px);"
+						>
+							{#each sampleLines as line, i}
+								<div
+									class="code-line"
+									class:code-line--current={i === cursorLine}
+									style="height: {lineHeight}px;"
+								>
+									<span class="line-num">{i + 1}</span>
+									<span class="line-content">{line || ' '}</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<Minimap
+						lines={sampleLines}
+						scrollTop={minimapScrollTop}
+						visibleLines={Math.floor(editorHeight / lineHeight)}
+						{editorHeight}
+						highlights={minimapHighlights}
+						enabled={true}
+						width={100}
+						onNavigate={handleMinimapNavigate}
+					/>
+				</div>
+
+				<div class="minimap-controls">
+					<div class="control-group">
+						<label>
+							Scroll Position: {minimapScrollTop}
+							<input
+								type="range"
+								min="0"
+								max={sampleLines.length - 20}
+								bind:value={minimapScrollTop}
+							/>
+						</label>
+					</div>
+
+					<div class="highlight-legend">
+						<h4>Highlights</h4>
+						<div class="legend-items">
+							<div class="legend-item">
+								<span class="legend-color" style="background: #f9e64f;"></span>
+								<span>Search results (3)</span>
+							</div>
+							<div class="legend-item">
+								<span class="legend-color" style="background: #f44747;"></span>
+								<span>Errors (1)</span>
+							</div>
+							<div class="legend-item">
+								<span class="legend-color" style="background: #ff8c00;"></span>
+								<span>Warnings (1)</span>
+							</div>
+							<div class="legend-item">
+								<span class="legend-color" style="background: #3b82f6;"></span>
+								<span>Changes (2)</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="feature-info">
+					<h4>Features</h4>
+					<ul>
+						<li>Scaled code preview with syntax coloring</li>
+						<li>Viewport slider showing current position</li>
+						<li>Highlighted regions for search, errors, warnings</li>
+						<li>Click or drag to navigate</li>
+						<li>Auto-scaling for large files</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+	{/if}
+
+	<!-- Breadcrumbs Demo -->
+	{#if activeDemo === 'breadcrumbs'}
+		<section class="demo-section">
+			<div class="section-header">
+				<h2>Breadcrumbs</h2>
+				<p>Navigation trail showing current location in code structure.</p>
+			</div>
+
+			<div class="breadcrumbs-demo">
+				<div class="breadcrumbs-container">
+					<Breadcrumbs
+						path={breadcrumbPath}
+						fileName="src/components/UserManager.tsx"
+						enabled={true}
+						onNavigate={handleBreadcrumbNavigate}
+					/>
+				</div>
+
+				<div class="editor-preview-small">
+					{#each sampleLines.slice(15, 45) as line, i}
+						<div
+							class="code-line"
+							class:code-line--current={i + 15 === cursorLine}
+							style="height: {lineHeight}px;"
+						>
+							<span class="line-num">{i + 16}</span>
+							<span class="line-content">{line || ' '}</span>
+						</div>
+					{/each}
+				</div>
+
+				<div class="breadcrumbs-controls">
+					<h4>Click breadcrumb items to:</h4>
+					<ul>
+						<li>Navigate to that symbol</li>
+						<li>View sibling symbols (click dropdown arrow)</li>
+						<li>Jump between related code sections</li>
+					</ul>
+
+					<div class="current-position">
+						<strong>Current:</strong> Line {cursorLine + 1}
+					</div>
+				</div>
+
+				<div class="feature-info">
+					<h4>Features</h4>
+					<ul>
+						<li>Shows file > class > method hierarchy</li>
+						<li>Click segments to navigate</li>
+						<li>Dropdown shows sibling symbols</li>
+						<li>Type-specific icons and colors</li>
+						<li>Current line position indicator</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+	{/if}
+
+	<!-- Quick Actions Demo -->
+	{#if activeDemo === 'quickactions'}
+		<section class="demo-section">
+			<div class="section-header">
+				<h2>Quick Actions</h2>
+				<p>Context-aware code actions with lightbulb indicator.</p>
+			</div>
+
+			<div class="quickactions-demo">
+				<div class="quickactions-editor">
+					<div class="editor-preview-small" style="position: relative;">
+						{#if quickActionsManager}
+							<QuickActionsMenu
+								manager={quickActionsManager}
+								{lineHeight}
+								{cursorLine}
+								gutterWidth={50}
+								showLightbulb={quickActionsEnabled}
+								onExecute={handleQuickActionExecute}
+							/>
+						{/if}
+
+						{#each sampleLines.slice(20, 50) as line, i}
+							<div
+								class="code-line"
+								role="button"
+								tabindex={-1}
+								class:code-line--current={i + 20 === cursorLine}
+								style="height: {lineHeight}px;"
+								onclick={() => {
+									cursorLine = i + 20;
+									quickActionsManager?.updateContext({
+										position: { line: cursorLine, column: 10 },
+										diagnostics: [],
+										lineContent: sampleLines[cursorLine] || '',
+										language: 'typescript',
+										content: sampleCode
+									});
+								}}
+								onkeydown={(e) => {
+									if (e.key === 'Enter') {
+										cursorLine = i + 20;
+									}
+								}}
+							>
+								<span class="line-num">{i + 21}</span>
+								<span class="line-content">{line || ' '}</span>
+							</div>
+						{/each}
+					</div>
+
+					{#if lastAction}
+						<div class="action-toast">
+							Executed: {lastAction}
+						</div>
+					{/if}
+				</div>
+
+				<div class="quickactions-controls">
+					<button
+						class="control-btn"
+						class:active={quickActionsEnabled}
+						onclick={() => (quickActionsEnabled = !quickActionsEnabled)}
+					>
+						{quickActionsEnabled ? 'Disable' : 'Enable'} Quick Actions
+					</button>
+
+					<div class="shortcut-hint">
+						Keyboard: <code>Ctrl+.</code> to open menu
+					</div>
+				</div>
+
+				<div class="feature-info">
+					<h4>Available Actions</h4>
+					<div class="action-categories">
+						<div class="category">
+							<h5>Quick Fixes</h5>
+							<ul>
+								<li>Add missing semicolon</li>
+								<li>Remove unused variables</li>
+							</ul>
+						</div>
+						<div class="category">
+							<h5>Refactoring</h5>
+							<ul>
+								<li>Extract to variable</li>
+								<li>Extract to function</li>
+								<li>Rename symbol</li>
+								<li>Convert to arrow function</li>
+							</ul>
+						</div>
+						<div class="category">
+							<h5>Source Actions</h5>
+							<ul>
+								<li>Organize imports</li>
+								<li>Fix all problems</li>
+							</ul>
+						</div>
+						<div class="category">
+							<h5>Generate</h5>
+							<ul>
+								<li>Generate JSDoc</li>
+								<li>Generate getter/setter</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+	{/if}
+
+	<!-- Symbol Outline Demo -->
+	{#if activeDemo === 'outline'}
+		<section class="demo-section">
+			<div class="section-header">
+				<h2>Symbol Outline</h2>
+				<p>Document structure panel for navigation and overview.</p>
+			</div>
+
+			<div class="outline-demo">
+				<div class="outline-layout">
+					<div class="editor-preview-small">
+						{#each sampleLines as line, i}
+							<div
+								class="code-line"
+								class:code-line--current={i === cursorLine}
+								style="height: {lineHeight}px;"
+							>
+								<span class="line-num">{i + 1}</span>
+								<span class="line-content">{line || ' '}</span>
+							</div>
+						{/each}
+					</div>
+
+					<SymbolOutline
+						{symbols}
+						{activeSymbolId}
+						enabled={true}
+						sortBy={outlineSortBy}
+						onNavigate={handleSymbolNavigate}
+						width={280}
+					/>
+				</div>
+
+				<div class="outline-controls">
+					<div class="sort-controls">
+						<span>Sort by:</span>
+						<button
+							class="sort-btn"
+							class:active={outlineSortBy === 'position'}
+							onclick={() => (outlineSortBy = 'position')}
+						>
+							Position
+						</button>
+						<button
+							class="sort-btn"
+							class:active={outlineSortBy === 'name'}
+							onclick={() => (outlineSortBy = 'name')}
+						>
+							Name
+						</button>
+						<button
+							class="sort-btn"
+							class:active={outlineSortBy === 'kind'}
+							onclick={() => (outlineSortBy = 'kind')}
+						>
+							Kind
+						</button>
+					</div>
+				</div>
+
+				<div class="feature-info">
+					<h4>Features</h4>
+					<ul>
+						<li>Hierarchical symbol tree (classes, methods, properties)</li>
+						<li>Search/filter symbols</li>
+						<li>Click to navigate to symbol</li>
+						<li>Collapse/expand sections</li>
+						<li>Sort by position, name, or kind</li>
+						<li>Active symbol highlighting</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+	{/if}
+</div>
+
+<style>
+	.intelligence-demo {
+		padding: 2rem;
+		max-width: 1400px;
+		margin: 0 auto;
+	}
+
+	.demo-header {
+		text-align: center;
+		margin-bottom: 2rem;
+	}
+
+	.demo-header h1 {
+		margin: 0 0 0.5rem;
+		font-size: 2rem;
+		color: var(--ide-text-primary, #e8e8f0);
+	}
+
+	.demo-header p {
+		margin: 0;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	/* Tabs */
+	.demo-tabs {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 1.5rem;
+		border-bottom: 1px solid var(--ide-border, #333);
+		padding-bottom: 0.5rem;
+	}
+
+	.tab {
+		padding: 0.75rem 1.5rem;
+		background: transparent;
+		border: none;
+		border-radius: 6px 6px 0 0;
+		color: var(--ide-text-secondary, #aaa);
+		font-size: 0.9rem;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.tab:hover {
+		color: var(--ide-text-primary, #e8e8f0);
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.tab.active {
+		color: #a855f7;
+		background: rgba(168, 85, 247, 0.1);
+	}
+
+	/* Section */
+	.demo-section {
+		background: var(--ide-bg-secondary, #1e1e2e);
+		border-radius: 12px;
+		padding: 1.5rem;
+	}
+
+	.section-header {
+		margin-bottom: 1.5rem;
+	}
+
+	.section-header h2 {
+		margin: 0 0 0.5rem;
+		font-size: 1.25rem;
+		color: var(--ide-text-primary, #e8e8f0);
+	}
+
+	.section-header p {
+		margin: 0;
+		color: var(--ide-text-secondary, #aaa);
+		font-size: 0.9rem;
+	}
+
+	/* Editor preview */
+	.editor-container {
+		display: flex;
+		gap: 0;
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 8px;
+		overflow: hidden;
+		margin-bottom: 1rem;
+	}
+
+	.editor-preview {
+		flex: 1;
+		overflow: hidden;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 13px;
+	}
+
+	.editor-preview-small {
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 8px;
+		overflow: auto;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 13px;
+		max-height: 400px;
+		position: relative;
+	}
+
+	.code-viewport {
+		transition: transform 0.1s ease;
+	}
+
+	.code-line {
+		display: flex;
+		line-height: 20px;
+		transition: background 0.1s ease;
+	}
+
+	.code-line:hover {
+		background: rgba(255, 255, 255, 0.03);
+	}
+
+	.code-line--current {
+		background: rgba(168, 85, 247, 0.15);
+	}
+
+	.line-num {
+		width: 40px;
+		padding-right: 8px;
+		text-align: right;
+		color: var(--ide-text-muted, #666);
+		user-select: none;
+		flex-shrink: 0;
+	}
+
+	.line-content {
+		flex: 1;
+		white-space: pre;
+		color: var(--ide-text-primary, #e8e8f0);
+	}
+
+	/* Minimap demo */
+	.minimap-demo {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.minimap-controls {
+		display: flex;
+		gap: 2rem;
+		align-items: flex-start;
+	}
+
+	.control-group {
+		flex: 1;
+	}
+
+	.control-group label {
+		display: block;
+		margin-bottom: 0.5rem;
+		font-size: 0.85rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.control-group input[type='range'] {
+		width: 100%;
+	}
+
+	.highlight-legend h4 {
+		margin: 0 0 0.5rem;
+		font-size: 0.85rem;
+		color: var(--ide-text-primary, #e8e8f0);
+	}
+
+	.legend-items {
+		display: flex;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+
+	.legend-item {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.8rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.legend-color {
+		width: 12px;
+		height: 12px;
+		border-radius: 2px;
+	}
+
+	/* Breadcrumbs demo */
+	.breadcrumbs-demo {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.breadcrumbs-container {
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.breadcrumbs-controls {
+		padding: 1rem;
+		background: rgba(168, 85, 247, 0.1);
+		border-radius: 8px;
+	}
+
+	.breadcrumbs-controls h4 {
+		margin: 0 0 0.5rem;
+		font-size: 0.9rem;
+		color: #a855f7;
+	}
+
+	.breadcrumbs-controls ul {
+		margin: 0 0 1rem;
+		padding-left: 1.25rem;
+		font-size: 0.85rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.current-position {
+		font-size: 0.85rem;
+		color: var(--ide-text-primary, #e8e8f0);
+	}
+
+	/* Quick Actions demo */
+	.quickactions-demo {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.quickactions-editor {
+		position: relative;
+	}
+
+	.quickactions-controls {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.control-btn {
+		padding: 0.5rem 1rem;
+		background: rgba(168, 85, 247, 0.2);
+		border: 1px solid rgba(168, 85, 247, 0.3);
+		border-radius: 6px;
+		color: #a855f7;
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.control-btn:hover {
+		background: rgba(168, 85, 247, 0.3);
+	}
+
+	.control-btn.active {
+		background: #a855f7;
+		color: #fff;
+	}
+
+	.shortcut-hint {
+		font-size: 0.8rem;
+		color: var(--ide-text-muted, #666);
+	}
+
+	.shortcut-hint code {
+		background: rgba(255, 255, 255, 0.1);
+		padding: 2px 6px;
+		border-radius: 3px;
+	}
+
+	.action-toast {
+		position: absolute;
+		bottom: 12px;
+		right: 12px;
+		padding: 8px 16px;
+		background: #22c55e;
+		color: #fff;
+		border-radius: 6px;
+		font-size: 0.85rem;
+		animation: fadeIn 0.2s ease;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.action-categories {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+		gap: 1rem;
+	}
+
+	.category h5 {
+		margin: 0 0 0.5rem;
+		font-size: 0.85rem;
+		color: var(--ide-text-primary, #e8e8f0);
+	}
+
+	.category ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		font-size: 0.8rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.category li {
+		margin: 0.25rem 0;
+		padding-left: 1rem;
+		position: relative;
+	}
+
+	.category li::before {
+		content: '•';
+		position: absolute;
+		left: 0;
+		color: #a855f7;
+	}
+
+	/* Outline demo */
+	.outline-demo {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.outline-layout {
+		display: flex;
+		gap: 0;
+		background: rgba(0, 0, 0, 0.3);
+		border-radius: 8px;
+		overflow: hidden;
+		height: 500px;
+	}
+
+	.outline-layout .editor-preview-small {
+		flex: 1;
+		border-radius: 0;
+		max-height: none;
+	}
+
+	.outline-controls {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.sort-controls {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.85rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.sort-btn {
+		padding: 4px 10px;
+		background: rgba(255, 255, 255, 0.1);
+		border: none;
+		border-radius: 4px;
+		color: var(--ide-text-secondary, #aaa);
+		font-size: 0.8rem;
+		cursor: pointer;
+	}
+
+	.sort-btn:hover {
+		background: rgba(255, 255, 255, 0.15);
+	}
+
+	.sort-btn.active {
+		background: rgba(168, 85, 247, 0.3);
+		color: #a855f7;
+	}
+
+	/* Feature info */
+	.feature-info {
+		padding: 1rem;
+		background: rgba(168, 85, 247, 0.1);
+		border-radius: 8px;
+		margin-top: 1rem;
+	}
+
+	.feature-info h4 {
+		margin: 0 0 0.75rem;
+		font-size: 0.9rem;
+		color: #a855f7;
+	}
+
+	.feature-info ul {
+		margin: 0;
+		padding-left: 1.25rem;
+		font-size: 0.85rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.feature-info li {
+		margin: 0.25rem 0;
+	}
+</style>
