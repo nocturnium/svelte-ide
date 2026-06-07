@@ -5,7 +5,10 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
-		exclude: ['tests/**', 'node_modules/**']
+		// Exclude e2e specs and build output. The .svelte-kit/__package__ dir holds
+		// transformed copies of the *.test.* files emitted by `svelte-package`; without
+		// excluding it, `vitest run` would also execute those stale duplicates.
+		exclude: ['tests/**', 'node_modules/**', '.svelte-kit/**', 'dist/**', 'build/**']
 	},
 	server: {
 		proxy: {
