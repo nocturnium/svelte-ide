@@ -3,6 +3,7 @@
 	import Avatar from '$lib/components/core/Avatar.svelte';
 	import Badge from '$lib/components/core/Badge.svelte';
 	import Button from '$lib/components/core/Button.svelte';
+	import Icon from '$lib/components/core/Icon.svelte';
 	import type { CollaborationUser, CollaboratorCursor } from '$lib/types/crdt';
 
 	// Sample collaborators
@@ -197,35 +198,35 @@ class CollaborationSession {
 		<h2>CRDT Features</h2>
 		<div class="features-list">
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="git-merge" size={20} /></span>
 				<div>
 					<strong>Conflict-Free</strong>
 					<p>CRDT ensures all edits merge correctly without conflicts</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="link" size={20} /></span>
 				<div>
 					<strong>Offline Support</strong>
 					<p>Edit offline and sync when reconnected</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="refresh" size={20} /></span>
 				<div>
 					<strong>Undo/Redo</strong>
 					<p>Per-user undo history that respects collaborative edits</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="users" size={20} /></span>
 				<div>
 					<strong>Awareness Protocol</strong>
 					<p>Share cursor positions, selections, and user state</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="clock" size={20} /></span>
 				<div>
 					<strong>Document Snapshots</strong>
 					<p>Create and restore document versions</p>
@@ -432,16 +433,21 @@ proposeAIChange(session.id, {
 		height: 8px;
 		background: var(--cursor-color);
 		border-radius: 50%;
-		animation: pulse 1.5s infinite;
 	}
 
-	@keyframes pulse {
-		0%,
-		100% {
-			opacity: 1;
+	@media (prefers-reduced-motion: no-preference) {
+		.cursor-indicator {
+			animation: pulse 1.5s infinite;
 		}
-		50% {
-			opacity: 0.5;
+
+		@keyframes pulse {
+			0%,
+			100% {
+				opacity: 1;
+			}
+			50% {
+				opacity: 0.5;
+			}
 		}
 	}
 
@@ -560,5 +566,76 @@ proposeAIChange(session.id, {
 		font-family: var(--ide-font-mono);
 		font-size: 0.875rem;
 		color: var(--ide-text-primary);
+	}
+
+	/* Code block scroll affordance */
+	.config-demo {
+		-webkit-mask-image: linear-gradient(
+			to right,
+			#000 calc(100% - 1.5rem),
+			transparent 100%
+		);
+		mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent 100%);
+	}
+
+	/* Tablet -> mobile shift */
+	@media (max-width: 860px) {
+		.demo-page {
+			padding: 1.5rem;
+			overflow-x: hidden;
+		}
+
+		.editor-header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.5rem;
+		}
+
+		.active-users {
+			flex-wrap: wrap;
+		}
+
+		.session-actions {
+			flex-wrap: wrap;
+		}
+
+		.session-actions :global(button) {
+			flex: 1 1 auto;
+			min-height: 44px;
+		}
+	}
+
+	/* Phones */
+	@media (max-width: 640px) {
+		.demo-page {
+			padding: 1.25rem 1rem;
+		}
+
+		.page-header h1 {
+			font-size: 1.625rem;
+		}
+
+		.component-section h2 {
+			font-size: 1.25rem;
+		}
+
+		.status-row {
+			flex-wrap: wrap;
+			gap: 0.5rem 0.75rem;
+		}
+
+		.status-label {
+			min-width: 0;
+		}
+
+		.cursor-details {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.25rem;
+		}
+
+		.config-demo code {
+			font-size: var(--ide-font-size-xs);
+		}
 	}
 </style>

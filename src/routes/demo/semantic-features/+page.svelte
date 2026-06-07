@@ -240,6 +240,9 @@ export const capitalize = (str: string): string =>
 		cursorLine = line;
 		// In real implementation, scroll editor to line
 	}
+
+	// Mobile: collapsible Structure Map
+	let structureMapOpen = $state(false);
 </script>
 
 <div class="demo-page">
@@ -290,28 +293,31 @@ export const capitalize = (str: string): string =>
 
 		<div class="presets-grid">
 			{#each DEFAULT_FOLD_PRESETS as preset}
-				<button
+				<div
 					class="preset-card"
 					class:preset-card--active={activePreset?.id === preset.id}
-					onclick={() => applyPreset(preset)}
 				>
-					<span class="preset-card__icon">{preset.icon}</span>
-					<div class="preset-card__content">
-						<span class="preset-card__name">{preset.name}</span>
-						<span class="preset-card__desc">{preset.description}</span>
-					</div>
+					<button
+						class="preset-card__apply"
+						onclick={() => applyPreset(preset)}
+						aria-pressed={activePreset?.id === preset.id}
+					>
+						<span class="preset-card__icon">{preset.icon}</span>
+						<div class="preset-card__content">
+							<span class="preset-card__name">{preset.name}</span>
+							<span class="preset-card__desc">{preset.description}</span>
+						</div>
+					</button>
 					{#if activePreset?.id === preset.id}
-						<span
+						<button
 							class="preset-card__clear"
-							role="button"
-							tabindex={0}
-							onclick={(e) => { e.stopPropagation(); clearPreset(); }}
-							onkeydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); clearPreset(); } }}
+							aria-label="Clear active preset"
+							onclick={() => clearPreset()}
 						>
-							\u{2715}
-						</span>
+							<span aria-hidden="true">✕</span>
+						</button>
 					{/if}
-				</button>
+				</div>
 			{/each}
 		</div>
 
@@ -349,6 +355,7 @@ export const capitalize = (str: string): string =>
 				/>
 			</div>
 
+			<!-- Desktop: side-by-side structure pane -->
 			<div class="structure-pane">
 				<StructureMap
 					lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
@@ -363,6 +370,45 @@ export const capitalize = (str: string): string =>
 					onNodeClick={navigateToLine}
 				/>
 			</div>
+		</div>
+
+		<!-- Mobile: collapsible Structure Map accordion (hidden on desktop) -->
+		<div class="structure-accordion">
+			<button
+				class="structure-accordion__toggle"
+				onclick={() => (structureMapOpen = !structureMapOpen)}
+				aria-expanded={structureMapOpen}
+				aria-controls="structure-map-mobile"
+			>
+				<svg class="structure-accordion__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+					<rect x="3" y="3" width="7" height="7"/>
+					<rect x="14" y="3" width="7" height="7"/>
+					<rect x="3" y="14" width="7" height="7"/>
+					<rect x="14" y="14" width="7" height="7"/>
+				</svg>
+				Structure Map
+				<svg class="structure-accordion__chevron" class:structure-accordion__chevron--open={structureMapOpen} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+					<path d="M6 9l6 6 6-6"/>
+				</svg>
+			</button>
+			{#if structureMapOpen}
+				<div class="structure-accordion__body" id="structure-map-mobile">
+					<div class="structure-accordion__scroll">
+						<StructureMap
+							lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
+							scrollLine={scrollLine}
+							visibleLines={25}
+							totalLines={content.split('\n').length}
+							cursorLine={cursorLine}
+							complexityMetrics={complexityMetrics}
+							language="typescript"
+							width={340}
+							enabled={true}
+							onNodeClick={navigateToLine}
+						/>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</section>
 
@@ -421,6 +467,7 @@ export const capitalize = (str: string): string =>
 	.demo-page {
 		padding: 2rem 3rem;
 		max-width: 1200px;
+		overflow-x: hidden;
 	}
 
 	.page-header {
@@ -450,7 +497,8 @@ export const capitalize = (str: string): string =>
 
 	.component-section h2 {
 		font-size: 1.5rem;
-		font-weight: 600;
+		font-weight: 700;
+		letter-spacing: -0.01em;
 		color: var(--ide-text-primary);
 		margin-bottom: 0.25rem;
 	}
@@ -493,9 +541,10 @@ export const capitalize = (str: string): string =>
 	.region-group__name {
 		flex: 1;
 		font-weight: 600;
-		font-size: 0.8125rem;
-		color: var(--ide-text-primary);
-		text-transform: capitalize;
+		font-size: 0.75rem;
+		letter-spacing: 0.04em;
+		color: var(--ide-text-secondary);
+		text-transform: uppercase;
 	}
 
 	.region-group__count {
@@ -552,15 +601,12 @@ export const capitalize = (str: string): string =>
 	}
 
 	.preset-card {
+		position: relative;
 		display: flex;
-		align-items: flex-start;
-		gap: 12px;
-		padding: 12px 16px;
+		align-items: stretch;
 		background: var(--ide-bg-secondary);
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
-		cursor: pointer;
-		text-align: left;
 		transition: all 0.15s ease;
 	}
 
@@ -572,6 +618,20 @@ export const capitalize = (str: string): string =>
 	.preset-card--active {
 		border-color: var(--ide-interactive);
 		background: rgba(74, 158, 255, 0.1);
+	}
+
+	.preset-card__apply {
+		flex: 1;
+		display: flex;
+		align-items: flex-start;
+		gap: 12px;
+		padding: 12px 16px;
+		background: none;
+		border: none;
+		border-radius: 8px;
+		color: inherit;
+		cursor: pointer;
+		text-align: left;
 	}
 
 	.preset-card__icon {
@@ -597,12 +657,21 @@ export const capitalize = (str: string): string =>
 	}
 
 	.preset-card__clear {
-		padding: 4px 8px;
+		flex-shrink: 0;
+		align-self: flex-start;
+		margin: 8px 8px 0 0;
+		min-width: 28px;
+		min-height: 28px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		background: rgba(255, 255, 255, 0.1);
 		border: none;
 		border-radius: 4px;
 		color: var(--ide-text-muted);
 		cursor: pointer;
+		font-size: 0.8125rem;
+		line-height: 1;
 	}
 
 	.preset-card__clear:hover {
@@ -634,11 +703,17 @@ export const capitalize = (str: string): string =>
 
 	.editor-pane {
 		flex: 1;
+		min-width: 0;
 		overflow: auto;
 	}
 
 	.structure-pane {
 		flex-shrink: 0;
+	}
+
+	/* Mobile Structure Map accordion — hidden on desktop */
+	.structure-accordion {
+		display: none;
 	}
 
 	/* Features Grid */
@@ -677,5 +752,126 @@ export const capitalize = (str: string): string =>
 		color: var(--ide-text-secondary);
 		line-height: 1.5;
 		margin: 0;
+	}
+
+	/* Tablet -> mobile: stack editor; move StructureMap to accordion below */
+	@media (max-width: 860px) {
+		.editor-with-map {
+			flex-direction: column;
+			height: auto;
+		}
+
+		.editor-pane {
+			min-height: 360px;
+		}
+
+		/* Hide the side-by-side pane; the accordion below takes over */
+		.structure-pane {
+			display: none;
+		}
+
+		/* Show the accordion */
+		.structure-accordion {
+			display: block;
+			margin-top: 0.75rem;
+			border: 1px solid var(--ide-border);
+			border-radius: 8px;
+			overflow: hidden;
+		}
+
+		.structure-accordion__toggle {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			width: 100%;
+			padding: 10px 14px;
+			background: var(--ide-bg-secondary);
+			border: none;
+			color: var(--ide-text-primary);
+			font-size: 0.875rem;
+			font-weight: 600;
+			cursor: pointer;
+			text-align: left;
+			transition: background 0.15s ease;
+		}
+
+		.structure-accordion__toggle:hover {
+			background: var(--ide-bg-hover);
+		}
+
+		.structure-accordion__icon {
+			flex-shrink: 0;
+			color: var(--ide-interactive);
+		}
+
+		.structure-accordion__chevron {
+			margin-left: auto;
+			flex-shrink: 0;
+			color: var(--ide-text-muted);
+			transition: transform 0.2s ease;
+		}
+
+		.structure-accordion__chevron--open {
+			transform: rotate(180deg);
+		}
+
+		.structure-accordion__body {
+			border-top: 1px solid var(--ide-border);
+			background: var(--ide-bg-primary, var(--ide-bg-secondary));
+		}
+
+		.structure-accordion__scroll {
+			overflow-x: auto;
+			padding: 8px 0;
+		}
+	}
+
+	@media (max-width: 768px) {
+		.demo-page {
+			padding: 1.75rem 1.5rem;
+		}
+	}
+
+	/* Phones */
+	@media (max-width: 640px) {
+		.demo-page {
+			padding: 1.25rem 1rem;
+		}
+
+		.page-header h1 {
+			font-size: 1.625rem;
+		}
+
+		.component-section {
+			margin-bottom: 2.25rem;
+			padding-bottom: 1.5rem;
+		}
+
+		.component-section h2 {
+			font-size: 1.25rem;
+		}
+
+		.region-item {
+			padding: 8px;
+			font-size: 0.7rem;
+		}
+
+		.region-group__list {
+			padding: 6px;
+		}
+
+		.presets-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.features-grid {
+			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+		}
+	}
+
+	@media (max-width: 420px) {
+		.regions-overview {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>

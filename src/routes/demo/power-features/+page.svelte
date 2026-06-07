@@ -407,6 +407,7 @@ export { formatPrice, summarize };`);
 		padding: 2rem;
 		max-width: 1200px;
 		margin: 0 auto;
+		overflow-x: hidden;
 	}
 
 	.demo-header {
@@ -443,6 +444,8 @@ export { formatPrice, summarize };`);
 		font-size: 0.9rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
+		/* Active underline indicator (transparent until active) so layout never shifts */
+		border-bottom: 2px solid transparent;
 	}
 
 	.tab:hover {
@@ -450,9 +453,15 @@ export { formatPrice, summarize };`);
 		background: rgba(255, 255, 255, 0.05);
 	}
 
+	.tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus, #a855f7);
+		outline-offset: 2px;
+	}
+
 	.tab.active {
 		color: #a855f7;
 		background: rgba(168, 85, 247, 0.1);
+		border-bottom-color: #a855f7;
 	}
 
 	/* Section */
@@ -530,7 +539,7 @@ export { formatPrice, summarize };`);
 
 	.action-label {
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-muted, #9b9bb0);
 	}
 
 	.small-btn {
@@ -575,11 +584,11 @@ export { formatPrice, summarize };`);
 		width: 30px;
 		text-align: right;
 		padding-right: 0.5rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-muted, #9b9bb0);
 	}
 
 	.line-content {
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #b4b4c4);
 	}
 
 	.echo-marker {
@@ -632,7 +641,7 @@ export { formatPrice, summarize };`);
 
 	.log-empty {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-muted, #9b9bb0);
 		font-style: italic;
 	}
 
@@ -700,6 +709,8 @@ export { formatPrice, summarize };`);
 	.code-input {
 		flex: 1;
 		min-height: 300px;
+		max-width: 100%;
+		box-sizing: border-box;
 		padding: 1rem;
 		background: rgba(0, 0, 0, 0.3);
 		border: none;
@@ -735,7 +746,7 @@ export { formatPrice, summarize };`);
 
 	.analysis-empty {
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-muted, #9b9bb0);
 		font-style: italic;
 	}
 
@@ -761,7 +772,7 @@ export { formatPrice, summarize };`);
 
 	.ghost-pos {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-muted, #9b9bb0);
 	}
 
 	.ghost-confidence {
@@ -827,7 +838,7 @@ export { formatPrice, summarize };`);
 	}
 
 	.mm-pos {
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-muted, #9b9bb0);
 	}
 
 	.mm-issue {
@@ -836,7 +847,7 @@ export { formatPrice, summarize };`);
 
 	.mm-expected {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-muted, #9b9bb0);
 	}
 
 	/* Plugin Demo */
@@ -869,6 +880,8 @@ export { formatPrice, summarize };`);
 	.code-preview {
 		flex: 1;
 		min-height: 300px;
+		max-width: 100%;
+		box-sizing: border-box;
 		margin: 0;
 		padding: 1rem;
 		background: rgba(0, 0, 0, 0.3);
@@ -877,7 +890,8 @@ export { formatPrice, summarize };`);
 		font-size: 13px;
 		line-height: 1.5;
 		color: var(--ide-text-primary, #e8e8f0);
-		overflow: auto;
+		overflow-x: auto;
+		overflow-y: auto;
 		white-space: pre;
 	}
 
@@ -914,6 +928,86 @@ export { formatPrice, summarize };`);
 		background: rgba(0, 0, 0, 0.2);
 		border-radius: 6px;
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-muted, #9b9bb0);
+	}
+
+	/* ===== Responsive: tablet -> mobile ===== */
+	@media (max-width: 860px) {
+		/* Collapse every two-column region to a single stacked column so the
+		   fixed 250/300px side panels no longer overflow the viewport. */
+		.echo-visualization,
+		.bracket-demo,
+		.plugin-demo {
+			grid-template-columns: 1fr;
+		}
+
+		/* Tab strip becomes a horizontal scroller with comfortable tap targets. */
+		.demo-tabs {
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			scrollbar-width: none;
+			-webkit-overflow-scrolling: touch;
+			/* Right-edge fade to signal the strip scrolls. */
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+		}
+
+		.demo-tabs::-webkit-scrollbar {
+			display: none;
+		}
+
+		.tab {
+			flex: 0 0 auto;
+			white-space: nowrap;
+			min-height: 44px;
+		}
+
+		/* Keep the bracket/plugin code surfaces contained; they no longer share a
+		   row with a fixed analysis column, so let them size to the card. */
+		.code-input,
+		.code-preview {
+			min-height: 220px;
+		}
+	}
+
+	/* ===== Responsive: phones ===== */
+	@media (max-width: 640px) {
+		.power-features-demo {
+			padding: 1.25rem 1rem;
+		}
+
+		.demo-header h1 {
+			font-size: 1.5rem;
+		}
+
+		.demo-section {
+			padding: 1.25rem 1rem;
+		}
+
+		/* Stack control rows so they don't wrap awkwardly mid-label. */
+		.echo-actions,
+		.keystroke-actions {
+			flex-wrap: wrap;
+		}
+
+		/* Roomier tap targets for the small demo buttons on touch screens. */
+		.small-btn {
+			min-height: 36px;
+			padding: 0.4rem 0.6rem;
+			font-size: 0.8rem;
+		}
+
+		/* Phones get the extra-small code size for denser line fit. */
+		.code-input,
+		.code-preview,
+		.editor-mock {
+			font-size: var(--ide-font-size-xs, 11px);
+		}
+
+		/* Right-edge scroll affordance for the horizontally scrollable code preview. */
+		.code-preview {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+		}
 	}
 </style>

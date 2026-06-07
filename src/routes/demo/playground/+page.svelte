@@ -5,6 +5,7 @@
 	import PluginPanel from '$lib/components/plugins/PluginPanel.svelte';
 	import Button from '$lib/components/core/Button.svelte';
 	import Badge from '$lib/components/core/Badge.svelte';
+	import Icon from '$lib/components/core/Icon.svelte';
 	import FileIcon from '$lib/components/editor/FileIcon.svelte';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
 	import type { EditorTab } from '$lib/types';
@@ -246,6 +247,47 @@ MIT License - see LICENSE file for details
 	let leftPanel = $state<'files' | 'plugins'>('files');
 	let bottomPanelOpen = $state(false);
 
+	// Responsive: below 860px the shell becomes single-pane with drawer overlays.
+	let isMobile = $state(false);
+
+	$effect(() => {
+		const mql = window.matchMedia('(max-width: 860px)');
+		const apply = (matches: boolean) => {
+			isMobile = matches;
+			if (matches) {
+				// On small screens, drawers start closed so the editor owns the viewport.
+				leftPanelOpen = false;
+				rightPanelOpen = false;
+				bottomPanelOpen = false;
+			}
+		};
+		apply(mql.matches);
+		const onChange = (e: MediaQueryListEvent) => apply(e.matches);
+		mql.addEventListener('change', onChange);
+		return () => mql.removeEventListener('change', onChange);
+	});
+
+	// On mobile, only one drawer may be open at a time (single-pane overlay model).
+	function openLeft(panel: 'files' | 'plugins') {
+		if (leftPanel === panel && leftPanelOpen) {
+			leftPanelOpen = false;
+			return;
+		}
+		leftPanel = panel;
+		leftPanelOpen = true;
+		if (isMobile) rightPanelOpen = false;
+	}
+
+	function toggleRight() {
+		rightPanelOpen = !rightPanelOpen;
+		if (rightPanelOpen && isMobile) leftPanelOpen = false;
+	}
+
+	function closeDrawers() {
+		leftPanelOpen = false;
+		rightPanelOpen = false;
+	}
+
 	// Resizable panel state
 	let leftPanelWidth = $state(240);
 	let rightPanelWidth = $state(350);
@@ -332,55 +374,62 @@ MIT License - see LICENSE file for details
 		<button
 			class="activity-btn"
 			class:active={leftPanelOpen && leftPanel === 'files'}
-			onclick={() => {
-				if (leftPanel === 'files' && leftPanelOpen) {
-					leftPanelOpen = false;
-				} else {
-					leftPanel = 'files';
-					leftPanelOpen = true;
-				}
-			}}
+			onclick={() => openLeft('files')}
+			aria-label="Toggle Explorer"
+			aria-pressed={leftPanelOpen && leftPanel === 'files'}
 			title="Explorer"
 		>
-			📁
+			<Icon name="folder" size={20} />
 		</button>
 		<button
 			class="activity-btn"
 			class:active={leftPanelOpen && leftPanel === 'plugins'}
-			onclick={() => {
-				if (leftPanel === 'plugins' && leftPanelOpen) {
-					leftPanelOpen = false;
-				} else {
-					leftPanel = 'plugins';
-					leftPanelOpen = true;
-				}
-			}}
+			onclick={() => openLeft('plugins')}
+			aria-label="Toggle Plugins"
+			aria-pressed={leftPanelOpen && leftPanel === 'plugins'}
 			title="Plugins"
 		>
-			⚡
+			<Icon name="plugin" size={20} />
 		</button>
 		<div class="activity-spacer"></div>
 		<button
 			class="activity-btn"
 			class:active={rightPanelOpen}
-			onclick={() => (rightPanelOpen = !rightPanelOpen)}
+			onclick={toggleRight}
+			aria-label="Toggle AI Assistant"
+			aria-pressed={rightPanelOpen}
 			title="AI Assistant"
 		>
-			◈
+			<Icon name="sparkles" size={20} />
 		</button>
 		<button
 			class="activity-btn"
 			class:active={bottomPanelOpen}
 			onclick={() => (bottomPanelOpen = !bottomPanelOpen)}
+			aria-label="Toggle Terminal"
+			aria-pressed={bottomPanelOpen}
 			title="Terminal"
 		>
-			⌨
+			<Icon name="terminal" size={20} />
 		</button>
 	</div>
 
+	<!-- Mobile scrim: tapping outside an open drawer closes it -->
+	{#if isMobile && (leftPanelOpen || rightPanelOpen)}
+		<button
+			class="mobile-scrim"
+			aria-label="Close panel"
+			onclick={closeDrawers}
+		></button>
+	{/if}
+
 	<!-- Left Panel -->
 	{#if leftPanelOpen}
-		<div class="left-panel" style="width: {leftPanelWidth}px;">
+		<div
+			class="left-panel"
+			class:left-panel--drawer={isMobile}
+			style={isMobile ? '' : `width: ${leftPanelWidth}px;`}
+		>
 			{#if leftPanel === 'files'}
 				<div class="panel-header">
 					<span>Explorer</span>
@@ -440,16 +489,18 @@ MIT License - see LICENSE file for details
 			{/if}
 		</div>
 
-		<ResizeHandle
-			direction="vertical"
-			position="end"
-			size={leftPanelWidth}
-			min={180}
-			max={400}
-			onResize={(size) => (leftPanelWidth = size)}
-			onResizeStart={() => (isResizingLeft = true)}
-			onResizeEnd={() => (isResizingLeft = false)}
-		/>
+		{#if !isMobile}
+			<ResizeHandle
+				direction="vertical"
+				position="end"
+				size={leftPanelWidth}
+				min={180}
+				max={400}
+				onResize={(size) => (leftPanelWidth = size)}
+				onResizeStart={() => (isResizingLeft = true)}
+				onResizeEnd={() => (isResizingLeft = false)}
+			/>
+		{/if}
 	{/if}
 
 	<!-- Main Content -->
@@ -503,18 +554,24 @@ MIT License - see LICENSE file for details
 
 	<!-- Right Panel (AI) -->
 	{#if rightPanelOpen}
-		<ResizeHandle
-			direction="vertical"
-			position="start"
-			size={rightPanelWidth}
-			min={250}
-			max={500}
-			onResize={(size) => (rightPanelWidth = size)}
-			onResizeStart={() => (isResizingRight = true)}
-			onResizeEnd={() => (isResizingRight = false)}
-		/>
+		{#if !isMobile}
+			<ResizeHandle
+				direction="vertical"
+				position="start"
+				size={rightPanelWidth}
+				min={250}
+				max={500}
+				onResize={(size) => (rightPanelWidth = size)}
+				onResizeStart={() => (isResizingRight = true)}
+				onResizeEnd={() => (isResizingRight = false)}
+			/>
+		{/if}
 
-		<div class="right-panel" style="width: {rightPanelWidth}px;">
+		<div
+			class="right-panel"
+			class:right-panel--drawer={isMobile}
+			style={isMobile ? '' : `width: ${rightPanelWidth}px;`}
+		>
 			<AIPanel />
 		</div>
 	{/if}
@@ -539,6 +596,7 @@ MIT License - see LICENSE file for details
 		flex-wrap: wrap;
 		height: calc(100vh - 60px);
 		background: var(--ide-bg-primary);
+		overflow-x: hidden;
 	}
 
 	/* Upper row (everything except status bar) */
@@ -575,6 +633,7 @@ MIT License - see LICENSE file for details
 		background: transparent;
 		border: none;
 		border-radius: 6px;
+		color: var(--ide-text-secondary);
 		font-size: 1.25rem;
 		cursor: pointer;
 		opacity: 0.6;
@@ -583,11 +642,14 @@ MIT License - see LICENSE file for details
 
 	.activity-btn:hover {
 		opacity: 1;
+		color: var(--ide-text-primary);
 		background: var(--ide-bg-hover);
 	}
 
 	.activity-btn.active {
 		opacity: 1;
+		/* Dark glyph on the wave-blue fill for AA contrast */
+		color: var(--color-nocturnium-night);
 		background: var(--color-nocturnium-wave);
 	}
 
@@ -804,5 +866,112 @@ MIT License - see LICENSE file for details
 	.status-item {
 		font-size: 0.75rem;
 		color: var(--ide-text-secondary);
+	}
+
+	/* Mobile scrim behind drawers */
+	.mobile-scrim {
+		position: absolute;
+		inset: 0 0 24px 48px;
+		z-index: 20;
+		background: rgba(0, 0, 0, 0.5);
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		animation: scrim-in 0.15s ease-out;
+	}
+
+	@keyframes scrim-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	/* ===== Tablet -> mobile: single-pane shell with drawer overlays ===== */
+	@media (max-width: 860px) {
+		.playground {
+			position: relative;
+		}
+
+		/* Activity bar stays as the persistent rail to drive drawers */
+		.activity-bar {
+			z-index: 30;
+		}
+
+		/* Larger, comfortable touch targets on mobile */
+		.activity-btn {
+			width: 44px;
+			height: 44px;
+			opacity: 0.75;
+		}
+
+		/* Editor sits BESIDE the 48px activity rail and owns the remaining width.
+		   flex-basis must be 0 (not 100%) — with the shell's flex-wrap:wrap a 100%
+		   basis would wrap main-content onto a new row below the full-height rail,
+		   leaving it zero height and the editor blank. */
+		.main-content {
+			flex: 1 1 0;
+			min-width: 0;
+			height: calc(100% - 24px);
+		}
+
+		/* Left + right panels become full-width drawers anchored beside the rail */
+		.left-panel--drawer,
+		.right-panel--drawer {
+			position: absolute;
+			top: 0;
+			bottom: 24px;
+			z-index: 25;
+			width: calc(100vw - 48px) !important;
+			max-width: calc(100vw - 48px);
+			box-shadow: 0 0 24px rgba(0, 0, 0, 0.45);
+		}
+
+		.left-panel--drawer {
+			left: 48px;
+			transition: none;
+		}
+
+		.right-panel--drawer {
+			right: 0;
+			transition: none;
+		}
+
+		/* AI drawer must have enough room to be usable, not a thin strip */
+		.right-panel--drawer :global(.ai-panel) {
+			min-height: 100%;
+		}
+	}
+
+	/* ===== Phones ===== */
+	@media (max-width: 640px) {
+		/* Drawers span the full viewport edge-to-edge over the editor */
+		.left-panel--drawer,
+		.right-panel--drawer {
+			width: 100vw !important;
+			max-width: 100vw;
+			left: 0;
+			right: 0;
+		}
+
+		.mobile-scrim {
+			inset: 0 0 24px 0;
+		}
+
+		/* Tighter chrome so content gets the space */
+		.panel-header {
+			padding: 0.625rem 0.875rem;
+		}
+
+		.status-left,
+		.status-right {
+			gap: 0.625rem;
+		}
+
+		.status-bar {
+			padding: 0 0.5rem;
+		}
 	}
 </style>

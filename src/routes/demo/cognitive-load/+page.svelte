@@ -335,9 +335,12 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					<span class="ai-dot" style="background: {claudeAgent.color}"></span>
 					<span class="ai-name">{claudeAgent.agentName}</span>
 					<span class="ai-activity">
-						{claudeAgent.attentionType === 'reading' ? '\u{1F440}' :
-						 claudeAgent.attentionType === 'thinking' ? '\u{1F4AD}' :
-						 claudeAgent.attentionType === 'writing' ? '\u{270D}\u{FE0F}' : '\u{1F50D}'}
+						<span class="ai-emoji" aria-hidden="true">
+							{claudeAgent.attentionType === 'reading' ? '\u{1F440}' :
+							 claudeAgent.attentionType === 'thinking' ? '\u{1F4AD}' :
+							 claudeAgent.attentionType === 'writing' ? '\u{270D}\u{FE0F}' : '\u{1F50D}'}
+						</span>
+						<span class="sr-only">{claudeAgent.attentionType}:</span>
 						{claudeAgent.activity}
 					</span>
 				</div>
@@ -435,6 +438,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	.demo-page {
 		padding: 2rem 3rem;
 		max-width: 1000px;
+		overflow-x: hidden;
 	}
 
 	.page-header {
@@ -501,7 +505,11 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	.metrics-summary {
 		display: flex;
-		gap: 2rem;
+		gap: 1.5rem;
+		padding: 0.875rem 1.25rem;
+		background: var(--ide-bg-tertiary);
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
 	}
 
 	.metric {
@@ -518,8 +526,9 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	.metric-label {
-		font-size: 0.75rem;
+		font-size: 0.8125rem;
 		color: var(--ide-text-muted);
+		text-align: center;
 	}
 
 	/* Complexity Legend */
@@ -595,6 +604,12 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		cursor: not-allowed;
 	}
 
+	.control-btn:focus-visible,
+	.toggle-control input:focus-visible {
+		outline: 2px solid #8b5cf6;
+		outline-offset: 2px;
+	}
+
 	.ai-status {
 		display: flex;
 		align-items: center;
@@ -626,6 +641,18 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	.ai-activity {
 		color: var(--ide-text-secondary);
 		font-size: 0.8125rem;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	/* Editor Container */
@@ -672,5 +699,67 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		color: var(--ide-text-secondary);
 		line-height: 1.5;
 		margin: 0;
+	}
+
+	/* ===== Responsive ===== */
+	@media (max-width: 860px) {
+		.demo-page {
+			padding: 1.75rem 1.5rem;
+		}
+
+		/* Lower min column width so 2+ feature cards sit per row */
+		.features-grid {
+			grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+		}
+	}
+
+	@media (max-width: 768px) {
+		/* Stack the meter card above its metrics so no data is clipped */
+		.meter-showcase {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.metrics-summary {
+			justify-content: space-between;
+			gap: 1rem;
+		}
+
+		.metric {
+			flex: 1;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.demo-page {
+			padding: 1.25rem 1rem;
+		}
+
+		.page-header h1 {
+			font-size: 1.625rem;
+		}
+
+		/* Allow controls to wrap and give the checkbox a 48px touch target */
+		.ghost-pair-controls {
+			gap: 0.875rem 1rem;
+		}
+
+		.toggle-control {
+			min-height: 48px;
+		}
+
+		.control-btn {
+			min-height: 48px;
+		}
+
+		/* Shorter editor on phones; the editor's content scrolls horizontally
+		   so long lines stay reachable instead of being clipped */
+		.editor-container {
+			height: 360px;
+		}
+
+		.editor-container :global(.custom-editor__content) {
+			-webkit-overflow-scrolling: touch;
+		}
 	}
 </style>
