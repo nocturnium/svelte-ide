@@ -6,7 +6,8 @@
   "license": "MIT",
   "type": "module",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "svelte": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -170,9 +171,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nocturnium/svelte-ide.git"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
   },
   "bugs": {
     "url": "https://github.com/nocturnium/svelte-ide/issues"
