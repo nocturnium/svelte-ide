@@ -16,6 +16,8 @@
 	import type { ComplexityMetrics } from './core/complexity-analyzer';
 
 	interface StructureNode {
+		/** Stable unique id (keyed-each safe — multiple regions can share a start line) */
+		id: string;
 		/** Node type */
 		type: SemanticCategory;
 		/** Node name */
@@ -95,7 +97,8 @@
 			'imports'
 		];
 
-		for (const region of regions) {
+		for (let ri = 0; ri < regions.length; ri++) {
+			const region = regions[ri];
 			if (!structuralCategories.includes(region.category)) continue;
 
 			// Get complexity for this region
@@ -108,6 +111,8 @@
 			}
 
 			nodes.push({
+				// region index guarantees uniqueness even when two regions share a start line
+				id: `${region.category}:${region.startLine}-${region.endLine}:${ri}`,
 				type: region.category,
 				name: region.label || region.category,
 				startLine: region.startLine,
@@ -234,7 +239,7 @@
 			></div>
 
 			<!-- Structure nodes -->
-			{#each structure as node (node.startLine)}
+			{#each structure as node (node.id)}
 				<button
 					class="structure-map__node"
 					class:structure-map__node--active={isCursorInNode(node)}
