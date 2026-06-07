@@ -104,6 +104,7 @@
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="lock-dialog-title"
+		tabindex="-1"
 		onclick={handleBackdropClick}
 		onkeydown={handleKeyDown}
 	>

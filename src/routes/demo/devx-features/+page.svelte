@@ -92,7 +92,18 @@ export function DataComponent({ userId }: { userId: string }) {
 	const sampleLines = sampleCode.split('\n');
 	const lineHeight = 20;
 
+	// Responsive blame gutter: collapse the 180px gutter on narrow screens so the
+	// code preview does not get pushed off-screen on mobile.
+	let viewportWidth = $state(1200);
+	const blameWidth = $derived(viewportWidth <= 640 ? 96 : 180);
+
 	onMount(() => {
+		const updateWidth = () => {
+			viewportWidth = window.innerWidth;
+		};
+		updateWidth();
+		window.addEventListener('resize', updateWidth);
+
 		// Initialize blame manager
 		blameManager = createGitBlameManager();
 		const mockBlame = generateMockBlameData(sampleLines.length);
@@ -114,7 +125,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		];
 
 		return () => {
-			// Cleanup
+			window.removeEventListener('resize', updateWidth);
 		};
 	});
 
@@ -141,7 +152,8 @@ export function DataComponent({ userId }: { userId: string }) {
 
 <div class="devx-features-demo">
 	<header class="demo-header">
-		<h1>Phase 5: Developer Experience</h1>
+		<span class="demo-eyebrow">Phase 5</span>
+		<h1>Developer Experience</h1>
 		<p>Git Blame, Code Snippets, and Inline Diff visualization</p>
 	</header>
 
@@ -206,13 +218,13 @@ export function DataComponent({ userId }: { userId: string }) {
 							manager={blameManager}
 							lineHeight={lineHeight}
 							gutterWidth={0}
-							blameWidth={180}
+							blameWidth={blameWidth}
 							enabled={true}
 						/>
 					{/if}
 
 					<!-- Code display -->
-					<div class="code-container" style="margin-left: {blameEnabled ? 180 : 0}px;">
+					<div class="code-container" style="margin-left: {blameEnabled ? blameWidth : 0}px;">
 						{#each sampleLines as line, i}
 							<div class="code-line" style="height: {lineHeight}px;">
 								<span class="line-num">{i + 1}</span>
@@ -276,7 +288,14 @@ export function DataComponent({ userId }: { userId: string }) {
 							</div>
 						{:else}
 							<div class="no-snippet">
-								Click "Open Snippet Palette" to browse snippets
+								<p class="no-snippet-text">No snippet selected yet</p>
+								<button
+									class="control-btn primary"
+									onclick={() => (snippetPaletteOpen = true)}
+								>
+									Open Snippet Palette
+								</button>
+								<span class="no-snippet-hint">Browse built-in templates to preview them here</span>
 							</div>
 						{/if}
 					</div>
@@ -408,16 +427,36 @@ export function DataComponent({ userId }: { userId: string }) {
 		padding: 2rem;
 		max-width: 1200px;
 		margin: 0 auto;
+		overflow-x: hidden;
 	}
 
 	.demo-header {
-		text-align: center;
-		margin-bottom: 2rem;
+		text-align: left;
+		margin-bottom: 2.5rem;
+	}
+
+	.demo-eyebrow {
+		display: inline-block;
+		margin-bottom: 0.6rem;
+		padding: 0.2rem 0.65rem;
+		font-size: 0.7rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #c084fc;
+		background: rgba(168, 85, 247, 0.12);
+		border: 1px solid rgba(168, 85, 247, 0.3);
+		border-radius: 999px;
 	}
 
 	.demo-header h1 {
-		margin: 0 0 0.5rem;
+		margin: 0 0 0.4rem;
 		font-size: 2rem;
+		font-weight: 700;
+		background: linear-gradient(135deg, #e8e8f0 0%, #c084fc 100%);
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
 		color: var(--ide-text-primary, #e8e8f0);
 	}
 
@@ -429,13 +468,19 @@ export function DataComponent({ userId }: { userId: string }) {
 	/* Tabs */
 	.demo-tabs {
 		display: flex;
+		flex-wrap: nowrap;
 		gap: 0.5rem;
 		margin-bottom: 1.5rem;
 		border-bottom: 1px solid var(--ide-border, #333);
 		padding-bottom: 0.5rem;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: thin;
 	}
 
 	.tab {
+		flex: 0 0 auto;
+		white-space: nowrap;
 		padding: 0.75rem 1.5rem;
 		background: transparent;
 		border: none;
@@ -485,14 +530,17 @@ export function DataComponent({ userId }: { userId: string }) {
 		background: rgba(168, 85, 247, 0.2);
 		border: 1px solid rgba(168, 85, 247, 0.3);
 		border-radius: 6px;
-		color: #a855f7;
+		color: #c084fc;
 		font-size: 0.875rem;
+		font-weight: 500;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.control-btn:hover {
-		background: rgba(168, 85, 247, 0.3);
+		background: rgba(168, 85, 247, 0.35);
+		border-color: rgba(168, 85, 247, 0.55);
+		color: #f3e8ff;
 	}
 
 	.control-btn.active {
@@ -555,9 +603,9 @@ export function DataComponent({ userId }: { userId: string }) {
 		position: relative;
 		background: rgba(0, 0, 0, 0.3);
 		border-radius: 8px;
-		overflow: hidden;
 		max-height: 400px;
-		overflow-y: auto;
+		overflow: auto;
+		-webkit-overflow-scrolling: touch;
 	}
 
 	.code-container {
@@ -703,10 +751,28 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.no-snippet {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
 		color: var(--ide-text-muted, #888);
 		font-size: 0.9rem;
 		text-align: center;
-		padding: 2rem;
+		padding: 2rem 1.5rem;
+		border: 1px dashed rgba(168, 85, 247, 0.35);
+		border-radius: 8px;
+		background: rgba(168, 85, 247, 0.04);
+	}
+
+	.no-snippet-text {
+		margin: 0;
+		color: var(--ide-text-secondary, #aaa);
+		font-weight: 500;
+	}
+
+	.no-snippet-hint {
+		font-size: 0.75rem;
+		color: var(--ide-text-muted, #888);
 	}
 
 	.snippet-categories {
@@ -818,5 +884,97 @@ export function DataComponent({ userId }: { userId: string }) {
 	.stat--del {
 		background: rgba(239, 68, 68, 0.2);
 		color: #ef4444;
+	}
+
+	/* ===== Responsive: tablet -> mobile ===== */
+	@media (max-width: 860px) {
+		.devx-features-demo {
+			padding: 1.5rem 1rem;
+		}
+
+		.snippets-content {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	/* ===== Responsive: phones ===== */
+	@media (max-width: 640px) {
+		.devx-features-demo {
+			padding: 1.25rem 0.85rem;
+		}
+
+		.demo-header h1 {
+			font-size: 1.6rem;
+		}
+
+		/* Stack the snippet preview above categories; the preview is first
+		   in DOM order, so it stays pinned at the top on phones. */
+		.snippets-content {
+			grid-template-columns: 1fr;
+		}
+
+		/* Category cards become a horizontal scroll row (matching the tab
+		   strip pattern) so the 'pick category -> see preview' relationship
+		   stays legible instead of becoming a tall equal-weight stack. The
+		   partial peek of the next card signals that more can be scrolled to. */
+		.snippet-categories {
+			display: flex;
+			flex-wrap: nowrap;
+			gap: 0.75rem;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: thin;
+			padding-bottom: 0.25rem;
+		}
+
+		.category {
+			flex: 0 0 78%;
+			min-width: 0;
+		}
+
+		/* Right-edge fade hints the code preview scrolls horizontally, applied
+		   only at phone widths where lines genuinely exceed the viewport. */
+		.editor-preview {
+			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+		}
+
+		/* Keep tab tap targets >= 44px and a clear scroll affordance */
+		.demo-tabs {
+			mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent 100%);
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent 100%);
+		}
+
+		.tab {
+			min-height: 44px;
+			padding: 0.65rem 1.1rem;
+		}
+
+		.control-btn {
+			min-height: 44px;
+		}
+
+		/* Smaller code so more fits before horizontal scroll kicks in */
+		.code-container {
+			font-size: var(--ide-font-size-xs, 11px);
+		}
+
+		.line-num {
+			width: 32px;
+		}
+
+		/* Controls and legend wrap instead of overflowing */
+		.blame-controls,
+		.snippets-controls,
+		.diff-controls,
+		.diff-legend {
+			flex-wrap: wrap;
+			gap: 0.6rem;
+		}
+
+		.summary-stats {
+			flex-wrap: wrap;
+			gap: 0.5rem;
+		}
 	}
 </style>

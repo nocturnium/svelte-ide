@@ -206,7 +206,8 @@
 			</button>
 		</div>
 
-		<!-- Track -->
+		<!-- Track: pointer-driven scrub surface; the handle below is the focusable control -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="timeline-scrubber__track"
 			bind:this={trackElement}

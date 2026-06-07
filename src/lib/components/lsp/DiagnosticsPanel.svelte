@@ -152,7 +152,7 @@
 		</div>
 	</div>
 
-	<div class="diagnostics-panel__list" role="list">
+	<div class="diagnostics-panel__list">
 		{#if allDiagnostics().length === 0}
 			<div class="diagnostics-panel__empty">
 				<span class="diagnostics-panel__empty-icon">{@html checkIcon}</span>
@@ -162,7 +162,6 @@
 			{#each allDiagnostics() as diag, i}
 				<button
 					class="diagnostics-panel__item diagnostics-panel__item--{getSeverityIcon(diag.severity)}"
-					role="listitem"
 					onclick={() => handleDiagnosticClick(diag)}
 				>
 					<span class="diagnostics-panel__item-icon">
@@ -186,7 +185,7 @@
 	</div>
 </div>
 
-<script context="module" lang="ts">
+<script module lang="ts">
 	const errorIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="var(--ide-bg-primary)" stroke-width="1.5"/></svg>`;
 	const warningIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 1L1 15h14L8 1z" fill="currentColor"/><path d="M8 6v4M8 12v1" stroke="var(--ide-bg-primary)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
 	const infoIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 5v1M8 8v4" stroke="var(--ide-bg-primary)" stroke-width="1.5" stroke-linecap="round"/></svg>`;

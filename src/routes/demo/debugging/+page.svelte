@@ -239,9 +239,11 @@ function privateHelper(value) {
 	</header>
 
 	<!-- Demo tabs -->
-	<div class="demo-tabs">
+	<div class="demo-tabs" role="tablist" aria-label="Debugging demos">
 		<button
 			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'diagnostics'}
 			class:active={activeDemo === 'diagnostics'}
 			onclick={() => (activeDemo = 'diagnostics')}
 		>
@@ -249,6 +251,8 @@ function privateHelper(value) {
 		</button>
 		<button
 			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'problems'}
 			class:active={activeDemo === 'problems'}
 			onclick={() => (activeDemo = 'problems')}
 		>
@@ -256,6 +260,8 @@ function privateHelper(value) {
 		</button>
 		<button
 			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'breakpoints'}
 			class:active={activeDemo === 'breakpoints'}
 			onclick={() => (activeDemo = 'breakpoints')}
 		>
@@ -263,6 +269,8 @@ function privateHelper(value) {
 		</button>
 		<button
 			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'console'}
 			class:active={activeDemo === 'console'}
 			onclick={() => (activeDemo = 'console')}
 		>
@@ -518,6 +526,7 @@ function privateHelper(value) {
 		padding: 2rem;
 		max-width: 1200px;
 		margin: 0 auto;
+		overflow-x: hidden;
 	}
 
 	.demo-header {
@@ -554,6 +563,7 @@ function privateHelper(value) {
 		font-size: 0.9rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
+		white-space: nowrap;
 	}
 
 	.tab:hover {
@@ -562,8 +572,9 @@ function privateHelper(value) {
 	}
 
 	.tab.active {
-		color: #f44747;
-		background: rgba(244, 71, 71, 0.1);
+		color: var(--ide-accent, #4a8db7);
+		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 14%, transparent);
+		box-shadow: inset 0 -2px 0 var(--ide-accent, #4a8db7);
 	}
 
 	/* Section */
@@ -636,21 +647,21 @@ function privateHelper(value) {
 
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: rgba(244, 71, 71, 0.2);
-		border: 1px solid rgba(244, 71, 71, 0.3);
+		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 18%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-accent, #4a8db7) 32%, transparent);
 		border-radius: 6px;
-		color: #f44747;
+		color: var(--ide-accent, #4a8db7);
 		font-size: 0.875rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.control-btn:hover {
-		background: rgba(244, 71, 71, 0.3);
+		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 28%, transparent);
 	}
 
 	.control-btn.active {
-		background: #f44747;
+		background: var(--ide-accent, #4a8db7);
 		color: #fff;
 	}
 
@@ -663,7 +674,8 @@ function privateHelper(value) {
 	.diagnostics-legend,
 	.breakpoints-legend {
 		padding: 1rem;
-		background: rgba(244, 71, 71, 0.1);
+		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 9%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-accent, #4a8db7) 18%, transparent);
 		border-radius: 8px;
 		margin-bottom: 1rem;
 	}
@@ -672,7 +684,7 @@ function privateHelper(value) {
 	.breakpoints-legend h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: #f44747;
+		color: var(--ide-text-primary, #e8e8f0);
 	}
 
 	.legend-items {
@@ -726,14 +738,15 @@ function privateHelper(value) {
 	/* Feature info */
 	.feature-info {
 		padding: 1rem;
-		background: rgba(244, 71, 71, 0.1);
+		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 9%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-accent, #4a8db7) 18%, transparent);
 		border-radius: 8px;
 	}
 
 	.feature-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: #f44747;
+		color: var(--ide-text-primary, #e8e8f0);
 	}
 
 	.feature-info ul {
@@ -752,5 +765,118 @@ function privateHelper(value) {
 	.console-demo {
 		display: grid;
 		gap: 1rem;
+	}
+
+	/* ===== Responsive: tablet -> mobile ===== */
+	@media (max-width: 860px) {
+		.debugging-demo {
+			padding: 1.5rem 1rem;
+		}
+
+		/* Horizontally scrollable tab strip with edge fade */
+		.demo-tabs {
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			overflow-y: hidden;
+			scroll-snap-type: x proximity;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: thin;
+			scrollbar-color: color-mix(in srgb, var(--ide-accent, #4a8db7) 50%, transparent)
+				transparent;
+			-webkit-mask-image: linear-gradient(
+				to right,
+				#000 calc(100% - 18px),
+				transparent 100%
+			);
+			mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent 100%);
+		}
+
+		.demo-tabs::-webkit-scrollbar {
+			height: 4px;
+		}
+
+		.demo-tabs::-webkit-scrollbar-thumb {
+			background: color-mix(in srgb, var(--ide-accent, #4a8db7) 50%, transparent);
+			border-radius: 2px;
+		}
+
+		.tab {
+			flex: 0 0 auto;
+			scroll-snap-align: start;
+			min-height: 44px;
+			/* Tighter horizontal padding lets the next tab peek into view on tablets */
+			padding-inline: 1.1rem;
+		}
+
+		/* Allow the code preview to scroll horizontally on tablets/phones */
+		.editor-preview {
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: thin;
+		}
+
+		.editor-preview::-webkit-scrollbar {
+			height: 6px;
+		}
+
+		.editor-preview::-webkit-scrollbar-thumb {
+			background: color-mix(in srgb, var(--ide-text-secondary, #aaa) 35%, transparent);
+			border-radius: 3px;
+		}
+
+		.diagnostics-controls,
+		.breakpoints-controls {
+			flex-wrap: wrap;
+			gap: 0.75rem;
+		}
+
+		.control-btn {
+			min-height: 44px;
+		}
+	}
+
+	/* ===== Responsive: phones ===== */
+	@media (max-width: 640px) {
+		.demo-section {
+			padding: 1rem;
+			border-radius: 10px;
+		}
+
+		.demo-header h1 {
+			font-size: 1.6rem;
+		}
+
+		/* Flatten nested cards to dividers to avoid box-in-a-box crowding */
+		.diagnostics-legend,
+		.breakpoints-legend,
+		.feature-info,
+		.console-hints {
+			background: transparent;
+			border: none;
+			border-top: 1px solid var(--ide-border, #333);
+			border-radius: 0;
+			padding: 1rem 0 0;
+			margin-bottom: 0.75rem;
+		}
+
+		/* Right-edge fade signalling horizontal scroll, only where code truly overflows */
+		.editor-container {
+			position: relative;
+			-webkit-mask-image: linear-gradient(
+				to right,
+				#000 calc(100% - 24px),
+				transparent 100%
+			);
+			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
+		}
+
+		/* Smaller code font so more of each line fits */
+		.editor-preview {
+			font-size: var(--ide-font-size-xs, 0.75rem);
+		}
+
+		.tab {
+			padding: 0.65rem 1.1rem;
+		}
 	}
 </style>

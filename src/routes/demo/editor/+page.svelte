@@ -437,18 +437,20 @@ A **zero-dependency** IDE component library for Svelte 5.
 						<span class="status-item status-saved" title="No unsaved changes">Saved</span>
 					{/if}
 					<span class="status-spacer"></span>
-					<span class="status-item" title="Cursor position">Ln {cursorLine}, Col {cursorCol}</span>
-					<span class="status-sep" aria-hidden="true"></span>
-					<span class="status-item" title="Lines in file"
+					<span class="status-item status-secondary" title="Cursor position"
+						>Ln {cursorLine}, Col {cursorCol}</span
+					>
+					<span class="status-sep status-secondary" aria-hidden="true"></span>
+					<span class="status-item status-secondary" title="Lines in file"
 						>{lineCount} {lineCount === 1 ? 'line' : 'lines'}</span
 					>
-					<span class="status-sep" aria-hidden="true"></span>
+					<span class="status-sep status-secondary" aria-hidden="true"></span>
 					{#if readonly}
 						<span class="status-item status-readonly" title="File is read-only">Read-only</span>
 					{:else}
-						<span class="status-item" title="Editable">UTF-8</span>
+						<span class="status-item status-secondary" title="Editable">UTF-8</span>
 					{/if}
-					<span class="status-sep" aria-hidden="true"></span>
+					<span class="status-sep status-secondary" aria-hidden="true"></span>
 					<span class="status-item status-lang" title="Active language">{activeLanguageLabel}</span>
 				{:else}
 					<span class="status-item">Ready</span>
@@ -544,8 +546,10 @@ A **zero-dependency** IDE component library for Svelte 5.
 		padding: var(--ide-spacing-sm) var(--ide-spacing-md);
 		background: var(--ide-bg-secondary);
 		border: 1px solid var(--ide-border);
-		border-radius: var(--ide-radius-lg) var(--ide-radius-lg) 0 0;
-		border-bottom: none;
+		border-radius: var(--ide-radius-lg);
+		/* Detach the control cluster from the editor window so the toolbar and the
+		   editor surface read as two distinct blocks, not one crowded one. */
+		margin-bottom: var(--ide-spacing-md);
 	}
 	.toolbar-group {
 		display: flex;
@@ -605,6 +609,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 	}
 	.toggle.on {
 		border-color: color-mix(in srgb, var(--ide-accent) 60%, var(--ide-border));
+		background: color-mix(in srgb, var(--ide-accent) 14%, transparent);
 		color: var(--ide-text-primary);
 	}
 	.toggle:focus-visible {
@@ -629,7 +634,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 		grid-template-columns: 200px minmax(0, 1fr);
 		height: 520px;
 		border: 1px solid var(--ide-border);
-		border-radius: 0 0 var(--ide-radius-lg) var(--ide-radius-lg);
+		border-radius: var(--ide-radius-lg);
 		overflow: hidden;
 		background: var(--ide-bg-primary);
 	}
@@ -849,6 +854,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 	}
 	.feature {
 		display: flex;
+		align-items: flex-start;
 		gap: var(--ide-spacing-md);
 		padding: var(--ide-spacing-md);
 		background: var(--ide-bg-secondary);
@@ -856,13 +862,19 @@ A **zero-dependency** IDE component library for Svelte 5.
 		border-radius: var(--ide-radius-lg);
 	}
 	.feature-icon {
+		display: inline-flex;
+		align-items: center;
+		flex-shrink: 0;
 		color: var(--ide-success);
-		font-size: var(--ide-font-size-lg);
-		line-height: 1.2;
+		font-size: var(--ide-font-size-base);
+		/* Match the bold card title's line box so the check centers against the
+		   heading cap height instead of floating above the baseline. */
+		line-height: var(--ide-line-height-normal);
 	}
 	.feature strong {
 		display: block;
 		color: var(--ide-text-primary);
+		line-height: var(--ide-line-height-normal);
 		margin-bottom: var(--ide-spacing-xs);
 	}
 	.feature p {
@@ -875,9 +887,13 @@ A **zero-dependency** IDE component library for Svelte 5.
 	@media (max-width: 760px) {
 		.editor-demo {
 			padding: var(--ide-spacing-lg) var(--ide-spacing-lg) var(--ide-spacing-2xl);
+			/* Guard against any descendant bleeding past the viewport edge. */
+			overflow-x: hidden;
 		}
 		.ide {
 			grid-template-columns: 1fr;
+			/* Use auto height so the stacked explorer + editor-pane size themselves.
+			   Avoid a fixed height here since the explorer row height is variable. */
 			height: auto;
 		}
 		.explorer {
@@ -892,11 +908,90 @@ A **zero-dependency** IDE component library for Svelte 5.
 		.file-row {
 			width: auto;
 		}
+		/* In the wrapped chip cluster every file reads as a flat pill, so the faint
+		   desktop fill alone can get lost. Keep the accent fill but add an accent
+		   ring (inset shadow = no size shift) so the current file is unmistakable. */
+		.file-row.active {
+			background: color-mix(in srgb, var(--ide-accent) 20%, transparent);
+			box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ide-accent) 40%, transparent);
+		}
+		/* On mobile the .ide is height:auto so .editor-pane's height:100% resolves to
+		   auto, and flex:1 1 0 with min-height:0 can collapse to 0px when the flex
+		   container has no fixed size.  Give .editor-pane an explicit height so the
+		   flex children (tabs + editor-host + status-bar) distribute correctly. */
+		.editor-pane {
+			height: 420px;
+			/* Anchor the scroll-affordance chevron to the tab strip's top-right. */
+			position: relative;
+		}
 		.editor-host {
-			height: 360px;
+			/* Explicit height is a fallback; the flex:1 1 0 will fill whatever the
+			   pane leaves after the tabs + status-bar take their share (~64px).
+			   min-height ensures CustomEditor's ResizeObserver always measures > 0. */
+			height: auto;
+			min-height: 280px;
 		}
 		.toolbar-end {
 			margin-left: 0;
+		}
+
+		/* Let icons sit 2-3 per row instead of one full-width row each. */
+		.file-icons-grid {
+			grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+		}
+
+		/* Shrink editor-tab chrome so the open-tab strip is not clipped, and let it
+		   scroll with a right-edge fade affordance. EditorTabs already does
+		   overflow-x:auto internally; we relax its min-width and mask the pane. */
+		.editor-pane :global(.editor-tabs__tab) {
+			min-width: 84px;
+		}
+		.editor-pane :global(.editor-tabs) {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+		}
+		/* The fade alone is easy to miss on the dark theme with no visible scrollbar.
+		   Pair it with a faint right-pointing chevron, vertically centered on the
+		   fixed-height tab strip, so the off-screen tabs are unmistakable on touch.
+		   It sits on top of the masked strip (painted after) and ignores pointer
+		   events so it never blocks a tab tap. */
+		.editor-pane::after {
+			content: '';
+			position: absolute;
+			top: calc(var(--ide-tab-height) / 2);
+			right: 7px;
+			width: 6px;
+			height: 6px;
+			transform: translateY(-50%) rotate(45deg);
+			border-top: 1.5px solid var(--ide-text-muted);
+			border-right: 1.5px solid var(--ide-text-muted);
+			pointer-events: none;
+		}
+
+		/* Let the status line wrap rather than crowd against the panel edges. */
+		.status-bar {
+			flex-wrap: wrap;
+			row-gap: 2px;
+		}
+	}
+
+	@media (max-width: 640px) {
+		/* Give the primary filename + Saved badge room to breathe by retiring the
+		   secondary col/char/encoding metrics on the most cramped screens. */
+		.editor-pane {
+			height: 400px;
+		}
+		.editor-host {
+			height: auto;
+			min-height: 280px;
+		}
+		.status-secondary {
+			display: none;
+		}
+		/* The leading spacer pushes filename + status badge to opposite ends; with the
+		   secondary metrics gone, keep them grouped at the start so they breathe. */
+		.status-spacer {
+			flex: 0 0 auto;
 		}
 	}
 </style>

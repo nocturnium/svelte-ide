@@ -1,5 +1,29 @@
 # Changelog
 
+## [Unreleased]
+
+### Breaking
+- `IDELayout` content is now provided via **snippet props** (`activityBar`,
+  `leftSidebar`, `editor`, `bottomPanel`, `rightSidebar`, `statusBar`) instead of
+  named `<slot>`s — use `{#snippet editor()}…{/snippet}` rather than
+  `<div slot="editor">…</div>`. Slots are deprecated in Svelte 5 and removed in
+  Svelte 6; this was the last public component still using them.
+
+### Fixed
+- `StructureMap` no longer crashes with `each_key_duplicate` when two semantic
+  regions share a start line (this blanked the Semantic Features demo entirely).
+- `AIPanel` auto-save no longer triggers `effect_update_depth_exceeded`: the
+  persistence layer's internal state is no longer reactive, and the save is
+  debounced out of the effect's synchronous frame.
+- All demo/documentation pages are now responsive and usable on mobile
+  (single-pane editor with drawers, scrollable tab strips, stacked panels);
+  the flagship editor/playground no longer render a blank editor on phones.
+
+### Changed
+- Removed the bogus `y-codemirror.next` entry from Vite `optimizeDeps` (it
+  errored on every dev start; the package does not use CodeMirror).
+- Cleared all remaining `svelte-check` deprecation and a11y warnings (now 0).
+
 ## [1.0.0-rc.1] - 2026-06-07
 
 First public release candidate. Open-sourced from a clean history and hardened

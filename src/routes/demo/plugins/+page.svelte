@@ -104,6 +104,7 @@
 	import PluginCard from '$lib/components/plugins/PluginCard.svelte';
 	import PluginStatusBadge from '$lib/components/plugins/PluginStatusBadge.svelte';
 	import Badge from '$lib/components/core/Badge.svelte';
+	import Icon from '$lib/components/core/Icon.svelte';
 	import type { PluginStatus, PluginProposal } from '$lib/types/plugin';
 
 	// PluginInfo type matching what PluginCard expects
@@ -169,17 +170,18 @@
 		}
 	];
 
-	const statuses: PluginStatus[] = [
+	// Forward lifecycle, in order — mirrors the Plugin Lifecycle stepper below.
+	const lifecycleStatuses: PluginStatus[] = [
 		'draft',
 		'submitted',
 		'reviewing',
 		'approved',
 		'testing',
 		'deploying',
-		'deployed',
-		'rejected',
-		'rolled_back'
+		'deployed'
 	];
+	// Terminal / negative outcomes, separated to express the state model.
+	const terminalStatuses: PluginStatus[] = ['rejected', 'rolled_back'];
 </script>
 
 <div class="demo-page">
@@ -215,13 +217,29 @@
 		<h2>Status Badges</h2>
 		<p class="section-desc">Plugin lifecycle status indicators</p>
 
-		<div class="status-grid">
-			{#each statuses as status}
-				<div class="status-item">
-					<PluginStatusBadge {status} />
-					<span class="status-label">{status}</span>
+		<div class="status-groups">
+			<div class="status-group">
+				<span class="status-group-label">Lifecycle</span>
+				<div class="status-grid">
+					{#each lifecycleStatuses as status}
+						<div class="status-item">
+							<PluginStatusBadge {status} />
+							<span class="status-label">{status}</span>
+						</div>
+					{/each}
 				</div>
-			{/each}
+			</div>
+			<div class="status-group status-group--terminal">
+				<span class="status-group-label">Terminal</span>
+				<div class="status-grid">
+					{#each terminalStatuses as status}
+						<div class="status-item">
+							<PluginStatusBadge {status} />
+							<span class="status-label">{status}</span>
+						</div>
+					{/each}
+				</div>
+			</div>
 		</div>
 	</section>
 
@@ -232,52 +250,52 @@
 
 		<div class="categories-grid">
 			<div class="category-card">
-				<span class="category-icon">📁</span>
+				<span class="category-icon"><Icon name="folder" size={24} /></span>
 				<strong>file_ops</strong>
 				<p>File operations and manipulation</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">🌐</span>
+				<span class="category-icon"><Icon name="external" size={24} /></span>
 				<strong>http</strong>
 				<p>HTTP requests and API calls</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">🔍</span>
+				<span class="category-icon"><Icon name="search" size={24} /></span>
 				<strong>analysis</strong>
 				<p>Code analysis and inspection</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">🔄</span>
+				<span class="category-icon"><Icon name="refresh" size={24} /></span>
 				<strong>transform</strong>
 				<p>Code transformation and formatting</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">✓</span>
+				<span class="category-icon"><Icon name="check" size={24} /></span>
 				<strong>validation</strong>
 				<p>Linting and validation</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">🔧</span>
+				<span class="category-icon"><Icon name="settings" size={24} /></span>
 				<strong>utility</strong>
 				<p>General utilities</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">🔗</span>
+				<span class="category-icon"><Icon name="link" size={24} /></span>
 				<strong>integration</strong>
 				<p>External service integration</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">🖼️</span>
+				<span class="category-icon"><Icon name="sidebar" size={24} /></span>
 				<strong>ui</strong>
 				<p>UI components and panels</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">✎</span>
+				<span class="category-icon"><Icon name="edit" size={24} /></span>
 				<strong>editor</strong>
 				<p>Editor enhancements</p>
 			</div>
 			<div class="category-card">
-				<span class="category-icon">◈</span>
+				<span class="category-icon"><Icon name="sparkles" size={24} /></span>
 				<strong>ai</strong>
 				<p>AI-powered features</p>
 			</div>
@@ -381,6 +399,7 @@ await unloadPlugin('prettier-format');`}</code></pre>
 	.demo-page {
 		padding: 2rem 3rem;
 		max-width: 1000px;
+		overflow-x: hidden;
 	}
 
 	.page-header {
@@ -434,6 +453,32 @@ await unloadPlugin('prettier-format');`}</code></pre>
 		gap: 1rem;
 	}
 
+	.status-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.status-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.625rem;
+	}
+
+	/* Set terminal/negative states apart from the forward lifecycle. */
+	.status-group--terminal {
+		padding-top: 1rem;
+		border-top: 1px solid var(--ide-border);
+	}
+
+	.status-group-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--ide-text-muted);
+	}
+
 	.status-grid {
 		display: flex;
 		flex-wrap: wrap;
@@ -444,9 +489,9 @@ await unloadPlugin('prettier-format');`}</code></pre>
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 0.75rem 1rem;
-		background: var(--ide-bg-secondary);
-		border: 1px solid var(--ide-border);
+		padding: 0.625rem 0.875rem;
+		background: var(--ide-bg-tertiary);
+		border: 1px solid transparent;
 		border-radius: 6px;
 	}
 
@@ -468,12 +513,22 @@ await unloadPlugin('prettier-format');`}</code></pre>
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
 		text-align: center;
+		transition:
+			border-color 0.15s ease,
+			background 0.15s ease;
+	}
+
+	.category-card:hover {
+		border-color: var(--color-nocturnium-wave);
+		background: var(--ide-bg-tertiary);
 	}
 
 	.category-icon {
-		display: block;
-		font-size: 1.5rem;
-		margin-bottom: 0.5rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--color-nocturnium-wave);
+		margin-bottom: 0.625rem;
 	}
 
 	.category-card strong {
@@ -490,6 +545,9 @@ await unloadPlugin('prettier-format');`}</code></pre>
 	}
 
 	.lifecycle {
+		/* Single source of truth for the step circle size; the mobile rail
+		   offsets below are derived from it so they stay self-correcting. */
+		--step-circle: 28px;
 		display: flex;
 		align-items: center;
 		flex-wrap: wrap;
@@ -507,8 +565,8 @@ await unloadPlugin('prettier-format');`}</code></pre>
 	}
 
 	.step-number {
-		width: 28px;
-		height: 28px;
+		width: var(--step-circle);
+		height: var(--step-circle);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -552,5 +610,133 @@ await unloadPlugin('prettier-format');`}</code></pre>
 		font-family: var(--ide-font-mono);
 		font-size: 0.875rem;
 		color: var(--ide-text-primary);
+	}
+
+	/* Tablet -> mobile shift */
+	@media (max-width: 860px) {
+		.demo-page {
+			padding: 1.5rem 1.25rem;
+		}
+
+		.cards-grid {
+			grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		}
+
+		.categories-grid {
+			grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+		}
+	}
+
+	/* Mobile: keep the embedded panel and lifecycle legible on narrow screens */
+	@media (max-width: 768px) {
+		/* Give the embedded PluginPanel enough height to surface more proposal
+		   rows so the page doesn't trap the user in a tiny nested scroll region,
+		   while still capping it so it doesn't swallow short viewports. Let its
+		   internal tab bar wrap rather than cramming onto one line. */
+		.panel-container {
+			height: min(78vh, 500px);
+		}
+
+		.panel-container :global(.plugin-panel__tabs) {
+			flex-wrap: wrap;
+		}
+
+		/* Vertical stepper: drop the inline arrows and stack steps with a left rail. */
+		.lifecycle {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0;
+		}
+
+		.lifecycle-arrow {
+			display: none;
+		}
+
+		.lifecycle-step {
+			position: relative;
+			border-radius: 0;
+			/* The contiguous left borders (gap is 0) form one unbroken rail. */
+			border-left: 2px solid var(--ide-border);
+			border-top: none;
+			border-right: none;
+			border-bottom: none;
+			background: transparent;
+			/* Offsets are derived from the circle size so a font/padding tweak
+			   can't drift the numbers off the rail. */
+			padding: 0.625rem 0.75rem 0.625rem calc(var(--step-circle) / 2 + 0.75rem);
+			margin-left: calc(var(--step-circle) / 2);
+		}
+
+		.lifecycle-step:first-child {
+			padding-top: 0;
+		}
+
+		.lifecycle-step:last-child {
+			padding-bottom: 0;
+		}
+
+		.step-number {
+			position: absolute;
+			/* Center the circle horizontally on the 2px rail (its center sits
+			   1px inside the padding box, hence the -1px). */
+			left: calc(var(--step-circle) / -2 - 1px);
+			top: 0.5rem;
+		}
+	}
+
+	/* Phones */
+	@media (max-width: 640px) {
+		.demo-page {
+			padding: 1.25rem 1rem;
+		}
+
+		.page-header h1 {
+			font-size: 1.625rem;
+		}
+
+		.cards-grid {
+			grid-template-columns: 1fr;
+		}
+
+		/* On the narrowest phones, drop the cramped two-up icon grid for a
+		   single-column labeled list: icon on the left, name + description
+		   left-aligned and comfortably legible — reads as taxonomy, not filler. */
+		.categories-grid {
+			grid-template-columns: 1fr;
+			gap: 0.5rem;
+		}
+
+		.category-card {
+			display: grid;
+			grid-template-columns: auto 1fr;
+			align-items: center;
+			column-gap: 0.875rem;
+			text-align: left;
+			padding: 0.75rem 0.875rem;
+		}
+
+		.category-icon {
+			grid-row: 1 / span 2;
+			margin-bottom: 0;
+		}
+
+		.category-card strong {
+			margin-bottom: 0.125rem;
+		}
+
+		.status-grid {
+			gap: 0.625rem;
+		}
+
+		/* Signal horizontal scrollability with a right-edge fade and shrink type. */
+		.config-demo {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.75rem), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 1.75rem), transparent);
+			padding: 1rem;
+		}
+
+		.config-demo code {
+			font-size: var(--ide-font-size-xs, 0.75rem);
+		}
 	}
 </style>

@@ -376,30 +376,46 @@ export const DEFAULT_CONFIG = {
 	</header>
 
 	<!-- Demo tabs -->
-	<div class="demo-tabs">
+	<div class="demo-tabs" role="tablist" aria-label="Editor intelligence demos">
 		<button
+			id="tab-minimap"
 			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'minimap'}
+			aria-controls="panel-minimap"
 			class:active={activeDemo === 'minimap'}
 			onclick={() => (activeDemo = 'minimap')}
 		>
 			Minimap
 		</button>
 		<button
+			id="tab-breadcrumbs"
 			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'breadcrumbs'}
+			aria-controls="panel-breadcrumbs"
 			class:active={activeDemo === 'breadcrumbs'}
 			onclick={() => (activeDemo = 'breadcrumbs')}
 		>
 			Breadcrumbs
 		</button>
 		<button
+			id="tab-quickactions"
 			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'quickactions'}
+			aria-controls="panel-quickactions"
 			class:active={activeDemo === 'quickactions'}
 			onclick={() => (activeDemo = 'quickactions')}
 		>
 			Quick Actions
 		</button>
 		<button
+			id="tab-outline"
 			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'outline'}
+			aria-controls="panel-outline"
 			class:active={activeDemo === 'outline'}
 			onclick={() => (activeDemo = 'outline')}
 		>
@@ -409,7 +425,13 @@ export const DEFAULT_CONFIG = {
 
 	<!-- Minimap Demo -->
 	{#if activeDemo === 'minimap'}
-		<section class="demo-section">
+		<div
+			class="demo-section"
+			id="panel-minimap"
+			role="tabpanel"
+			tabindex="0"
+			aria-labelledby="tab-minimap"
+		>
 			<div class="section-header">
 				<h2>Minimap</h2>
 				<p>A scaled-down overview of the document with highlights and click-to-navigate.</p>
@@ -494,12 +516,18 @@ export const DEFAULT_CONFIG = {
 					</ul>
 				</div>
 			</div>
-		</section>
+		</div>
 	{/if}
 
 	<!-- Breadcrumbs Demo -->
 	{#if activeDemo === 'breadcrumbs'}
-		<section class="demo-section">
+		<div
+			class="demo-section"
+			id="panel-breadcrumbs"
+			role="tabpanel"
+			tabindex="0"
+			aria-labelledby="tab-breadcrumbs"
+		>
 			<div class="section-header">
 				<h2>Breadcrumbs</h2>
 				<p>Navigation trail showing current location in code structure.</p>
@@ -552,12 +580,18 @@ export const DEFAULT_CONFIG = {
 					</ul>
 				</div>
 			</div>
-		</section>
+		</div>
 	{/if}
 
 	<!-- Quick Actions Demo -->
 	{#if activeDemo === 'quickactions'}
-		<section class="demo-section">
+		<div
+			class="demo-section"
+			id="panel-quickactions"
+			role="tabpanel"
+			tabindex="0"
+			aria-labelledby="tab-quickactions"
+		>
 			<div class="section-header">
 				<h2>Quick Actions</h2>
 				<p>Context-aware code actions with lightbulb indicator.</p>
@@ -663,12 +697,18 @@ export const DEFAULT_CONFIG = {
 					</div>
 				</div>
 			</div>
-		</section>
+		</div>
 	{/if}
 
 	<!-- Symbol Outline Demo -->
 	{#if activeDemo === 'outline'}
-		<section class="demo-section">
+		<div
+			class="demo-section"
+			id="panel-outline"
+			role="tabpanel"
+			tabindex="0"
+			aria-labelledby="tab-outline"
+		>
 			<div class="section-header">
 				<h2>Symbol Outline</h2>
 				<p>Document structure panel for navigation and overview.</p>
@@ -738,7 +778,7 @@ export const DEFAULT_CONFIG = {
 					</ul>
 				</div>
 			</div>
-		</section>
+		</div>
 	{/if}
 </div>
 
@@ -747,6 +787,7 @@ export const DEFAULT_CONFIG = {
 		padding: 2rem;
 		max-width: 1400px;
 		margin: 0 auto;
+		overflow-x: hidden;
 	}
 
 	.demo-header {
@@ -756,7 +797,8 @@ export const DEFAULT_CONFIG = {
 
 	.demo-header h1 {
 		margin: 0 0 0.5rem;
-		font-size: 2rem;
+		font-size: 2.25rem;
+		letter-spacing: -0.01em;
 		color: var(--ide-text-primary, #e8e8f0);
 	}
 
@@ -768,13 +810,31 @@ export const DEFAULT_CONFIG = {
 	/* Tabs */
 	.demo-tabs {
 		display: flex;
+		flex-wrap: nowrap;
 		gap: 0.5rem;
 		margin-bottom: 1.5rem;
 		border-bottom: 1px solid var(--ide-border, #333);
 		padding-bottom: 0.5rem;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+		/* Show a thin accent thumb so the off-screen tabs read as
+		   scrollable, not just technically reachable. Renders only when
+		   the strip overflows (i.e. on narrow/phone widths). */
+		scrollbar-width: thin;
+		scrollbar-color: rgba(168, 85, 247, 0.5) transparent;
+	}
+
+	.demo-tabs::-webkit-scrollbar {
+		height: 4px;
+	}
+
+	.demo-tabs::-webkit-scrollbar-thumb {
+		background: rgba(168, 85, 247, 0.5);
+		border-radius: 2px;
 	}
 
 	.tab {
+		flex-shrink: 0;
 		padding: 0.75rem 1.5rem;
 		background: transparent;
 		border: none;
@@ -791,8 +851,8 @@ export const DEFAULT_CONFIG = {
 	}
 
 	.tab.active {
-		color: #a855f7;
-		background: rgba(168, 85, 247, 0.1);
+		color: #c084fc;
+		background: rgba(168, 85, 247, 0.14);
 	}
 
 	/* Section */
@@ -808,13 +868,16 @@ export const DEFAULT_CONFIG = {
 
 	.section-header h2 {
 		margin: 0 0 0.5rem;
-		font-size: 1.25rem;
+		font-size: 1.35rem;
+		letter-spacing: -0.01em;
 		color: var(--ide-text-primary, #e8e8f0);
 	}
 
 	.section-header p {
 		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
+		/* Lift the lead-in copy one step toward primary so the eye lands
+		   on the demo content rather than washing into the chrome. */
+		color: color-mix(in srgb, var(--ide-text-secondary, #aaa) 55%, var(--ide-text-primary, #e8e8f0));
 		font-size: 0.9rem;
 	}
 
@@ -959,7 +1022,7 @@ export const DEFAULT_CONFIG = {
 		margin: 0 0 1rem;
 		padding-left: 1.25rem;
 		font-size: 0.85rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #c4c4d4);
 	}
 
 	.current-position {
@@ -1142,10 +1205,121 @@ export const DEFAULT_CONFIG = {
 		margin: 0;
 		padding-left: 1.25rem;
 		font-size: 0.85rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #c4c4d4);
 	}
 
 	.feature-info li {
 		margin: 0.25rem 0;
+	}
+
+	/* Responsive: tablet -> mobile */
+	@media (max-width: 860px) {
+		.intelligence-demo {
+			padding: 1.5rem 1.25rem;
+		}
+
+		.minimap-controls {
+			flex-direction: column;
+			gap: 1rem;
+		}
+
+		/* Stack the outline editor above the symbol panel so neither
+		   steals a fixed width that overflows the viewport. */
+		.outline-layout {
+			flex-direction: column;
+			height: auto;
+		}
+
+		.outline-layout .editor-preview-small {
+			max-height: 320px;
+		}
+	}
+
+	/* Responsive: phones */
+	@media (max-width: 640px) {
+		.intelligence-demo {
+			padding: 1.25rem 1rem;
+		}
+
+		.demo-header h1 {
+			font-size: 1.6rem;
+		}
+
+		.tab {
+			padding: 0.6rem 1rem;
+			font-size: 0.85rem;
+			/* keep a comfortable tap target */
+			min-height: 44px;
+		}
+
+		.demo-section {
+			padding: 1.25rem 1rem;
+		}
+
+		/* Let the minimap editor scroll horizontally with a fade cue
+		   instead of clipping long import lines. Stack the 100px minimap
+		   below the code so it never steals editor width on a phone. */
+		.editor-container {
+			flex-direction: column;
+		}
+
+		/* Once the 100px minimap stacks under the code, centre it and swap
+		   its side border for a top border so it reads as a deliberate
+		   scaled overview rather than a clipped sidebar. */
+		.editor-container :global(.minimap) {
+			align-self: center;
+			border-left: none;
+			border-top: 1px solid var(--ide-border, #333);
+		}
+
+		.editor-preview {
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			font-size: 12px;
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+		}
+
+		.editor-preview-small {
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			font-size: 12px;
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+		}
+
+		.legend-items {
+			gap: 0.75rem;
+		}
+
+		.quickactions-controls,
+		.outline-controls {
+			flex-wrap: wrap;
+		}
+
+		.control-btn {
+			min-height: 44px;
+		}
+
+		.sort-controls {
+			flex-wrap: wrap;
+			gap: 0.4rem;
+		}
+
+		.sort-btn {
+			min-height: 36px;
+			padding: 6px 12px;
+		}
+
+		.action-categories {
+			grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+		}
+
+		/* The outline panel ships a fixed 280px inline width; cap it so it
+		   never overflows a narrow phone once stacked under the editor. */
+		.outline-layout :global(.symbol-outline) {
+			width: 100% !important;
+			max-width: 100%;
+		}
 	}
 </style>

@@ -66,7 +66,7 @@
 	></span>
 {/if}
 
-<script context="module" lang="ts">
+<script module lang="ts">
 	function getGutterIcon(severity?: number): string {
 		const color = severity === 1 ? 'var(--ide-error)' :
 			severity === 2 ? 'var(--ide-warning)' :

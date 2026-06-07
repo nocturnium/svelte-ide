@@ -259,6 +259,22 @@ Top-level structural shell components: the IDE layout frame and the status bar. 
 | `IDELayout` | Main IDE layout shell (sidebars, panels, editor area). | `@public`  |
 | `StatusBar` | Bottom status bar.                                    | `@public`  |
 
+`IDELayout` regions are provided as [snippet](https://svelte.dev/docs/svelte/snippet) props
+(`activityBar`, `leftSidebar`, `editor`, `bottomPanel`, `rightSidebar`, `statusBar`) — each is
+optional, and the sidebars / bottom panel / status bar render only when their corresponding
+[layout store](./stores.md) visibility flag is on:
+
+```svelte
+<IDELayout>
+  {#snippet activityBar()}<ActivityBar />{/snippet}
+  {#snippet leftSidebar()}<FileExplorer />{/snippet}
+  {#snippet editor()}<CustomEditor bind:content language="typescript" />{/snippet}
+  {#snippet rightSidebar()}<AIPanel />{/snippet}
+  {#snippet bottomPanel()}<Terminal />{/snippet}
+  {#snippet statusBar()}<StatusBar />{/snippet}
+</IDELayout>
+```
+
 ---
 
 ## See also

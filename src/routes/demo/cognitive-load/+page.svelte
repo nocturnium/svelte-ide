@@ -274,9 +274,9 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<div class="metrics-summary">
 					<div class="metric">
 						<span class="metric-value" style="color: {
-							complexityMetrics.level === 'critical' ? '#ef4444' :
-							complexityMetrics.level === 'high' ? '#f59e0b' :
-							complexityMetrics.level === 'medium' ? '#3b82f6' : '#22c55e'
+							complexityMetrics.level === 'critical' ? 'var(--color-error, #ef4444)' :
+							complexityMetrics.level === 'high' ? 'var(--color-warning, #f59e0b)' :
+							complexityMetrics.level === 'medium' ? 'var(--color-info, #3b82f6)' : 'var(--color-success, #22c55e)'
 						}">{complexityMetrics.overall}</span>
 						<span class="metric-label">Overall Score</span>
 					</div>
@@ -295,19 +295,19 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		<!-- Legend -->
 		<div class="complexity-legend">
 			<div class="legend-item">
-				<span class="legend-color" style="background: #22c55e"></span>
+				<span class="legend-color" style="background: var(--color-success, #22c55e)"></span>
 				<span>Low (0-30)</span>
 			</div>
 			<div class="legend-item">
-				<span class="legend-color" style="background: #3b82f6"></span>
+				<span class="legend-color" style="background: var(--color-info, #3b82f6)"></span>
 				<span>Medium (30-50)</span>
 			</div>
 			<div class="legend-item">
-				<span class="legend-color" style="background: #f59e0b"></span>
+				<span class="legend-color" style="background: var(--color-warning, #f59e0b)"></span>
 				<span>High (50-70)</span>
 			</div>
 			<div class="legend-item">
-				<span class="legend-color" style="background: #ef4444"></span>
+				<span class="legend-color" style="background: var(--color-error, #ef4444)"></span>
 				<span>Critical (70+)</span>
 			</div>
 		</div>
@@ -335,9 +335,12 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					<span class="ai-dot" style="background: {claudeAgent.color}"></span>
 					<span class="ai-name">{claudeAgent.agentName}</span>
 					<span class="ai-activity">
-						{claudeAgent.attentionType === 'reading' ? '\u{1F440}' :
-						 claudeAgent.attentionType === 'thinking' ? '\u{1F4AD}' :
-						 claudeAgent.attentionType === 'writing' ? '\u{270D}\u{FE0F}' : '\u{1F50D}'}
+						<span class="ai-emoji" aria-hidden="true">
+							{claudeAgent.attentionType === 'reading' ? '\u{1F440}' :
+							 claudeAgent.attentionType === 'thinking' ? '\u{1F4AD}' :
+							 claudeAgent.attentionType === 'writing' ? '\u{270D}\u{FE0F}' : '\u{1F50D}'}
+						</span>
+						<span class="sr-only">{claudeAgent.attentionType}:</span>
 						{claudeAgent.activity}
 					</span>
 				</div>
@@ -372,7 +375,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Feature Highlights</h2>
 		<div class="features-grid">
-			<div class="feature-card">
+			<div class="feature-card" style="--feature-accent: var(--color-error, #ef4444)">
 				<div class="feature-icon">
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
@@ -383,8 +386,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<p>Real-time analysis of code complexity based on nesting, branching, and function calls.</p>
 			</div>
 
-			<div class="feature-card">
-				<div class="feature-icon" style="color: #8B5CF6">
+			<div class="feature-card" style="--feature-accent: #8b5cf6">
+				<div class="feature-icon">
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<circle cx="12" cy="12" r="10"/>
 						<circle cx="12" cy="12" r="3"/>
@@ -398,8 +401,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<p>See where AI agents are looking with ghost cursors and focus region highlights.</p>
 			</div>
 
-			<div class="feature-card">
-				<div class="feature-icon" style="color: #22c55e">
+			<div class="feature-card" style="--feature-accent: var(--color-success, #22c55e)">
+				<div class="feature-icon">
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
 						<polyline points="14 2 14 8 20 8"/>
@@ -411,8 +414,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<p>Hover over complex regions to see actionable suggestions for improvement.</p>
 			</div>
 
-			<div class="feature-card">
-				<div class="feature-icon" style="color: #f59e0b">
+			<div class="feature-card" style="--feature-accent: var(--color-warning, #f59e0b)">
+				<div class="feature-icon">
 					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M12 2v4"/>
 						<path d="m6.343 6.343-2.828 2.828"/>
@@ -435,6 +438,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	.demo-page {
 		padding: 2rem 3rem;
 		max-width: 1000px;
+		overflow-x: hidden;
 	}
 
 	.page-header {
@@ -501,7 +505,11 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	.metrics-summary {
 		display: flex;
-		gap: 2rem;
+		gap: 1.5rem;
+		padding: 0.875rem 1.25rem;
+		background: var(--ide-bg-tertiary);
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
 	}
 
 	.metric {
@@ -518,8 +526,9 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	.metric-label {
-		font-size: 0.75rem;
+		font-size: 0.8125rem;
 		color: var(--ide-text-muted);
+		text-align: center;
 	}
 
 	/* Complexity Legend */
@@ -595,6 +604,12 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		cursor: not-allowed;
 	}
 
+	.control-btn:focus-visible,
+	.toggle-control input:focus-visible {
+		outline: 2px solid #8b5cf6;
+		outline-offset: 2px;
+	}
+
 	.ai-status {
 		display: flex;
 		align-items: center;
@@ -628,6 +643,18 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		font-size: 0.8125rem;
 	}
 
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
 	/* Editor Container */
 	.editor-container {
 		height: 500px;
@@ -644,20 +671,40 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	.feature-card {
+		--feature-accent: var(--ide-interactive);
 		padding: 1.25rem;
 		background: var(--ide-bg-secondary);
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
-		transition: border-color 0.15s ease;
+		transition:
+			transform 0.15s ease,
+			border-color 0.15s ease,
+			box-shadow 0.15s ease;
 	}
 
 	.feature-card:hover {
-		border-color: var(--ide-interactive);
+		transform: translateY(-2px);
+		border-color: color-mix(in srgb, var(--feature-accent) 45%, var(--ide-border));
+		box-shadow:
+			0 6px 18px rgba(0, 0, 0, 0.35),
+			0 0 0 1px color-mix(in srgb, var(--feature-accent) 28%, transparent);
 	}
 
 	.feature-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 40px;
+		height: 40px;
 		margin-bottom: 0.75rem;
-		color: var(--ide-interactive);
+		border-radius: 10px;
+		color: var(--feature-accent);
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--feature-accent) 22%, transparent),
+			color-mix(in srgb, var(--feature-accent) 8%, transparent)
+		);
+		border: 1px solid color-mix(in srgb, var(--feature-accent) 30%, transparent);
 	}
 
 	.feature-card h3 {
@@ -672,5 +719,70 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		color: var(--ide-text-secondary);
 		line-height: 1.5;
 		margin: 0;
+	}
+
+	/* ===== Responsive ===== */
+	@media (max-width: 860px) {
+		.demo-page {
+			padding: 1.75rem 1.5rem;
+		}
+
+		/* Lower min column width so 2+ feature cards sit per row */
+		.features-grid {
+			grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+		}
+	}
+
+	@media (max-width: 768px) {
+		/* Stack the meter card above its metrics so no data is clipped */
+		.meter-showcase {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.metrics-summary {
+			justify-content: space-between;
+			gap: 1rem;
+		}
+
+		.metric {
+			flex: 1;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.demo-page {
+			padding: 1.25rem 1rem;
+		}
+
+		.page-header h1 {
+			font-size: 1.625rem;
+		}
+
+		/* Allow controls to wrap and give the checkbox a 48px touch target */
+		.ghost-pair-controls {
+			gap: 0.875rem 1rem;
+		}
+
+		.toggle-control {
+			min-height: 48px;
+		}
+
+		.control-btn {
+			min-height: 48px;
+		}
+
+		/* Taller editor on phones since this is the page's primary interactive
+		   demo; the content scrolls horizontally so long lines stay reachable
+		   instead of being clipped, with a right-edge fade to cue the overflow. */
+		.editor-container {
+			height: 400px;
+		}
+
+		.editor-container :global(.custom-editor__content) {
+			-webkit-overflow-scrolling: touch;
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+		}
 	}
 </style>

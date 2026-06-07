@@ -99,6 +99,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	class="hover-tooltip {className}"
 	style="left: {adjustedPosition().x}px; top: {adjustedPosition().y}px; max-width: {maxWidth}px;"
@@ -123,7 +124,7 @@
 	</div>
 </div>
 
-<script context="module" lang="ts">
+<script module lang="ts">
 	// Simple markdown renderer for hover content
 	// Handles code blocks, inline code, bold, italic, and links
 	function renderMarkdown(text: string): string {

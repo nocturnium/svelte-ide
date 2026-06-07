@@ -8,6 +8,7 @@
 	 */
 
 	import { onMount } from 'svelte';
+	import Icon from '$lib/components/core/Icon.svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import TimelineScrubber from '$lib/components/editor/TimelineScrubber.svelte';
 	import ConflictZoneLayer from '$lib/components/editor/ConflictZoneLayer.svelte';
@@ -365,9 +366,14 @@ export function applyDiscount(order: Order, percent: number): Order {
 			<div class="users-list">
 				{#each simulatedUsers as user}
 					<div class="user-card" style="--user-color: {user.color}">
-						<div class="user-avatar" style="background: {user.color}">
+						<div
+							class="user-avatar"
+							style="background: {user.color}"
+							role="img"
+							aria-label={user.isAI ? `${user.name} (AI agent)` : `${user.name} avatar`}
+						>
 							{#if user.isAI}
-								<span class="ai-icon">🤖</span>
+								<Icon name="bot" size={18} class="ai-icon" />
 							{:else}
 								{user.name.charAt(0)}
 							{/if}
@@ -446,6 +452,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 		min-height: 100vh;
 		background: var(--ide-bg-primary);
 		color: var(--ide-text-primary);
+		overflow-x: hidden;
 	}
 
 	.demo-header {
@@ -456,8 +463,8 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.demo-header h1 {
 		margin: 0 0 0.5rem 0;
-		font-size: 1.5rem;
-		font-weight: 600;
+		font-size: 2rem;
+		font-weight: 700;
 	}
 
 	.demo-header p {
@@ -481,7 +488,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.demo-section h2 {
 		margin: 0 0 0.5rem 0;
-		font-size: 1.125rem;
+		font-size: 1.5rem;
 		font-weight: 600;
 	}
 
@@ -555,7 +562,9 @@ export function applyDiscount(order: Order, percent: number): Order {
 		padding: 0.5rem 1rem;
 		background: var(--color-nocturnium-wave);
 		color: var(--color-nocturnium-night);
-		border: none;
+		/* Transparent border reserves the box so the outlined secondary button
+		   stays the same height as the filled ones (no row misalignment). */
+		border: 1px solid transparent;
 		border-radius: 6px;
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -576,6 +585,9 @@ export function applyDiscount(order: Order, percent: number): Order {
 	.demo-btn--secondary {
 		background: var(--ide-bg-elevated);
 		color: var(--ide-text-secondary);
+		/* Outline so the secondary action still reads as a button even when
+		   disabled (e.g. 'Clear All' on first load), not an empty/error state. */
+		border-color: var(--ide-border);
 	}
 
 	/* Users List */
@@ -635,8 +647,9 @@ export function applyDiscount(order: Order, percent: number): Order {
 		color: #a855f7;
 	}
 
-	.ai-icon {
-		font-size: 16px;
+	.user-avatar :global(.ai-icon) {
+		display: block;
+		color: #fff;
 	}
 
 	.user-slider {
@@ -715,9 +728,16 @@ export function applyDiscount(order: Order, percent: number): Order {
 	.editor-container {
 		position: relative;
 		height: 400px;
+		min-width: 0;
 		border: 1px solid var(--ide-border);
 		border-radius: 6px;
 		overflow: hidden;
+	}
+
+	/* Let the editor host fill — its internal scroll owns long lines */
+	.editor-container :global(.custom-editor) {
+		min-width: 0;
+		box-sizing: border-box;
 	}
 
 	.conflict-overlay {
@@ -725,5 +745,102 @@ export function applyDiscount(order: Order, percent: number): Order {
 		inset: 0;
 		pointer-events: none;
 		z-index: 10;
+	}
+
+	/* ── Responsive: tablet → mobile ─────────────────────────────── */
+	@media (max-width: 860px) {
+		.demo-header,
+		.demo-content {
+			padding: 1.5rem;
+		}
+
+		.demo-section {
+			min-width: 0;
+		}
+
+		/* Controls wrap instead of overflowing the card */
+		.conflict-controls {
+			flex-wrap: wrap;
+		}
+
+		.demo-btn {
+			flex: 1 1 auto;
+			min-height: 44px;
+		}
+
+		/* Tighter stat rhythm on narrow columns */
+		.timeline-info {
+			gap: 1rem;
+		}
+
+		.timeline-legend {
+			flex-wrap: wrap;
+			gap: 0.75rem 1.25rem;
+		}
+	}
+
+	/* ── Responsive: phones ──────────────────────────────────────── */
+	@media (max-width: 640px) {
+		.demo-header,
+		.demo-content {
+			padding: 1.25rem;
+		}
+
+		.demo-header h1 {
+			font-size: 1.625rem;
+		}
+
+		.demo-section {
+			padding: 1.25rem;
+		}
+
+		.demo-section h2 {
+			font-size: 1.25rem;
+		}
+
+		/* Stack user cards full-width so nothing crowds the column */
+		.users-list {
+			gap: 0.75rem;
+		}
+
+		.user-card {
+			min-width: 0;
+			width: 100%;
+		}
+
+		.user-slider {
+			width: 96px;
+		}
+
+		.timeline-info {
+			gap: 0.75rem 1.25rem;
+			flex-wrap: wrap;
+		}
+
+		/* Conflict cards: keep probability + details readable when narrow */
+		.conflict-card {
+			gap: 0.75rem;
+		}
+
+		/* Balanced control group on phones: the primary action spans the full
+		   width and the two secondary actions share an even second row, so the
+		   group never looks unbalanced/incomplete on first load. */
+		.conflict-controls {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.5rem;
+		}
+
+		.conflict-controls .demo-btn:first-child {
+			grid-column: 1 / -1;
+		}
+
+		/* Right-edge scroll affordance for the horizontally scrollable code,
+		   matching the power-features code preview. Signals the editor pane
+		   scrolls sideways when sample lines run past the narrow column. */
+		.editor-container :global(.custom-editor) {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+		}
 	}
 </style>

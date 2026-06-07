@@ -560,10 +560,6 @@
 		color: var(--ide-text-secondary, #aaa);
 	}
 
-	.file-diagnostics {
-		/* Container for diagnostics */
-	}
-
 	/* Diagnostic item */
 	.diagnostic-item {
 		display: flex;

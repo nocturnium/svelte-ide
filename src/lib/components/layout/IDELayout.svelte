@@ -11,6 +11,7 @@
 	 * - Status bar
 	 */
 
+	import type { Snippet } from 'svelte';
 	import { ResizeHandle } from '$components/core';
 	import {
 		getLeftSidebarVisible,
@@ -29,9 +30,29 @@
 	interface Props {
 		/** Additional CSS class */
 		class?: string;
+		/** Activity bar content — the left icon rail. */
+		activityBar?: Snippet;
+		/** Left sidebar content (file explorer, search, …); rendered when the left sidebar is visible. */
+		leftSidebar?: Snippet;
+		/** Main editor area content. */
+		editor?: Snippet;
+		/** Bottom panel content (terminal, output, …); rendered when the bottom panel is visible. */
+		bottomPanel?: Snippet;
+		/** Right sidebar content (AI panel, …); rendered when the right sidebar is visible. */
+		rightSidebar?: Snippet;
+		/** Status bar content; rendered when the status bar is visible. */
+		statusBar?: Snippet;
 	}
 
-	let { class: className = '' }: Props = $props();
+	let {
+		class: className = '',
+		activityBar,
+		leftSidebar,
+		editor,
+		bottomPanel,
+		rightSidebar,
+		statusBar
+	}: Props = $props();
 
 	// Track resize state for visual feedback
 	let isResizingLeft = $state(false);
@@ -47,7 +68,7 @@
 	<div class="ide-layout__row">
 		<!-- Activity Bar -->
 		<aside class="ide-layout__activity-bar">
-			<slot name="activity-bar" />
+			{@render activityBar?.()}
 		</aside>
 
 		<!-- Content Area: Left Sidebar + Main + Right Sidebar -->
@@ -59,7 +80,7 @@
 					class:ide-layout__sidebar--resizing={isResizingLeft}
 					style="width: {getLeftSidebarWidth()}px;"
 				>
-					<slot name="left-sidebar" />
+					{@render leftSidebar?.()}
 				</aside>
 				<ResizeHandle
 					direction="vertical"
@@ -77,7 +98,7 @@
 			<main class="ide-layout__main">
 				<!-- Editor Area -->
 				<div class="ide-layout__editor">
-					<slot name="editor" />
+					{@render editor?.()}
 				</div>
 
 				<!-- Bottom Panel -->
@@ -97,7 +118,7 @@
 						class:ide-layout__panel--resizing={isResizingBottom}
 						style="height: {getBottomPanelHeight()}px;"
 					>
-						<slot name="bottom-panel" />
+						{@render bottomPanel?.()}
 					</aside>
 				{/if}
 			</main>
@@ -119,7 +140,7 @@
 					class:ide-layout__sidebar--resizing={isResizingRight}
 					style="width: {getRightSidebarWidth()}px;"
 				>
-					<slot name="right-sidebar" />
+					{@render rightSidebar?.()}
 				</aside>
 			{/if}
 		</div>
@@ -128,7 +149,7 @@
 	<!-- Status Bar -->
 	{#if getStatusBarVisible()}
 		<footer class="ide-layout__status-bar">
-			<slot name="status-bar" />
+			{@render statusBar?.()}
 		</footer>
 	{/if}
 </div>

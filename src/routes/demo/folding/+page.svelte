@@ -180,7 +180,7 @@ def process_batch(items, batch_size=100):
 			Hover over lines to see fold indicators. Click the arrows to collapse or expand regions.
 		</p>
 
-		<div class="controls">
+		<div class="controls" role="toolbar" aria-label="Demo controls">
 			<div class="control-group">
 				<span class="control-label">Language:</span>
 				<button
@@ -275,6 +275,7 @@ def process_batch(items, batch_size=100):
 		padding: 2rem 3rem;
 		max-width: 1200px;
 		min-height: 100vh;
+		overflow-x: hidden;
 	}
 
 	.page-header {
@@ -297,7 +298,7 @@ def process_batch(items, batch_size=100):
 	}
 
 	.demo-section h2 {
-		font-size: 1.25rem;
+		font-size: 1.5rem;
 		font-weight: 600;
 		color: var(--ide-text-primary);
 		margin-bottom: 0.25rem;
@@ -311,9 +312,16 @@ def process_batch(items, batch_size=100):
 
 	.controls {
 		display: flex;
-		gap: 2rem;
+		align-items: center;
+		gap: 1.25rem 1.5rem;
 		margin-bottom: 1rem;
 		flex-wrap: wrap;
+		/* Group the Language + Folding controls into a single bordered toolbar so
+		   they read as one intentional unit (mirrors the editor demo's toolbar). */
+		padding: 0.5rem 0.75rem;
+		background: color-mix(in srgb, var(--ide-bg-secondary) 60%, transparent);
+		border: 1px solid var(--ide-border);
+		border-radius: var(--ide-radius-md);
 	}
 
 	.control-group {
@@ -343,6 +351,11 @@ def process_batch(items, batch_size=100):
 		color: var(--ide-text-primary);
 	}
 
+	.control-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive);
+		outline-offset: 2px;
+	}
+
 	.control-btn--active {
 		background: var(--ide-interactive);
 		border-color: var(--ide-interactive);
@@ -359,6 +372,13 @@ def process_batch(items, batch_size=100):
 		border: 1px solid var(--ide-border);
 		border-radius: var(--ide-radius-md);
 		overflow: hidden;
+	}
+
+	/* Ensure the inner code surface remains horizontally scrollable on touch so
+	   long lines are reachable instead of being clipped at the right edge. */
+	.editor-container :global(.custom-editor__content) {
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
 	}
 
 	.features-list {
@@ -445,5 +465,52 @@ def process_batch(items, batch_size=100):
 		border-radius: 3px;
 		font-size: 0.85em;
 		color: var(--ide-text-muted);
+	}
+
+	/* Tablet -> mobile shift */
+	@media (max-width: 860px) {
+		.demo-page {
+			padding: 1.75rem 1.5rem;
+		}
+
+		.controls {
+			gap: 1rem 1.5rem;
+		}
+	}
+
+	/* Phones */
+	@media (max-width: 640px) {
+		.demo-page {
+			padding: 1.25rem 1rem;
+		}
+
+		.page-header h1 {
+			font-size: 1.625rem;
+		}
+
+		/* Keep the editor from dominating the viewport. The editor measures its
+		   own font/line metrics in JS, so we constrain height (not font-size)
+		   and let the inner code surface scroll horizontally on touch. */
+		.editor-container {
+			height: 340px;
+		}
+
+		/* Comfortable touch targets for the language / folding toggles. */
+		.control-btn {
+			min-height: 44px;
+			padding: 0.5rem 0.875rem;
+		}
+
+		.control-group {
+			flex-wrap: wrap;
+		}
+
+		/* Long code lines extend past the viewport on phones, and touch platforms
+		   hide the horizontal scrollbar until the user drags. Fade the right edge of
+		   the code surface so it reads as "scrolls sideways" instead of an abrupt cut. */
+		.editor-container :global(.custom-editor__content) {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+		}
 	}
 </style>

@@ -17,6 +17,8 @@
 		class: className = ''
 	}: Props = $props();
 
+	// Seeded once from the prop: this is the editable input buffer, mounted fresh per edit.
+	// svelte-ignore state_referenced_locally
 	let prompt = $state(initialPrompt);
 	let isSubmitting = $state(false);
 
@@ -40,6 +42,9 @@
 	}
 </script>
 
+<!-- Wrapper-level keydown only captures Escape / Cmd+Enter shortcuts; the real controls
+	 (textarea, buttons) inside are the focusable interactive elements. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="ai-inline-edit {className}" onkeydown={handleKeydown}>
 	<div class="ai-inline-edit__header">
 		<Icon name="sparkles" size={14} />

@@ -204,7 +204,7 @@
 	{/if}
 </div>
 
-<script context="module" lang="ts">
+<script module lang="ts">
 	// SVG icons for completion item kinds
 	function getKindSVG(kind?: number): string {
 		const icons: Record<number, string> = {

@@ -338,6 +338,9 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		-webkit-mask:
 			linear-gradient(#fff 0 0) content-box,
 			linear-gradient(#fff 0 0);
+		mask:
+			linear-gradient(#fff 0 0) content-box,
+			linear-gradient(#fff 0 0);
 		-webkit-mask-composite: xor;
 		mask-composite: exclude;
 		pointer-events: none;
@@ -449,7 +452,8 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 	.group-title::before {
 		content: '';
 		width: 3px;
-		height: 1.1em;
+		height: 0.9em;
+		align-self: center;
 		border-radius: var(--ide-radius-full);
 		background: var(--group-accent, var(--ide-accent));
 	}
@@ -643,6 +647,29 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		}
 		.card-grid {
 			grid-template-columns: 1fr;
+		}
+		/* Tighten the flagship card on phones: less padding and a softer inner glow so
+		   the top of the page is lighter and the CTA sits closer to the fold. */
+		.demo-card--featured {
+			padding: var(--ide-spacing-lg);
+			box-shadow:
+				inset 0 1px 0 color-mix(in srgb, var(--ide-accent) 28%, transparent),
+				inset 0 0 24px color-mix(in srgb, var(--ide-accent) 10%, transparent),
+				0 8px 30px color-mix(in srgb, var(--ide-accent) 18%, transparent);
+		}
+		/* Wider gaps between the three taxonomies so the groups stay scannable through
+		   the long single-column scroll. */
+		.hub-group {
+			margin-bottom: var(--ide-spacing-3xl);
+		}
+		/* Drop the mono one step and add a soft right-edge fade as a scroll affordance
+		   where long import lines still overflow (mirrors the landing page). */
+		.code-block code {
+			font-size: var(--ide-font-size-xs);
+		}
+		.code-block {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
 		}
 	}
 </style>

@@ -3,6 +3,7 @@
 	import Avatar from '$lib/components/core/Avatar.svelte';
 	import Badge from '$lib/components/core/Badge.svelte';
 	import Button from '$lib/components/core/Button.svelte';
+	import Icon from '$lib/components/core/Icon.svelte';
 	import type { CollaborationUser, CollaboratorCursor } from '$lib/types/crdt';
 
 	// Sample collaborators
@@ -81,9 +82,12 @@ class CollaborationSession {
 		<div class="status-demo">
 			<div class="status-row">
 				<span class="status-label">Status:</span>
-				<Badge variant={connectionStatus === 'connected' ? 'success' : 'warning'}>
-					{connectionStatus}
-				</Badge>
+				<span class="status-value" data-status={connectionStatus}>
+					<span class="status-dot" aria-hidden="true"></span>
+					<Badge variant={connectionStatus === 'connected' ? 'success' : 'warning'}>
+						{connectionStatus}
+					</Badge>
+				</span>
 			</div>
 			<div class="status-row">
 				<span class="status-label">Synced:</span>
@@ -97,6 +101,7 @@ class CollaborationSession {
 					{#each collaborators as user}
 						<Avatar name={user.name} color={user.color} isAI={user.isAI} size="sm" />
 					{/each}
+					<span class="collab-count">{collaborators.length} online</span>
 				</div>
 			</div>
 		</div>
@@ -197,35 +202,35 @@ class CollaborationSession {
 		<h2>CRDT Features</h2>
 		<div class="features-list">
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="git-merge" size={20} /></span>
 				<div>
 					<strong>Conflict-Free</strong>
 					<p>CRDT ensures all edits merge correctly without conflicts</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="link" size={20} /></span>
 				<div>
 					<strong>Offline Support</strong>
 					<p>Edit offline and sync when reconnected</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="refresh" size={20} /></span>
 				<div>
 					<strong>Undo/Redo</strong>
 					<p>Per-user undo history that respects collaborative edits</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="users" size={20} /></span>
 				<div>
 					<strong>Awareness Protocol</strong>
 					<p>Share cursor positions, selections, and user state</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon">⚇</span>
+				<span class="feature-icon"><Icon name="clock" size={20} /></span>
 				<div>
 					<strong>Document Snapshots</strong>
 					<p>Create and restore document versions</p>
@@ -347,9 +352,52 @@ proposeAIChange(session.id, {
 		min-width: 100px;
 	}
 
+	.status-value {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		flex-shrink: 0;
+		background: var(--ide-text-muted);
+	}
+
+	.status-value[data-status='connected'] .status-dot {
+		background: var(--ide-success);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--ide-success) 22%, transparent);
+	}
+
+	.status-value[data-status='connecting'] .status-dot {
+		background: var(--ide-warning);
+	}
+
+	.status-value[data-status='disconnected'] .status-dot {
+		background: var(--ide-error);
+	}
+
 	.collaborators-list {
 		display: flex;
-		gap: 0.5rem;
+		align-items: center;
+	}
+
+	/* Overlapping presence stack with live count */
+	.collaborators-list :global(.ide-avatar) {
+		margin-left: -0.5rem;
+		box-shadow: 0 0 0 2px var(--ide-bg-secondary);
+	}
+
+	.collaborators-list :global(.ide-avatar:first-child) {
+		margin-left: 0;
+	}
+
+	.collab-count {
+		margin-left: 0.625rem;
+		font-size: 0.75rem;
+		color: var(--ide-text-muted);
 	}
 
 	.editor-header {
@@ -432,16 +480,25 @@ proposeAIChange(session.id, {
 		height: 8px;
 		background: var(--cursor-color);
 		border-radius: 50%;
-		animation: pulse 1.5s infinite;
 	}
 
-	@keyframes pulse {
-		0%,
-		100% {
-			opacity: 1;
+	@media (prefers-reduced-motion: no-preference) {
+		.cursor-indicator {
+			animation: pulse 1.5s infinite;
 		}
-		50% {
-			opacity: 0.5;
+
+		.status-value[data-status='connected'] .status-dot {
+			animation: pulse 1.5s infinite;
+		}
+
+		@keyframes pulse {
+			0%,
+			100% {
+				opacity: 1;
+			}
+			50% {
+				opacity: 0.5;
+			}
 		}
 	}
 
@@ -550,15 +607,110 @@ proposeAIChange(session.id, {
 		border-radius: 8px;
 		padding: 1.25rem;
 		overflow-x: auto;
+		scrollbar-width: thin;
+		scrollbar-color: var(--ide-border) transparent;
+	}
+
+	.config-demo::-webkit-scrollbar {
+		height: 8px;
+	}
+
+	.config-demo::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.config-demo::-webkit-scrollbar-thumb {
+		background: var(--ide-border);
+		border-radius: 4px;
 	}
 
 	.config-demo pre {
 		margin: 0;
+		/* Keep the fade mask over trailing padding so the last glyph is never clipped */
+		padding-right: 1.75rem;
 	}
 
 	.config-demo code {
 		font-family: var(--ide-font-mono);
 		font-size: 0.875rem;
 		color: var(--ide-text-primary);
+	}
+
+	/* Code block scroll affordance */
+	.config-demo {
+		-webkit-mask-image: linear-gradient(
+			to right,
+			#000 calc(100% - 1.5rem),
+			transparent 100%
+		);
+		mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent 100%);
+	}
+
+	/* Tablet -> mobile shift */
+	@media (max-width: 860px) {
+		.demo-page {
+			padding: 1.5rem;
+			overflow-x: hidden;
+		}
+
+		.editor-header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.5rem;
+		}
+
+		.active-users {
+			flex-wrap: wrap;
+		}
+
+		.session-actions {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+		}
+
+		.session-actions :global(button) {
+			width: 100%;
+			min-height: 44px;
+		}
+
+		/* Primary 'Accept All' spans the full width; secondary + destructive
+		   share the row below so the danger button is never orphaned. */
+		.session-actions :global(button:first-child) {
+			grid-column: 1 / -1;
+		}
+	}
+
+	/* Phones */
+	@media (max-width: 640px) {
+		.demo-page {
+			padding: 1.25rem 1rem;
+		}
+
+		.page-header h1 {
+			font-size: 1.625rem;
+		}
+
+		.component-section h2 {
+			font-size: 1.25rem;
+		}
+
+		.status-row {
+			flex-wrap: wrap;
+			gap: 0.5rem 0.75rem;
+		}
+
+		.status-label {
+			min-width: 0;
+		}
+
+		.cursor-details {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.25rem;
+		}
+
+		.config-demo code {
+			font-size: var(--ide-font-size-xs);
+		}
 	}
 </style>
