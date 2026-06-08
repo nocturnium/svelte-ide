@@ -171,10 +171,23 @@
 	// Input handler module (created in initEditor)
 	let inputHandlers = $state(null as unknown as ReturnType<typeof createEditorInput>);
 
+	function lineToVisualRow(line: number): number {
+		const lineCount = editorState?.lineCount ?? lines.length;
+		if (!folding || lineCount <= 0) return Math.max(0, Math.floor(line));
+		return foldManager.lineToVisualRow(line, lineCount);
+	}
+
+	function visualRowToLine(visualRow: number): number {
+		const lineCount = editorState?.lineCount ?? lines.length;
+		if (!folding || lineCount <= 0) return Math.max(0, Math.floor(visualRow));
+		return foldManager.visualRowToLine(visualRow, lineCount);
+	}
+
 	// Scroll management module
 	const editorScroll = createEditorScroll({
 		getEditorContent: () => editorContent,
 		getSelection: () => selection,
+		lineToVisualRow: (line) => lineToVisualRow(line),
 		getMeasurements: () => ({ lineHeight, charWidth, gutterWidth, contentPadding: CONTENT_PADDING })
 	});
 	const { scrollCursorIntoView } = editorScroll;
@@ -378,6 +391,7 @@
 			getCursors: () => cursors,
 			getScrollPosition: () => ({ scrollTop, scrollLeft }),
 			getMeasurements: () => ({ charWidth, lineHeight, gutterWidth }),
+			visualRowToLine: (visualRow) => visualRowToLine(visualRow),
 
 			onOpenFind: (withReplace) => openFind(withReplace),
 			onCloseFind: () => closeFind(),
@@ -507,10 +521,12 @@
 		if (!folding || visibleLineIndices.length === 0) {
 			return lines.map((line, index) => ({ line, index }));
 		}
-		return visibleLineIndices.map((index) => ({
-			line: lines[index],
-			index
-		}));
+		return visibleLineIndices
+			.filter((index) => index >= 0 && index < lines.length)
+			.map((index) => ({
+				line: lines[index],
+				index
+			}));
 	});
 
 	/** Extra rows rendered above/below the viewport to avoid blank edges while scrolling. */
@@ -540,6 +556,7 @@
 		}> = [];
 		for (let visualRow = firstRow; visualRow <= lastRow; visualRow++) {
 			const entry = visibleLines[visualRow];
+			if (!entry) continue;
 			slice.push({ line: entry.line, index: entry.index, visualRow });
 		}
 		return slice;
@@ -590,7 +607,8 @@
 			setContent: (content) => editorState.setContent(content),
 			scrollCursorIntoView: () => scrollCursorIntoView(),
 			focusEditor: () => hiddenInput?.focus(),
-			isReadonly: () => readonly
+			isReadonly: () => readonly,
+			lineToVisualRow: (line) => lineToVisualRow(line)
 		});
 	}
 
@@ -1006,6 +1024,7 @@
 			{viewportHeight}
 			getLine={(n) => editorState.getLine(n)}
 			lineCount={editorState?.lineCount ?? 0}
+			lineToVisualRow={(line) => lineToVisualRow(line)}
 		/>
 
 		<!-- Lines (virtualized: only the windowed slice is rendered) -->
