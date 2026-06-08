@@ -69,7 +69,7 @@ Most of the published surface is re-exported from `src/lib/index.ts` (the root `
 | `stores` | Module-scoped Svelte 5 runes stores: `editor`, `ai`, `ai-persistence`, `plugin`, `collaboration`, `vfs`, `agents`, `layout`. | `./stores`, `.` |
 | `services` | I/O and coordination: `lsp-client`, `vfs-client`, `ide-integration`, `optimistic`, `error-handling`. | `.` (re-exported; the LSP client surface is exported by name, the others under namespaces such as `vfsClient`, `ideIntegration`, `optimistic`, `errorHandling`) |
 | `crdt` | Yjs wrappers for real-time collaboration: `CollaborativeDocument`, `CollaborativeProvider`, `createAwarenessProtocol`, `createUndoManager`. Requires optional peers. | `./crdt` **only** |
-| `plugins` | Client-side plugin runtime: `pluginRegistry`, `createPluginLoader`, `createSandbox`, `definePlugin`, `defineCommand`, `definePanel`. Requires a caller-supplied plugin host. | `./plugins` **only** |
+| `plugins` | Client-side plugin runtime: `pluginRegistry`, `createPluginLoader`, `definePlugin`, `defineCommand`, `definePanel`. Requires a caller-supplied plugin host. | `./plugins` **only** |
 | `types` | Type-only modules: `editor`, `filesystem`, `vfs`, `ai`, `plugin`, `crdt`, `lsp`, `events`, `agents`. | `./types` (full set); the root `.` re-exports most of these — `editor`, `filesystem`, `ai`, `plugin`, `crdt`, `events`, `lsp` |
 | `utils` | Pure helpers: `language` (detection), `format`, `keybindings`. | `./utils`, `.` |
 | `styles` | `theme.css` — the design tokens (CSS custom properties on `:root`). | `./theme.css` |
@@ -177,7 +177,7 @@ For end-to-end setup of each boundary, see [LSP](guides/lsp.md), Collaboration (
 A few seams handle untrusted input and are worth knowing about when reviewing changes:
 
 - **AI rendering** — `AIMessageContent` escapes HTML and whitelists link schemes *before* any `{@html}`, so model output can never inject markup.
-- **Plugin sandbox** — `createSandbox()` validates code against blocked imports and dangerous patterns and runs it with a restricted global set and an execution timeout. (The shipped sandbox is a baseline; a production plugin host should add iframe/Worker isolation.)
+- **Untrusted plugin code** — the library ships **no** client-side sandbox. The former in-realm `createSandbox` (`new Function`) evaluator was removed in v1.0.0 because it was not a real security boundary. Run untrusted plugin code on the host (out of band, via `loadModule`) or in `<iframe sandbox>`/Web Worker isolation you control — see the [plugins guide](guides/plugins.md#running-untrusted-plugin-code).
 - **CRDT relay & LSP bridge** — because the URLs are caller-supplied, origin and auth policy are entirely your backend's responsibility. The reference Go bridge in `backend/` defaults to localhost-only origins.
 
 ## Build and publish model
