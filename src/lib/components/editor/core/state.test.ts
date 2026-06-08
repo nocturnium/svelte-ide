@@ -13,6 +13,10 @@ function makeState(content = ''): EditorState {
 	return createEditorState({ content, language: 'plaintext' });
 }
 
+function sortedCursorPositions(state: EditorState): Array<{ line: number; column: number }> {
+	return state.cursorManager.getSortedCursors().map((cursor) => cursor.selection.head);
+}
+
 // ============================================================
 // Content Access
 // ============================================================
@@ -270,6 +274,20 @@ describe('EditorState — insert', () => {
 
 		expect(state.getContent()).toBe('hello!');
 	});
+
+	it('should place same-line multi-cursor insert carets after cumulative inserts', () => {
+		const state = makeState('abcd');
+		state.setCursor({ line: 0, column: 1 });
+		state.addCursor({ line: 0, column: 3 });
+
+		state.insert('X');
+
+		expect(state.getContent()).toBe('aXbcXd');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 2 },
+			{ line: 0, column: 5 }
+		]);
+	});
 });
 
 describe('EditorState — insertAt', () => {
@@ -347,6 +365,20 @@ describe('EditorState — deleteBackward', () => {
 		expect(state.getContent()).toBe('');
 		expect(state.cursor.column).toBe(0);
 	});
+
+	it('should place same-line multi-cursor backspace carets after cumulative deletes', () => {
+		const state = makeState('abcdef');
+		state.setCursor({ line: 0, column: 2 });
+		state.addCursor({ line: 0, column: 5 });
+
+		state.deleteBackward();
+
+		expect(state.getContent()).toBe('acdf');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 1 },
+			{ line: 0, column: 3 }
+		]);
+	});
 });
 
 describe('EditorState — deleteForward', () => {
@@ -380,6 +412,34 @@ describe('EditorState — deleteForward', () => {
 		state.deleteForward();
 
 		expect(state.getContent()).toBe('hello');
+	});
+
+	it('should place same-line multi-cursor deleteForward carets after cumulative deletes', () => {
+		const state = makeState('abcdef');
+		state.setCursor({ line: 0, column: 1 });
+		state.addCursor({ line: 0, column: 3 });
+
+		state.deleteForward();
+
+		expect(state.getContent()).toBe('acef');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 1 },
+			{ line: 0, column: 2 }
+		]);
+	});
+
+	it('should update every cursor after multi-cursor deleteForward', () => {
+		const state = makeState('abc\ndef');
+		state.setCursor({ line: 0, column: 1 });
+		state.addCursor({ line: 1, column: 1 });
+
+		state.deleteForward();
+
+		expect(state.getContent()).toBe('ac\ndf');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 1 },
+			{ line: 1, column: 1 }
+		]);
 	});
 });
 
@@ -696,6 +756,28 @@ describe('EditorState — Undo and Redo', () => {
 		state.insert('?');
 
 		expect(state.canRedo).toBe(false);
+	});
+
+	it('should undo a merged typing run to the full pre-run content and cursor state', () => {
+		const state = makeState('hello');
+		state.setCursor({ line: 0, column: 5 });
+
+		state.insert('a');
+		state.insert('b');
+		state.insert('c');
+
+		expect(state.getContent()).toBe('helloabc');
+		expect(state.cursor).toEqual({ line: 0, column: 8 });
+
+		expect(state.undo()).toBe(true);
+
+		expect(state.getContent()).toBe('hello');
+		expect(state.cursor).toEqual({ line: 0, column: 5 });
+
+		expect(state.redo()).toBe(true);
+
+		expect(state.getContent()).toBe('helloabc');
+		expect(state.cursor).toEqual({ line: 0, column: 8 });
 	});
 });
 
