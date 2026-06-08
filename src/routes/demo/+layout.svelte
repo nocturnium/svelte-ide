@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { base, resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
 
@@ -49,6 +49,23 @@
 
 	let currentPath = $derived($page.url.pathname);
 
+	// Routes whose page renders a full application shell (IDE chrome, multi-panel
+	// dashboards) rather than prose. These fill the whole content area instead of
+	// being capped to the centered reading column. Stored without `base`.
+	const FULL_BLEED_PATHS = new Set([
+		'/demo/editor',
+		'/demo/playground',
+		'/demo/editor-intelligence',
+		'/demo/semantic-features',
+		'/demo/cognitive-load',
+		'/demo/debugging',
+		'/demo/devx-features',
+		'/demo/collaboration-features',
+		'/demo/power-features'
+	]);
+
+	let isFullBleed = $derived(FULL_BLEED_PATHS.has(currentPath.slice(base.length)));
+
 	function isActive(href: string): boolean {
 		const target = `${base}${href}`;
 		return currentPath === target;
@@ -67,7 +84,8 @@
 
 	// Close the drawer whenever the route changes.
 	$effect(() => {
-		currentPath;
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		currentPath; // read to declare reactive dependency on route changes
 		mobileOpen = false;
 	});
 
@@ -137,7 +155,7 @@
 			<span aria-hidden="true">{mobileOpen ? '✕' : '☰'}</span>
 			<span class="ide-visually-hidden">Toggle navigation</span>
 		</button>
-		<a class="mobile-brand" href={`${base}/`}>
+		<a class="mobile-brand" href={resolve('/')}>
 			<span class="logo-icon" aria-hidden="true">◉</span>
 			<span>Nocturnium IDE</span>
 		</a>
@@ -151,35 +169,35 @@
 		style="width: {sidebarWidth}px;"
 	>
 		<div class="demo-header">
-			<a class="demo-logo" href={`${base}/`} aria-label="Nocturnium Svelte IDE — home">
+			<a class="demo-logo" href={resolve('/')} aria-label="Nocturnium Svelte IDE — home">
 				<span class="logo-icon" aria-hidden="true">◉</span>
 				<span class="logo-text">Nocturnium</span>
 			</a>
 			<div class="demo-header-meta">
 				<span class="product-tag">Svelte IDE</span>
-				<span class="version-pill">v0.2.0</span>
+				<span class="version-pill">v{__APP_VERSION__}</span>
 			</div>
 		</div>
 
 		<nav class="demo-nav" aria-label="Demo navigation">
-			<a class="nav-home" href={`${base}/`}>
+			<a class="nav-home" href={resolve('/')}>
 				<span class="nav-icon" aria-hidden="true">←</span>
 				<span class="nav-label">Back to home</span>
 			</a>
 			<a
 				class="nav-item nav-overview"
 				class:active={isActive('/demo')}
-				href={`${base}/demo`}
+				href={resolve('/demo')}
 				aria-current={isActive('/demo') ? 'page' : undefined}
 			>
 				<span class="nav-icon" aria-hidden="true">⌂</span>
 				<span class="nav-label">Overview</span>
 			</a>
 
-			{#each navGroups as group}
+			{#each navGroups as group (group.title)}
 				<div class="nav-group">
 					<h2 class="nav-group-title">{group.title}</h2>
-					{#each group.items as item}
+					{#each group.items as item (item.href)}
 						<a
 							class="nav-item"
 							class:active={isActive(item.href)}
@@ -226,7 +244,7 @@
 		/>
 	</div>
 
-	<main class="demo-content">
+	<main class="demo-content" class:demo-content--bleed={isFullBleed}>
 		<div class="demo-content__inner">
 			{@render children()}
 		</div>
@@ -478,7 +496,7 @@
 	   set `height: 100%` still resolve correctly without being clipped. */
 	.demo-content__inner {
 		width: 100%;
-		max-width: 1100px;
+		max-width: 1280px;
 		margin-inline: auto;
 		padding: var(--ide-spacing-xl) var(--ide-spacing-2xl) var(--ide-spacing-2xl);
 		min-height: 100%;
@@ -500,6 +518,24 @@
 		max-width: none;
 		margin-inline: 0;
 		padding-inline: 0;
+	}
+
+	/* Full-bleed pages (app shells, multi-panel dashboards) fill the entire content
+	   area instead of the centered reading column — no max-width, no gutters — and
+	   stretch vertically so their own height:100% / flex chrome resolves against the
+	   viewport. Driven by FULL_BLEED_PATHS in the script above. */
+	.demo-content--bleed .demo-content__inner {
+		max-width: none;
+		margin-inline: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+	}
+	.demo-content--bleed .demo-content__inner > :global(*) {
+		flex: 1;
+		min-height: 0;
 	}
 
 	.mobile-backdrop {

@@ -1,8 +1,20 @@
+import { readFileSync } from 'node:fs';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+// `defineConfig` from vitest/config (not 'vite') so the inline `test` block is typed.
+import { defineConfig } from 'vitest/config';
+
+// Single source of truth for the displayed app version: read package.json at
+// config-load time and inject it as a compile-time constant. The demo UI renders
+// `__APP_VERSION__` (declared in src/app.d.ts) so the site version can never drift
+// from the published package version — semantic-release bumps package.json and the
+// next Pages build picks the new version up automatically.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 export default defineConfig({
+	define: {
+		__APP_VERSION__: JSON.stringify(pkg.version)
+	},
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
 		// Exclude e2e specs and build output. The .svelte-kit/__package__ dir holds

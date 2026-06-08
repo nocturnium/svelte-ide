@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import '../app.css';
@@ -34,7 +34,6 @@ const editor = mount(CustomEditor, {
   props: { content: snippet.source, language: 'typescript' }
 });
 `;
-	// svelte-ignore state_referenced_locally
 	let heroContent = $state(heroSample);
 
 	// Render a snippet to highlighted HTML using the library tokenizer (same token
@@ -164,7 +163,7 @@ const editor = mount(CustomEditor, {
   import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';
 
   let code = $state('const hello = "world";');
-<\/script>
+<${'/'}script>
 
 <CustomEditor bind:content={code} language="typescript" folding multiCursor />`;
 
@@ -239,14 +238,14 @@ const editor = mount(CustomEditor, {
 
 	<!-- Top bar -->
 	<header class="topbar">
-		<a class="brand" href={`${base}/`} aria-label="Nocturnium Svelte IDE — home">
+		<a class="brand" href={resolve("/")} aria-label="Nocturnium Svelte IDE — home">
 			<span class="brand-mark" aria-hidden="true">◉</span>
 			<span class="brand-name">Nocturnium</span>
 			<span class="brand-sub">Svelte IDE</span>
 		</a>
 		<nav class="topnav" aria-label="Primary">
-			<a href={`${base}/demo`}>Demos</a>
-			<a class="topnav-secondary" href={`${base}/demo/editor`}>Editor</a>
+			<a href={resolve("/demo")}>Demos</a>
+			<a class="topnav-secondary" href={resolve("/demo/editor")}>Editor</a>
 			<a href="https://github.com/nocturnium/svelte-ide" target="_blank" rel="noopener">GitHub ↗</a>
 		</nav>
 	</header>
@@ -256,7 +255,7 @@ const editor = mount(CustomEditor, {
 		<section class="hero" aria-labelledby="hero-title">
 			<div class="hero-copy">
 				<div class="eyebrow">
-					<Badge variant="info">v0.2.0</Badge>
+					<Badge variant="info">v{__APP_VERSION__}</Badge>
 					<span class="eyebrow-text">Zero-dependency editor core</span>
 				</div>
 				<h1 id="hero-title">
@@ -268,15 +267,15 @@ const editor = mount(CustomEditor, {
 					production-ready.
 				</p>
 				<div class="hero-actions">
-					<Button variant="primary" size="lg" onclick={() => goto(`${base}/demo/editor`)}>
+					<Button variant="primary" size="lg" onclick={() => goto(resolve("/demo/editor"))}>
 						Try the editor
 					</Button>
-					<Button variant="secondary" size="lg" onclick={() => goto(`${base}/demo`)}>
+					<Button variant="secondary" size="lg" onclick={() => goto(resolve("/demo"))}>
 						Browse demos
 					</Button>
 				</div>
 				<dl class="hero-stats">
-					{#each stats as stat}
+					{#each stats as stat, i (i)}
 						<div class="stat">
 							<dt class="stat-value">{stat.value}</dt>
 							<dd class="stat-label">{stat.label}</dd>
@@ -308,9 +307,8 @@ const editor = mount(CustomEditor, {
 						{:else}
 							<!-- Lightweight syntax-highlighted paint shown until the live
 							     editor lazy-loads. Same token classes as the real editor. -->
-							<pre class="hero-static" aria-hidden="true"><code
-									><!-- eslint-disable-next-line svelte/no-at-html-tags -->{@html heroHTML}</code
-								></pre>
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -- heroHTML is produced by highlightToHTML which escapes all user content through the tokenizer -->
+							<pre class="hero-static" aria-hidden="true"><code>{@html heroHTML}</code></pre>
 						{/if}
 					</div>
 				</div>
@@ -325,7 +323,7 @@ const editor = mount(CustomEditor, {
 				<p>A focused set of primitives that compose into a real IDE.</p>
 			</div>
 			<div class="feature-grid">
-				{#each features as feature}
+				{#each features as feature, i (i)}
 					<article class="feature-card">
 						<span class="feature-icon" aria-hidden="true">{feature.icon}</span>
 						<h3>{feature.title}</h3>
@@ -391,7 +389,7 @@ const editor = mount(CustomEditor, {
 				{/each}
 			</div>
 			<div class="quickstart-cta">
-				<Button variant="primary" size="md" onclick={() => goto(`${base}/demo/editor`)}>
+				<Button variant="primary" size="md" onclick={() => goto(resolve("/demo/editor"))}>
 					See it in action →
 				</Button>
 			</div>
@@ -409,9 +407,9 @@ const editor = mount(CustomEditor, {
 				</div>
 			</div>
 			<nav class="footer-links" aria-label="Footer">
-				<a href={`${base}/demo`}>Demos</a>
-				<a href={`${base}/demo/editor`}>Editor</a>
-				<a href={`${base}/demo/playground`}>Playground</a>
+				<a href={resolve("/demo")}>Demos</a>
+				<a href={resolve("/demo/editor")}>Editor</a>
+				<a href={resolve("/demo/playground")}>Playground</a>
 				<a href="https://github.com/nocturnium/svelte-ide" target="_blank" rel="noopener">GitHub ↗</a>
 			</nav>
 		</div>

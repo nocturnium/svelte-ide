@@ -188,7 +188,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		<span class="card-link card-link--featured">Open the flagship demo →</span>
 	</a>
 
-	{#each groups as group}
+	{#each groups as group (group.title)}
 		<section
 			class="hub-group"
 			style={`--group-accent: ${group.accent};`}
@@ -196,7 +196,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		>
 			<h2 id={`group-${group.title}`} class="group-title">{group.title}</h2>
 			<div class="card-grid">
-				{#each group.demos as demo}
+				{#each group.demos as demo (demo.href)}
 					<a class="demo-card demo-card--grouped" href={`${base}${demo.href}`}>
 						<div class="card-head">
 							<span class="card-icon" aria-hidden="true">{demo.icon}</span>
