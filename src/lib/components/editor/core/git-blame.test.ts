@@ -450,7 +450,8 @@ describe('GitBlameManager -- setConfig', () => {
 			makeBlameInfo({ line: 1, author: 'Bob', timestamp: new Date() })
 		]);
 
-		mgr.getLineBlame(0)!.color; // age color established
+		const ageColorBefore = mgr.getLineBlame(0)!.color; // age color established
+		expect(ageColorBefore).toBeDefined();
 
 		// Switch to author mode
 		mgr.setConfig({ colorMode: 'author' });

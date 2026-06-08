@@ -12,6 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createEditorInput, type EditorInputDeps } from './editor-input';
+import type { EditorState, FoldManager, createNavigation, createKeyboardHandler } from './core';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,10 +26,10 @@ function makeDeps(overrides: Partial<EditorInputDeps> = {}): EditorInputDeps {
 	};
 
 	return {
-		getEditorState: () => ({} as any),
-		getNavigation: () => ({} as any),
-		getKeyboardHandler: () => ({ handleKeyDown: vi.fn(() => false) } as any),
-		getFoldManager: () => ({} as any),
+		getEditorState: () => ({} as unknown as EditorState),
+		getNavigation: () => ({} as unknown as ReturnType<typeof createNavigation>),
+		getKeyboardHandler: () => ({ handleKeyDown: vi.fn(() => false) } as unknown as ReturnType<typeof createKeyboardHandler>),
+		getFoldManager: () => ({} as unknown as FoldManager),
 
 		getEditorContent: () => null,
 		getHiddenInput: () => null,
@@ -98,7 +99,7 @@ describe('createEditorInput', () => {
 		];
 
 		for (const method of expectedMethods) {
-			expect(typeof (input as any)[method]).toBe('function');
+			expect(typeof (input as unknown as Record<string, unknown>)[method]).toBe('function');
 		}
 	});
 });
@@ -160,7 +161,7 @@ describe('IME composition', () => {
 		const mockState = {
 			insert: vi.fn()
 		};
-		deps.getEditorState = () => mockState as any;
+		deps.getEditorState = () => mockState as unknown as EditorState;
 
 		const input = createEditorInput(deps);
 
@@ -179,7 +180,7 @@ describe('IME composition', () => {
 	it('handleCompositionEnd should insert composed text', () => {
 		const deps = makeDeps();
 		const mockState = { insert: vi.fn() };
-		deps.getEditorState = () => mockState as any;
+		deps.getEditorState = () => mockState as unknown as EditorState;
 		deps.getHiddenInput = () => ({ value: '' } as unknown as HTMLTextAreaElement);
 
 		const input = createEditorInput(deps);
@@ -198,7 +199,7 @@ describe('IME composition', () => {
 	it('handleCompositionEnd should not insert when readonly', () => {
 		const deps = makeDeps({ isReadonly: () => true });
 		const mockState = { insert: vi.fn() };
-		deps.getEditorState = () => mockState as any;
+		deps.getEditorState = () => mockState as unknown as EditorState;
 
 		const input = createEditorInput(deps);
 		input.handleCompositionStart();
@@ -218,7 +219,7 @@ describe('handleInput', () => {
 	it('should insert text from hidden input and clear it', () => {
 		const deps = makeDeps();
 		const mockState = { insert: vi.fn() };
-		deps.getEditorState = () => mockState as any;
+		deps.getEditorState = () => mockState as unknown as EditorState;
 
 		const input = createEditorInput(deps);
 
@@ -234,7 +235,7 @@ describe('handleInput', () => {
 	it('should not insert when readonly', () => {
 		const deps = makeDeps({ isReadonly: () => true });
 		const mockState = { insert: vi.fn() };
-		deps.getEditorState = () => mockState as any;
+		deps.getEditorState = () => mockState as unknown as EditorState;
 
 		const input = createEditorInput(deps);
 
@@ -250,7 +251,7 @@ describe('handleInput', () => {
 	it('should not insert when value is empty', () => {
 		const deps = makeDeps();
 		const mockState = { insert: vi.fn() };
-		deps.getEditorState = () => mockState as any;
+		deps.getEditorState = () => mockState as unknown as EditorState;
 
 		const input = createEditorInput(deps);
 
@@ -321,10 +322,10 @@ describe('mouse hit-testing with tabs', () => {
 		} as unknown as HTMLDivElement;
 
 		const deps = makeDeps({
-			getEditorState: () => editorState as any,
+			getEditorState: () => editorState as unknown as EditorState,
 			getEditorContent: () => editorContent,
-			getHiddenInput: () => ({ focus: vi.fn() } as any),
-			getNavigation: () => ({ selectWord: vi.fn(), selectLine: vi.fn() } as any),
+			getHiddenInput: () => ({ focus: vi.fn() } as unknown as HTMLTextAreaElement),
+			getNavigation: () => ({ selectWord: vi.fn(), selectLine: vi.fn() } as unknown as ReturnType<typeof createNavigation>),
 			getMeasurements: () => ({
 				charWidth: opts.charWidth ?? 10,
 				lineHeight: 20,

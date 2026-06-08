@@ -1,15 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { getWordAtPosition, selectNextOccurrence, selectAllOccurrences } from './editor-multicursor';
 import type { EditorState, Position, Selection } from './core';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Create a minimal line-like object */
-function makeLine(text: string) {
-	return { text, number: 0, tokens: undefined };
-}
 
 /**
  * Build a minimal EditorState-like mock with the properties needed

@@ -192,7 +192,6 @@ The plugin types model a governed lifecycle (`draft → submitted → reviewing 
 - **`PluginEvent`** / **`PluginEventType`** — SSE-stream events (`created`, `vote_cast`, `consensus`, `deployed`, `rolled_back`, …).
 - **`PluginManifest`** / **`PluginInstance`** — registration shape and a live runtime instance (`status`, `exports`, `dispose`).
 - **`PluginContributions`** — UI contribution points: `commands`, `menus`, `keybindings`, `panels`, `statusBarItems`, `decorations`, `iconThemes`.
-- **`PluginSandboxConfig`** — execution limits (time, memory, network/filesystem access, import allow/block lists).
 
 ```ts
 import type { PluginProposal } from "@nocturnium/svelte-ide";

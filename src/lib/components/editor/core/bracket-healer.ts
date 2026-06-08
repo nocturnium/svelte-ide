@@ -215,7 +215,7 @@ export class BracketHealer {
 			const line = lines[lineNum];
 			let inString = false;
 			let stringChar = '';
-			let inComment = false;
+			const inComment = false;
 
 			for (let col = 0; col < line.length; col++) {
 				const char = line[col];

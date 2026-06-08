@@ -11,11 +11,6 @@ function tokenTypes(line: TokenizedLine): string[] {
 	return line.tokens.map((t) => t.type);
 }
 
-/** Extract the token text sequence from a tokenized line */
-function tokenTexts(line: TokenizedLine): string[] {
-	return line.tokens.map((t) => t.text);
-}
-
 /** Tokenize a single line with the given language, returning the TokenizedLine */
 function tok(language: string, code: string): TokenizedLine {
 	const tokenizer = getTokenizer(language);

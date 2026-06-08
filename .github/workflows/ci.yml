@@ -1,0 +1,75 @@
+# Continuous integration: type-check, lint, unit tests, and both builds (demo +
+# publishable library). Runs on every pull request, plus the commit-message lint
+# that keeps history Conventional-Commits clean so semantic-release can version it.
+#
+# Releases are gated separately in semantic-release.yml (which re-runs this same
+# suite before cutting a release), so this workflow targets pull_request only —
+# pushes to main are validated by the release workflow and don't need a duplicate run.
+#
+# Third-party actions are pinned to a full commit SHA (trailing `# vX.Y.Z` records
+# the version) to match the rest of .github/workflows. Bump SHA and comment together.
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Check · Lint · Test · Build · Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check (svelte-check)
+        run: npm run check
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Unit tests (vitest)
+        run: npm test
+
+      - name: Build demo site
+        run: npm run build
+
+      - name: Build + validate library (svelte-package + publint)
+        run: npm run package
+
+  commitlint:
+    name: Lint commit messages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for the PR range)
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate PR commit messages
+        run: npx commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}" --verbose

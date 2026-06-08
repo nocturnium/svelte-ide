@@ -9,15 +9,14 @@
 	 * - Inline diagnostics
 	 */
 
-	import { onMount, tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import type { EditorPreferences } from '$lib/types';
 	import type { LSPClient } from '$lib/services/lsp-client';
 	import type {
 		CompletionItem,
 		Hover,
 		SignatureHelp,
-		Diagnostic,
-		Position
+		Diagnostic
 	} from '$lib/types/lsp';
 	import type { Cursor } from '../editor/core/multi-cursor';
 	import CustomEditor from '../editor/CustomEditor.svelte';
@@ -90,7 +89,7 @@
 	let signaturePosition = $state({ x: 0, y: 0 });
 	let showSignatureHelp = $state(false);
 
-	let diagnostics = $state<Diagnostic[]>([]);
+	let _diagnostics = $state<Diagnostic[]>([]);
 
 	// Cursor position tracking
 	let cursorLine = $state(1);
@@ -178,11 +177,8 @@
 		completionItems = [];
 	}
 
-	function handleCompletionSelect(item: CompletionItem) {
-		// Insert the completion
-		const insertText = item.insertText ?? item.label;
-
-		// TODO: Apply text edit from completion item
+	function handleCompletionSelect(_item: CompletionItem) {
+		// TODO: Apply text edit from completion item using _item.insertText ?? _item.label
 		// For now, just insert at cursor position
 		// This would need integration with the editor's insert method
 
@@ -253,7 +249,7 @@
 
 	function handleDiagnosticsUpdate(params: { uri: string; diagnostics: Diagnostic[] }) {
 		if (params.uri === uri) {
-			diagnostics = params.diagnostics;
+			_diagnostics = params.diagnostics;
 			onDiagnostics?.(params.diagnostics);
 		}
 	}

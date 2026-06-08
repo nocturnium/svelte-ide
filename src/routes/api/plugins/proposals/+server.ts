@@ -126,7 +126,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		mockProposals.set(proposal.id, proposal);
 
 		return json({ success: true, proposal }, { status: 201 });
-	} catch (err) {
+	} catch (_err) {
 		return json({ error: 'Invalid request body' }, { status: 400 });
 	}
 };

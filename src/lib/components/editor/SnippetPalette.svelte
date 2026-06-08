@@ -6,7 +6,6 @@
 	 * Supports filtering by category and shows live preview.
 	 */
 
-	import { onMount } from 'svelte';
 	import type { SnippetManager, Snippet } from './core/snippet-manager';
 
 	interface Props {
@@ -102,7 +101,7 @@
 				e.preventDefault();
 				onClose?.();
 				break;
-			case 'Tab':
+			case 'Tab': {
 				// Tab through categories
 				e.preventDefault();
 				const currentIdx = categories.indexOf(selectedCategory ?? 'All');
@@ -111,6 +110,7 @@
 					: (currentIdx + 1) % categories.length;
 				selectedCategory = categories[nextIdx] === 'All' ? null : categories[nextIdx];
 				break;
+			}
 		}
 	}
 
@@ -176,7 +176,7 @@
 		</div>
 
 		<div class="snippet-categories">
-			{#each categories as category}
+			{#each categories as category (category)}
 				<button
 					class="category-tab"
 					class:active={category === 'All' ? !selectedCategory : selectedCategory === category}
@@ -231,7 +231,8 @@
 					</div>
 
 					<div class="preview-body">
-						<pre>{@html getPreview(snippet.body)}</pre>
+						<!-- eslint-disable-next-line svelte/no-at-html-tags — content is escaped by escapeHtml() before placeholder spans are added -->
+					<pre>{@html getPreview(snippet.body)}</pre>
 					</div>
 
 					<div class="preview-footer">
@@ -241,7 +242,7 @@
 
 					{#if snippet.languages.length > 0}
 						<div class="preview-languages">
-							{#each snippet.languages as lang}
+							{#each snippet.languages as lang (lang)}
 								<span class="lang-tag">{lang}</span>
 							{/each}
 						</div>

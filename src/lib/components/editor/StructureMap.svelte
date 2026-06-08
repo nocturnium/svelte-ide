@@ -11,7 +11,7 @@
 	 */
 
 	import type { Line } from './core/state';
-	import type { SemanticRegion, SemanticCategory } from './core/semantic-analyzer';
+	import type { SemanticCategory } from './core/semantic-analyzer';
 	import { getSemanticAnalyzer } from './core/semantic-analyzer';
 	import type { ComplexityMetrics } from './core/complexity-analyzer';
 

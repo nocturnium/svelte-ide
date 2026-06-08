@@ -3,12 +3,76 @@
 	import EditorTabs from '$lib/components/editor/EditorTabs.svelte';
 	import AIPanel from '$lib/components/ai/AIPanel.svelte';
 	import PluginPanel from '$lib/components/plugins/PluginPanel.svelte';
-	import Button from '$lib/components/core/Button.svelte';
 	import Badge from '$lib/components/core/Badge.svelte';
 	import Icon from '$lib/components/core/Icon.svelte';
 	import FileIcon from '$lib/components/editor/FileIcon.svelte';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
+	import { browser } from '$app/environment';
+	import { seedProposals } from '$lib/stores/plugin.svelte';
 	import type { EditorTab } from '$lib/types';
+	import type { PluginProposal } from '$lib/types/plugin';
+
+	// Seed the plugin store with sample proposals and flip it to offline mode so the
+	// embedded <PluginPanel> renders populated content WITHOUT calling /api/plugins/*
+	// (which 404s on this static host, and whose SSE stream would auto-reconnect in a
+	// loop). Mirrors the dedicated plugins demo.
+	const SAMPLE_PROPOSALS = [
+		{
+			id: 'prettier-format',
+			name: 'Prettier Format',
+			description: 'Automatically format code using Prettier on save',
+			category: 'transform',
+			tags: ['formatting'],
+			version: 1,
+			status: 'deployed',
+			author: 'Alice',
+			parameters: { type: 'object', properties: {} },
+			implementation: { type: 'module', entryPoint: 'format' },
+			testCases: [],
+			votes: [],
+			issues: [],
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString()
+		},
+		{
+			id: 'eslint-check',
+			name: 'ESLint Checker',
+			description: 'Lint code with ESLint and surface issues inline',
+			category: 'analysis',
+			tags: ['linting'],
+			version: 1,
+			status: 'reviewing',
+			author: 'Bob',
+			parameters: { type: 'object', properties: {} },
+			implementation: { type: 'module', entryPoint: 'lint' },
+			testCases: [],
+			votes: [],
+			issues: [],
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString()
+		},
+		{
+			id: 'word-count',
+			name: 'Word Count',
+			description: 'Show a live word and character count in the status bar',
+			category: 'ui',
+			tags: ['writing'],
+			version: 1,
+			status: 'draft',
+			author: 'Carol',
+			parameters: { type: 'object', properties: {} },
+			implementation: { type: 'module', entryPoint: 'count' },
+			testCases: [],
+			votes: [],
+			issues: [],
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString()
+		}
+	];
+
+	if (browser) {
+		seedProposals(SAMPLE_PROPOSALS as unknown as PluginProposal[]);
+	}
 
 	// File system simulation
 	const files: EditorTab[] = [
@@ -442,7 +506,7 @@ MIT License - see LICENSE file for details
 					<span>Explorer</span>
 				</div>
 				<div class="file-tree">
-					{#each fileTree as item}
+					{#each fileTree as item (item.name)}
 						{#if item.type === 'folder'}
 							<div class="tree-folder">
 								<span class="folder-icon">📂</span>
@@ -450,7 +514,7 @@ MIT License - see LICENSE file for details
 							</div>
 							{#if item.children}
 								<div class="tree-children">
-									{#each item.children as child}
+									{#each item.children as child (child.name)}
 										{#if child.type === 'folder'}
 											<div class="tree-folder">
 												<span class="folder-icon">📁</span>
@@ -458,7 +522,7 @@ MIT License - see LICENSE file for details
 											</div>
 											{#if child.children}
 												<div class="tree-children">
-													{#each child.children as grandchild}
+													{#each child.children as grandchild (grandchild.name)}
 														<button
 															class="tree-file"
 															class:active={activeTabId === grandchild.id}

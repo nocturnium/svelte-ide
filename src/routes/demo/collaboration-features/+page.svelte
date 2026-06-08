@@ -14,7 +14,6 @@
 	import ConflictZoneLayer from '$lib/components/editor/ConflictZoneLayer.svelte';
 	import {
 		createTimelineManager,
-		type TimelineSnapshot,
 		type SnapshotMetadata
 	} from '$lib/components/editor/core/timeline';
 	import {
@@ -364,7 +363,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 			</div>
 
 			<div class="users-list">
-				{#each simulatedUsers as user}
+				{#each simulatedUsers as user (user.id)}
 					<div class="user-card" style="--user-color: {user.color}">
 						<div
 							class="user-avatar"
@@ -404,7 +403,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 			{#if conflictZones.length > 0}
 				<div class="conflict-summary">
 					<h3>Active Conflict Zones</h3>
-					{#each conflictZones as zone}
+					{#each conflictZones as zone (zone.id)}
 						<div class="conflict-card conflict-card--{zone.severity}">
 							<div class="conflict-probability">{Math.round(zone.probability * 100)}%</div>
 							<div class="conflict-details">

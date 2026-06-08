@@ -53,6 +53,7 @@
 		onclick={onClick}
 		aria-label="{getSeverityLabel(diagnostic.severity)} on line {diagnostic.range.start.line + 1}"
 	>
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG content is generated internally by getGutterIcon; no user input reaches this output -->
 		{@html getGutterIcon(diagnostic.severity)}
 	</button>
 {:else}

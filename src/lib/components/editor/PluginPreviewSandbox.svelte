@@ -7,7 +7,6 @@
 	 * code transformation preview with rollback capability.
 	 */
 
-	import { onMount, onDestroy } from 'svelte';
 
 	interface PluginTransform {
 		/** Transform ID */
@@ -61,7 +60,7 @@
 
 	let {
 		code,
-		language = 'javascript',
+		language: _language = 'javascript',
 		plugins = [],
 		visible = false,
 		onApply,
@@ -371,7 +370,7 @@
 							<pre class="code-block">{currentTransform.transformed}</pre>
 						{:else}
 							<div class="diff-view">
-								{#each currentTransform.diffs as hunk}
+								{#each currentTransform.diffs as hunk, i (i)}
 									{#if hunk.type !== 'unchanged' || true}
 										<div class="diff-line diff-line--{hunk.type}">
 											<span class="diff-line__num">{hunk.lineNumber}</span>

@@ -98,7 +98,7 @@ class CollaborationSession {
 			<div class="status-row">
 				<span class="status-label">Collaborators:</span>
 				<div class="collaborators-list">
-					{#each collaborators as user}
+					{#each collaborators as user (user.id)}
 						<Avatar name={user.name} color={user.color} isAI={user.isAI} size="sm" />
 					{/each}
 					<span class="collab-count">{collaborators.length} online</span>
@@ -118,7 +118,7 @@ class CollaborationSession {
 				<Badge variant="success">Synced</Badge>
 			</div>
 			<div class="active-users">
-				{#each collaborators.slice(0, 3) as user}
+				{#each collaborators.slice(0, 3) as user (user.id)}
 					<div class="user-cursor" style="--cursor-color: {user.color}">
 						<Avatar name={user.name} color={user.color} isAI={user.isAI} size="sm" />
 						<span class="user-name">{user.name}</span>
@@ -145,7 +145,7 @@ class CollaborationSession {
 		<p class="section-desc">See where other users are editing</p>
 
 		<div class="cursors-demo">
-			{#each cursors as cursor}
+			{#each cursors as cursor (cursor.userId)}
 				<div class="cursor-info" style="--cursor-color: {cursor.user.color}">
 					<div class="cursor-indicator"></div>
 					<Avatar name={cursor.user.name} color={cursor.user.color} size="sm" />

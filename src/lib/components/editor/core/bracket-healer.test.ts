@@ -848,9 +848,6 @@ done`;
 	});
 
 	it('should suggest closing bracket before control flow statement at same indentation', () => {
-		const code = `function f() {
-  return 1
-}`;
 		// The { and } are matched. But if we remove the }:
 		const code2 = `function f() {
   return 1`;

@@ -154,7 +154,7 @@
 </script>
 
 <div class="message-content" class:streaming={isStreaming}>
-	{#each blocks as block, i}
+	{#each blocks as block, i (i)}
 		{#if block.type === 'code'}
 			<div class="code-block">
 				<div class="code-header">
@@ -173,7 +173,7 @@
 						{/if}
 					</button>
 				</div>
-				<pre class="code-content"><code>{#each tokenizeCode(block.content, block.language || 'plaintext') as token}<span class="token-{token.type}">{token.text}</span>{/each}</code></pre>
+				<pre class="code-content"><code>{#each tokenizeCode(block.content, block.language || 'plaintext') as token, ti (ti)}<span class="token-{token.type}">{token.text}</span>{/each}</code></pre>
 			</div>
 		{:else if block.type === 'inline-code'}
 			<code class="inline-code">{block.content}</code>

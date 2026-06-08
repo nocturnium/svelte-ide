@@ -9,7 +9,7 @@
 	 * - Command history
 	 */
 
-	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	export type ConsoleEntryType = 'input' | 'output' | 'error' | 'warning' | 'info' | 'log';
 
@@ -69,10 +69,7 @@
 	let inputRef = $state<HTMLInputElement>(null!);
 	let consoleRef = $state<HTMLDivElement>(null!);
 	let filter = $state<ConsoleEntryType | 'all'>('all');
-	let expandedIds = $state<Set<string>>(new Set());
-
-	// Entry counter for unique IDs
-	let entryCounter = 0;
+	const expandedIds = new SvelteSet<string>();
 
 	// Filtered entries
 	const filteredEntries = $derived(
@@ -156,13 +153,11 @@
 	 * Toggle entry expansion
 	 */
 	function toggleExpand(id: string) {
-		const newExpanded = new Set(expandedIds);
-		if (newExpanded.has(id)) {
-			newExpanded.delete(id);
+		if (expandedIds.has(id)) {
+			expandedIds.delete(id);
 		} else {
-			newExpanded.add(id);
+			expandedIds.add(id);
 		}
-		expandedIds = newExpanded;
 	}
 
 	/**
@@ -265,7 +260,7 @@
 			</div>
 
 			<div class="header-filters">
-				{#each (['all', 'error', 'warning', 'info', 'log'] as const) as filterType}
+				{#each (['all', 'error', 'warning', 'info', 'log'] as const) as filterType (filterType)}
 					{@const count = entryCounts()[filterType]}
 					<button
 						class="filter-btn"

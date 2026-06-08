@@ -318,16 +318,3 @@ export interface PluginIconTheme {
 	label: string;
 	path: string;
 }
-
-/**
- * Plugin sandbox configuration
- */
-export interface PluginSandboxConfig {
-	enabled: boolean;
-	maxExecutionTime: number;
-	maxMemory: number;
-	networkAccess: boolean;
-	filesystemAccess: boolean;
-	allowedImports: string[];
-	blockedImports: string[];
-}

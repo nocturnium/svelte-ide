@@ -6,7 +6,7 @@
  * propagate to echo locations with visible animation.
  */
 
-import type { Position, Selection } from './state';
+import type { Position } from './state';
 
 /**
  * Keystroke event for replay

@@ -20,9 +20,9 @@ import type {
 	VFSLockReleasedEvent
 } from '$lib/types';
 import * as vfsClient from '$lib/services/vfs-client';
+import { SvelteMap } from 'svelte/reactivity';
 import {
 	parseError,
-	isVFSError,
 	isConflictError,
 	logError,
 	type VFSError
@@ -70,7 +70,7 @@ interface VFSState {
 }
 
 // Reactive state using $state rune
-let state = $state<VFSState>({
+const state = $state<VFSState>({
 	workspace: null,
 	workspaceLoading: false,
 	files: [],
@@ -95,9 +95,11 @@ let state = $state<VFSState>({
 });
 
 // Event handlers for SSE
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- non-reactive internal subscription registry, not UI state
 const eventHandlers = new Map<VFSEvent['type'] | '*', Set<(event: VFSEvent) => void>>();
 
 // Lock TTL refresh intervals
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- non-reactive internal timer registry, not UI state
 const lockRefreshIntervals = new Map<string, number>(); // path -> intervalId
 
 // Current user ID (set during initialization)
@@ -315,7 +317,7 @@ export function markClean(path: string): void {
 
 export function setFiles(files: VFSFileInfo[]): void {
 	state.files = files;
-	state.fileMap = new Map(files.map((f) => [f.path, f]));
+	state.fileMap = new SvelteMap(files.map((f) => [f.path, f]));
 }
 
 // ============================================================================
@@ -328,7 +330,7 @@ export function setFiles(files: VFSFileInfo[]): void {
 export async function writeFileOptimistic(
 	path: string,
 	content: string,
-	options: { createIfNotExists?: boolean } = {}
+	_options: { createIfNotExists?: boolean } = {}
 ): Promise<OptimisticResult<VFSFileInfo>> {
 	if (!state.workspace) {
 		const error = parseError(new Error('Workspace not initialized'), { path });
@@ -352,6 +354,7 @@ export async function writeFileOptimistic(
 				updateFileInfo({
 					...previousFile,
 					size: new Blob([content]).size,
+					// eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral Date used only for toISOString(), not stored as reactive state
 					modTime: new Date().toISOString()
 				});
 			}
@@ -555,7 +558,7 @@ export function setLockStatus(path: string, status: VFSLockStatus): void {
 }
 
 export function setLocks(locks: VFSFileLock[]): void {
-	state.locks = new Map(locks.map((l) => [l.path, l]));
+	state.locks = new SvelteMap(locks.map((l) => [l.path, l]));
 
 	// Update lock statuses
 	for (const lock of locks) {
@@ -595,7 +598,7 @@ async function refreshLockTTL(path: string): Promise<void> {
 	try {
 		const lock = await vfsClient.refreshLock(state.workspace.id, path, currentUserId);
 		setLock(lock);
-	} catch (err) {
+	} catch (_err) {
 		// Refresh failed - lock may have expired
 		removeLock(path);
 		state.error = `Lock expired on ${path}`;
@@ -657,6 +660,7 @@ export function completeTransaction(
 	if (!tx) return;
 
 	tx.status = status;
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral Date used only for toISOString(), not stored as reactive state
 	tx.committedAt = new Date().toISOString();
 
 	state.activeTransactions.delete(transactionId);
@@ -807,6 +811,7 @@ export function onEvent(
 	handler: (event: VFSEvent) => void
 ): () => void {
 	if (!eventHandlers.has(type)) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal subscription set stored in non-reactive eventHandlers registry
 		eventHandlers.set(type, new Set());
 	}
 	eventHandlers.get(type)!.add(handler);

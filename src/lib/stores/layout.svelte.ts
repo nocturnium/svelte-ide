@@ -45,7 +45,7 @@ const PANEL_MIN_HEIGHT = 100;
 const PANEL_MAX_HEIGHT = 500;
 
 // Reactive state
-let state = $state<LayoutState>({
+const state = $state<LayoutState>({
 	leftSidebarVisible: true,
 	leftSidebarWidth: SIDEBAR_DEFAULT_WIDTH,
 	leftSidebarActivePanel: 'explorer',

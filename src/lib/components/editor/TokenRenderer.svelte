@@ -50,7 +50,7 @@
 </script>
 
 {#if mergedTokens.length > 0}
-	{#each mergedTokens as token}
+	{#each mergedTokens as token (token.start)}
 		{#if token.type === 'text'}
 			<span class="token-text">{processText(token.text) || '\u00A0'}</span>
 		{:else}

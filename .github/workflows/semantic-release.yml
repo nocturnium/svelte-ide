@@ -1,0 +1,89 @@
+# Automated versioning with semantic-release + Conventional Commits.
+#
+# On every push to main this: analyzes the commits since the last release, computes
+# the next version, updates CHANGELOG.md and package.json, commits + tags them, and
+# publishes a GitHub Release. It does NOT publish to npm itself — npm publishing
+# stays in release.yml (OIDC Trusted Publishing, tokenless). The GitHub Release this
+# workflow creates is what triggers release.yml's `release: published`.
+#
+# The full CI suite (check/lint/test/build/package) runs here first, so a release is
+# never cut from a red commit. (CI on pull requests lives in ci.yml.)
+#
+# ── REQUIRED ONE-TIME SETUP ───────────────────────────────────────────────────────
+#  1. TOKEN: GitHub does NOT trigger other workflows from events created with the
+#     default GITHUB_TOKEN. So if semantic-release creates the Release with
+#     GITHUB_TOKEN, release.yml will NOT fire and nothing publishes to npm.
+#     Create a token that CAN trigger release.yml and store it as the
+#     `SEMANTIC_RELEASE_TOKEN` secret:
+#        - a fine-grained PAT (Contents: read/write, Pull requests: read/write,
+#          Issues: read/write) on this repo, OR a GitHub App installation token.
+#     This workflow uses it (falling back to GITHUB_TOKEN, which still creates the
+#     Release but won't auto-publish — you'd run release.yml manually then).
+#  2. BRANCH PROTECTION: semantic-release pushes the version bump commit + tag to
+#     main. If main is protected, the token above must be allowed to bypass the
+#     protection (App tokens / admins, or a ruleset bypass actor).
+#
+# First run: there are no git tags yet, so semantic-release cuts 1.0.0 on `latest`.
+#
+# Third-party actions are pinned to a full commit SHA (trailing `# vX.Y.Z`). Bump
+# SHA and comment together.
+name: Semantic Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# semantic-release needs to push the release commit/tag and open the Release; the
+# GitHub plugin also comments on released issues/PRs.
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: semantic-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Version · tag · GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history so commit analysis sees every commit)
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build demo site
+        run: npm run build
+
+      - name: Build + validate library
+        run: npm run package
+
+      - name: Semantic Release
+        env:
+          # Prefer a PAT/App token so the created Release triggers release.yml's
+          # OIDC npm publish; fall back to GITHUB_TOKEN (creates the Release but
+          # will not auto-trigger downstream publishing — see header).
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: npx semantic-release

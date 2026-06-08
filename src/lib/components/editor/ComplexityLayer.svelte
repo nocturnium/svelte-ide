@@ -7,6 +7,7 @@
 	 * Hover over gutter indicators for details.
 	 */
 
+	import { SvelteMap } from 'svelte/reactivity';
 	import type { ComplexityMetrics, ComplexityRegion } from './core/complexity-analyzer';
 
 	interface Props {
@@ -58,7 +59,7 @@
 
 	// Group by line (in case of overlapping regions, take highest score)
 	let lineScores = $derived.by(() => {
-		const scores = new Map<number, { score: number; region: ComplexityRegion; isStart: boolean; isEnd: boolean }>();
+		const scores = new SvelteMap<number, { score: number; region: ComplexityRegion; isStart: boolean; isEnd: boolean }>();
 
 		for (const indicator of lineIndicators) {
 			const existing = scores.get(indicator.line);

@@ -21,7 +21,7 @@ interface EditorState {
 }
 
 // Reactive state using $state rune
-let state = $state<EditorState>({
+const state = $state<EditorState>({
 	tabs: [],
 	activeTabId: null,
 	splitMode: 'none',

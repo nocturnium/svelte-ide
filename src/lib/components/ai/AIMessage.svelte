@@ -85,7 +85,7 @@
 
 		{#if message.toolCalls && message.toolCalls.length > 0}
 			<div class="ai-message__tool-calls">
-				{#each message.toolCalls as toolCall}
+				{#each message.toolCalls as toolCall (toolCall.id)}
 					<AIToolCallDisplay
 						{toolCall}
 						status="completed"

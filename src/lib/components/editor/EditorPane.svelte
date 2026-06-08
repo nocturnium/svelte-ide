@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Editor from './Editor.svelte';
 	import EditorTabs from './EditorTabs.svelte';
-	import type { EditorTab, EditorPreferences } from '$types';
+	import type { EditorPreferences } from '$types';
 	import {
 		getTabs,
 		getActiveTab,

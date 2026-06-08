@@ -309,8 +309,6 @@ export class JavaScriptTokenizer {
 			return 'type.class';
 		}
 
-		// Check context for function definition
-		const beforeContext = context.slice(0, 0); // We don't have before context here
 		// Would need more context to detect 'function foo' pattern
 
 		return 'variable';
@@ -493,7 +491,7 @@ export class JavaScriptTokenizer {
 		return { tokens, pos };
 	}
 
-	private tokenizeJSXTag(text: string, pos: number, state: JSTokenizerState): Token {
+	private tokenizeJSXTag(text: string, pos: number, _state: JSTokenizerState): Token {
 		// Simple JSX tag detection
 		const match = text.match(/^<\/?[a-zA-Z][a-zA-Z0-9.]*(?:\s+[^>]*)?\/?>/);
 		if (match) {

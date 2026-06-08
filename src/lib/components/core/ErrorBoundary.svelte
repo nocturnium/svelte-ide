@@ -86,7 +86,7 @@ export function clearError() {
 
 				{#if recoveryOptions.length > 0}
 					<div class="recovery-options">
-						{#each recoveryOptions as option}
+						{#each recoveryOptions as option (option.id)}
 							<button
 								class="recovery-btn"
 								class:recommended={option.recommended}

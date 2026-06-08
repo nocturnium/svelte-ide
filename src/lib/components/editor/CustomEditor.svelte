@@ -154,7 +154,6 @@
 	let cursorBlinkInterval: ReturnType<typeof setInterval>;
 
 	// Track previous content prop to detect external changes only
-	// svelte-ignore state_referenced_locally
 	let previousContentProp = $state(content);
 
 	// Track the content the editor itself last emitted (via onChange / bind:content
@@ -163,7 +162,6 @@
 	// rebuild the document model every keystroke, wiping undo/redo and collapsing
 	// multi-cursor. Only a genuine external change (content !== what we emitted and
 	// !== the current editor content) should re-apply via setContent.
-	// svelte-ignore state_referenced_locally
 	let lastEmittedContent = content;
 
 	// Track last cursor position to avoid unnecessary blink resets
@@ -571,7 +569,7 @@
 		});
 	}
 
-	function openFind(withReplace = false) {
+	function openFind(_withReplace = false) {
 		showFindReplace = true;
 
 		// Pre-fill with selected text if any
@@ -934,7 +932,7 @@
 		<!-- Search match highlights (below selection) -->
 		{#if showFindReplace && searchMatches.length > 0}
 			<div class="custom-editor__matches">
-				{#each matchRects as rect}
+				{#each matchRects as rect, i (i)}
 					<div
 						class="custom-editor__match"
 						class:custom-editor__match--current={rect.isCurrent}

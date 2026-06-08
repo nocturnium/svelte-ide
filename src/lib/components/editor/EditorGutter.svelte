@@ -20,11 +20,11 @@
 	let {
 		lineIndex,
 		lineNumbers,
-		gutterWidth,
+		gutterWidth: _gutterWidth,
 		folding,
 		hasFoldIndicator,
 		isFoldCollapsed,
-		hiddenLineCount,
+		hiddenLineCount: _hiddenLineCount,
 		onFoldIndicatorClick
 	}: Props = $props();
 </script>

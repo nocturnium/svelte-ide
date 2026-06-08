@@ -98,7 +98,6 @@
 <svelte:window onkeydown={handleKeyDown} />
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	class="hover-tooltip {className}"
@@ -108,13 +107,14 @@
 	onclick={(e) => e.stopPropagation()}
 >
 	<div class="hover-tooltip__content">
-		{#each getContentsArray() as content, i}
+		{#each getContentsArray() as content, i (i)}
 			{@const rendered = renderContent(content)}
 			{#if i > 0}
 				<hr class="hover-tooltip__divider" />
 			{/if}
 			{#if rendered.type === 'markdown'}
 				<div class="hover-tooltip__markdown">
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -- content is sanitized via escapeHtml + safeUrl before rendering -->
 					{@html renderMarkdown(rendered.value)}
 				</div>
 			{:else}

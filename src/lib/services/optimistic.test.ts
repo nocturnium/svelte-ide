@@ -387,7 +387,7 @@ describe('Queue Management', () => {
 
 	it('cancelAllOperations should cancel all pending', async () => {
 		// Create some pending operations
-		let resolves: Array<(value: unknown) => void> = [];
+		const resolves: Array<(value: unknown) => void> = [];
 
 		for (let i = 0; i < 3; i++) {
 			const commitPromise = new Promise((resolve) => resolves.push(resolve));
@@ -492,7 +492,7 @@ describe('createDebouncedOptimistic', () => {
 		// Fire multiple updates rapidly
 		debounced.update('a', apply, rollback);
 		debounced.update('b', apply, rollback);
-		const promise = debounced.update('c', apply, rollback);
+		const _promise = debounced.update('c', apply, rollback);
 
 		expect(debounced.isPending).toBe(true);
 

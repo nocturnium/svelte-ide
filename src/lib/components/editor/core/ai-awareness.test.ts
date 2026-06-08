@@ -8,9 +8,7 @@ import {
 	AI_AGENT_COLORS,
 	type AIAwareness,
 	type AIFocusRegion,
-	type AICursor,
-	type AIAwarenessEvent,
-	type AIAwarenessCallback
+	type AICursor
 } from './ai-awareness';
 
 // ---------------------------------------------------------------------------
@@ -304,7 +302,7 @@ describe('AIAwarenessManager – getActiveAgents', () => {
 
 		// Manually set lastUpdate to 31 seconds ago
 		const stored = manager.getAgent('stale')!;
-		(stored as any).lastUpdate = Date.now() - 31000;
+		stored.lastUpdate = Date.now() - 31000;
 
 		expect(manager.getActiveAgents()).toHaveLength(0);
 	});

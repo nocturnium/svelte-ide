@@ -2,7 +2,7 @@
  * HTML/XML tokenizer
  */
 
-import type { Token, TokenizedLine, TokenizerState, TokenType } from '../types';
+import type { Token, TokenizedLine, TokenizerState } from '../types';
 import { createToken } from '../base';
 
 interface HTMLTokenizerState extends TokenizerState {
@@ -63,7 +63,7 @@ export class HTMLTokenizer {
 		return { lineNumber, tokens, text: line, state };
 	}
 
-	private getNextToken(text: string, pos: number, state: HTMLTokenizerState, fullLine: string): Token | null {
+	private getNextToken(text: string, pos: number, state: HTMLTokenizerState, _fullLine: string): Token | null {
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {

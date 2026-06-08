@@ -121,7 +121,7 @@
 				<div class="cognitive-meter__tooltip-section">
 					<span class="cognitive-meter__tooltip-label">High complexity regions:</span>
 					<ul class="cognitive-meter__tooltip-list">
-						{#each highComplexityRegions.slice(0, 5) as region}
+						{#each highComplexityRegions.slice(0, 5) as region (region.startLine)}
 							<li>
 								<span class="cognitive-meter__tooltip-region-name">
 									{region.name || `${region.type} at line ${region.startLine + 1}`}
@@ -143,7 +143,7 @@
 			{#if metrics.regions.some((r) => r.suggestion)}
 				<div class="cognitive-meter__tooltip-section">
 					<span class="cognitive-meter__tooltip-label">Suggestions:</span>
-					{#each metrics.regions.filter((r) => r.suggestion).slice(0, 2) as region}
+					{#each metrics.regions.filter((r) => r.suggestion).slice(0, 2) as region (region.startLine)}
 						<p class="cognitive-meter__tooltip-suggestion">
 							{region.suggestion}
 						</p>

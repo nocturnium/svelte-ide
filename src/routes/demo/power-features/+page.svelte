@@ -14,10 +14,9 @@
 	import {
 		createBracketHealer,
 		type BracketHealer,
+		type BracketMismatch,
 		type GhostBracket
 	} from '$lib/components/editor/core/bracket-healer';
-	import EchoCursorLayer from '$lib/components/editor/EchoCursorLayer.svelte';
-	import GhostBracketLayer from '$lib/components/editor/GhostBracketLayer.svelte';
 	import PluginPreviewSandbox from '$lib/components/editor/PluginPreviewSandbox.svelte';
 
 	// Demo state
@@ -41,7 +40,7 @@
 	return results;
 // Missing closing brace`);
 	let ghosts = $state<GhostBracket[]>([]);
-	let mismatches = $state<any[]>([]);
+	let mismatches = $state<BracketMismatch[]>([]);
 
 	// Plugin sandbox demo
 	let sandboxVisible = $state(false);
@@ -67,7 +66,6 @@ export { formatPrice, summarize };`);
 
 	// Line height for visualizations
 	const lineHeight = 20;
-	const charWidth = 8;
 
 	onMount(() => {
 		// Initialize echo manager
@@ -124,7 +122,7 @@ export { formatPrice, summarize };`);
 			echoManager.enable();
 			echoEnabled = true;
 		}
-		const cursor = echoManager.addEchoPoint({ line, column: 0 }, { delay, label: `Echo ${line + 1}` });
+		const _cursor = echoManager.addEchoPoint({ line, column: 0 }, { delay, label: `Echo ${line + 1}` });
 		echoCursors = echoManager.getEchoCursors();
 	}
 
@@ -165,7 +163,7 @@ export { formatPrice, summarize };`);
 		bracketHealer.analyzeImmediate(bracketCode);
 	}
 
-	function handlePluginApply(transform: any) {
+	function handlePluginApply(transform: { transformed: string }) {
 		sandboxCode = transform.transformed;
 		sandboxVisible = false;
 	}
@@ -241,7 +239,7 @@ export { formatPrice, summarize };`);
 				<div class="echo-visualization">
 					<div class="editor-mock-wrap">
 						<div class="editor-mock">
-						{#each Array(12) as _, i}
+						{#each Array(12) as _, i (i)}
 							<div class="mock-line">
 								<span class="line-num">{i + 1}</span>
 								<span class="line-content">// Line {i + 1} content...</span>
@@ -269,7 +267,7 @@ export { formatPrice, summarize };`);
 						{#if keystrokeLog.length === 0}
 							<p class="log-empty">Keystrokes will appear here...</p>
 						{:else}
-							{#each keystrokeLog as log, i}
+							{#each keystrokeLog as log, i (i)}
 								<div class="log-entry" style="opacity: {1 - i * 0.08};">{log}</div>
 							{/each}
 						{/if}
@@ -339,7 +337,7 @@ export { formatPrice, summarize };`);
 						{#if mismatches.length === 0}
 							<p class="analysis-empty">No bracket issues found</p>
 						{:else}
-							{#each mismatches as mm}
+							{#each mismatches as mm, i (i)}
 								<div class="mismatch-item mismatch-item--{mm.severity}">
 									<span class="mm-icon">
 										{mm.issue === 'unclosed' ? '⚠' : mm.issue === 'unexpected' ? '✕' : '≠'}

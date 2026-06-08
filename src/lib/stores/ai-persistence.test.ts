@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { AIConversation } from '$types';
 import * as persistence from './ai-persistence.svelte';
 
 /**
@@ -32,7 +33,7 @@ beforeEach(() => {
 // Helpers
 // ============================================================================
 
-function makeConversation(overrides: Partial<any> = {}): any {
+function makeConversation(overrides: Partial<AIConversation> = {}): AIConversation {
 	return {
 		id: `conv-${++uuidCounter}`,
 		title: 'Test Conversation',
@@ -106,7 +107,7 @@ describe('ai-persistence — exportConversationMarkdown', () => {
 					content: 'Let me check...',
 					timestamp: new Date(),
 					toolCalls: [
-						{ name: 'read_file', arguments: { path: '/src/a.ts' } }
+						{ id: 'tc-1', name: 'read_file', arguments: { path: '/src/a.ts' } }
 					]
 				}
 			]

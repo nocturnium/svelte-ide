@@ -80,7 +80,7 @@
 			{#if isSubmitting}
 				<Spinner size="xs" />
 			{:else}
-				{#snippet icon()}<Icon name="wand" size={14} />{/snippet}
+				{#snippet _icon()}<Icon name="wand" size={14} />{/snippet}
 			{/if}
 			Apply
 		</Button>

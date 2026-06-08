@@ -8,6 +8,7 @@
 
 	import type { EchoCursor, EchoCursorManager, EchoCursorEvent } from './core/echo-cursor';
 	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
 		/** Echo cursor manager instance */
@@ -30,12 +31,12 @@
 		charWidth,
 		gutterWidth = 50,
 		enabled = true,
-		onAddEchoPoint
+		onAddEchoPoint: _onAddEchoPoint
 	}: Props = $props();
 
 	let echoCursors = $state<EchoCursor[]>([]);
 	let replayingCursors = $state<Set<string>>(new Set());
-	let recentReplay = $state<Map<string, { text: string; opacity: number }>>(new Map());
+	let recentReplay = new SvelteMap<string, { text: string; opacity: number }>();
 
 	// Subscribe to echo cursor events
 	onMount(() => {
@@ -58,7 +59,6 @@
 							text: event.keystroke.data.text,
 							opacity: 1
 						});
-						recentReplay = new Map(recentReplay);
 					}
 					break;
 				case 'replay-completed':
@@ -68,10 +68,8 @@
 						const entry = recentReplay.get(event.cursorId);
 						if (entry) {
 							entry.opacity = 0;
-							recentReplay = new Map(recentReplay);
 							setTimeout(() => {
 								recentReplay.delete(event.cursorId);
-								recentReplay = new Map(recentReplay);
 							}, 200);
 						}
 					}, 100);
@@ -80,7 +78,7 @@
 					if (!event.enabled) {
 						echoCursors = [];
 						replayingCursors = new Set();
-						recentReplay = new Map();
+						recentReplay.clear();
 					}
 					break;
 			}

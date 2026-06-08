@@ -38,12 +38,8 @@
 	let inputValue = $state('');
 	let messagesContainer: HTMLDivElement;
 	let textareaEl: HTMLTextAreaElement;
-	let sidebarOpen = $state(false);
-
-	// Sync with prop changes
-	$effect(() => {
-		sidebarOpen = showSidebar;
-	});
+	// Writable derived: tracks the prop, but can be toggled locally (Svelte ≥5.25).
+	let sidebarOpen = $derived(showSidebar);
 	let persistedConversations = $state<AIConversation[]>([]);
 
 	// Auto-resize textarea without causing cursor jump

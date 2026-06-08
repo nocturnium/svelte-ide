@@ -58,7 +58,7 @@ const languages: Record<string, LanguageConfig> = {
 			["'", "'"],
 			['`', '`']
 		],
-		wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\@\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g
+		wordPattern: /(-?\d*\.\d\w*)|([^`~!@#%^&*()\-=+[{\]}\\|;:'",./<>?\s]+)/g
 	},
 	typescript: {
 		id: 'typescript',

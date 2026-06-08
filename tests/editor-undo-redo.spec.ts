@@ -194,7 +194,7 @@ test.describe('Editor Undo and Redo', () => {
 		await editor.focus();
 
 		await editor.press('Control+Home');
-		const originalContent = await editor.getContent();
+		const _originalContent = await editor.getContent();
 
 		// Paste some text
 		await page.evaluate(() => navigator.clipboard.writeText('PASTED_STUFF'));

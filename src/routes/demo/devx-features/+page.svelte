@@ -225,7 +225,7 @@ export function DataComponent({ userId }: { userId: string }) {
 
 					<!-- Code display -->
 					<div class="code-container" style="margin-left: {blameEnabled ? blameWidth : 0}px;">
-						{#each sampleLines as line, i}
+						{#each sampleLines as line, i (i)}
 							<div class="code-line" style="height: {lineHeight}px;">
 								<span class="line-num">{i + 1}</span>
 								<span class="line-content">{line || ' '}</span>
@@ -389,7 +389,7 @@ export function DataComponent({ userId }: { userId: string }) {
 
 					<!-- Code display -->
 					<div class="code-container" style="margin-left: 8px;">
-						{#each sampleLines as line, i}
+						{#each sampleLines as line, i (i)}
 							<div class="code-line" style="height: {lineHeight}px;">
 								<span class="line-num">{i + 1}</span>
 								<span class="line-content">{line || ' '}</span>

@@ -97,7 +97,7 @@ export class CRDTBinding {
 	 * Handle changes from CRDT
 	 * Uses Yjs relative positions for accurate cursor preservation during concurrent edits
 	 */
-	private handleCRDTChange(event: Y.YTextEvent): void {
+	private handleCRDTChange(_event: Y.YTextEvent): void {
 		this.isUpdating = true;
 		try {
 			// Capture current selection as relative positions BEFORE applying changes

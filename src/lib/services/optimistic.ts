@@ -245,7 +245,7 @@ export function createOptimisticState<T>(initialValue: T) {
 /**
  * Batch multiple optimistic operations
  */
-export async function batchOptimisticUpdates<T>(
+export async function batchOptimisticUpdates(
 	operations: Array<{
 		type: string;
 		payload: unknown;

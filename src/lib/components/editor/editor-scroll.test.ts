@@ -8,7 +8,7 @@
  *   3. Scrolling logic with a mocked DOM element.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createEditorScroll, type ScrollConfig } from './editor-scroll';
 
 // ---------------------------------------------------------------------------

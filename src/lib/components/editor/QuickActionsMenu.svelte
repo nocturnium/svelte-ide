@@ -9,12 +9,10 @@
 	import { onMount } from 'svelte';
 	import type {
 		QuickActionsManager,
-		CodeAction,
-		CodeActionKind
+		CodeAction
 	} from './core/quick-actions';
 	import {
 		groupActionsByKind,
-		getKindLabel,
 		getKindIcon
 	} from './core/quick-actions';
 

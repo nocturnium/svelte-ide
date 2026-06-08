@@ -260,7 +260,7 @@ describe('CursorManager — Initialization', () => {
 		manager.addCursor(pos(1, 0));
 		manager.addCursor(pos(2, 0));
 		// Already at 3 cursors (1 initial + 2 added), next non-primary add returns closest
-		const result = manager.addCursor(pos(3, 0));
+		const _result = manager.addCursor(pos(3, 0));
 		// Should not increase count beyond maxCursors
 		expect(manager.count).toBe(3);
 	});
@@ -383,7 +383,7 @@ describe('CursorManager — Cursor Operations', () => {
 		manager.addCursor(pos(5, 0));
 		manager.addCursor(pos(2, 0));
 
-		const reversed = (manager as any).getSortedCursorsReverse();
+		const reversed = (manager as InstanceType<typeof CursorManager> & { getSortedCursorsReverse(): Cursor[] }).getSortedCursorsReverse();
 		expect(reversed.length).toBe(3);
 		for (let i = 1; i < reversed.length; i++) {
 			const prev = getSelectionStart(reversed[i - 1].selection);

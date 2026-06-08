@@ -10,7 +10,7 @@
 	 */
 
 	import { onMount } from 'svelte';
-	import type { BreakpointManager, Breakpoint, BreakpointType } from './core/breakpoints';
+	import type { BreakpointManager, Breakpoint } from './core/breakpoints';
 	import { getBreakpointIcon, getBreakpointColor } from './core/breakpoints';
 
 	interface Props {
@@ -37,7 +37,7 @@
 		gutterWidth = 50,
 		enabled = true,
 		onToggle,
-		onEdit
+		onEdit: _onEdit
 	}: Props = $props();
 
 	let breakpoints = $state<Breakpoint[]>([]);
@@ -251,7 +251,7 @@
 			}}
 			onkeydown={(e) => {
 				if (e.key === 'Enter') {
-					const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+					const _rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 					handleGutterClick(0, e as unknown as MouseEvent);
 				}
 			}}

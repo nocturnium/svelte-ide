@@ -368,55 +368,24 @@ Both throw on a non-2xx response. The host is responsible for compilation and fo
 
 ---
 
-## The client-side sandbox
+## Running untrusted plugin code
 
-For cases where you evaluate plugin code in the browser, `createSandbox` provides a **best-effort** guarded `Function` evaluator. It is *not* a security boundary — the inline source even notes that real isolation would use an iframe or Web Worker. Treat it as a guardrail against accidents, not a defense against hostile code. For untrusted plugins, run them on the host (via `loadModule`) where you control the environment.
+This library deliberately ships **no** client-side sandbox. An earlier
+`createSandbox` helper evaluated plugin code with `new Function(...)` in the app's
+own realm; it was removed in v1.0.0 because in-realm evaluation is not a real
+security boundary and only invited a false sense of safety.
 
-```ts
-import { createSandbox } from "@nocturnium/svelte-ide/plugins";
-import type { PluginSandboxConfig } from "@nocturnium/svelte-ide/types";
+To run untrusted plugin code safely, keep it out of your app's realm entirely:
 
-const config: PluginSandboxConfig = {
-  enabled: true,
-  maxExecutionTime: 1000,   // ms — execute() rejects with "Execution timeout"
-  maxMemory: 0,             // advisory only (not enforced client-side)
-  networkAccess: false,
-  filesystemAccess: false,
-  allowedImports: [],
-  blockedImports: ["fs", "child_process"]
-};
+- **Run it on the host, out of band.** Fetch the result with `loadModule` (above);
+  the plugin host executes the module in an environment *you* control and returns
+  only its JSON output — no untrusted code ever reaches the browser.
+- **Isolate it in the browser** with an `<iframe sandbox>` or a Web Worker (ideally
+  cross-origin) and communicate over `postMessage`. Code running there cannot touch
+  your DOM, cookies, or module scope.
 
-const sandbox = createSandbox(config);
-```
-
-### Validate before you execute
-
-`validate(code)` does static checks and returns `{ valid, issues }`:
-
-- Flags any `blockedImports` that appear alongside an `import` or `require`.
-- Always flags dangerous patterns: `eval(`, `Function(`, `setTimeout(`, `setInterval(`.
-- When `networkAccess` is `false`, also flags `fetch(`, `XMLHttpRequest`, `WebSocket`, `indexedDB`, `localStorage`, `sessionStorage`.
-
-```ts
-const { valid, issues } = sandbox.validate(userCode);
-if (!valid) {
-  console.warn("Rejected plugin code:", issues);
-}
-```
-
-### Execute with a restricted context
-
-`execute(code, context?)` runs the code with a small allow-list of globals (`console`, `JSON`, `Math`, `Date`, `Array`, `Object`, `String`, `Number`, `Boolean`) plus any values you pass in `context`. It rejects if the sandbox is disabled or if `maxExecutionTime` elapses.
-
-```ts
-const result = await sandbox.execute<number>(
-  "return add(a, b);",
-  { add: (x: number, y: number) => x + y, a: 2, b: 3 }
-);
-// result === 5
-```
-
-> Because it ultimately uses `new Function(...)`, `execute` runs in the same realm as your app. Validate first, keep the timeout tight, and never rely on it as your only protection against untrusted input.
+Either way, treat plugin source as untrusted input: validate the *contract* of what
+comes back, never trust the code itself.
 
 ---
 

@@ -61,11 +61,6 @@ function modifiersMatch(e: KeyboardEvent, modifiers?: Modifiers): boolean {
 }
 
 /**
- * Platform detection
- */
-const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
-
-/**
  * Create default keybindings for the editor
  */
 export function createDefaultKeybindings(

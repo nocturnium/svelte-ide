@@ -146,7 +146,7 @@ function detectHtmlTagFolds(
 
 	for (let lineNum = 0; lineNum < lines.length; lineNum++) {
 		const lineText = lines[lineNum].text;
-		let inComment = false;
+		let _inComment = false;
 		let pos = 0;
 
 		while (pos < lineText.length) {
@@ -157,7 +157,7 @@ function detectHtmlTagFolds(
 					pos = endComment + 3;
 					continue;
 				} else {
-					inComment = true;
+					_inComment = true;
 					break;
 				}
 			}

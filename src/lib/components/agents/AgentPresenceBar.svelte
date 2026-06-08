@@ -45,7 +45,6 @@
 	let overflowCount = $derived(Math.max(0, activeAgents.length - maxVisible));
 
 	// Group by status for summary
-	let onlineCount = $derived(agents.filter((a) => a.status === 'online').length);
 	let busyCount = $derived(agents.filter((a) => a.status === 'busy').length);
 	let stalledCount = $derived(agents.filter((a) => a.status === 'stalled').length);
 </script>

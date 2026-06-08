@@ -111,7 +111,7 @@ describe('Controlled-mode echo bug', () => {
 	});
 
 	it('does not collapse multi-cursor across the echo round-trip', () => {
-		const { state } = harness;
+		const { state: _state } = harness;
 
 		harness.dispose();
 		harness = createControlledHarness('a\nb\nc');

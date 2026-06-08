@@ -10,7 +10,6 @@ import {
 	logError,
 	getRecentErrors,
 	clearErrorLog,
-	type VFSError,
 	type VFSErrorCode,
 	type RecoveryOption
 } from './error-handling';
@@ -327,7 +326,6 @@ describe('isRecoverableError', () => {
 	});
 
 	it('should return false when no recovery options', () => {
-		const err = createVFSError('UNKNOWN', 'test');
 		// UNKNOWN actually has retry and cancel options, so it is recoverable
 		// Let's create one manually with empty options
 		const custom = createVFSError('PERMISSION_DENIED', 'test');

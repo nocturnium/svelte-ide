@@ -721,7 +721,6 @@ describe('tokenize', () => {
 		expect(tokens.length).toBeGreaterThan(1);
 
 		// Find expected token types
-		const types = tokens.map((t) => t.type);
 		// 'const' should produce a keyword token
 		const constToken = tokens.find((t) => t.text === 'const');
 		expect(constToken).toBeDefined();

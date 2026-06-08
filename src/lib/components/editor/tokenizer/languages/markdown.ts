@@ -2,7 +2,7 @@
  * Markdown tokenizer
  */
 
-import type { Token, TokenizedLine, TokenizerState, TokenType } from '../types';
+import type { Token, TokenizedLine, TokenizerState } from '../types';
 import { createToken } from '../base';
 
 interface MarkdownTokenizerState extends TokenizerState {
@@ -84,7 +84,7 @@ export class MarkdownTokenizer {
 		}
 
 		// Indented code block
-		if (line.match(/^(?:    |\t)/)) {
+		if (line.match(/^(?: {4}|\t)/)) {
 			tokens.push(createToken('markup.code', line, 0));
 			return { lineNumber, tokens, text: line, state };
 		}
@@ -170,7 +170,7 @@ export class MarkdownTokenizer {
 			}
 
 			// Regular text
-			const textMatch = remaining.match(/^[^`*_\[!<~]+/);
+			const textMatch = remaining.match(/^[^`*_[!<~]+/);
 			if (textMatch) {
 				tokens.push(createToken('text', textMatch[0], offset + pos));
 				pos += textMatch[0].length;

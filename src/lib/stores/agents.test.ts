@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as agents from './agents.svelte';
+import type { Agent, AgentTask, AgentStatus, AgentType, AgentFilter, AgentCursor, TeamEvent, AgentActivity } from '$lib/types';
 
 /**
  * Agents store tests
@@ -22,7 +23,7 @@ beforeEach(() => {
 // Helpers
 // ============================================================================
 
-function makeAgent(id: string, overrides: Partial<any> = {}): any {
+function makeAgent(id: string, overrides: Partial<Agent> = {}): Agent {
 	return {
 		id,
 		name: `Agent-${id}`,
@@ -37,7 +38,7 @@ function makeAgent(id: string, overrides: Partial<any> = {}): any {
 	};
 }
 
-function makeTask(overrides: Partial<any> = {}): any {
+function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {
 	return {
 		id: 'task-1',
 		description: 'Test task',
@@ -122,7 +123,7 @@ describe('agents store — agent CRUD', () => {
 
 	it('removeAgent also removes cursor', () => {
 		agents.addAgent(makeAgent('a1'));
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as any);
+		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
 		agents.removeAgent('a1');
 		expect(agents.getCursor('a1')).toBeUndefined();
 	});
@@ -141,18 +142,18 @@ describe('agents store — agent CRUD', () => {
 
 	it('updateAgent merges updates', () => {
 		agents.addAgent(makeAgent('a1'));
-		agents.updateAgent('a1', { status: 'busy' as any });
+		agents.updateAgent('a1', { status: 'busy' as AgentStatus });
 		expect(agents.getAgent('a1')?.status).toBe('busy');
 	});
 
 	it('updateAgent sets lastActivity', () => {
 		agents.addAgent(makeAgent('a1', { lastActivity: '2020-01-01T00:00:00Z' }));
-		agents.updateAgent('a1', { status: 'busy' as any });
+		agents.updateAgent('a1', { status: 'busy' as AgentStatus });
 		expect(agents.getAgent('a1')?.lastActivity).not.toBe('2020-01-01T00:00:00Z');
 	});
 
 	it('updateAgent does nothing for unknown agent', () => {
-		agents.updateAgent('nonexistent', { status: 'busy' as any });
+		agents.updateAgent('nonexistent', { status: 'busy' as AgentStatus });
 		// Should not throw
 	});
 });
@@ -189,13 +190,13 @@ describe('agents store — status and filtering', () => {
 	});
 
 	it('getAgentsByType filters by type', () => {
-		agents.addAgent(makeAgent('a5', { type: 'reviewer' }));
-		expect(agents.getAgentsByType('reviewer' as any)).toHaveLength(1);
-		expect(agents.getAgentsByType('coder' as any)).toHaveLength(4);
+		agents.addAgent(makeAgent('a5', { type: 'reviewer' as AgentType }));
+		expect(agents.getAgentsByType('reviewer' as AgentType)).toHaveLength(1);
+		expect(agents.getAgentsByType('coder' as AgentType)).toHaveLength(4);
 	});
 
 	it('setAgentStatus updates agent status', () => {
-		agents.setAgentStatus('a1', 'busy' as any);
+		agents.setAgentStatus('a1', 'busy' as AgentStatus);
 		expect(agents.getAgent('a1')?.status).toBe('busy');
 	});
 
@@ -204,7 +205,7 @@ describe('agents store — status and filtering', () => {
 	});
 
 	it('setFilter changes filter and getFilteredAgents respects it', () => {
-		agents.setFilter('busy' as any);
+		agents.setFilter('busy' as AgentFilter);
 		expect(agents.getFilter()).toBe('busy');
 		expect(agents.getFilteredAgents()).toHaveLength(1);
 	});
@@ -260,7 +261,7 @@ describe('agents store — task management', () => {
 
 	it('completeAgentTask clears task and sets status to online', () => {
 		agents.setAgentTask('a1', makeTask());
-		agents.updateAgent('a1', { status: 'busy' as any });
+		agents.updateAgent('a1', { status: 'busy' as AgentStatus });
 		agents.completeAgentTask('a1', 'success', 'Task completed');
 		expect(agents.getAgent('a1')?.currentTask).toBeUndefined();
 		expect(agents.getAgent('a1')?.status).toBe('online');
@@ -289,7 +290,7 @@ describe('agents store — task management', () => {
 	it('getTotalProgress averages busy agent progress', () => {
 		agents.addAgent(makeAgent('a2', { status: 'busy' }));
 		agents.setAgentTask('a1', makeTask());
-		agents.updateAgent('a1', { status: 'busy' as any });
+		agents.updateAgent('a1', { status: 'busy' as AgentStatus });
 		agents.updateAgentProgress('a1', { percentage: 60 });
 		agents.setAgentTask('a2', makeTask());
 		agents.updateAgentProgress('a2', { percentage: 80 });
@@ -307,28 +308,28 @@ describe('agents store — task management', () => {
 
 describe('agents store — cursors', () => {
 	it('updateCursor adds/updates a cursor', () => {
-		const cursor = { agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as any;
+		const cursor = { agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor;
 		agents.updateCursor(cursor);
 		expect(agents.getCursors()).toHaveLength(1);
 		expect(agents.getCursor('a1')).toEqual(cursor);
 	});
 
 	it('removeCursor removes a cursor', () => {
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as any);
+		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
 		agents.removeCursor('a1');
 		expect(agents.getCursors()).toHaveLength(0);
 	});
 
 	it('getCursorsForFile filters by file path', () => {
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as any);
-		agents.updateCursor({ agentId: 'a2', filePath: '/src/b.ts', position: { line: 1, column: 1 } } as any);
+		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
+		agents.updateCursor({ agentId: 'a2', filePath: '/src/b.ts', position: { line: 1, column: 1 } } as AgentCursor);
 		expect(agents.getCursorsForFile('/src/a.ts')).toHaveLength(1);
 	});
 
 	it('clearCursorsForFile removes all cursors for a file', () => {
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as any);
-		agents.updateCursor({ agentId: 'a2', filePath: '/src/a.ts', position: { line: 2, column: 1 } } as any);
-		agents.updateCursor({ agentId: 'a3', filePath: '/src/b.ts', position: { line: 1, column: 1 } } as any);
+		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
+		agents.updateCursor({ agentId: 'a2', filePath: '/src/a.ts', position: { line: 2, column: 1 } } as AgentCursor);
+		agents.updateCursor({ agentId: 'a3', filePath: '/src/b.ts', position: { line: 1, column: 1 } } as AgentCursor);
 		agents.clearCursorsForFile('/src/a.ts');
 		expect(agents.getCursors()).toHaveLength(1);
 		expect(agents.getCursorsForFile('/src/a.ts')).toHaveLength(0);
@@ -346,7 +347,7 @@ describe('agents store — events', () => {
 			agentId: 'a1',
 			agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z'
-		} as any;
+		} as TeamEvent;
 		agents.addEvent(event);
 		expect(agents.getEvents()).toHaveLength(1);
 	});
@@ -358,7 +359,7 @@ describe('agents store — events', () => {
 				agentId: 'a1',
 				agent: makeAgent('a1'),
 				timestamp: '2025-01-01T00:00:00Z'
-			} as any);
+			} as TeamEvent);
 		}
 		expect(agents.getEvents().length).toBeLessThanOrEqual(200);
 	});
@@ -372,7 +373,7 @@ describe('agents store — events', () => {
 			agentId: 'a1',
 			agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z'
-		} as any);
+		} as TeamEvent);
 
 		expect(handler).toHaveBeenCalledTimes(1);
 		unsub();
@@ -382,7 +383,7 @@ describe('agents store — events', () => {
 			agentId: 'a1',
 			agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z'
-		} as any);
+		} as TeamEvent);
 
 		expect(handler).toHaveBeenCalledTimes(1); // Not called again
 	});
@@ -396,14 +397,14 @@ describe('agents store — events', () => {
 			agentId: 'a1',
 			agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z'
-		} as any);
+		} as TeamEvent);
 
 		agents.addEvent({
 			type: 'agent_left',
 			agentId: 'a1',
 			agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z'
-		} as any);
+		} as TeamEvent);
 
 		expect(handler).toHaveBeenCalledTimes(2);
 	});
@@ -422,7 +423,7 @@ describe('agents store — activities', () => {
 			timestamp: '2025-01-01T00:00:00Z',
 			type: 'action',
 			content: 'Did something'
-		} as any);
+		} as AgentActivity);
 		expect(agents.getActivities()).toHaveLength(1);
 	});
 
@@ -430,11 +431,11 @@ describe('agents store — activities', () => {
 		agents.addActivity({
 			id: 'act-1', agentId: 'a1', agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z', type: 'action', content: 'A1 action'
-		} as any);
+		} as AgentActivity);
 		agents.addActivity({
 			id: 'act-2', agentId: 'a2', agent: makeAgent('a2'),
 			timestamp: '2025-01-01T00:00:00Z', type: 'action', content: 'A2 action'
-		} as any);
+		} as AgentActivity);
 		expect(agents.getActivitiesForAgent('a1')).toHaveLength(1);
 	});
 
@@ -443,7 +444,7 @@ describe('agents store — activities', () => {
 			agents.addActivity({
 				id: `act-${i}`, agentId: 'a1', agent: makeAgent('a1'),
 				timestamp: '2025-01-01T00:00:00Z', type: 'action', content: `Action ${i}`
-			} as any);
+			} as AgentActivity);
 		}
 		expect(agents.getRecentActivities(3)).toHaveLength(3);
 	});
@@ -452,7 +453,7 @@ describe('agents store — activities', () => {
 		agents.addActivity({
 			id: 'act-1', agentId: 'a1', agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z', type: 'action', content: 'Test'
-		} as any);
+		} as AgentActivity);
 		agents.clearActivities();
 		expect(agents.getActivities()).toHaveLength(0);
 	});
@@ -461,7 +462,7 @@ describe('agents store — activities', () => {
 		agents.addEvent({
 			type: 'agent_joined', agentId: 'a1', agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z'
-		} as any);
+		} as TeamEvent);
 		agents.clearEvents();
 		expect(agents.getEvents()).toHaveLength(0);
 	});
@@ -515,7 +516,7 @@ describe('agents store — connection and error', () => {
 describe('agents store — reset', () => {
 	it('reset clears all state', () => {
 		agents.addAgent(makeAgent('a1'));
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as any);
+		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
 		agents.setConnected(true);
 		agents.setError('err');
 		agents.selectAgent('a1');

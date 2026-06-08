@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { AIContext, AISuggestion } from '$types';
 import * as ai from './ai.svelte';
 
 /**
@@ -108,13 +109,13 @@ describe('ai store — conversations', () => {
 	});
 
 	it('createConversation accepts context', () => {
-		ai.createConversation('With Context', { currentFile: '/src/a.ts' } as any);
+		ai.createConversation('With Context', { currentFile: '/src/a.ts' } as unknown as AIContext);
 		expect(ai.getActiveConversation()?.context).toEqual({ currentFile: '/src/a.ts' });
 	});
 
 	it('setActiveConversation switches conversations', () => {
 		const id1 = ai.createConversation('First');
-		const id2 = ai.createConversation('Second');
+		const _id2 = ai.createConversation('Second');
 		ai.setActiveConversation(id1);
 		expect(ai.getActiveConversationId()).toBe(id1);
 	});
@@ -167,7 +168,7 @@ describe('ai store — messages', () => {
 	});
 
 	it('addMessage creates conversation if none active', () => {
-		const msgId = ai.addMessage({ role: 'user', content: 'Auto create' });
+		const _msgId = ai.addMessage({ role: 'user', content: 'Auto create' });
 		expect(ai.getConversations()).toHaveLength(1);
 		expect(ai.getMessages()).toHaveLength(1);
 	});
@@ -268,7 +269,7 @@ describe('ai store — panel', () => {
 
 describe('ai store — edit sessions', () => {
 	it('startEditSession creates a pending session', () => {
-		const id = ai.startEditSession('conv-1', '/src/file.ts', 'original');
+		const _id = ai.startEditSession('conv-1', '/src/file.ts', 'original');
 		expect(ai.getEditSessions()).toHaveLength(1);
 		expect(ai.getEditSessions()[0].status).toBe('pending');
 		expect(ai.getEditSessions()[0].filePath).toBe('/src/file.ts');
@@ -324,20 +325,20 @@ describe('ai store — suggestions', () => {
 			type: 'completion',
 			content: 'suggested code',
 			filePath: '/src/a.ts'
-		} as any);
+		} as unknown as Omit<AISuggestion, 'id'>);
 		expect(ai.getSuggestions()).toHaveLength(1);
 		expect(ai.getSuggestions()[0].id).toBe(id);
 	});
 
 	it('removeSuggestion removes by id', () => {
-		const id = ai.addSuggestion({ type: 'completion', content: 'x' } as any);
+		const id = ai.addSuggestion({ type: 'completion', content: 'x' } as Omit<AISuggestion, 'id'>);
 		ai.removeSuggestion(id);
 		expect(ai.getSuggestions()).toHaveLength(0);
 	});
 
 	it('clearSuggestions removes all', () => {
-		ai.addSuggestion({ type: 'completion', content: 'a' } as any);
-		ai.addSuggestion({ type: 'completion', content: 'b' } as any);
+		ai.addSuggestion({ type: 'completion', content: 'a' } as Omit<AISuggestion, 'id'>);
+		ai.addSuggestion({ type: 'completion', content: 'b' } as Omit<AISuggestion, 'id'>);
 		ai.clearSuggestions();
 		expect(ai.getSuggestions()).toHaveLength(0);
 	});
@@ -349,14 +350,14 @@ describe('ai store — suggestions', () => {
 
 describe('ai store — context', () => {
 	it('updateContext merges context on active conversation', () => {
-		ai.createConversation('Test', { currentFile: '/a.ts' } as any);
-		ai.updateContext({ currentFile: '/b.ts' } as any);
+		ai.createConversation('Test', { currentFile: '/a.ts' } as unknown as AIContext);
+		ai.updateContext({ currentFile: '/b.ts' } as unknown as Partial<AIContext>);
 		expect(ai.getActiveConversation()?.context).toMatchObject({ currentFile: '/b.ts' });
 	});
 
 	it('updateContext does nothing without active conversation', () => {
 		// Should not throw
-		ai.updateContext({ currentFile: '/a.ts' } as any);
+		ai.updateContext({ currentFile: '/a.ts' } as unknown as Partial<AIContext>);
 	});
 });
 
