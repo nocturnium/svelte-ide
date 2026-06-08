@@ -2,6 +2,7 @@
 	import Editor from './Editor.svelte';
 	import EditorTabs from './EditorTabs.svelte';
 	import type { EditorPreferences } from '$types';
+	import type { AIAwareness } from './core/ai-awareness';
 	import {
 		getTabs,
 		getActiveTab,
@@ -15,11 +16,23 @@
 
 	interface Props {
 		preferences?: Partial<EditorPreferences>;
+		folding?: boolean;
+		multiCursor?: boolean;
+		maxCursors?: number;
+		aiAgents?: AIAwareness[];
 		onSave?: (path: string, content: string) => Promise<void>;
 		class?: string;
 	}
 
-	let { preferences = {}, onSave, class: className = '' }: Props = $props();
+	let {
+		preferences = {},
+		folding = true,
+		multiCursor = true,
+		maxCursors = 100,
+		aiAgents = [],
+		onSave,
+		class: className = ''
+	}: Props = $props();
 
 	// Use getter functions for reactive access
 	let tabs = $derived(getTabs());
@@ -70,6 +83,10 @@
 					language={activeTab.language}
 					readonly={activeTab.aiEditing}
 					{preferences}
+					{folding}
+					{multiCursor}
+					{maxCursors}
+					{aiAgents}
 					onChange={handleChange}
 					onCursorChange={handleCursorChange}
 					onSave={handleSave}

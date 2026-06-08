@@ -53,7 +53,7 @@
 		multiCursor?: boolean;
 		/** Maximum number of cursors (default: 100) */
 		maxCursors?: number;
-		/** Enable complexity highlighting (default: true) */
+		/** Enable complexity highlighting (default: false) */
 		complexityHighlighting?: boolean;
 		/** Minimum complexity score to show highlighting (default: 50) */
 		complexityThreshold?: number;
@@ -61,7 +61,7 @@
 		aiAgents?: AIAwareness[];
 		/** Show AI cursor labels (default: true) */
 		showAILabels?: boolean;
-		/** Show AI focus regions (default: true) */
+		/** Show AI focus regions (default: false) */
 		showAIFocusRegions?: boolean;
 		onChange?: (content: string) => void;
 		onCursorChange?: (line: number, column: number) => void;
@@ -81,11 +81,11 @@
 		folding = true,
 		multiCursor = true,
 		maxCursors = 100,
-		complexityHighlighting = true,
+		complexityHighlighting = false,
 		complexityThreshold = 50,
 		aiAgents = [],
 		showAILabels = true,
-		showAIFocusRegions = true,
+		showAIFocusRegions = false,
 		onChange,
 		onCursorChange,
 		onCursorsChange,
