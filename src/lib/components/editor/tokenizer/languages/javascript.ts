@@ -292,17 +292,21 @@ export class JavaScriptTokenizer {
 			}
 		}
 
-		// Handle template literal continuation
-		if (state.inTemplateLiteral && (state.templateDepth ?? 0) > 0) {
-			const result = this.tokenizeTemplateLiteralContinuation(line, pos, state);
-			tokens.push(...result.tokens);
-			pos = result.pos;
-			if (pos >= line.length) {
-				return { lineNumber, tokens, text: line, state };
-			}
-		}
-
 		while (pos < line.length) {
+			// Template literals: scan the string portion (between the backticks and
+			// `${` / `}`) as a single string.template token. The interpolation
+			// expression is tokenized as ordinary code below, tracking brace depth in
+			// state.templateDepth so the closing backtick is recognised. This fixes the
+			// leak where an unclosed template state bled onto every following line.
+			const inStringPortion = state.inTemplateLiteral && (state.templateDepth ?? 0) === 0;
+			const startsTemplate = !state.inTemplateLiteral && line[pos] === '`';
+			if (inStringPortion || startsTemplate) {
+				const result = this.scanTemplateString(line, pos, state, startsTemplate);
+				tokens.push(...result.tokens);
+				pos = result.pos;
+				continue;
+			}
+
 			const remaining = line.slice(pos);
 			const token = this.getNextToken(remaining, pos, state);
 
@@ -310,6 +314,20 @@ export class JavaScriptTokenizer {
 				tokens.push(token);
 				this.updateLastToken(token, state);
 				pos = token.end;
+				// Track brace nesting inside a ${...} interpolation so we know when it
+				// closes and we return to the template's string portion. Braces inside
+				// strings/comments are separate token types, so they aren't miscounted.
+				if (
+					state.inTemplateLiteral &&
+					(state.templateDepth ?? 0) > 0 &&
+					token.type === 'punctuation.brace'
+				) {
+					if (token.text === '{') {
+						state.templateDepth = (state.templateDepth ?? 0) + 1;
+					} else if (token.text === '}') {
+						state.templateDepth = Math.max(0, (state.templateDepth ?? 1) - 1);
+					}
+				}
 			} else {
 				// No match - shouldn't happen but handle gracefully
 				const fallbackToken = createToken('text', remaining[0], pos);
@@ -349,10 +367,10 @@ export class JavaScriptTokenizer {
 			}
 		}
 
-		// Template literals
-		if (text.startsWith('`')) {
-			return this.tokenizeTemplateLiteral(text, pos, state);
-		}
+		// Template literals are handled in tokenizeLine's main loop
+		// (scanTemplateString) so the string portions and the ${...} interpolation
+		// expression are tokenized separately. A backtick only reaches here while
+		// inside an interpolation (a nested template); fall through to consume it.
 
 		// Regular strings
 		if (text.startsWith('"') || text.startsWith("'")) {
@@ -616,68 +634,63 @@ export class JavaScriptTokenizer {
 		return createToken('string', text, pos);
 	}
 
-	private tokenizeTemplateLiteral(text: string, pos: number, state: JSTokenizerState): Token {
-		let i = 1;
-		let result = '`';
-
-		while (i < text.length) {
-			if (text[i] === '\\' && i + 1 < text.length) {
-				result += text.slice(i, i + 2);
-				i += 2;
-				continue;
-			}
-			if (text[i] === '`') {
-				result += '`';
-				return createToken('string.template', result, pos);
-			}
-			if (text[i] === '$' && text[i + 1] === '{') {
-				// Template expression - for simplicity, tokenize up to this point
-				if (result.length > 1) {
-					// Return string part first
-					state.inTemplateLiteral = true;
-					state.templateDepth = (state.templateDepth ?? 0) + 1;
-					return createToken('string.template', result, pos);
-				}
-			}
-			result += text[i];
-			i++;
-		}
-
-		// Multi-line template literal
-		state.inTemplateLiteral = true;
-		return createToken('string.template', result, pos);
-	}
-
-	private tokenizeTemplateLiteralContinuation(
+	/**
+	 * Scan the string portion of a template literal, starting at `startPos`. Emits
+	 * one `string.template` token for the run of literal characters and stops at one
+	 * of three boundaries:
+	 *  - a closing backtick → ends the literal (clears template state);
+	 *  - a `${` → emits the `${` delimiter and enters interpolation
+	 *    (templateDepth = 1) so the expression is tokenized as code by the caller;
+	 *  - end of line → the literal spans lines and continues next line.
+	 *
+	 * `isStart` is true when this is the opening backtick (vs. a continuation of a
+	 * multi-line literal or the resumption after a `${…}` interpolation).
+	 */
+	private scanTemplateString(
 		line: string,
 		startPos: number,
-		state: JSTokenizerState
+		state: JSTokenizerState,
+		isStart: boolean
 	): { tokens: Token[]; pos: number } {
-		const tokens: Token[] = [];
 		let pos = startPos;
 		let result = '';
 
+		if (isStart) {
+			state.inTemplateLiteral = true;
+			state.templateDepth = 0;
+			result = '`';
+			pos += 1;
+		}
+
 		while (pos < line.length) {
-			if (line[pos] === '\\' && pos + 1 < line.length) {
+			const ch = line[pos];
+			if (ch === '\\' && pos + 1 < line.length) {
 				result += line.slice(pos, pos + 2);
 				pos += 2;
 				continue;
 			}
-			if (line[pos] === '`') {
+			if (ch === '`') {
 				result += '`';
-				tokens.push(createToken('string.template', result, startPos));
 				state.inTemplateLiteral = false;
-				state.templateDepth = Math.max(0, (state.templateDepth ?? 1) - 1);
-				return { tokens, pos: pos + 1 };
+				state.templateDepth = 0;
+				return { tokens: [createToken('string.template', result, startPos)], pos: pos + 1 };
 			}
-			result += line[pos];
-			pos++;
+			if (ch === '$' && line[pos + 1] === '{') {
+				const tokens: Token[] = [];
+				if (result) {
+					tokens.push(createToken('string.template', result, startPos));
+				}
+				tokens.push(createToken('string.template', '${', startPos + result.length));
+				state.templateDepth = 1;
+				return { tokens, pos: pos + 2 };
+			}
+			result += ch;
+			pos += 1;
 		}
 
-		if (result) {
-			tokens.push(createToken('string.template', result, startPos));
-		}
-		return { tokens, pos };
+		// End of line inside the string portion → multi-line template literal.
+		state.inTemplateLiteral = true;
+		return { tokens: result ? [createToken('string.template', result, startPos)] : [], pos };
 	}
 
 	private tokenizeJSXTag(text: string, pos: number, _state: JSTokenizerState): Token {

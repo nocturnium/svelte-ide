@@ -125,6 +125,62 @@ describe('JavaScript tokenizer', () => {
 		});
 	});
 
+	describe('template literal interpolation (regression: no state leak)', () => {
+		const allString = (line: TokenizedLine) =>
+			line.tokens.length > 0 && line.tokens.every((t) => t.type.startsWith('string'));
+
+		it('a closed template does not bleed template state onto following lines', () => {
+			const lines = tokLines('typescript', ['const s = `token-${tok.scope}`;', 'const y = 1;']);
+			expect(lines[0].state?.inTemplateLiteral ?? false).toBe(false);
+			expect(allString(lines[1])).toBe(false);
+			expectToken(lines[1], 'keyword.definition', 'const');
+		});
+
+		it('tokenizes the ${...} expression as code, not as string', () => {
+			const line = tok('typescript', 'const s = `a-${x.y}-b`;');
+			expect(findTokens(line, 'string.template').length).toBeGreaterThan(0);
+			expectToken(line, 'variable', 'x');
+			expectToken(line, 'variable', 'y');
+			expect(line.state?.inTemplateLiteral ?? false).toBe(false);
+		});
+
+		it('handles nested braces (an object literal) inside an interpolation', () => {
+			const lines = tokLines('typescript', ['const s = `${ {a:1} }`;', 'const y = 1;']);
+			expect(lines[0].state?.inTemplateLiteral ?? false).toBe(false);
+			expect(allString(lines[1])).toBe(false);
+		});
+
+		it('does not let a brace inside an interpolated string close it early', () => {
+			const lines = tokLines('typescript', ['const s = `${ "}" }`;', 'const y = 1;']);
+			expect(lines[0].state?.inTemplateLiteral ?? false).toBe(false);
+			expect(allString(lines[1])).toBe(false);
+		});
+
+		it('handles multiple interpolations on one line', () => {
+			const line = tok('typescript', 'const s = `${a} and ${b}`;');
+			expect(line.state?.inTemplateLiteral ?? false).toBe(false);
+			expectToken(line, 'variable', 'a');
+			expectToken(line, 'variable', 'b');
+		});
+
+		it('continues a multi-line template literal and closes it later', () => {
+			const lines = tokLines('typescript', ['const s = `line1', 'line2`;', 'const y = 1;']);
+			expect(lines[0].state?.inTemplateLiteral).toBe(true);
+			expect(lines[1].state?.inTemplateLiteral ?? false).toBe(false);
+			expectToken(lines[2], 'keyword.definition', 'const');
+		});
+
+		it('does not close early on an escaped backtick', () => {
+			const line = tok('typescript', 'const s = `a\\`b`;');
+			expect(line.state?.inTemplateLiteral ?? false).toBe(false);
+		});
+
+		it('keeps a plain template literal as a single string.template token', () => {
+			const line = tok('javascript', 'const s = `template`;');
+			expectToken(line, 'string.template', '`template`');
+		});
+	});
+
 	describe('comments', () => {
 		it('detects single-line comments', () => {
 			const line = tok('javascript', '// this is a comment');
