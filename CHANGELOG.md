@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/nocturnium/svelte-ide/compare/v1.0.1...v1.0.2) (2026-06-08)
+
+
+### Bug Fixes
+
+* **tokenizer:** stop template-literal highlighting from leaking past its line ([11066ce](https://github.com/nocturnium/svelte-ide/commit/11066cefa99b38163a2ce669add6dfbcbc36280f))
+
 ## [1.0.1](https://github.com/nocturnium/svelte-ide/compare/v1.0.0...v1.0.1) (2026-06-08)
 
 
