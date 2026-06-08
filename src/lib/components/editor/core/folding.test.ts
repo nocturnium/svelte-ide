@@ -479,6 +479,36 @@ describe('FoldManager', () => {
 		manager.updateRegions(sampleLines, 'javascript');
 	});
 
+	// ----- getInnermostRegionContaining -----
+
+	it('finds the enclosing function from a line inside its body, not just the header', () => {
+		// `doC();` (line 5) is inside outer() but on no fold header — the case that
+		// previously could not be folded from within the body.
+		const region = manager.getInnermostRegionContaining(5);
+		expect(region).toBeDefined();
+		expect(region!.startLine).toBe(0);
+		expect(region!.endLine).toBe(7);
+	});
+
+	it('returns the innermost (smallest-span) of all regions containing the line', () => {
+		const containing = manager.getRegions().filter((r) => r.startLine <= 2 && 2 <= r.endLine);
+		const smallest = containing.reduce((a, b) =>
+			b.endLine - b.startLine < a.endLine - a.startLine ? b : a
+		);
+		expect(manager.getInnermostRegionContaining(2)).toEqual(smallest);
+	});
+
+	it('returns undefined for a line outside every region', () => {
+		expect(manager.getInnermostRegionContaining(99)).toBeUndefined();
+	});
+
+	it('respects the collapsed / uncollapsed filter', () => {
+		expect(manager.getInnermostRegionContaining(5, 'collapsed')).toBeUndefined();
+		manager.collapse(0); // collapse outer()
+		expect(manager.getInnermostRegionContaining(5, 'collapsed')!.startLine).toBe(0);
+		expect(manager.getInnermostRegionContaining(5, 'uncollapsed')).toBeUndefined();
+	});
+
 	// ----- updateRegions -----
 
 	it('should detect regions from lines via updateRegions', () => {

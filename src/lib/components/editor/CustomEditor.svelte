@@ -468,17 +468,23 @@
 	function handleFoldCurrent() {
 		if (!folding || !editorState) return;
 		const currentLine = selection.head.line;
-		// Find fold region at or containing current line
-		const region = foldManager.getRegionAtLine(currentLine);
+		// Fold the innermost block the cursor is *inside*, not only when the cursor
+		// sits on the fold header. Skip already-collapsed regions so repeated
+		// presses fold progressively outward (VS Code behaviour).
+		const region = foldManager.getInnermostRegionContaining(currentLine, 'uncollapsed');
 		if (region) {
-			foldManager.collapse(currentLine);
+			foldManager.collapse(region.startLine);
 		}
 	}
 
 	function handleUnfoldCurrent() {
 		if (!folding || !editorState) return;
 		const currentLine = selection.head.line;
-		foldManager.expand(currentLine);
+		// Expand the innermost collapsed block containing the cursor (mirrors fold).
+		const region = foldManager.getInnermostRegionContaining(currentLine, 'collapsed');
+		if (region) {
+			foldManager.expand(region.startLine);
+		}
 	}
 
 	function handleFoldIndicatorClick(lineNumber: number, e: MouseEvent) {

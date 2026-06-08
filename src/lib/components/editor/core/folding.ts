@@ -652,6 +652,30 @@ export class FoldManager {
 	}
 
 	/**
+	 * Get the innermost (smallest) fold region whose range contains `line`
+	 * (startLine <= line <= endLine). Unlike {@link getRegionAtLine}, this matches
+	 * when the cursor is anywhere inside the block, not only on the fold header —
+	 * so "fold current" works from within a function body. Optionally restrict to
+	 * collapsed or uncollapsed regions (e.g. fold skips already-collapsed regions
+	 * so repeated presses fold progressively outward).
+	 */
+	getInnermostRegionContaining(
+		line: number,
+		filter?: 'collapsed' | 'uncollapsed'
+	): FoldRegion | undefined {
+		let best: FoldRegion | undefined;
+		for (const r of this.regions) {
+			if (line < r.startLine || line > r.endLine) continue;
+			if (filter === 'collapsed' && !r.collapsed) continue;
+			if (filter === 'uncollapsed' && r.collapsed) continue;
+			if (!best || r.endLine - r.startLine < best.endLine - best.startLine) {
+				best = r;
+			}
+		}
+		return best;
+	}
+
+	/**
 	 * Check if a line is hidden (inside a collapsed fold)
 	 */
 	isLineHidden(line: number): boolean {
