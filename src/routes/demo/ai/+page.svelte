@@ -314,7 +314,7 @@
 				toolCallResults = { ...toolCallResults, [toolCall.id]: result };
 				toolCallDurations = { ...toolCallDurations, [toolCall.id]: duration };
 				toolCallStatuses = { ...toolCallStatuses, [toolCall.id]: 'completed' };
-			} catch (err) {
+			} catch (_err) {
 				toolCallStatuses = { ...toolCallStatuses, [toolCall.id]: 'error' };
 			}
 		}

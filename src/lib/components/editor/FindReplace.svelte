@@ -57,12 +57,9 @@
 
 	let findInput = $state<HTMLInputElement | null>(null);
 	let replaceInput = $state<HTMLInputElement | null>(null);
-	let showReplaceLocal = $state(false);
 
-	// Sync with prop
-	$effect(() => {
-		showReplaceLocal = showReplace;
-	});
+	// Writable derived: tracks the showReplace prop but allows local overrides (e.g. toggle)
+	let showReplaceLocal = $derived(showReplace);
 
 	// Focus find input on mount
 	onMount(() => {

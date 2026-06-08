@@ -103,7 +103,6 @@
 	import PluginPanel from '$lib/components/plugins/PluginPanel.svelte';
 	import PluginCard from '$lib/components/plugins/PluginCard.svelte';
 	import PluginStatusBadge from '$lib/components/plugins/PluginStatusBadge.svelte';
-	import Badge from '$lib/components/core/Badge.svelte';
 	import Icon from '$lib/components/core/Icon.svelte';
 	import type { PluginStatus, PluginProposal } from '$lib/types/plugin';
 
@@ -206,7 +205,7 @@
 		<p class="section-desc">Individual plugin display cards</p>
 
 		<div class="cards-grid">
-			{#each samplePlugins as plugin}
+			{#each samplePlugins as plugin (plugin.id)}
 				<PluginCard {plugin} />
 			{/each}
 		</div>
@@ -221,7 +220,7 @@
 			<div class="status-group">
 				<span class="status-group-label">Lifecycle</span>
 				<div class="status-grid">
-					{#each lifecycleStatuses as status}
+					{#each lifecycleStatuses as status (status)}
 						<div class="status-item">
 							<PluginStatusBadge {status} />
 							<span class="status-label">{status}</span>
@@ -232,7 +231,7 @@
 			<div class="status-group status-group--terminal">
 				<span class="status-group-label">Terminal</span>
 				<div class="status-grid">
-					{#each terminalStatuses as status}
+					{#each terminalStatuses as status (status)}
 						<div class="status-item">
 							<PluginStatusBadge {status} />
 							<span class="status-label">{status}</span>

@@ -4,7 +4,7 @@
  * Handles saving and loading AI conversations to IndexedDB/localStorage
  */
 
-import type { AIConversation, AIMessage } from '$types';
+import type { AIConversation } from '$types';
 
 // Configuration
 interface PersistenceConfig {
@@ -97,6 +97,7 @@ export async function saveConversation(conversation: AIConversation & { starred?
 
 	const data = {
 		...conversation,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- plain persistence object, not reactive UI state
 		updatedAt: new Date()
 	};
 
@@ -158,7 +159,9 @@ export async function loadConversations(): Promise<AIConversation[]> {
 				const conversations = request.result as AIConversation[];
 				// Sort by updatedAt descending
 				conversations.sort((a, b) => {
+					// eslint-disable-next-line svelte/prefer-svelte-reactivity -- temporary sort comparison values, not reactive state
 					const dateA = new Date(a.updatedAt).getTime();
+					// eslint-disable-next-line svelte/prefer-svelte-reactivity -- temporary sort comparison values, not reactive state
 					const dateB = new Date(b.updatedAt).getTime();
 					return dateB - dateA;
 				});
@@ -283,7 +286,9 @@ export function exportConversationMarkdown(conversation: AIConversation): string
 	const lines: string[] = [
 		`# ${conversation.title}`,
 		'',
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient formatting value in a pure export function, not reactive state
 		`*Created: ${new Date(conversation.createdAt).toLocaleString()}*`,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient formatting value in a pure export function, not reactive state
 		`*Updated: ${new Date(conversation.updatedAt).toLocaleString()}*`,
 		'',
 		'---',
@@ -292,6 +297,7 @@ export function exportConversationMarkdown(conversation: AIConversation): string
 
 	for (const message of conversation.messages) {
 		const role = message.role === 'user' ? 'You' : message.role === 'assistant' ? 'AI' : message.role;
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient formatting value in a pure export function, not reactive state
 		const time = new Date(message.timestamp).toLocaleTimeString();
 
 		lines.push(`## ${role} *${time}*`);
@@ -325,7 +331,9 @@ export async function importConversationJSON(json: string): Promise<AIConversati
 
 		// Generate new ID to avoid conflicts
 		conversation.id = crypto.randomUUID();
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- plain object property assignment during import, not reactive state
 		conversation.createdAt = new Date();
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- plain object property assignment during import, not reactive state
 		conversation.updatedAt = new Date();
 
 		await saveConversation(conversation);

@@ -45,7 +45,7 @@ interface AgentsState {
 	error: string | null;
 }
 
-let state = $state<AgentsState>({
+const state = $state<AgentsState>({
 	agents: new Map(),
 	events: [],
 	maxEvents: 200,
@@ -59,6 +59,7 @@ let state = $state<AgentsState>({
 });
 
 // Event handlers
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal non-reactive event handler registry, not UI state
 const eventHandlers = new Map<TeamEvent['type'] | '*', Set<(event: TeamEvent) => void>>();
 
 // ============================================================================
@@ -194,6 +195,7 @@ export function addAgent(agent: Agent): void {
 		id: crypto.randomUUID(),
 		agentId: agent.id,
 		agent,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 		timestamp: new Date().toISOString(),
 		type: 'milestone',
 		content: `${agent.name} joined the workspace`,
@@ -213,6 +215,7 @@ export function removeAgent(agentId: string): void {
 		id: crypto.randomUUID(),
 		agentId,
 		agent,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 		timestamp: new Date().toISOString(),
 		type: 'milestone',
 		content: `${agent.name} left the workspace`,
@@ -224,6 +227,7 @@ export function updateAgent(agentId: string, updates: Partial<Agent>): void {
 	const agent = state.agents.get(agentId);
 	if (!agent) return;
 
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 	const updated = { ...agent, ...updates, lastActivity: new Date().toISOString() };
 	state.agents.set(agentId, updated);
 }
@@ -242,6 +246,7 @@ export function setAgentTask(agentId: string, task: AgentTask | undefined): void
 				id: crypto.randomUUID(),
 				agentId,
 				agent,
+				// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 				timestamp: new Date().toISOString(),
 				type: 'action',
 				content: `Started: ${task.description}`,
@@ -257,12 +262,14 @@ export function updateAgentProgress(agentId: string, progress: Partial<AgentProg
 
 	const updated: Agent = {
 		...agent,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 		lastActivity: new Date().toISOString(),
 		currentTask: {
 			...agent.currentTask,
 			progress: {
 				...agent.currentTask.progress,
 				...progress,
+				// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 				lastUpdate: new Date().toISOString()
 			}
 		}
@@ -284,6 +291,7 @@ export function completeAgentTask(
 		id: crypto.randomUUID(),
 		agentId,
 		agent,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 		timestamp: new Date().toISOString(),
 		type: 'milestone',
 		content: summary,
@@ -347,6 +355,7 @@ export function onTeamEvent(
 	handler: (event: TeamEvent) => void
 ): () => void {
 	if (!eventHandlers.has(type)) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal handler set, not reactive UI state
 		eventHandlers.set(type, new Set());
 	}
 	eventHandlers.get(type)!.add(handler);
@@ -367,7 +376,7 @@ export function addActivity(activity: AgentActivity): void {
 function eventToActivity(event: TeamEvent): void {
 	let content: string;
 	let type: AgentActivity['type'] = 'action';
-	let metadata: AgentActivity['metadata'] = {};
+	const metadata: AgentActivity['metadata'] = {};
 
 	switch (event.type) {
 		case 'work_started':
@@ -539,12 +548,15 @@ export function addMockAgents(): void {
 			status: 'busy',
 			capabilities: ['code_generation', 'refactoring'],
 			workspaceId: 'ws-1',
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 			joinedAt: new Date().toISOString(),
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 			lastActivity: new Date().toISOString(),
 			color: '#F97316',
 			currentTask: {
 				id: 'task-1',
 				description: 'Implementing VFS integration',
+				// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 				startedAt: new Date().toISOString(),
 				progress: {
 					phase: 'implementing',
@@ -554,6 +566,7 @@ export function addMockAgents(): void {
 					totalSteps: 12,
 					toolCalls: 24,
 					filesModified: 3,
+					// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 					lastUpdate: new Date().toISOString()
 				},
 				files: ['src/lib/stores/vfs.svelte.ts', 'src/lib/types/vfs.ts']
@@ -566,7 +579,9 @@ export function addMockAgents(): void {
 			status: 'online',
 			capabilities: ['code_review', 'testing'],
 			workspaceId: 'ws-1',
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 			joinedAt: new Date().toISOString(),
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 			lastActivity: new Date().toISOString(),
 			color: '#8B5CF6'
 		},
@@ -577,7 +592,9 @@ export function addMockAgents(): void {
 			status: 'offline',
 			capabilities: ['testing', 'debugging'],
 			workspaceId: 'ws-1',
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 			joinedAt: new Date(Date.now() - 3600000).toISOString(),
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient Date used only for toISOString(), not stored as reactive state
 			lastActivity: new Date(Date.now() - 300000).toISOString(),
 			color: '#10B981'
 		}

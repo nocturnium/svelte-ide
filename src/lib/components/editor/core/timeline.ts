@@ -6,7 +6,6 @@
  * allowing users to scrub through document history.
  */
 
-import type { Line } from './state';
 
 /**
  * Snapshot metadata

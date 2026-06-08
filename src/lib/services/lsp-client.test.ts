@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { LSPClient, createLSPClient, positionToOffset, offsetToPosition, rangeToOffsets } from './lsp-client';
-import type { LSPClientConfig } from '$lib/types/lsp';
+import type { LSPClientConfig, ServerCapabilities } from '$lib/types/lsp';
 
 // ============================================================================
 // WebSocket Mock
@@ -1057,7 +1057,7 @@ describe('LSPClient — Utility Methods', () => {
 		const { client } = await createConnectedClient();
 		expect(client.supportsFeature('completionProvider')).toBe(true);
 		expect(client.supportsFeature('hoverProvider')).toBe(true);
-		expect(client.supportsFeature('foldingRangeProvider' as any)).toBe(false);
+		expect(client.supportsFeature('foldingRangeProvider' as keyof ServerCapabilities)).toBe(false);
 	});
 
 	it('should return false for supportsFeature when not connected', () => {
@@ -1162,7 +1162,7 @@ describe('LSPClient — Not connected errors', () => {
 		vi.useRealTimers();
 		const client = new LSPClient(getDefaultConfig());
 		// Force capabilities so it tries to actually send the request
-		(client as any)._capabilities = { hoverProvider: true };
+		(client as unknown as { _capabilities: ServerCapabilities })._capabilities = { hoverProvider: true };
 
 		await expect(
 			client.hover('file:///test.ts', { line: 0, character: 0 })

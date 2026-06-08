@@ -8,7 +8,6 @@
 	import { onMount } from 'svelte';
 	import {
 		createDiagnosticsManager,
-		generateMockDiagnostics,
 		getSeverityIcon,
 		getSeverityColor,
 		type DiagnosticsManager,
@@ -16,8 +15,7 @@
 	} from '$lib/components/editor/core/diagnostics';
 	import {
 		createBreakpointManager,
-		type BreakpointManager,
-		type Breakpoint
+		type BreakpointManager
 	} from '$lib/components/editor/core/breakpoints';
 	import InlineDiagnosticsLayer from '$lib/components/editor/InlineDiagnosticsLayer.svelte';
 	import ProblemsPanel from '$lib/components/editor/ProblemsPanel.svelte';
@@ -302,7 +300,7 @@ function privateHelper(value) {
 							/>
 						{/if}
 
-						{#each sampleLines as line, i}
+						{#each sampleLines as line, i (i)}
 							<div class="code-line" style="height: {lineHeight}px;">
 								<span class="line-num">{i + 1}</span>
 								<span class="line-content">{line || ' '}</span>
@@ -420,7 +418,7 @@ function privateHelper(value) {
 							/>
 						{/if}
 
-						{#each sampleLines as line, i}
+						{#each sampleLines as line, i (i)}
 							<div class="code-line" style="height: {lineHeight}px;">
 								<span class="line-num">{i + 1}</span>
 								<span class="line-content">{line || ' '}</span>

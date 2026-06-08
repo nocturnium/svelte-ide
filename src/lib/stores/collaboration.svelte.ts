@@ -34,7 +34,7 @@ interface CollabState {
 }
 
 // Reactive state
-let state = $state<CollabState>({
+const state = $state<CollabState>({
 	config: null,
 	status: 'disconnected',
 	error: null,
@@ -48,7 +48,8 @@ let state = $state<CollabState>({
 	localUser: null
 });
 
-// Event handlers
+// Event handlers — non-reactive internal pub/sub registry; never mutated as UI state
+// eslint-disable-next-line svelte/prefer-svelte-reactivity
 const eventHandlers = new Set<CollaborationEventHandler>();
 
 // Getter functions for derived values (Svelte 5 module-safe)
@@ -218,6 +219,7 @@ export function setLocalCursor(
 		user: state.localUser,
 		position,
 		selection,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		lastActivity: new Date()
 	};
 
@@ -253,7 +255,9 @@ export function startAISession(documentId: string, aiUser: CollaborationUser): s
 		status: 'pending',
 		aiUser: { ...aiUser, isAI: true, color: 'var(--ide-collab-ai)' },
 		humanUsers: state.users.filter((u) => !u.isAI),
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		startedAt: new Date(),
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		updatedAt: new Date()
 	};
 
@@ -271,6 +275,7 @@ export function startAISession(documentId: string, aiUser: CollaborationUser): s
  */
 export function updateAISession(sessionId: string, updates: Partial<AICollaborationSession>): void {
 	state.aiSessions = state.aiSessions.map((s) =>
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		s.id === sessionId ? { ...s, ...updates, updatedAt: new Date() } : s
 	);
 }
@@ -316,6 +321,7 @@ export function reviewAIChange(
 					...c,
 					status: approved ? 'approved' : 'rejected',
 					reviewedBy: reviewerId,
+					// eslint-disable-next-line svelte/prefer-svelte-reactivity
 					reviewedAt: new Date()
 				}
 			: c
@@ -370,6 +376,7 @@ export function createSnapshot(
 		documentId,
 		content,
 		version: state.snapshots.filter((s) => s.documentId === documentId).length + 1,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		createdAt: new Date(),
 		createdBy: state.localUser!,
 		reason

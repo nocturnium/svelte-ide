@@ -40,7 +40,7 @@ const defaultConfig: AIPanelConfig = {
 };
 
 // Reactive state
-let state = $state<AIState>({
+const state = $state<AIState>({
 	conversations: [],
 	activeConversationId: null,
 	tools: new Map(),
@@ -125,7 +125,9 @@ export function createConversation(title?: string, context?: AIContext): string 
 		id,
 		title: title ?? 'New conversation',
 		messages: [],
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot stored on a plain AIConversation object; type expects Date, not SvelteDate
 		createdAt: new Date(),
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot stored on a plain AIConversation object; type expects Date, not SvelteDate
 		updatedAt: new Date(),
 		context
 	};
@@ -168,11 +170,13 @@ export function addMessage(
 	const newMessage: AIMessage = {
 		...message,
 		id,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIMessage object; type expects Date, not SvelteDate
 		timestamp: new Date()
 	};
 
 	state.conversations = state.conversations.map((c) =>
 		c.id === state.activeConversationId
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
 			? { ...c, messages: [...c.messages, newMessage], updatedAt: new Date() }
 			: c
 	);
@@ -189,6 +193,7 @@ export function updateMessage(messageId: string, updates: Partial<AIMessage>): v
 			? {
 					...c,
 					messages: c.messages.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
+					// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
 					updatedAt: new Date()
 				}
 			: c
@@ -395,6 +400,7 @@ export function startEditSession(
 		filePath,
 		status: 'pending',
 		originalContent,
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIEditSession object; type expects Date, not SvelteDate
 		startedAt: new Date()
 	};
 
@@ -421,6 +427,7 @@ export function completeEditSession(
 ): void {
 	state.editSessions = state.editSessions.map((s) =>
 		s.id === sessionId
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIEditSession object; type expects Date, not SvelteDate
 			? { ...s, status: 'reviewing', proposedContent, diff, completedAt: new Date() }
 			: s
 	);
@@ -466,6 +473,7 @@ export function updateContext(context: Partial<AIContext>): void {
 
 	state.conversations = state.conversations.map((c) =>
 		c.id === state.activeConversationId
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
 			? { ...c, context: { ...c.context, ...context }, updatedAt: new Date() }
 			: c
 	);

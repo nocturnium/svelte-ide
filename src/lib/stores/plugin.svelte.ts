@@ -42,7 +42,7 @@ interface PluginState {
 }
 
 // Reactive state
-let state = $state<PluginState>({
+const state = $state<PluginState>({
 	proposals: [],
 	instances: new Map(),
 	commands: new Map(),
@@ -134,6 +134,7 @@ export const reviewingProposals = { get current() { return getReviewingProposals
 export const deployedProposals = { get current() { return getDeployedProposals(); } };
 
 // Event handlers
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal non-reactive event dispatch registry, not UI state
 const eventHandlers = new Map<string, Set<(event: PluginEvent) => void>>();
 
 /**
@@ -243,6 +244,7 @@ export function onEvent(
 	handler: (event: PluginEvent) => void
 ): () => void {
 	if (!eventHandlers.has(type)) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal non-reactive handler bucket, not UI state
 		eventHandlers.set(type, new Set());
 	}
 	eventHandlers.get(type)!.add(handler);
@@ -429,7 +431,7 @@ function proposalToManifest(proposal: PluginProposal): PluginManifest {
 /**
  * Register plugin contributions (commands, panels, etc.)
  */
-function registerContributions(pluginId: string, proposal: PluginProposal): void {
+function registerContributions(_pluginId: string, _proposal: PluginProposal): void {
 	// This would parse the plugin and register its contributions
 	// For now, we'll just note that this is where dynamic registration happens
 }

@@ -7,7 +7,7 @@
 	 */
 
 	import { getCommandRegistry, type Command } from './core/commands';
-	import { onMount } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	interface Props {
 		/** Whether the palette is open */
@@ -43,7 +43,7 @@
 
 	// Group commands by category
 	let groupedCommands = $derived.by(() => {
-		const groups = new Map<string, Command[]>();
+		const groups = new SvelteMap<string, Command[]>();
 		for (const cmd of commands) {
 			const existing = groups.get(cmd.category) || [];
 			existing.push(cmd);
@@ -57,7 +57,8 @@
 
 	// Reset selection when query changes
 	$effect(() => {
-		query;
+		// Track query to reset selection on each change
+		void query;
 		selectedIndex = 0;
 	});
 
@@ -169,7 +170,6 @@
 </script>
 
 {#if open}
-	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		class="command-palette__backdrop"
 		onclick={handleBackdropClick}
@@ -200,13 +200,13 @@
 				{#if flatCommands.length === 0}
 					<div class="command-palette__empty">No commands found</div>
 				{:else}
-					{#each [...groupedCommands] as [category, categoryCommands], categoryIdx}
+					{#each [...groupedCommands] as [category, categoryCommands], _categoryIdx (category)}
 						<div class="command-palette__group">
 							<div class="command-palette__group-header">
 								<span class="command-palette__group-icon">{getCategoryIcon(category)}</span>
 								<span class="command-palette__group-label">{getCategoryLabel(category)}</span>
 							</div>
-							{#each categoryCommands as command, cmdIdx}
+							{#each categoryCommands as command, cmdIdx (command.id)}
 								{@const flatIdx = getFlatIndex(category, cmdIdx)}
 								<button
 									class="command-palette__item"
@@ -216,6 +216,7 @@
 								>
 									<span class="command-palette__item-icon">{command.icon || ''}</span>
 									<span class="command-palette__item-label">
+										<!-- eslint-disable-next-line svelte/no-at-html-tags -- content is sanitized via escapeHtml before regex substitution -->
 										{@html highlightMatch(command.label, query)}
 									</span>
 									{#if command.shortcut}

@@ -8,10 +8,8 @@
 	 */
 
 	import {
-		type TimelineSnapshot,
 		type SnapshotMetadata,
-		formatTimestamp,
-		formatDuration
+		formatTimestamp
 	} from './core/timeline';
 
 	interface TimelineMarker {

@@ -7,7 +7,7 @@
  */
 
 import type { TokenizedLine, TokenizerState } from '../tokenizer/types';
-import { getTokenizer, tokenize } from '../tokenizer';
+import { getTokenizer } from '../tokenizer';
 import { HISTORY_GROUP_TIMEOUT_MS, MAX_HISTORY_SIZE } from '../constants';
 import {
 	CursorManager,
@@ -15,8 +15,7 @@ import {
 	type Cursor,
 	getSelectionStart,
 	getSelectionEnd,
-	isSelectionEmpty,
-	comparePositions
+	isSelectionEmpty
 } from './multi-cursor';
 
 /**

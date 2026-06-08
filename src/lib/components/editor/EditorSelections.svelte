@@ -12,7 +12,7 @@
 		getSelectionEnd,
 		isSelectionEmpty
 	} from './core';
-	import { CONTENT_PADDING, FALLBACK_VIEWPORT_HEIGHT } from './constants';
+	import { FALLBACK_VIEWPORT_HEIGHT } from './constants';
 
 	interface Props {
 		cursors: readonly Cursor[];
@@ -128,7 +128,7 @@
 
 <!-- Selection layer (all cursor selections) -->
 <div class="custom-editor__selections">
-	{#each getSelectionRects() as rect}
+	{#each getSelectionRects() as rect, i (i)}
 		<div
 			class="custom-editor__selection"
 			class:custom-editor__selection--secondary={!rect.isPrimary}

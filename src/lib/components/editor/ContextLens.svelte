@@ -52,7 +52,7 @@
 		charWidth,
 		gutterWidth,
 		enabled = true,
-		language = 'typescript'
+		language: _language = 'typescript'
 	}: Props = $props();
 
 	// Extract context lens items from code

@@ -17,7 +17,6 @@
 	let showConfirmDelete = $state(false);
 
 	const isUser = $derived(message.role === 'user');
-	const isAssistant = $derived(message.role === 'assistant');
 
 	async function handleCopy() {
 		try {

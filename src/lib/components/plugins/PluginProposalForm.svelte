@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button, Icon, Input, Textarea } from '$components/core';
-	import { createProposal, submitProposal } from '$stores/plugin.svelte';
+	import { createProposal } from '$stores/plugin.svelte';
 	import type { PluginCategory } from '$types';
 
 	interface Props {
@@ -69,7 +69,6 @@
 	}
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_interactive_supports_focus -->
 <div class="plugin-form-overlay" onclick={onClose} onkeydown={(e) => e.key === 'Escape' && onClose()} role="presentation">
 	<div
 		class="plugin-form"
@@ -122,7 +121,7 @@
 					class="plugin-form__select"
 					bind:value={category}
 				>
-					{#each categories as cat}
+					{#each categories as cat (cat.value)}
 						<option value={cat.value}>{cat.label}</option>
 					{/each}
 				</select>

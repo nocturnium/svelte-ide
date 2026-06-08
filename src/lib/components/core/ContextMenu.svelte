@@ -81,7 +81,7 @@
 		style="left: {adjustedX}px; top: {adjustedY}px"
 		role="menu"
 	>
-		{#each items as item}
+		{#each items as item (item.id)}
 			{#if item.separator}
 				<div class="ide-context-menu__separator"></div>
 			{:else}

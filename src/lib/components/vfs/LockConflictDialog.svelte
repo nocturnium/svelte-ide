@@ -9,7 +9,7 @@
 	 * - Accessible: Full keyboard navigation, focus management
 	 */
 
-	import { Icon, Button, Avatar } from '$lib/components/core';
+	import { Avatar } from '$lib/components/core';
 	import AgentAvatar from '$components/agents/AgentAvatar.svelte';
 	import type { VFSFileLock, Agent } from '$lib/types';
 
@@ -98,7 +98,6 @@
 </script>
 
 {#if open}
-	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
 		class="lock-dialog-backdrop"
 		role="dialog"

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as vfs from './vfs.svelte';
+import type { VFSFileInfo, VFSFileLock, VFSTransaction, VFSLockStatus } from '$lib/types';
 
 /**
  * VFS store tests
@@ -32,24 +33,30 @@ beforeEach(() => {
 // Helpers
 // ============================================================================
 
-function makeFileInfo(path: string, overrides: Partial<any> = {}): any {
+function makeFileInfo(path: string, overrides: Partial<VFSFileInfo> = {}): VFSFileInfo {
 	return {
 		path,
 		name: path.split('/').pop() ?? path,
 		isDir: false,
 		size: 100,
 		modTime: '2025-01-01T00:00:00Z',
+		mode: 0o644,
+		version: 1,
 		...overrides
 	};
 }
 
-function makeLock(path: string, holder: string = 'user-1'): any {
+function makeLock(path: string, holder: string = 'user-1'): VFSFileLock {
 	return {
 		path,
 		holder,
 		ttl: 30000,
 		acquiredAt: '2025-01-01T00:00:00Z',
-		purpose: 'editing' as const
+		expiresAt: '2025-01-01T00:30:00Z',
+		workspaceId: 'ws-test',
+		holderType: 'user',
+		refreshCount: 0,
+		purpose: 'edit'
 	};
 }
 
@@ -224,7 +231,7 @@ describe('vfs store — lock operations', () => {
 	});
 
 	it('setLockStatus sets acquiring state', () => {
-		vfs.setLockStatus('/src/a.ts', { status: 'acquiring' } as any);
+		vfs.setLockStatus('/src/a.ts', { status: 'acquiring' } as VFSLockStatus);
 		expect(vfs.getLockStatus('/src/a.ts').status).toBe('acquiring');
 	});
 });
@@ -325,8 +332,9 @@ describe('vfs store — derived file queries', () => {
 
 describe('vfs store — transactions', () => {
 	it('startTransaction adds an active transaction', () => {
-		const tx: any = {
+		const tx: VFSTransaction = {
 			id: 'tx-1',
+			workspaceId: 'ws-test',
 			operations: [],
 			status: 'pending',
 			createdAt: '2025-01-01T00:00:00Z'
@@ -336,8 +344,9 @@ describe('vfs store — transactions', () => {
 	});
 
 	it('completeTransaction moves tx to history', () => {
-		const tx: any = {
+		const tx: VFSTransaction = {
 			id: 'tx-1',
+			workspaceId: 'ws-test',
 			operations: [],
 			status: 'pending',
 			createdAt: '2025-01-01T00:00:00Z'
@@ -356,8 +365,9 @@ describe('vfs store — transactions', () => {
 
 	it('transaction history is capped at 100', () => {
 		for (let i = 0; i < 105; i++) {
-			const tx: any = {
+			const tx: VFSTransaction = {
 				id: `tx-${i}`,
+				workspaceId: 'ws-test',
 				operations: [],
 				status: 'pending',
 				createdAt: '2025-01-01T00:00:00Z'

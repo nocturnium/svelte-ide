@@ -78,6 +78,7 @@
 		if (filter === 'starred') {
 			result = result.filter((c) => c.starred);
 		} else if (filter === 'today') {
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- temporary comparison value, not reactive UI state
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
 			result = result.filter((c) => new Date(c.updatedAt) >= today);

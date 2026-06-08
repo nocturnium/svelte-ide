@@ -239,7 +239,7 @@ export class GitBlameManager {
 
 		// Recompute colors if mode changed
 		if (config.colorMode) {
-			for (const [line, info] of this.state.lineBlame) {
+			for (const [_line, info] of this.state.lineBlame) {
 				if (this.config.colorMode === 'author') {
 					info.color = this.getAuthorColor(info.author);
 				} else {

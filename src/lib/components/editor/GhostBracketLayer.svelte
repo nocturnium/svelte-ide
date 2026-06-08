@@ -143,7 +143,6 @@
 			{/if}
 
 			<!-- Ghost bracket marker -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="ghost-bracket"
 				role="tooltip"
@@ -187,7 +186,7 @@
 		{/each}
 
 		<!-- Bracket mismatch markers -->
-		{#each mismatches as mismatch}
+		{#each mismatches as mismatch (`${mismatch.position.line}:${mismatch.position.column}:${mismatch.issue}`)}
 			{@const color = getSeverityColor(mismatch.severity)}
 			<div
 				class="bracket-mismatch bracket-mismatch--{mismatch.issue}"

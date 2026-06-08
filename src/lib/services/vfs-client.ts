@@ -415,7 +415,7 @@ export async function withLock<T>(
 	fn: () => Promise<T>,
 	options?: VFSLockAcquisitionOptions
 ): Promise<T> {
-	const lock = await acquireLock(workspaceId, path, holder, options);
+	const _lock = await acquireLock(workspaceId, path, holder, options);
 
 	try {
 		return await fn();

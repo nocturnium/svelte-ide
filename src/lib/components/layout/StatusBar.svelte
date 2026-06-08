@@ -80,7 +80,6 @@
 	}: Props = $props();
 
 	// Agent context
-	let onlineAgents = $derived(agents.filter((a) => a.status === 'online' || a.status === 'busy'));
 	let busyAgents = $derived(agents.filter((a) => a.status === 'busy'));
 	let idleAgents = $derived(agents.filter((a) => a.status === 'online'));
 

@@ -9,7 +9,7 @@
 	 * - Keyboard navigation
 	 */
 
-	import type { CompletionItem, CompletionItemKind } from '$lib/types/lsp';
+	import type { CompletionItem } from '$lib/types/lsp';
 
 	interface Props {
 		/** Completion items to display */
@@ -119,16 +119,18 @@
 
 	function handleKeyDown(e: KeyboardEvent) {
 		switch (e.key) {
-			case 'ArrowUp':
+			case 'ArrowUp': {
 				e.preventDefault();
 				const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
 				onSelectionChange?.(prevIndex);
 				break;
-			case 'ArrowDown':
+			}
+			case 'ArrowDown': {
 				e.preventDefault();
 				const nextIndex = selectedIndex < items.length - 1 ? selectedIndex + 1 : 0;
 				onSelectionChange?.(nextIndex);
 				break;
+			}
 			case 'Enter':
 			case 'Tab':
 				e.preventDefault();
@@ -151,7 +153,6 @@
 
 <svelte:window onkeydown={handleKeyDown} />
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="autocomplete-widget {className}"
 	style="left: {position.x}px; top: {position.y}px; max-height: {maxHeight}px;"
@@ -159,7 +160,7 @@
 	aria-label="Completions"
 >
 	<div class="autocomplete-widget__list" bind:this={listRef}>
-		{#each items as item, i}
+		{#each items as item, i (item.label + i)}
 			<button
 				class="autocomplete-widget__item"
 				class:autocomplete-widget__item--selected={i === selectedIndex}
@@ -173,6 +174,7 @@
 					class="autocomplete-widget__icon autocomplete-widget__icon--{getKindIcon(item.kind)}"
 					title={getKindLabel(item.kind)}
 				>
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG is generated from a hardcoded internal lookup map; no user input reaches this -->
 					{@html getKindSVG(item.kind)}
 				</span>
 				<span class="autocomplete-widget__label">

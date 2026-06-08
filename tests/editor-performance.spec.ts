@@ -210,7 +210,7 @@ test.describe('Editor Performance', () => {
 		const getMemory = async () => {
 			return page.evaluate(() => {
 				if ('memory' in performance) {
-					return (performance as any).memory?.usedJSHeapSize ?? 0;
+					return (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0;
 				}
 				return 0;
 			});

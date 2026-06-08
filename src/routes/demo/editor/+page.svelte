@@ -329,7 +329,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 					value={activeLanguage}
 					onchange={(e) => (langOverride[activeId] = e.currentTarget.value)}
 				>
-					{#each languageOptions as opt}
+					{#each languageOptions as opt (opt.id)}
 						<option value={opt.id}>{opt.name}</option>
 					{/each}
 				</select>
@@ -383,7 +383,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 		<aside class="explorer" aria-label="File explorer">
 			<div class="explorer-head">Explorer</div>
 			<ul class="file-list">
-				{#each files as file}
+				{#each files as file (file.id)}
 					<li>
 						<button
 							class="file-row"
@@ -482,7 +482,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 		<h2 id="icons-title">File icons</h2>
 		<p class="section-desc">Language-aware icons for the file tree and tabs.</p>
 		<div class="file-icons-grid">
-			{#each ['index.ts', 'app.tsx', 'main.js', 'App.svelte', 'index.html', 'styles.css', 'data.json', 'main.py', 'server.go', 'README.md', 'config.yaml', 'Dockerfile'] as filename}
+			{#each ['index.ts', 'app.tsx', 'main.js', 'App.svelte', 'index.html', 'styles.css', 'data.json', 'main.py', 'server.go', 'README.md', 'config.yaml', 'Dockerfile'] as filename, i (i)}
 				<div class="file-icon-item">
 					<FileIcon {filename} />
 					<span>{filename}</span>
@@ -494,7 +494,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 	<section class="component-section" aria-labelledby="caps-title">
 		<h2 id="caps-title">What's inside the editor core</h2>
 		<div class="features-list">
-			{#each [{ t: 'Syntax highlighting', d: 'Tokenizers for TypeScript, JavaScript, Python, Go, HTML, CSS, JSON, Markdown and more.' }, { t: 'Multi-cursor & selection', d: 'Add cursors, select occurrences, and edit in parallel with full selection support.' }, { t: 'Code folding', d: 'Bracket- and indentation-aware folds with semantic presets.' }, { t: 'Find & replace', d: 'Incremental search, regex, case sensitivity, and replace-all.' }, { t: 'Virtualized rendering', d: 'Only the visible window renders — smooth at 10k+ lines.' }, { t: 'Zero dependencies', d: 'No CodeMirror, no Monaco. Pure Svelte 5.' }] as feature}
+			{#each [{ t: 'Syntax highlighting', d: 'Tokenizers for TypeScript, JavaScript, Python, Go, HTML, CSS, JSON, Markdown and more.' }, { t: 'Multi-cursor & selection', d: 'Add cursors, select occurrences, and edit in parallel with full selection support.' }, { t: 'Code folding', d: 'Bracket- and indentation-aware folds with semantic presets.' }, { t: 'Find & replace', d: 'Incremental search, regex, case sensitivity, and replace-all.' }, { t: 'Virtualized rendering', d: 'Only the visible window renders — smooth at 10k+ lines.' }, { t: 'Zero dependencies', d: 'No CodeMirror, no Monaco. Pure Svelte 5.' }] as feature, i (i)}
 				<div class="feature">
 					<span class="feature-icon" aria-hidden="true">✓</span>
 					<div>

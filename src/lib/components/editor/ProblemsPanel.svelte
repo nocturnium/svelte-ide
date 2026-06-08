@@ -63,6 +63,7 @@
 
 	// Get all unique sources
 	const allSources = $derived(() => {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local accumulator, not reactive UI state
 		const sources = new Set<string>();
 		for (const diagnostics of allDiagnostics.values()) {
 			for (const d of diagnostics) {
@@ -74,6 +75,7 @@
 
 	// Filter diagnostics
 	const filteredDiagnostics = $derived(() => {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local accumulator, not reactive UI state
 		const filtered = new Map<string, Diagnostic[]>();
 
 		for (const [filePath, diagnostics] of allDiagnostics) {
@@ -134,6 +136,7 @@
 	 * Toggle file collapse
 	 */
 	function toggleFileCollapse(filePath: string) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- temporary copy to build new value, not a reactive instance
 		const newCollapsed = new Set(collapsedFiles);
 		if (newCollapsed.has(filePath)) {
 			newCollapsed.delete(filePath);
@@ -192,7 +195,7 @@
 
 			<div class="header-filters">
 				<!-- Severity filters -->
-				{#each (['error', 'warning', 'info', 'hint'] as const) as severity}
+				{#each (['error', 'warning', 'info', 'hint'] as const) as severity (severity)}
 					{@const count = counts()[severity]}
 					<button
 						class="severity-filter"
@@ -214,7 +217,7 @@
 					title="Filter by source"
 				>
 					<option value={null}>All sources</option>
-					{#each allSources() as source}
+					{#each allSources() as source (source)}
 						<option value={source}>{source}</option>
 					{/each}
 				</select>
@@ -310,7 +313,7 @@
 				{/each}
 			{:else}
 				<!-- Flat list -->
-				{#each [...filteredDiagnostics().entries()] as [filePath, diagnostics]}
+				{#each [...filteredDiagnostics().entries()] as [filePath, diagnostics] (filePath)}
 					{#each diagnostics as diagnostic (diagnostic.id)}
 						<button
 							class="diagnostic-item diagnostic-item--flat"

@@ -8,8 +8,8 @@
 	 * - Live Structure Map
 	 */
 
+	import { SvelteMap } from 'svelte/reactivity';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
-	import ContextLens from '$lib/components/editor/ContextLens.svelte';
 	import StructureMap from '$lib/components/editor/StructureMap.svelte';
 	import {
 		type ComplexityMetrics,
@@ -175,7 +175,7 @@ export const capitalize = (str: string): string =>
 
 	let content = $state(sampleCode);
 	let cursorLine = $state(0);
-	let cursorColumn = $state(0);
+	let _cursorColumn = $state(0);
 	let complexityMetrics = $state<ComplexityMetrics | null>(null);
 	let scrollLine = $state(0);
 
@@ -190,7 +190,7 @@ export const capitalize = (str: string): string =>
 
 	// Group regions by category for display
 	let regionsByCategory = $derived.by(() => {
-		const groups = new Map<string, SemanticRegion[]>();
+		const groups = new SvelteMap<string, SemanticRegion[]>();
 		for (const region of semanticRegions) {
 			const existing = groups.get(region.category) || [];
 			existing.push(region);
@@ -268,7 +268,7 @@ export const capitalize = (str: string): string =>
 		</p>
 
 		<div class="regions-overview">
-			{#each [...regionsByCategory.entries()] as [category, regions]}
+			{#each [...regionsByCategory.entries()] as [category, regions] (category)}
 				<div class="region-group">
 					<div class="region-group__header">
 						<span class="region-group__color" style="background: {getCategoryColor(category)}"></span>
@@ -276,7 +276,7 @@ export const capitalize = (str: string): string =>
 						<span class="region-group__count">{regions.length}</span>
 					</div>
 					<ul class="region-group__list">
-						{#each regions.slice(0, 3) as region}
+						{#each regions.slice(0, 3) as region (region.startLine)}
 							<li>
 								<button class="region-item" onclick={() => navigateToLine(region.startLine)}>
 									<span class="region-item__label">{region.label || category}</span>
@@ -301,7 +301,7 @@ export const capitalize = (str: string): string =>
 		</p>
 
 		<div class="presets-grid">
-			{#each DEFAULT_FOLD_PRESETS as preset}
+			{#each DEFAULT_FOLD_PRESETS as preset (preset.id)}
 				<div
 					class="preset-card"
 					class:preset-card--active={activePreset?.id === preset.id}
@@ -356,7 +356,7 @@ export const capitalize = (str: string): string =>
 					complexityHighlighting={true}
 					onCursorChange={(line, col) => {
 						cursorLine = line;
-						cursorColumn = col;
+						_cursorColumn = col;
 					}}
 					onComplexityChange={(metrics) => {
 						complexityMetrics = metrics;

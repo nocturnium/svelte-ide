@@ -4,7 +4,6 @@
 
 import type { Doc as YDoc } from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
-import type { WebsocketProvider } from 'y-websocket';
 
 export interface DocumentOptions {
 	documentId: string;

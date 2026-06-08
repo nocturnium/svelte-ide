@@ -46,14 +46,14 @@
 
 	let {
 		doc: externalDoc,
-		documentId,
+		documentId: _documentId,
 		initialContent = '',
 		textName = 'content',
 		language = 'plaintext',
 		readonly = false,
 		preferences = {},
 		class: className = '',
-		currentUser,
+		currentUser: _currentUser,
 		onChange,
 		onCursorChange,
 		onSave

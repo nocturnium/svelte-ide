@@ -2,7 +2,7 @@
  * CSS tokenizer
  */
 
-import type { Token, TokenizedLine, TokenizerState, TokenType } from '../types';
+import type { Token, TokenizedLine, TokenizerState } from '../types';
 import { createToken } from '../base';
 
 // CSS properties (common ones)
@@ -31,11 +31,6 @@ const properties = new Set([
 	'word-spacing', 'word-wrap', 'z-index'
 ]);
 
-// CSS at-rules
-const atRules = new Set([
-	'@media', '@keyframes', '@import', '@font-face', '@supports', '@page', '@charset',
-	'@namespace', '@viewport', '@counter-style', '@font-feature-values', '@property', '@layer'
-]);
 
 interface CSSTokenizerState extends TokenizerState {
 	inRule?: boolean;

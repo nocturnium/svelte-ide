@@ -149,7 +149,7 @@
 				<!-- Participant avatars -->
 				{#if showParticipants && zone.participants.length > 0}
 					<div class="conflict-zone__participants">
-						{#each zone.participants.slice(0, 3) as participant, i}
+						{#each zone.participants.slice(0, 3) as participant, i (participant.userId)}
 							<div
 								class="conflict-zone__avatar"
 								class:conflict-zone__avatar--ai={participant.isAI}
@@ -209,7 +209,7 @@
 			</div>
 
 			<div class="conflict-tooltip__participants">
-				{#each hoveredZone.participants as participant}
+				{#each hoveredZone.participants as participant (participant.userId)}
 					<div class="conflict-tooltip__participant">
 						<span
 							class="conflict-tooltip__dot"

@@ -32,28 +32,6 @@ beforeEach(() => {
 // Helpers
 // ============================================================================
 
-function makeProposal(overrides: Partial<any> = {}): any {
-	return {
-		id: `proposal-${++uuidCounter}`,
-		name: 'Test Plugin',
-		description: 'A test plugin',
-		author: 'tester',
-		category: 'utility',
-		tags: ['test'],
-		version: 1,
-		status: 'draft',
-		votes: [],
-		issues: [],
-		implementation: {
-			type: 'script',
-			permissions: []
-		},
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		...overrides
-	};
-}
-
 // ============================================================================
 // Default state
 // ============================================================================
@@ -126,7 +104,7 @@ describe('plugin store — command registration', () => {
 			id: 'say-hello',
 			title: 'Say Hello',
 			handler: async () => {}
-		} as any);
+		});
 		const cmds = plugin.getCommands();
 		expect(cmds).toHaveLength(1);
 		expect(cmds[0].id).toBe('my-plugin:say-hello');
@@ -136,10 +114,10 @@ describe('plugin store — command registration', () => {
 		const before = plugin.getCommands().length;
 		plugin.registerCommand('multi-plugin', {
 			id: 'cmd-1', title: 'Cmd 1', handler: async () => {}
-		} as any);
+		});
 		plugin.registerCommand('multi-plugin', {
 			id: 'cmd-2', title: 'Cmd 2', handler: async () => {}
-		} as any);
+		});
 		expect(plugin.getCommands().length - before).toBe(2);
 	});
 });
@@ -153,8 +131,9 @@ describe('plugin store — panel registration', () => {
 		plugin.registerPanel('my-plugin', {
 			id: 'output',
 			title: 'Output Panel',
-			location: 'bottom'
-		} as any);
+			position: 'bottom',
+			component: 'OutputPanel'
+		});
 		const panels = plugin.getPanels();
 		expect(panels).toHaveLength(1);
 		expect(panels[0].id).toBe('my-plugin:output');
@@ -172,7 +151,7 @@ describe('plugin store — command execution', () => {
 			id: 'do-thing',
 			title: 'Do Thing',
 			handler
-		} as any);
+		});
 		await plugin.executeCommand('my-plugin:do-thing');
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
@@ -187,7 +166,7 @@ describe('plugin store — command execution', () => {
 			id: 'fail',
 			title: 'Fail',
 			handler: async () => { throw new Error('boom'); }
-		} as any);
+		});
 		await plugin.executeCommand('my-plugin:fail');
 		expect(plugin.getError()).toBe('boom');
 	});

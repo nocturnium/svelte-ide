@@ -11,7 +11,7 @@
 <div class="editor">
 	<div class="editor__content">
 		<div class="editor__lines">
-			{#each lines as line, i}
+			{#each lines as line, i (i)}
 				<div class="editor__line">
 					<div class="editor__gutter">
 						<span class="editor__line-number">{i + 1}</span>

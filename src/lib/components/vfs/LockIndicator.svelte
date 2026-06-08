@@ -82,12 +82,6 @@
 		return `${seconds}s`;
 	}
 
-	function getIcon(): string {
-		if (status.status === 'acquiring') return 'loader';
-		if (status.status === 'failed') return 'alert-circle';
-		if (isOwned) return 'lock';
-		return 'lock';
-	}
 </script>
 
 {#if status.status !== 'unlocked'}

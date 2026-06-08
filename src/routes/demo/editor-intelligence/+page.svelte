@@ -444,7 +444,7 @@ export const DEFAULT_CONFIG = {
 							class="code-viewport"
 							style="transform: translateY(-{minimapScrollTop * lineHeight}px);"
 						>
-							{#each sampleLines as line, i}
+							{#each sampleLines as line, i (i)}
 								<div
 									class="code-line"
 									class:code-line--current={i === cursorLine}
@@ -544,7 +544,7 @@ export const DEFAULT_CONFIG = {
 				</div>
 
 				<div class="editor-preview-small">
-					{#each sampleLines.slice(15, 45) as line, i}
+					{#each sampleLines.slice(15, 45) as line, i (i)}
 						<div
 							class="code-line"
 							class:code-line--current={i + 15 === cursorLine}
@@ -611,7 +611,7 @@ export const DEFAULT_CONFIG = {
 							/>
 						{/if}
 
-						{#each sampleLines.slice(20, 50) as line, i}
+						{#each sampleLines.slice(20, 50) as line, i (i)}
 							<div
 								class="code-line"
 								role="button"
@@ -717,7 +717,7 @@ export const DEFAULT_CONFIG = {
 			<div class="outline-demo">
 				<div class="outline-layout">
 					<div class="editor-preview-small">
-						{#each sampleLines as line, i}
+						{#each sampleLines as line, i (i)}
 							<div
 								class="code-line"
 								class:code-line--current={i === cursorLine}

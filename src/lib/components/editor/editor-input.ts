@@ -87,7 +87,7 @@ const DEFAULT_TAB_SIZE = 4;
 export function createEditorInput(deps: EditorInputDeps) {
 	// ---- internal mutable state ----
 	let isMouseDown = false;
-	let isDragging = false;
+	let _isDragging = false;
 	let isComposing = false;
 	let boundMouseMove: ((e: MouseEvent) => void) | null = null;
 	let boundMouseUp: (() => void) | null = null;
@@ -186,7 +186,7 @@ export function createEditorInput(deps: EditorInputDeps) {
 		deps.getHiddenInput()?.focus();
 
 		isMouseDown = true;
-		isDragging = false;
+		_isDragging = false;
 
 		// Attach global listeners only when drag starts (per-instance scoping)
 		if (!boundMouseMove) {
@@ -221,14 +221,14 @@ export function createEditorInput(deps: EditorInputDeps) {
 	function handleMouseMove(e: MouseEvent): void {
 		if (!isMouseDown) return;
 
-		isDragging = true;
+		_isDragging = true;
 		const pos = getPositionFromMouse(e);
 		deps.getEditorState().extendSelection(pos);
 	}
 
 	function handleMouseUp(): void {
 		isMouseDown = false;
-		isDragging = false;
+		_isDragging = false;
 
 		// Remove global listeners when drag ends
 		if (boundMouseMove) {

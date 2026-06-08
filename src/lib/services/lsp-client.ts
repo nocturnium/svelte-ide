@@ -14,7 +14,6 @@ import type {
 	Position,
 	Range,
 	TextDocumentItem,
-	VersionedTextDocumentIdentifier,
 	TextDocumentContentChangeEvent,
 	CompletionParams,
 	CompletionItem,
@@ -37,7 +36,6 @@ import type {
 	PublishDiagnosticsParams,
 	Diagnostic,
 	JSONRPCRequest,
-	JSONRPCResponse,
 	JSONRPCNotification
 } from '$lib/types/lsp';
 
@@ -262,7 +260,7 @@ export class LSPClient {
 					this.handleDisconnect();
 				};
 
-				this.ws.onerror = (event) => {
+				this.ws.onerror = (_event) => {
 					const error = new Error('WebSocket error');
 					this.emitEvent('onError', error);
 					if (this._state === 'connecting') {
@@ -284,7 +282,7 @@ export class LSPClient {
 		this.setState('disconnected');
 
 		// Cancel pending requests
-		for (const [id, pending] of this.pendingRequests) {
+		for (const [_id, pending] of this.pendingRequests) {
 			clearTimeout(pending.timeout);
 			pending.reject(new Error('Connection closed'));
 		}

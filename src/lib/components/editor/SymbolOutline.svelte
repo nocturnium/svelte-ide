@@ -51,7 +51,7 @@
 	 * - Imports and exports
 	 */
 
-	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Props {
 		/** Symbols to display */
@@ -84,7 +84,7 @@
 	}: Props = $props();
 
 	let searchQuery = $state('');
-	let collapsedIds = $state<Set<string>>(new Set());
+	const collapsedIds = new SvelteSet<string>();
 	let hoveredSymbol = $state<DocumentSymbol | null>(null);
 
 	// Symbol icons and colors
@@ -136,7 +136,7 @@
 			case 'name':
 				sorted.sort((a, b) => a.name.localeCompare(b.name));
 				break;
-			case 'kind':
+			case 'kind': {
 				const kindOrder: SymbolKind[] = [
 					'import',
 					'export',
@@ -152,6 +152,7 @@
 				];
 				sorted.sort((a, b) => kindOrder.indexOf(a.kind) - kindOrder.indexOf(b.kind));
 				break;
+			}
 			case 'position':
 			default:
 				sorted.sort((a, b) => a.line - b.line);
@@ -172,7 +173,7 @@
 	// Expand all when filtering
 	$effect(() => {
 		if (effectiveFilter) {
-			collapsedIds = new Set();
+			collapsedIds.clear();
 		}
 	});
 
@@ -180,13 +181,11 @@
 	 * Toggle symbol collapse state
 	 */
 	function toggleCollapse(symbol: DocumentSymbol) {
-		const newCollapsed = new Set(collapsedIds);
-		if (newCollapsed.has(symbol.id)) {
-			newCollapsed.delete(symbol.id);
+		if (collapsedIds.has(symbol.id)) {
+			collapsedIds.delete(symbol.id);
 		} else {
-			newCollapsed.add(symbol.id);
+			collapsedIds.add(symbol.id);
 		}
-		collapsedIds = newCollapsed;
 	}
 
 	/**
@@ -217,24 +216,23 @@
 	 * Expand all symbols
 	 */
 	function expandAll() {
-		collapsedIds = new Set();
+		collapsedIds.clear();
 	}
 
 	/**
 	 * Collapse all symbols
 	 */
 	function collapseAll() {
-		const allIds = new Set<string>();
-		function collectIds(symbols: DocumentSymbol[]) {
-			for (const s of symbols) {
+		collapsedIds.clear();
+		function collectIds(syms: DocumentSymbol[]) {
+			for (const s of syms) {
 				if (s.children && s.children.length > 0) {
-					allIds.add(s.id);
+					collapsedIds.add(s.id);
 					collectIds(s.children);
 				}
 			}
 		}
 		collectIds(symbols);
-		collapsedIds = allIds;
 	}
 
 	/**

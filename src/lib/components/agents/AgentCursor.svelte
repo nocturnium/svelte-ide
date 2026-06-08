@@ -9,7 +9,7 @@
 	 * - Typing indicator animation
 	 */
 
-	import type { Agent, AgentCursor as AgentCursorType, CursorPosition, CursorSelection } from '$lib/types';
+	import type { Agent, CursorPosition, CursorSelection } from '$lib/types';
 
 	interface Props {
 		/** The agent this cursor belongs to */

@@ -15,7 +15,7 @@
 		size = 'md',
 		color,
 		isAI = false,
-		status,
+		status: _status,
 		class: className = ''
 	}: Props = $props();
 

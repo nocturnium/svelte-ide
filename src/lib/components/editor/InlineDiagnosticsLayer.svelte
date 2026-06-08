@@ -72,6 +72,7 @@
 
 	// Group diagnostics by line for gutter icons
 	const diagnosticsByLine = $derived(() => {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local computation variable recreated each derivation, not mutated reactive state
 		const byLine = new Map<number, Diagnostic[]>();
 		for (const d of diagnostics) {
 			const line = d.range.start.line;
@@ -235,7 +236,6 @@
 
 	<!-- Tooltip -->
 	{#if showTooltip && hoveredDiagnostic}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="diagnostic-tooltip"
 			role="tooltip"
@@ -254,6 +254,7 @@
 				{#if hoveredDiagnostic.code}
 					<span class="tooltip-code">
 						{#if hoveredDiagnostic.codeUrl}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- codeUrl is an external URL from diagnostic data, not a local app path -->
 							<a href={hoveredDiagnostic.codeUrl} target="_blank" rel="noopener">
 								{hoveredDiagnostic.code}
 							</a>
@@ -268,7 +269,7 @@
 
 			{#if hoveredDiagnostic.relatedInfo && hoveredDiagnostic.relatedInfo.length > 0}
 				<div class="tooltip-related">
-					{#each hoveredDiagnostic.relatedInfo as info}
+					{#each hoveredDiagnostic.relatedInfo as info, i (i)}
 						<div class="related-item">
 							<span class="related-location">
 								{info.filePath || 'this file'}:{info.range.start.line + 1}
@@ -282,7 +283,7 @@
 			{#if hoveredDiagnostic.fixes && hoveredDiagnostic.fixes.length > 0}
 				<div class="tooltip-fixes">
 					<div class="fixes-header">Quick Fixes</div>
-					{#each hoveredDiagnostic.fixes as fix}
+					{#each hoveredDiagnostic.fixes as fix, i (i)}
 						<button
 							class="fix-button"
 							class:fix-button--preferred={fix.isPreferred}

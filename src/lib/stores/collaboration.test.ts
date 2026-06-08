@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as collab from './collaboration.svelte';
+import type {
+	CollaborationUser,
+	CollaborationConfig,
+	CollaboratorCursor,
+	CollaboratorAwareness,
+	AIProposedChange
+} from '$types';
 
 /**
  * Collaboration store tests
@@ -22,23 +29,36 @@ beforeEach(() => {
 // Helpers
 // ============================================================================
 
-function makeUser(id: string, overrides: Partial<any> = {}): any {
+/** Minimal test user shape — email is extra data not in CollaborationUser. */
+interface TestUser extends CollaborationUser {
+	email?: string;
+}
+
+function makeUser(id: string, overrides: Partial<TestUser> = {}): TestUser {
 	return {
 		id,
 		name: `User-${id}`,
+		color: '',
 		email: `${id}@example.com`,
 		...overrides
 	};
 }
 
-function makeConfig(overrides: Partial<any> = {}): any {
+/** Minimal test config — tests use documentId; store maps it to roomId via initialize(). */
+interface TestConfig extends CollaborationConfig {
+	documentId?: string;
+}
+
+function makeConfig(overrides: Partial<TestConfig> = {}): TestConfig {
 	return {
+		roomId: 'doc-1',
 		documentId: 'doc-1',
 		user: makeUser('local-user'),
 		serverUrl: 'ws://localhost:3000',
 		...overrides
 	};
 }
+
 
 // ============================================================================
 // Default state
@@ -169,8 +189,8 @@ describe('collaboration store — user management', () => {
 
 	it('removeUser also removes cursor and awareness', () => {
 		collab.addUser(makeUser('u1'));
-		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } as any);
-		collab.updateAwareness({ userId: 'u1', user: makeUser('u1'), state: 'active' } as any);
+		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } satisfies CollaboratorCursor);
+		collab.updateAwareness({ userId: 'u1', user: makeUser('u1'), state: 'active' } satisfies CollaboratorAwareness);
 		collab.removeUser('u1');
 		expect(collab.getCursors()).toHaveLength(0);
 		expect(collab.getAwareness()).toHaveLength(0);
@@ -196,13 +216,13 @@ describe('collaboration store — cursors', () => {
 			user: makeUser('u1'),
 			position: { line: 5, column: 10 },
 			lastActivity: new Date()
-		} as any);
+		} satisfies CollaboratorCursor);
 		expect(collab.getCursors()).toHaveLength(1);
 	});
 
 	it('updateCursor overwrites existing cursor for same user', () => {
-		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } as any);
-		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 10, column: 5 }, lastActivity: new Date() } as any);
+		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } satisfies CollaboratorCursor);
+		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 10, column: 5 }, lastActivity: new Date() } satisfies CollaboratorCursor);
 		expect(collab.getCursors()).toHaveLength(1);
 		expect(collab.getCursors()[0].position).toEqual({ line: 10, column: 5 });
 	});
@@ -228,18 +248,18 @@ describe('collaboration store — cursors', () => {
 
 describe('collaboration store — awareness', () => {
 	it('updateAwareness adds awareness data', () => {
-		collab.updateAwareness({ userId: 'u1', user: makeUser('u1'), state: 'active' } as any);
+		collab.updateAwareness({ userId: 'u1', user: makeUser('u1'), state: 'active' } satisfies CollaboratorAwareness);
 		expect(collab.getAwareness()).toHaveLength(1);
 	});
 
 	it('setLocalAwareness updates local user awareness', () => {
 		collab.initialize(makeConfig());
-		collab.setLocalAwareness({ state: 'idle' } as any);
+		collab.setLocalAwareness({ state: 'idle' });
 		expect(collab.getAwareness()).toHaveLength(1);
 	});
 
 	it('setLocalAwareness does nothing without local user', () => {
-		collab.setLocalAwareness({ state: 'active' } as any);
+		collab.setLocalAwareness({ state: 'active' });
 		expect(collab.getAwareness()).toHaveLength(0);
 	});
 });
@@ -296,11 +316,10 @@ describe('collaboration store — AI sessions', () => {
 	it('cancelAISession sets cancelled and rejects pending changes', () => {
 		const aiUser = makeUser('ai-bot');
 		const sessionId = collab.startAISession('doc-1', aiUser);
-		collab.proposeAIChange(sessionId, {
-			type: 'insert',
-			content: 'new code',
-			range: { start: { line: 1, column: 1 }, end: { line: 1, column: 1 } }
-		} as any);
+		collab.proposeAIChange(sessionId,
+			// Simplified test shape; store accepts the structural superset at runtime
+			{ type: 'insert', content: 'new code', range: { start: { line: 1, column: 1 }, end: { line: 1, column: 1 } } } as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
+		);
 		collab.cancelAISession(sessionId);
 		expect(collab.getAISessions().find(s => s.id === sessionId)?.status).toBe('cancelled');
 		expect(collab.getPendingChanges().every(c => c.status === 'rejected')).toBe(true);
@@ -321,28 +340,29 @@ describe('collaboration store — AI change proposals', () => {
 	});
 
 	it('proposeAIChange adds a pending change', () => {
-		const id = collab.proposeAIChange(sessionId, {
-			type: 'replace',
-			content: 'updated',
-			range: { start: { line: 1, column: 1 }, end: { line: 5, column: 1 } }
-		} as any);
+		const _id = collab.proposeAIChange(sessionId,
+			// Simplified test shape; store accepts the structural superset at runtime
+			{ type: 'replace', content: 'updated', range: { start: { line: 1, column: 1 }, end: { line: 5, column: 1 } } } as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
+		);
 		expect(collab.getPendingChanges()).toHaveLength(1);
 		expect(collab.getPendingChanges()[0].status).toBe('pending');
 		expect(collab.getPendingChanges()[0].sessionId).toBe(sessionId);
 	});
 
 	it('reviewAIChange approves a change', () => {
-		const changeId = collab.proposeAIChange(sessionId, {
-			type: 'replace', content: 'x', range: {} as any
-		} as any);
+		const changeId = collab.proposeAIChange(sessionId,
+			// Simplified test shape; store accepts the structural superset at runtime
+			{ type: 'replace', content: 'x', range: {} as unknown as AIProposedChange['range'] } as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
+		);
 		collab.reviewAIChange(changeId, true, 'reviewer-1');
 		expect(collab.getPendingChanges()[0].status).toBe('approved');
 	});
 
 	it('reviewAIChange rejects a change', () => {
-		const changeId = collab.proposeAIChange(sessionId, {
-			type: 'replace', content: 'x', range: {} as any
-		} as any);
+		const changeId = collab.proposeAIChange(sessionId,
+			// Simplified test shape; store accepts the structural superset at runtime
+			{ type: 'replace', content: 'x', range: {} as unknown as AIProposedChange['range'] } as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
+		);
 		collab.reviewAIChange(changeId, false, 'reviewer-1');
 		expect(collab.getPendingChanges()[0].status).toBe('rejected');
 	});
@@ -430,7 +450,7 @@ describe('collaboration store — getUserColor', () => {
 describe('collaboration store — disconnect', () => {
 	it('disconnect clears users, cursors, awareness', () => {
 		collab.addUser(makeUser('u1'));
-		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } as any);
+		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } satisfies CollaboratorCursor);
 		collab.disconnect();
 		expect(collab.getStatus()).toBe('disconnected');
 		expect(collab.getUsers()).toEqual([]);

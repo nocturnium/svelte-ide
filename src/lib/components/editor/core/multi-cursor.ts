@@ -499,7 +499,7 @@ export class CursorManager {
 	 * Add cursor above the current primary cursor
 	 * @param lineCount - Number of lines in the document
 	 */
-	addCursorAbove(lineCount: number): boolean {
+	addCursorAbove(_lineCount: number): boolean {
 		const primary = this.getPrimary();
 		const pos = primary.selection.head;
 

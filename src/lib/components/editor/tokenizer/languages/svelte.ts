@@ -9,7 +9,7 @@
  * - HTML template parts
  */
 
-import type { LanguageTokenizer, Token, TokenizedLine, TokenizerState, TokenType } from '../types';
+import type { LanguageTokenizer, Token, TokenizedLine, TokenizerState } from '../types';
 import { createTypeScriptTokenizer } from './javascript';
 import { createCSSTokenizer } from './css';
 
@@ -205,7 +205,7 @@ export class SvelteTokenizer implements LanguageTokenizer {
 				const nextChar = line[pos + 1];
 
 				if (nextChar === '#' || nextChar === '/' || nextChar === ':' || nextChar === '@') {
-					const directiveMatch = line.substring(pos).match(/^\{([#\/:@])(\w+)(?:\s+([^}]+))?\}/);
+					const directiveMatch = line.substring(pos).match(/^\{([#/:@])(\w+)(?:\s+([^}]+))?\}/);
 					if (directiveMatch) {
 						const [full, prefix, keyword, expression] = directiveMatch;
 

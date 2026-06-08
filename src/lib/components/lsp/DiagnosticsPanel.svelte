@@ -82,16 +82,6 @@
 		}
 	}
 
-	function getSeverityLabel(severity?: DiagnosticSeverity): string {
-		switch (severity) {
-			case 1: return 'Error';
-			case 2: return 'Warning';
-			case 3: return 'Info';
-			case 4: return 'Hint';
-			default: return 'Unknown';
-		}
-	}
-
 	function handleDiagnosticClick(diag: DiagnosticWithFile) {
 		onNavigate(diag.uri, diag.range.start.line, diag.range.start.character);
 	}
@@ -121,6 +111,7 @@
 				disabled={counts().errors === 0}
 			>
 				<span class="diagnostics-panel__icon diagnostics-panel__icon--error">
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG icons are static string literals defined in this file, not user content -->
 					{@html errorIcon}
 				</span>
 				{counts().errors}
@@ -133,6 +124,7 @@
 				disabled={counts().warnings === 0}
 			>
 				<span class="diagnostics-panel__icon diagnostics-panel__icon--warning">
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG icons are static string literals defined in this file, not user content -->
 					{@html warningIcon}
 				</span>
 				{counts().warnings}
@@ -145,6 +137,7 @@
 				disabled={counts().info === 0}
 			>
 				<span class="diagnostics-panel__icon diagnostics-panel__icon--info">
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG icons are static string literals defined in this file, not user content -->
 					{@html infoIcon}
 				</span>
 				{counts().info}
@@ -155,16 +148,18 @@
 	<div class="diagnostics-panel__list">
 		{#if allDiagnostics().length === 0}
 			<div class="diagnostics-panel__empty">
-				<span class="diagnostics-panel__empty-icon">{@html checkIcon}</span>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG icons are static string literals defined in this file, not user content -->
+			<span class="diagnostics-panel__empty-icon">{@html checkIcon}</span>
 				<span>No problems detected</span>
 			</div>
 		{:else}
-			{#each allDiagnostics() as diag, i}
+			{#each allDiagnostics() as diag (diag.uri + ':' + diag.range.start.line + ':' + diag.range.start.character + ':' + diag.message)}
 				<button
 					class="diagnostics-panel__item diagnostics-panel__item--{getSeverityIcon(diag.severity)}"
 					onclick={() => handleDiagnosticClick(diag)}
 				>
 					<span class="diagnostics-panel__item-icon">
+						<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG icons are static string literals defined in this file, not user content -->
 						{@html getSeveritySVG(diag.severity)}
 					</span>
 					<div class="diagnostics-panel__item-content">

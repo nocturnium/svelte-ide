@@ -484,7 +484,6 @@ export class SnippetManager {
 		// Parse tab stops: $1, ${1}, ${1:placeholder}, ${1|choice1,choice2|}
 		const tabStopPattern = /\$(?:(\d+)|{(\d+)(?::([^}|]+))?(?:\|([^}]+)\|)?})/g;
 		let match;
-		let offset = 0;
 		const adjustments: Array<{ start: number; length: number; replacement: string; index: number; placeholder: string; choices?: string[] }> = [];
 
 		while ((match = tabStopPattern.exec(text)) !== null) {
@@ -532,6 +531,7 @@ export class SnippetManager {
 		});
 
 		// Restore escaped dollars
+		// eslint-disable-next-line no-control-regex -- \x00 is used intentionally as a sentinel that cannot appear in snippet text
 		text = text.replace(/\x00DOLLAR\x00/g, '$');
 
 		return {

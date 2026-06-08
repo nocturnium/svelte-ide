@@ -31,6 +31,7 @@
 	import AgentAvatar from '$components/agents/AgentAvatar.svelte';
 	import type { VFSLockStatus, Agent } from '$lib/types';
 	import { tick, onDestroy } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	interface Props {
 		/** Root file nodes */
@@ -110,15 +111,6 @@
 		return statusMap.get(path) ?? 'clean';
 	}
 
-	// Helper to check if a folder contains any files with changes
-	function folderHasChanges(node: FileNode): boolean {
-		if (node.type === 'file') {
-			return getFileStatus(node.path) !== 'clean';
-		}
-		if (!node.children) return false;
-		return node.children.some((child) => folderHasChanges(child));
-	}
-
 	// Get the most "important" status for a folder (deleted > modified > created > renamed)
 	function getFolderStatus(node: FileNode): FileChangeStatus {
 		if (node.type === 'file') return getFileStatus(node.path);
@@ -171,7 +163,7 @@
 		return agentsByFile.get(path) ?? [];
 	}
 
-	let expandedFolders = $state<Set<string>>(new Set());
+	let expandedFolders = new SvelteSet<string>();
 	let contextMenuNode = $state<FileNode | null>(null);
 	let contextMenuPos = $state({ x: 0, y: 0 });
 	let showContextMenu = $state(false);
@@ -194,13 +186,11 @@
 	function toggleFolder(node: FileNode) {
 		if (node.type !== 'folder') return;
 
-		const newExpanded = new Set(expandedFolders);
-		if (newExpanded.has(node.path)) {
-			newExpanded.delete(node.path);
+		if (expandedFolders.has(node.path)) {
+			expandedFolders.delete(node.path);
 		} else {
-			newExpanded.add(node.path);
+			expandedFolders.add(node.path);
 		}
-		expandedFolders = newExpanded;
 		onToggle?.(node);
 	}
 
@@ -208,9 +198,7 @@
 	async function startInlineCreation(parentPath: string, type: 'file' | 'folder') {
 		// Expand parent folder if it's not root
 		if (parentPath) {
-			const newExpanded = new Set(expandedFolders);
-			newExpanded.add(parentPath);
-			expandedFolders = newExpanded;
+			expandedFolders.add(parentPath);
 		}
 
 		inlineCreation = {
