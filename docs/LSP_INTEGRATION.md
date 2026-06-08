@@ -56,22 +56,22 @@ go build -o lsp-bridge ./cmd/lsp-bridge
 
 ```svelte
 <script>
-  import { LSPEditor, createLSPClient } from '@nocturnium/svelte-ide';
+	import { LSPEditor, createLSPClient } from '@nocturnium/svelte-ide';
 
-  // Create LSP client
-  const lspClient = createLSPClient({
-    serverUrl: 'ws://localhost:8765/lsp?language=go',
-    rootUri: 'file:///path/to/project',
-    clientInfo: { name: 'my-editor', version: '1.0.0' }
-  });
+	// Create LSP client
+	const lspClient = createLSPClient({
+		serverUrl: 'ws://localhost:8765/lsp?language=go',
+		rootUri: 'file:///path/to/project',
+		clientInfo: { name: 'my-editor', version: '1.0.0' }
+	});
 
-  // Connect when component mounts
-  $effect(() => {
-    lspClient.connect();
-    return () => lspClient.disconnect();
-  });
+	// Connect when component mounts
+	$effect(() => {
+		lspClient.connect();
+		return () => lspClient.disconnect();
+	});
 
-  let code = $state(`package main
+	let code = $state(`package main
 
 func main() {
 
@@ -79,12 +79,12 @@ func main() {
 </script>
 
 <LSPEditor
-  content={code}
-  uri="file:///path/to/project/main.go"
-  language="go"
-  {lspClient}
-  onChange={(content) => code = content}
-  onDiagnostics={(diagnostics) => console.log('Diagnostics:', diagnostics)}
+	content={code}
+	uri="file:///path/to/project/main.go"
+	language="go"
+	{lspClient}
+	onChange={(content) => (code = content)}
+	onDiagnostics={(diagnostics) => console.log('Diagnostics:', diagnostics)}
 />
 ```
 
@@ -112,6 +112,7 @@ The main component that wraps `CustomEditor` with LSP features.
 ```
 
 **Features:**
+
 - Autocomplete (Ctrl+Space or triggered by typing)
 - Hover tooltips (mouse hover with 500ms delay)
 - Signature help (triggered by `(` and `,`)
@@ -191,16 +192,16 @@ Inline marker for diagnostics (squiggly underlines).
 import { createLSPClient, type LSPClientConfig } from '@nocturnium/svelte-ide';
 
 const config: LSPClientConfig = {
-  serverUrl: 'ws://localhost:8765/lsp?language=go',
-  rootUri: 'file:///path/to/project',
-  clientInfo: {
-    name: 'my-editor',
-    version: '1.0.0'
-  },
-  // Optional settings
-  timeout: 30000,        // Request timeout (ms)
-  autoReconnect: true,   // Reconnect on disconnect
-  debug: false           // Log messages to console
+	serverUrl: 'ws://localhost:8765/lsp?language=go',
+	rootUri: 'file:///path/to/project',
+	clientInfo: {
+		name: 'my-editor',
+		version: '1.0.0'
+	},
+	// Optional settings
+	timeout: 30000, // Request timeout (ms)
+	autoReconnect: true, // Reconnect on disconnect
+	debug: false // Log messages to console
 };
 
 const client = createLSPClient(config);
@@ -210,30 +211,30 @@ const client = createLSPClient(config);
 
 ```typescript
 interface LSPClient {
-  // Connection
-  connect(): Promise<void>;
-  disconnect(): void;
-  readonly state: LSPConnectionState; // 'disconnected' | 'connecting' | 'connected' | 'error'
+	// Connection
+	connect(): Promise<void>;
+	disconnect(): void;
+	readonly state: LSPConnectionState; // 'disconnected' | 'connecting' | 'connected' | 'error'
 
-  // Document synchronization
-  didOpen(params: DidOpenTextDocumentParams): Promise<void>;
-  didChange(params: DidChangeTextDocumentParams): Promise<void>;
-  didClose(params: DidCloseTextDocumentParams): Promise<void>;
+	// Document synchronization
+	didOpen(params: DidOpenTextDocumentParams): Promise<void>;
+	didChange(params: DidChangeTextDocumentParams): Promise<void>;
+	didClose(params: DidCloseTextDocumentParams): Promise<void>;
 
-  // Language features
-  completion(params: CompletionParams): Promise<CompletionItem[] | CompletionList | null>;
-  hover(params: HoverParams): Promise<Hover | null>;
-  signatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null>;
-  definition(params: DefinitionParams): Promise<Location | Location[] | null>;
-  references(params: ReferenceParams): Promise<Location[] | null>;
-  codeAction(params: CodeActionParams): Promise<CodeAction[] | null>;
-  rename(params: RenameParams): Promise<WorkspaceEdit | null>;
-  formatting(params: DocumentFormattingParams): Promise<TextEdit[] | null>;
+	// Language features
+	completion(params: CompletionParams): Promise<CompletionItem[] | CompletionList | null>;
+	hover(params: HoverParams): Promise<Hover | null>;
+	signatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null>;
+	definition(params: DefinitionParams): Promise<Location | Location[] | null>;
+	references(params: ReferenceParams): Promise<Location[] | null>;
+	codeAction(params: CodeActionParams): Promise<CodeAction[] | null>;
+	rename(params: RenameParams): Promise<WorkspaceEdit | null>;
+	formatting(params: DocumentFormattingParams): Promise<TextEdit[] | null>;
 
-  // Events
-  onDiagnostics(handler: (params: PublishDiagnosticsParams) => void): () => void;
-  onError(handler: (error: Error) => void): () => void;
-  onStateChange(handler: (state: LSPConnectionState) => void): () => void;
+	// Events
+	onDiagnostics(handler: (params: PublishDiagnosticsParams) => void): () => void;
+	onError(handler: (error: Error) => void): () => void;
+	onStateChange(handler: (state: LSPConnectionState) => void): () => void;
 }
 ```
 
@@ -243,12 +244,12 @@ interface LSPClient {
 
 ```typescript
 const completions = await client.completion({
-  textDocument: { uri: 'file:///path/to/file.go' },
-  position: { line: 10, character: 5 }
+	textDocument: { uri: 'file:///path/to/file.go' },
+	position: { line: 10, character: 5 }
 });
 
 for (const item of completions ?? []) {
-  console.log(item.label, item.kind, item.detail);
+	console.log(item.label, item.kind, item.detail);
 }
 ```
 
@@ -256,12 +257,12 @@ for (const item of completions ?? []) {
 
 ```typescript
 const hover = await client.hover({
-  textDocument: { uri: 'file:///path/to/file.go' },
-  position: { line: 10, character: 5 }
+	textDocument: { uri: 'file:///path/to/file.go' },
+	position: { line: 10, character: 5 }
 });
 
 if (hover) {
-  console.log('Hover contents:', hover.contents);
+	console.log('Hover contents:', hover.contents);
 }
 ```
 
@@ -269,14 +270,14 @@ if (hover) {
 
 ```typescript
 const locations = await client.definition({
-  textDocument: { uri: 'file:///path/to/file.go' },
-  position: { line: 10, character: 5 }
+	textDocument: { uri: 'file:///path/to/file.go' },
+	position: { line: 10, character: 5 }
 });
 
 if (locations) {
-  for (const loc of Array.isArray(locations) ? locations : [locations]) {
-    console.log(`${loc.uri}:${loc.range.start.line}:${loc.range.start.character}`);
-  }
+	for (const loc of Array.isArray(locations) ? locations : [locations]) {
+		console.log(`${loc.uri}:${loc.range.start.line}:${loc.range.start.character}`);
+	}
 }
 ```
 
@@ -284,11 +285,11 @@ if (locations) {
 
 ```typescript
 client.onDiagnostics((params) => {
-  console.log(`Diagnostics for ${params.uri}:`);
-  for (const diag of params.diagnostics) {
-    const severity = ['', 'Error', 'Warning', 'Info', 'Hint'][diag.severity ?? 1];
-    console.log(`  ${severity}: ${diag.message} at line ${diag.range.start.line + 1}`);
-  }
+	console.log(`Diagnostics for ${params.uri}:`);
+	for (const diag of params.diagnostics) {
+		const severity = ['', 'Error', 'Warning', 'Info', 'Hint'][diag.severity ?? 1];
+		console.log(`  ${severity}: ${diag.message} at line ${diag.range.start.line + 1}`);
+	}
 });
 ```
 
@@ -319,12 +320,12 @@ go build -o lsp-bridge ./cmd/lsp-bridge
 
 ### API Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `ws://localhost:8765/lsp?language=go` | WebSocket LSP connection for Go |
+| Endpoint                                      | Description                             |
+| --------------------------------------------- | --------------------------------------- |
+| `ws://localhost:8765/lsp?language=go`         | WebSocket LSP connection for Go         |
 | `ws://localhost:8765/lsp?language=typescript` | WebSocket LSP connection for TypeScript |
-| `GET /health` | Health check |
-| `GET /info` | Registered language servers |
+| `GET /health`                                 | Health check                            |
+| `GET /info`                                   | Registered language servers             |
 
 ### Adding Language Servers
 
@@ -372,23 +373,23 @@ pip install python-lsp-server
 
 ```typescript
 interface Position {
-  line: number;      // 0-indexed
-  character: number; // 0-indexed (UTF-16 code units)
+	line: number; // 0-indexed
+	character: number; // 0-indexed (UTF-16 code units)
 }
 
 interface Range {
-  start: Position;
-  end: Position;
+	start: Position;
+	end: Position;
 }
 
 interface Location {
-  uri: string;
-  range: Range;
+	uri: string;
+	range: Range;
 }
 
 interface TextEdit {
-  range: Range;
-  newText: string;
+	range: Range;
+	newText: string;
 }
 ```
 
@@ -396,13 +397,13 @@ interface TextEdit {
 
 ```typescript
 interface Diagnostic {
-  range: Range;
-  severity?: DiagnosticSeverity; // 1=Error, 2=Warning, 3=Info, 4=Hint
-  code?: string | number;
-  source?: string;
-  message: string;
-  tags?: DiagnosticTag[];
-  relatedInformation?: DiagnosticRelatedInformation[];
+	range: Range;
+	severity?: DiagnosticSeverity; // 1=Error, 2=Warning, 3=Info, 4=Hint
+	code?: string | number;
+	source?: string;
+	message: string;
+	tags?: DiagnosticTag[];
+	relatedInformation?: DiagnosticRelatedInformation[];
 }
 ```
 
@@ -410,14 +411,14 @@ interface Diagnostic {
 
 ```typescript
 interface CompletionItem {
-  label: string;
-  kind?: CompletionItemKind; // 1=Text, 2=Method, 3=Function, etc.
-  detail?: string;
-  documentation?: string | MarkupContent;
-  insertText?: string;
-  insertTextFormat?: InsertTextFormat;
-  textEdit?: TextEdit;
-  additionalTextEdits?: TextEdit[];
+	label: string;
+	kind?: CompletionItemKind; // 1=Text, 2=Method, 3=Function, etc.
+	detail?: string;
+	documentation?: string | MarkupContent;
+	insertText?: string;
+	insertTextFormat?: InsertTextFormat;
+	textEdit?: TextEdit;
+	additionalTextEdits?: TextEdit[];
 }
 ```
 
@@ -425,13 +426,13 @@ interface CompletionItem {
 
 ```typescript
 interface Hover {
-  contents: MarkupContent | MarkedString | MarkedString[];
-  range?: Range;
+	contents: MarkupContent | MarkedString | MarkedString[];
+	range?: Range;
 }
 
 interface MarkupContent {
-  kind: 'plaintext' | 'markdown';
-  value: string;
+	kind: 'plaintext' | 'markdown';
+	value: string;
 }
 ```
 
@@ -439,21 +440,21 @@ interface MarkupContent {
 
 ```typescript
 interface SignatureHelp {
-  signatures: SignatureInformation[];
-  activeSignature?: number;
-  activeParameter?: number;
+	signatures: SignatureInformation[];
+	activeSignature?: number;
+	activeParameter?: number;
 }
 
 interface SignatureInformation {
-  label: string;
-  documentation?: string | MarkupContent;
-  parameters?: ParameterInformation[];
-  activeParameter?: number;
+	label: string;
+	documentation?: string | MarkupContent;
+	parameters?: ParameterInformation[];
+	activeParameter?: number;
 }
 
 interface ParameterInformation {
-  label: string | [number, number];
-  documentation?: string | MarkupContent;
+	label: string | [number, number];
+	documentation?: string | MarkupContent;
 }
 ```
 
@@ -469,10 +470,14 @@ You can implement your own LSP client if you have a different backend:
 import type { LSPClient } from '@nocturnium/svelte-ide';
 
 class MyLSPClient implements LSPClient {
-  // Implement all required methods
-  async connect() { /* ... */ }
-  disconnect() { /* ... */ }
-  // etc.
+	// Implement all required methods
+	async connect() {
+		/* ... */
+	}
+	disconnect() {
+		/* ... */
+	}
+	// etc.
 }
 ```
 
@@ -484,16 +489,18 @@ For better performance, run the LSP client in a Web Worker:
 // lsp-worker.ts
 import { createLSPClient } from '@nocturnium/svelte-ide';
 
-const client = createLSPClient({ /* config */ });
+const client = createLSPClient({
+	/* config */
+});
 
 self.onmessage = async (e) => {
-  const { id, method, params } = e.data;
-  try {
-    const result = await (client as any)[method](...params);
-    self.postMessage({ id, result });
-  } catch (error) {
-    self.postMessage({ id, error: error.message });
-  }
+	const { id, method, params } = e.data;
+	try {
+		const result = await (client as any)[method](...params);
+		self.postMessage({ id, result });
+	} catch (error) {
+		self.postMessage({ id, error: error.message });
+	}
 };
 ```
 
@@ -503,23 +510,21 @@ The editor can switch languages dynamically:
 
 ```svelte
 <script>
-  let language = $state('go');
-  let clients = {
-    go: createLSPClient({ serverUrl: 'ws://localhost:8765/lsp?language=go', /* ... */ }),
-    typescript: createLSPClient({ serverUrl: 'ws://localhost:8765/lsp?language=typescript', /* ... */ })
-  };
+	let language = $state('go');
+	let clients = {
+		go: createLSPClient({ serverUrl: 'ws://localhost:8765/lsp?language=go' /* ... */ }),
+		typescript: createLSPClient({
+			serverUrl: 'ws://localhost:8765/lsp?language=typescript' /* ... */
+		})
+	};
 </script>
 
 <select bind:value={language}>
-  <option value="go">Go</option>
-  <option value="typescript">TypeScript</option>
+	<option value="go">Go</option>
+	<option value="typescript">TypeScript</option>
 </select>
 
-<LSPEditor
-  {language}
-  lspClient={clients[language]}
-  {content}
-/>
+<LSPEditor {language} lspClient={clients[language]} {content} />
 ```
 
 ---
@@ -535,18 +540,18 @@ The editor can switch languages dynamically:
 
 ## Popular Language Servers
 
-| Language | Server | Installation |
-|----------|--------|--------------|
+| Language              | Server                     | Installation                                     |
+| --------------------- | -------------------------- | ------------------------------------------------ |
 | TypeScript/JavaScript | typescript-language-server | `npm i -g typescript-language-server typescript` |
-| Go | gopls | `go install golang.org/x/tools/gopls@latest` |
-| Python | pylsp | `pip install python-lsp-server` |
-| Rust | rust-analyzer | `rustup component add rust-analyzer` |
-| C/C++ | clangd | `apt install clangd` or download from releases |
-| Java | jdtls | Eclipse JDT Language Server |
-| PHP | intelephense | `npm i -g intelephense` |
-| Ruby | solargraph | `gem install solargraph` |
-| Svelte | svelte-language-server | `npm i -g svelte-language-server` |
-| HTML/CSS | vscode-langservers | `npm i -g vscode-langservers-extracted` |
+| Go                    | gopls                      | `go install golang.org/x/tools/gopls@latest`     |
+| Python                | pylsp                      | `pip install python-lsp-server`                  |
+| Rust                  | rust-analyzer              | `rustup component add rust-analyzer`             |
+| C/C++                 | clangd                     | `apt install clangd` or download from releases   |
+| Java                  | jdtls                      | Eclipse JDT Language Server                      |
+| PHP                   | intelephense               | `npm i -g intelephense`                          |
+| Ruby                  | solargraph                 | `gem install solargraph`                         |
+| Svelte                | svelte-language-server     | `npm i -g svelte-language-server`                |
+| HTML/CSS              | vscode-langservers         | `npm i -g vscode-langservers-extracted`          |
 
 ---
 
@@ -556,11 +561,11 @@ The editor can switch languages dynamically:
 
 ```typescript
 client.onError((error) => {
-  console.error('LSP Error:', error);
+	console.error('LSP Error:', error);
 });
 
 client.onStateChange((state) => {
-  console.log('LSP State:', state);
+	console.log('LSP State:', state);
 });
 ```
 
@@ -570,8 +575,8 @@ Enable debug mode to see all JSON-RPC messages:
 
 ```typescript
 const client = createLSPClient({
-  // ...
-  debug: true
+	// ...
+	debug: true
 });
 ```
 

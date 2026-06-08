@@ -650,7 +650,11 @@ describe('EditorState — Newline and Tab', () => {
 	});
 
 	it('should insert tab character when insertSpaces is false', () => {
-		const state = createEditorState({ content: 'hello', language: 'plaintext', insertSpaces: false });
+		const state = createEditorState({
+			content: 'hello',
+			language: 'plaintext',
+			insertSpaces: false
+		});
 		state.setCursor({ line: 0, column: 0 });
 
 		state.insertTab();
@@ -659,7 +663,12 @@ describe('EditorState — Newline and Tab', () => {
 	});
 
 	it('should insert spaces when insertSpaces is true', () => {
-		const state = createEditorState({ content: 'hello', language: 'plaintext', insertSpaces: true, tabSize: 4 });
+		const state = createEditorState({
+			content: 'hello',
+			language: 'plaintext',
+			insertSpaces: true,
+			tabSize: 4
+		});
 		state.setCursor({ line: 0, column: 0 });
 
 		state.insertTab();

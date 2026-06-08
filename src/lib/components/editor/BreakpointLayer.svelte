@@ -1,3 +1,28 @@
+<script module lang="ts">
+	function getBreakpointTitle(bp: Breakpoint): string {
+		let title = `Breakpoint at line ${bp.line + 1}`;
+		if (bp.condition) {
+			title += `\nCondition: ${bp.condition}`;
+		}
+		if (bp.logMessage) {
+			title += `\nLog: ${bp.logMessage}`;
+		}
+		if (bp.hitCondition) {
+			title += `\nHit condition: ${bp.hitCondition}`;
+		}
+		if (bp.hitCount > 0) {
+			title += `\nHit count: ${bp.hitCount}`;
+		}
+		if (bp.state === 'disabled') {
+			title += '\n(Disabled)';
+		}
+		if (bp.errorMessage) {
+			title += `\nError: ${bp.errorMessage}`;
+		}
+		return title;
+	}
+</script>
+
 <script lang="ts">
 	/**
 	 * Breakpoint Layer
@@ -41,7 +66,10 @@
 	}: Props = $props();
 
 	let breakpoints = $state<Breakpoint[]>([]);
-	let contextMenu = $state<{ breakpoint: Breakpoint; position: { top: number; left: number } } | null>(null);
+	let contextMenu = $state<{
+		breakpoint: Breakpoint;
+		position: { top: number; left: number };
+	} | null>(null);
 	let editingBreakpoint = $state<Breakpoint | null>(null);
 	let conditionInput = $state('');
 	let logMessageInput = $state('');
@@ -264,35 +292,20 @@
 			class="breakpoint-context-menu"
 			style="top: {contextMenu.position.top}px; left: {contextMenu.position.left}px;"
 		>
-			<button
-				class="menu-item"
-				onclick={() => handleContextAction('toggle')}
-			>
+			<button class="menu-item" onclick={() => handleContextAction('toggle')}>
 				{contextMenu.breakpoint.state === 'disabled' ? 'Enable' : 'Disable'} Breakpoint
 			</button>
-			<button
-				class="menu-item"
-				onclick={() => handleContextAction('remove')}
-			>
+			<button class="menu-item" onclick={() => handleContextAction('remove')}>
 				Remove Breakpoint
 			</button>
 			<div class="menu-divider"></div>
-			<button
-				class="menu-item"
-				onclick={() => handleContextAction('condition')}
-			>
+			<button class="menu-item" onclick={() => handleContextAction('condition')}>
 				Edit Condition...
 			</button>
-			<button
-				class="menu-item"
-				onclick={() => handleContextAction('logpoint')}
-			>
+			<button class="menu-item" onclick={() => handleContextAction('logpoint')}>
 				Edit Log Message...
 			</button>
-			<button
-				class="menu-item"
-				onclick={() => handleContextAction('hitCondition')}
-			>
+			<button class="menu-item" onclick={() => handleContextAction('hitCondition')}>
 				Edit Hit Count...
 			</button>
 		</div>
@@ -300,8 +313,19 @@
 
 	<!-- Edit dialog -->
 	{#if editingBreakpoint}
-		<div class="breakpoint-edit-overlay" role="presentation" onclick={cancelEdit} onkeydown={(e) => e.key === 'Escape' && cancelEdit()}>
-			<div class="breakpoint-edit-dialog" role="dialog" tabindex={-1} onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+		<div
+			class="breakpoint-edit-overlay"
+			role="presentation"
+			onclick={cancelEdit}
+			onkeydown={(e) => e.key === 'Escape' && cancelEdit()}
+		>
+			<div
+				class="breakpoint-edit-dialog"
+				role="dialog"
+				tabindex={-1}
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.stopPropagation()}
+			>
 				<div class="dialog-header">
 					{#if editMode === 'condition'}
 						Edit Condition
@@ -325,9 +349,7 @@
 								autofocus
 							/>
 						</label>
-						<p class="dialog-hint">
-							Expression will be evaluated in the current scope.
-						</p>
+						<p class="dialog-hint">Expression will be evaluated in the current scope.</p>
 					{:else if editMode === 'logpoint'}
 						<label class="dialog-label">
 							Log message (use {'{expression}'} for values):
@@ -341,9 +363,7 @@
 								autofocus
 							/>
 						</label>
-						<p class="dialog-hint">
-							Logpoints log a message without stopping execution.
-						</p>
+						<p class="dialog-hint">Logpoints log a message without stopping execution.</p>
 					{:else}
 						<label class="dialog-label">
 							Break when hit count:
@@ -363,42 +383,13 @@
 					{/if}
 				</div>
 				<div class="dialog-actions">
-					<button class="dialog-btn dialog-btn--cancel" onclick={cancelEdit}>
-						Cancel
-					</button>
-					<button class="dialog-btn dialog-btn--save" onclick={saveEdit}>
-						Save
-					</button>
+					<button class="dialog-btn dialog-btn--cancel" onclick={cancelEdit}> Cancel </button>
+					<button class="dialog-btn dialog-btn--save" onclick={saveEdit}> Save </button>
 				</div>
 			</div>
 		</div>
 	{/if}
 {/if}
-
-<script module lang="ts">
-	function getBreakpointTitle(bp: Breakpoint): string {
-		let title = `Breakpoint at line ${bp.line + 1}`;
-		if (bp.condition) {
-			title += `\nCondition: ${bp.condition}`;
-		}
-		if (bp.logMessage) {
-			title += `\nLog: ${bp.logMessage}`;
-		}
-		if (bp.hitCondition) {
-			title += `\nHit condition: ${bp.hitCondition}`;
-		}
-		if (bp.hitCount > 0) {
-			title += `\nHit count: ${bp.hitCount}`;
-		}
-		if (bp.state === 'disabled') {
-			title += '\n(Disabled)';
-		}
-		if (bp.errorMessage) {
-			title += `\nError: ${bp.errorMessage}`;
-		}
-		return title;
-	}
-</script>
 
 <style>
 	.breakpoint-layer {

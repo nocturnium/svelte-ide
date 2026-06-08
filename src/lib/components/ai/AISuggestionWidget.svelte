@@ -62,9 +62,7 @@
 	</div>
 
 	<div class="ai-suggestion__actions">
-		<Button variant="ghost" size="xs" onclick={onDismiss}>
-			Dismiss
-		</Button>
+		<Button variant="ghost" size="xs" onclick={onDismiss}>Dismiss</Button>
 		<Button variant="primary" size="xs" onclick={onAccept}>
 			{#snippet icon()}<Icon name="check" size={12} />{/snippet}
 			Accept

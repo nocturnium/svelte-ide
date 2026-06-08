@@ -432,8 +432,7 @@ export class SnippetManager {
 
 		return snippets.filter(
 			(s) =>
-				s.prefix.toLowerCase().startsWith(lowerPrefix) ||
-				s.name.toLowerCase().includes(lowerPrefix)
+				s.prefix.toLowerCase().startsWith(lowerPrefix) || s.name.toLowerCase().includes(lowerPrefix)
 		);
 	}
 
@@ -484,7 +483,14 @@ export class SnippetManager {
 		// Parse tab stops: $1, ${1}, ${1:placeholder}, ${1|choice1,choice2|}
 		const tabStopPattern = /\$(?:(\d+)|{(\d+)(?::([^}|]+))?(?:\|([^}]+)\|)?})/g;
 		let match;
-		const adjustments: Array<{ start: number; length: number; replacement: string; index: number; placeholder: string; choices?: string[] }> = [];
+		const adjustments: Array<{
+			start: number;
+			length: number;
+			replacement: string;
+			index: number;
+			placeholder: string;
+			choices?: string[];
+		}> = [];
 
 		while ((match = tabStopPattern.exec(text)) !== null) {
 			const fullMatch = match[0];
@@ -544,7 +550,11 @@ export class SnippetManager {
 	/**
 	 * Start a snippet session
 	 */
-	startSession(snippet: Snippet, startPosition: Position, variables?: Record<string, string>): SnippetSession {
+	startSession(
+		snippet: Snippet,
+		startPosition: Position,
+		variables?: Record<string, string>
+	): SnippetSession {
 		// End any existing session
 		this.endSession();
 
@@ -643,7 +653,9 @@ export class SnippetManager {
 	 */
 	getCategories(language?: string): string[] {
 		const categories = new Set<string>();
-		const snippets = language ? this.getSnippetsForLanguage(language) : [...this.snippets.values(), ...this.userSnippets.values()];
+		const snippets = language
+			? this.getSnippetsForLanguage(language)
+			: [...this.snippets.values(), ...this.userSnippets.values()];
 
 		for (const snippet of snippets) {
 			categories.add(snippet.category);

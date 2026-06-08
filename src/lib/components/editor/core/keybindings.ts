@@ -263,15 +263,13 @@ export function createDefaultKeybindings(
 	// Selection
 	// ============================================
 
-	keybindings.push(
-		{
-			key: 'a',
-			modifiers: { ctrl: true },
-			handler: () => state.selectAll(),
-			description: 'Select all',
-			readonly: true
-		}
-	);
+	keybindings.push({
+		key: 'a',
+		modifiers: { ctrl: true },
+		handler: () => state.selectAll(),
+		description: 'Select all',
+		readonly: true
+	});
 
 	// ============================================
 	// Editing (only when not readonly)

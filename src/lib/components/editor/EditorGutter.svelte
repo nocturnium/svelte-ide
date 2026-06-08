@@ -51,7 +51,11 @@
 <!-- Line number -->
 {#if lineNumbers !== 'off'}
 	<div class="custom-editor__gutter" data-cursor-type="default" style="cursor: default !important;">
-		<span class="custom-editor__line-number" data-cursor-type="default" style="cursor: default !important;">{lineIndex + 1}</span>
+		<span
+			class="custom-editor__line-number"
+			data-cursor-type="default"
+			style="cursor: default !important;">{lineIndex + 1}</span
+		>
 	</div>
 {/if}
 
@@ -73,7 +77,9 @@
 		color: var(--ide-text-muted);
 		font-size: 8px;
 		opacity: 0;
-		transition: opacity 0.15s ease, color 0.15s ease;
+		transition:
+			opacity 0.15s ease,
+			color 0.15s ease;
 		z-index: 5;
 	}
 

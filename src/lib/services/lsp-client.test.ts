@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { LSPClient, createLSPClient, positionToOffset, offsetToPosition, rangeToOffsets } from './lsp-client';
+import {
+	LSPClient,
+	createLSPClient,
+	positionToOffset,
+	offsetToPosition,
+	rangeToOffsets
+} from './lsp-client';
 import type { LSPClientConfig, ServerCapabilities } from '$lib/types/lsp';
 
 // ============================================================================
@@ -591,9 +597,9 @@ describe('LSPClient — Message Handling', () => {
 		const { client } = await createConnectedClient({ requestTimeout: 50 });
 
 		// Don't respond — should timeout
-		await expect(
-			client.hover('file:///test.ts', { line: 0, character: 0 })
-		).rejects.toThrow('timed out');
+		await expect(client.hover('file:///test.ts', { line: 0, character: 0 })).rejects.toThrow(
+			'timed out'
+		);
 	});
 });
 
@@ -826,7 +832,10 @@ describe('LSPClient — Language Features', () => {
 			jsonrpc: '2.0',
 			id: req.id,
 			result: [
-				{ uri: 'file:///a.ts', range: { start: { line: 0, character: 0 }, end: { line: 0, character: 3 } } }
+				{
+					uri: 'file:///a.ts',
+					range: { start: { line: 0, character: 0 }, end: { line: 0, character: 3 } }
+				}
 			]
 		});
 
@@ -871,7 +880,16 @@ describe('LSPClient — Language Features', () => {
 		ws.simulateMessage({
 			jsonrpc: '2.0',
 			id: req.id,
-			result: { changes: { 'file:///test.ts': [{ range: { start: { line: 0, character: 4 }, end: { line: 0, character: 7 } }, newText: 'newName' }] } }
+			result: {
+				changes: {
+					'file:///test.ts': [
+						{
+							range: { start: { line: 0, character: 4 }, end: { line: 0, character: 7 } },
+							newText: 'newName'
+						}
+					]
+				}
+			}
 		});
 
 		const result = await renamePromise;
@@ -1162,11 +1180,13 @@ describe('LSPClient — Not connected errors', () => {
 		vi.useRealTimers();
 		const client = new LSPClient(getDefaultConfig());
 		// Force capabilities so it tries to actually send the request
-		(client as unknown as { _capabilities: ServerCapabilities })._capabilities = { hoverProvider: true };
+		(client as unknown as { _capabilities: ServerCapabilities })._capabilities = {
+			hoverProvider: true
+		};
 
-		await expect(
-			client.hover('file:///test.ts', { line: 0, character: 0 })
-		).rejects.toThrow('Not connected');
+		await expect(client.hover('file:///test.ts', { line: 0, character: 0 })).rejects.toThrow(
+			'Not connected'
+		);
 	});
 
 	it('should silently skip notifications when not connected', () => {

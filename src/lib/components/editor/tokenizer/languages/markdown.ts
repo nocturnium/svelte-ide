@@ -17,7 +17,11 @@ export class MarkdownTokenizer {
 		return {};
 	}
 
-	tokenizeLine(line: string, lineNumber: number, prevState?: MarkdownTokenizerState): TokenizedLine {
+	tokenizeLine(
+		line: string,
+		lineNumber: number,
+		prevState?: MarkdownTokenizerState
+	): TokenizedLine {
 		const tokens: Token[] = [];
 		const state: MarkdownTokenizerState = { ...prevState };
 

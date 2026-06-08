@@ -69,7 +69,12 @@
 	}
 </script>
 
-<div class="plugin-form-overlay" onclick={onClose} onkeydown={(e) => e.key === 'Escape' && onClose()} role="presentation">
+<div
+	class="plugin-form-overlay"
+	onclick={onClose}
+	onkeydown={(e) => e.key === 'Escape' && onClose()}
+	role="presentation"
+>
 	<div
 		class="plugin-form"
 		onclick={(e) => e.stopPropagation()}
@@ -85,7 +90,13 @@
 			</Button>
 		</div>
 
-		<form class="plugin-form__content" onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+		<form
+			class="plugin-form__content"
+			onsubmit={(e) => {
+				e.preventDefault();
+				handleSubmit();
+			}}
+		>
 			{#if error}
 				<div class="plugin-form__error">
 					<Icon name="error" size={14} />
@@ -95,12 +106,7 @@
 
 			<div class="plugin-form__field">
 				<label for="name">Name *</label>
-				<Input
-					id="name"
-					bind:value={name}
-					placeholder="my-awesome-plugin"
-					fullWidth
-				/>
+				<Input id="name" bind:value={name} placeholder="my-awesome-plugin" fullWidth />
 			</div>
 
 			<div class="plugin-form__field">
@@ -116,11 +122,7 @@
 
 			<div class="plugin-form__field">
 				<label for="category">Category</label>
-				<select
-					id="category"
-					class="plugin-form__select"
-					bind:value={category}
-				>
+				<select id="category" class="plugin-form__select" bind:value={category}>
 					{#each categories as cat (cat.value)}
 						<option value={cat.value}>{cat.label}</option>
 					{/each}
@@ -129,31 +131,17 @@
 
 			<div class="plugin-form__field">
 				<label for="tags">Tags</label>
-				<Input
-					id="tags"
-					bind:value={tags}
-					placeholder="comma, separated, tags"
-					fullWidth
-				/>
+				<Input id="tags" bind:value={tags} placeholder="comma, separated, tags" fullWidth />
 			</div>
 
 			<div class="plugin-form__field">
 				<label for="author">Author *</label>
-				<Input
-					id="author"
-					bind:value={author}
-					placeholder="your@email.com"
-					fullWidth
-				/>
+				<Input id="author" bind:value={author} placeholder="your@email.com" fullWidth />
 			</div>
 
 			<div class="plugin-form__actions">
-				<Button variant="ghost" onclick={onClose} disabled={isSubmitting}>
-					Cancel
-				</Button>
-				<Button variant="primary" type="submit" loading={isSubmitting}>
-					Create Proposal
-				</Button>
+				<Button variant="ghost" onclick={onClose} disabled={isSubmitting}>Cancel</Button>
+				<Button variant="primary" type="submit" loading={isSubmitting}>Create Proposal</Button>
 			</div>
 		</form>
 	</div>

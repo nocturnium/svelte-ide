@@ -167,7 +167,8 @@
 					class:git-blame-row--hovered={hoveredLine !== null &&
 						hoveredLine >= group.startLine &&
 						hoveredLine <= group.endLine}
-					style="top: {group.startLine * lineHeight}px; height: {height}px; --blame-color: {info.color};"
+					style="top: {group.startLine *
+						lineHeight}px; height: {height}px; --blame-color: {info.color};"
 					onmouseenter={(e) => handleMouseEnter(info, e)}
 					onmouseleave={handleMouseLeave}
 					onclick={() => handleClick(info)}

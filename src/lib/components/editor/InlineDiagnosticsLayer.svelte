@@ -215,18 +215,8 @@
 						role="button"
 						tabindex={-1}
 					>
-						<svg
-							class="squiggle-svg"
-							width={width}
-							height="4"
-							viewBox="0 0 {width} 4"
-						>
-							<path
-								d={generateSquigglePath(width)}
-								stroke={color}
-								stroke-width="1"
-								fill="none"
-							/>
+						<svg class="squiggle-svg" {width} height="4" viewBox="0 0 {width} 4">
+							<path d={generateSquigglePath(width)} stroke={color} stroke-width="1" fill="none" />
 						</svg>
 					</div>
 				{/each}
@@ -297,7 +287,8 @@
 			{/if}
 
 			<div class="tooltip-location">
-				Line {hoveredDiagnostic.range.start.line + 1}, Column {hoveredDiagnostic.range.start.column + 1}
+				Line {hoveredDiagnostic.range.start.line + 1}, Column {hoveredDiagnostic.range.start
+					.column + 1}
 			</div>
 		</div>
 	{/if}

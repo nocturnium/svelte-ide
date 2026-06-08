@@ -1,38 +1,38 @@
 # Multi-Cursor Editing
 
-The editor supports editing at many positions at once. Every cursor is a small object with its own selection, and a `CursorManager` keeps the whole set consistent: it assigns ids, tracks which cursor is *primary*, enforces a maximum count, and automatically merges cursors whose selections touch or overlap. In `<CustomEditor>` this all happens for you behind keyboard and mouse gestures, but the same primitives are exported so you can drive multiple cursors from your own code. This guide covers the cursor model, the `CursorManager` API, how selections behave across cursors, the merge-on-overlap rule, and the gestures the editor exposes by default.
+The editor supports editing at many positions at once. Every cursor is a small object with its own selection, and a `CursorManager` keeps the whole set consistent: it assigns ids, tracks which cursor is _primary_, enforces a maximum count, and automatically merges cursors whose selections touch or overlap. In `<CustomEditor>` this all happens for you behind keyboard and mouse gestures, but the same primitives are exported so you can drive multiple cursors from your own code. This guide covers the cursor model, the `CursorManager` API, how selections behave across cursors, the merge-on-overlap rule, and the gestures the editor exposes by default.
 
 ## The cursor model
 
 A cursor is a selection plus an identity. When the selection's `anchor` equals its `head`, the cursor is a plain blinking caret with no highlighted range; when they differ, it has a selection. Positions are zero-based.
 
 ```ts
-import type { Cursor, Position, Selection } from "@nocturnium/svelte-ide";
+import type { Cursor, Position, Selection } from '@nocturnium/svelte-ide';
 
 // Position: a point in the document (both fields are 0-based)
 interface Position {
-  line: number;
-  column: number;
+	line: number;
+	column: number;
 }
 
 // Selection: a directional range. `head` is where the caret sits;
 // `anchor` is the fixed end. anchor === head means "no selection".
 interface Selection {
-  anchor: Position;
-  head: Position;
+	anchor: Position;
+	head: Position;
 }
 
 // Cursor: a selection with an id and a primary flag
 interface Cursor {
-  id: string; // e.g. "cursor-0", assigned by the manager
-  selection: Selection;
-  isPrimary: boolean; // exactly one cursor is primary at a time
+	id: string; // e.g. "cursor-0", assigned by the manager
+	selection: Selection;
+	isPrimary: boolean; // exactly one cursor is primary at a time
 }
 ```
 
 `Cursor`, `Position`, and `Selection` are all type-only exports from the package root. The runtime helpers and the `CursorManager` class described below live behind the editor subpath entry point, `@nocturnium/svelte-ide/components/editor`.
 
-> Direction matters for *extending* a selection (Shift+Arrow moves the `head`), but most range questions — "where does this selection start/end?" — should go through the helper functions below, which normalize anchor/head order for you.
+> Direction matters for _extending_ a selection (Shift+Arrow moves the `head`), but most range questions — "where does this selection start/end?" — should go through the helper functions below, which normalize anchor/head order for you.
 
 ## The CursorManager
 
@@ -40,14 +40,14 @@ interface Cursor {
 
 ```ts
 import {
-  CursorManager,
-  createCursorManager,
-  type CursorManagerConfig,
-} from "@nocturnium/svelte-ide/components/editor";
+	CursorManager,
+	createCursorManager,
+	type CursorManagerConfig
+} from '@nocturnium/svelte-ide/components/editor';
 
 // CursorManagerConfig
 interface CursorManagerConfig {
-  maxCursors?: number; // default: 100
+	maxCursors?: number; // default: 100
 }
 
 const cursors = createCursorManager({ maxCursors: 200 });
@@ -57,13 +57,13 @@ const cursors = createCursorManager({ maxCursors: 200 });
 ### Reading the cursor set
 
 ```ts
-cursors.getCursors();             // readonly Cursor[] (unordered)
-cursors.getSortedCursors();       // Cursor[] sorted top-to-bottom, left-to-right
+cursors.getCursors(); // readonly Cursor[] (unordered)
+cursors.getSortedCursors(); // Cursor[] sorted top-to-bottom, left-to-right
 cursors.getSortedCursorsReverse(); // bottom-to-top; use this when applying edits
-cursors.getPrimary();             // the primary Cursor (always defined)
+cursors.getPrimary(); // the primary Cursor (always defined)
 
-cursors.count;        // number of cursors
-cursors.hasMultiple;  // true when count > 1
+cursors.count; // number of cursors
+cursors.hasMultiple; // true when count > 1
 ```
 
 Apply text edits in **reverse document order** (`getSortedCursorsReverse()`): editing from the bottom up means earlier edits never shift the positions of cursors you have not processed yet.
@@ -76,8 +76,8 @@ const c = cursors.addCursor({ line: 5, column: 0 });
 
 // Add a cursor that already owns a selection.
 cursors.addCursorWithSelection(
-  { line: 2, column: 4 }, // anchor
-  { line: 2, column: 9 }, // head
+	{ line: 2, column: 4 }, // anchor
+	{ line: 2, column: 9 } // head
 );
 
 // Add relative to the primary cursor's current line.
@@ -90,9 +90,9 @@ cursors.addCursorBelow(lineCount); // returns false if already on the last line
 ### Removing cursors
 
 ```ts
-cursors.removeCursor(id);     // false if it was the last remaining cursor
+cursors.removeCursor(id); // false if it was the last remaining cursor
 cursors.removeLastSecondary(); // remove the most recently added non-primary cursor
-cursors.clearSecondary();      // collapse back to just the primary cursor
+cursors.clearSecondary(); // collapse back to just the primary cursor
 ```
 
 The manager guarantees at least one cursor survives: `removeCursor` refuses to delete the final cursor, and removing the primary promotes another cursor to primary automatically. `removeLastSecondary` powers the "undo last cursor" gesture; `clearSecondary` powers "escape back to a single caret".
@@ -100,24 +100,24 @@ The manager guarantees at least one cursor survives: `removeCursor` refuses to d
 ### Moving cursors and changing selections
 
 ```ts
-cursors.setPrimary(id);                    // choose which cursor is primary
-cursors.setCursor(id, position);           // move one caret, clearing its selection
-cursors.setSelection(id, anchor, head);    // set one cursor's selection
-cursors.extendSelection(id, head);         // move only the head, keep the anchor
+cursors.setPrimary(id); // choose which cursor is primary
+cursors.setCursor(id, position); // move one caret, clearing its selection
+cursors.setSelection(id, anchor, head); // set one cursor's selection
+cursors.extendSelection(id, head); // move only the head, keep the anchor
 
 // Batch many caret moves in a single merge + notify pass (more efficient
 // than calling setCursor in a loop):
 cursors.batchUpdateCursors([
-  { id: "cursor-0", position: { line: 1, column: 0 } },
-  { id: "cursor-1", position: { line: 2, column: 0 } },
+	{ id: 'cursor-0', position: { line: 1, column: 0 } },
+	{ id: 'cursor-1', position: { line: 2, column: 0 } }
 ]);
 ```
 
 To collapse everything down to one cursor in a single step, use the "single" helpers — they clear all secondary cursors and then position the primary:
 
 ```ts
-cursors.setSingleCursor(position);          // one caret, no selection
-cursors.setSingleSelection(anchor, head);   // one cursor with a selection
+cursors.setSingleCursor(position); // one caret, no selection
+cursors.setSingleSelection(anchor, head); // one cursor with a selection
 ```
 
 ### Reacting to changes
@@ -126,7 +126,7 @@ Every mutating call notifies subscribers. Register a listener and keep the retur
 
 ```ts
 const off = cursors.onChange(() => {
-  render(cursors.getSortedCursors());
+	render(cursors.getSortedCursors());
 });
 
 // later, when tearing down:
@@ -151,28 +151,28 @@ These pure functions are exported alongside the manager from `@nocturnium/svelte
 
 ```ts
 import {
-  comparePositions,
-  isPositionBefore,
-  isPositionBeforeOrEqual,
-  positionsEqual,
-  getSelectionStart,
-  getSelectionEnd,
-  isSelectionEmpty,
-  selectionsOverlap,
-  mergeSelections,
-} from "@nocturnium/svelte-ide/components/editor";
+	comparePositions,
+	isPositionBefore,
+	isPositionBeforeOrEqual,
+	positionsEqual,
+	getSelectionStart,
+	getSelectionEnd,
+	isSelectionEmpty,
+	selectionsOverlap,
+	mergeSelections
+} from '@nocturnium/svelte-ide/components/editor';
 
-comparePositions(a, b);        // <0 if a before b, >0 if after, 0 if equal
-isPositionBefore(a, b);        // a strictly before b
+comparePositions(a, b); // <0 if a before b, >0 if after, 0 if equal
+isPositionBefore(a, b); // a strictly before b
 isPositionBeforeOrEqual(a, b); // a before or equal to b
-positionsEqual(a, b);          // same line and column
+positionsEqual(a, b); // same line and column
 
 getSelectionStart(sel); // the earlier of anchor/head (document order)
-getSelectionEnd(sel);   // the later of anchor/head
-isSelectionEmpty(sel);  // anchor equals head (a plain caret)
+getSelectionEnd(sel); // the later of anchor/head
+isSelectionEmpty(sel); // anchor equals head (a plain caret)
 
 selectionsOverlap(a, b); // true if the ranges overlap OR merely touch
-mergeSelections(a, b);   // the union range { anchor: start, head: end }
+mergeSelections(a, b); // the union range { anchor: start, head: end }
 ```
 
 Because `getSelectionStart`/`getSelectionEnd` normalize direction, prefer them over reading `selection.anchor`/`selection.head` directly when you only care about the span.
@@ -194,27 +194,27 @@ You get this behavior for free through every `addCursor*`, `setCursor`, `setSele
 You rarely touch a `CursorManager` directly when you have an `EditorState`. The state wraps it, clamps every position to valid document bounds, and emits cursor/selection change events. The manager is still reachable via `state.cursorManager` for advanced cases.
 
 ```ts
-import { createEditorState } from "@nocturnium/svelte-ide";
+import { createEditorState } from '@nocturnium/svelte-ide';
 
-const state = createEditorState({ content: "const x = 1;\nconst y = 2;\n" });
+const state = createEditorState({ content: 'const x = 1;\nconst y = 2;\n' });
 
 // Inspect cursors
-state.allCursors;          // readonly Cursor[]
-state.primaryCursor;       // Cursor
-state.hasMultipleCursors;  // boolean
-state.hasAnySelection;     // boolean across all cursors
+state.allCursors; // readonly Cursor[]
+state.primaryCursor; // Cursor
+state.hasMultipleCursors; // boolean
+state.hasAnySelection; // boolean across all cursors
 
 // Add cursors (positions are clamped to the document)
 state.addCursor({ line: 1, column: 0 });
 state.addCursorWithSelection({ line: 0, column: 0 }, { line: 0, column: 5 });
-state.addCursorAbove();           // false if already on the first line
-state.addCursorBelow();           // false if already on the last line
-state.removeLastCursor();         // remove most recent secondary cursor
-state.clearSecondaryCursors();    // collapse to a single primary cursor
+state.addCursorAbove(); // false if already on the first line
+state.addCursorBelow(); // false if already on the last line
+state.removeLastCursor(); // remove most recent secondary cursor
+state.clearSecondaryCursors(); // collapse to a single primary cursor
 
 // Read selected text
-state.getSelectedText();                 // primary cursor's selection
-state.getSelectedTextFromAllCursors();   // every non-empty selection, joined by "\n"
+state.getSelectedText(); // primary cursor's selection
+state.getSelectedTextFromAllCursors(); // every non-empty selection, joined by "\n"
 
 // Advanced: reach the underlying manager
 state.cursorManager.setSelection(state.primaryCursor.id, anchor, head);
@@ -230,25 +230,25 @@ For the full `EditorState` surface (history, editing, navigation), see the [Edit
 
 ### Mouse
 
-| Gesture | Effect |
-| --- | --- |
-| Click | Place a single caret, clearing other cursors |
-| Shift+Click | Extend the primary selection to the clicked point |
+| Gesture       | Effect                                              |
+| ------------- | --------------------------------------------------- |
+| Click         | Place a single caret, clearing other cursors        |
+| Shift+Click   | Extend the primary selection to the clicked point   |
 | **Alt+Click** | Add a new caret at the clicked point (multi-cursor) |
-| Double-click | Select the word under the pointer |
-| Triple-click | Select the whole line |
-| Click + drag | Extend the selection as you move |
+| Double-click  | Select the word under the pointer                   |
+| Triple-click  | Select the whole line                               |
+| Click + drag  | Extend the selection as you move                    |
 
 ### Keyboard
 
-| Shortcut | Effect |
-| --- | --- |
-| `Ctrl/Cmd+D` | Select the next occurrence of the current word/selection, adding a cursor there |
-| `Ctrl/Cmd+Shift+L` | Add a cursor at **every** occurrence of the current word/selection |
-| `Ctrl/Cmd+Alt+ArrowUp` | Add a cursor on the line above |
-| `Ctrl/Cmd+Alt+ArrowDown` | Add a cursor on the line below |
-| `Ctrl/Cmd+U` | Remove the most recently added cursor |
-| `Escape` | Collapse back to a single primary cursor (when multiple are active) |
+| Shortcut                 | Effect                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| `Ctrl/Cmd+D`             | Select the next occurrence of the current word/selection, adding a cursor there |
+| `Ctrl/Cmd+Shift+L`       | Add a cursor at **every** occurrence of the current word/selection              |
+| `Ctrl/Cmd+Alt+ArrowUp`   | Add a cursor on the line above                                                  |
+| `Ctrl/Cmd+Alt+ArrowDown` | Add a cursor on the line below                                                  |
+| `Ctrl/Cmd+U`             | Remove the most recently added cursor                                           |
+| `Escape`                 | Collapse back to a single primary cursor (when multiple are active)             |
 
 `Ctrl/Cmd+D` and `Ctrl/Cmd+Shift+L` work on the current selection; if nothing is selected, they first select the word under the primary caret and then match against it. Matching is case-sensitive and literal (not regex). When several cursors are active, ordinary navigation (arrows, Home/End) and text edits apply to **all** of them at once — type a character and it appears at every caret; press Backspace and it deletes at every caret.
 
@@ -256,18 +256,18 @@ For the full `EditorState` surface (history, editing, navigation), see the [Edit
 
 ```svelte
 <script>
-  import { CustomEditor } from "@nocturnium/svelte-ide";
-  import "@nocturnium/svelte-ide/theme.css";
+	import { CustomEditor } from '@nocturnium/svelte-ide';
+	import '@nocturnium/svelte-ide/theme.css';
 
-  let cursors = $state([]);
+	let cursors = $state([]);
 </script>
 
 <CustomEditor
-  content={`const x = 1;\nconst y = 2;\n`}
-  language="javascript"
-  multiCursor={true}
-  maxCursors={100}
-  onCursorsChange={(c) => (cursors = c)}
+	content={`const x = 1;\nconst y = 2;\n`}
+	language="javascript"
+	multiCursor={true}
+	maxCursors={100}
+	onCursorsChange={(c) => (cursors = c)}
 />
 
 <p>Active cursors: {cursors.length}</p>

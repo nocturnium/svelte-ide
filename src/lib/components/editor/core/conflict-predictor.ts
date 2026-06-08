@@ -115,9 +115,7 @@ export class ConflictPredictor {
 		// Check each semantic region for multiple users
 		for (const region of semanticRegions) {
 			const usersInRegion = activeUsers.filter(
-				(user) =>
-					user.cursorLine >= region.startLine &&
-					user.cursorLine <= region.endLine
+				(user) => user.cursorLine >= region.startLine && user.cursorLine <= region.endLine
 			);
 
 			// Also check for users near the region
@@ -126,10 +124,7 @@ export class ConflictPredictor {
 					Math.abs(user.cursorLine - region.startLine),
 					Math.abs(user.cursorLine - region.endLine)
 				);
-				return (
-					distanceToRegion <= this.config.proximityThreshold &&
-					!usersInRegion.includes(user)
-				);
+				return distanceToRegion <= this.config.proximityThreshold && !usersInRegion.includes(user);
 			});
 
 			const allRelevantUsers = [...usersInRegion, ...usersNearRegion];

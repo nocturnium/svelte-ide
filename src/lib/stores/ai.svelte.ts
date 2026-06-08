@@ -103,18 +103,66 @@ export function getError(): string | null {
 }
 
 // Legacy aliases for backward compatibility
-export const conversations = { get current() { return getConversations(); } };
-export const activeConversationId = { get current() { return getActiveConversationId(); } };
-export const activeConversation = { get current() { return getActiveConversation(); } };
-export const messages = { get current() { return getMessages(); } };
-export const tools = { get current() { return getTools(); } };
-export const config = { get current() { return getConfig(); } };
-export const editSessions = { get current() { return getEditSessions(); } };
-export const activeEditSessions = { get current() { return getActiveEditSessions(); } };
-export const suggestions = { get current() { return getSuggestions(); } };
-export const isStreaming = { get current() { return getIsStreaming(); } };
-export const isPanelOpen = { get current() { return getIsPanelOpen(); } };
-export const error = { get current() { return getError(); } };
+export const conversations = {
+	get current() {
+		return getConversations();
+	}
+};
+export const activeConversationId = {
+	get current() {
+		return getActiveConversationId();
+	}
+};
+export const activeConversation = {
+	get current() {
+		return getActiveConversation();
+	}
+};
+export const messages = {
+	get current() {
+		return getMessages();
+	}
+};
+export const tools = {
+	get current() {
+		return getTools();
+	}
+};
+export const config = {
+	get current() {
+		return getConfig();
+	}
+};
+export const editSessions = {
+	get current() {
+		return getEditSessions();
+	}
+};
+export const activeEditSessions = {
+	get current() {
+		return getActiveEditSessions();
+	}
+};
+export const suggestions = {
+	get current() {
+		return getSuggestions();
+	}
+};
+export const isStreaming = {
+	get current() {
+		return getIsStreaming();
+	}
+};
+export const isPanelOpen = {
+	get current() {
+		return getIsPanelOpen();
+	}
+};
+export const error = {
+	get current() {
+		return getError();
+	}
+};
 
 /**
  * Create a new conversation
@@ -159,9 +207,7 @@ export function deleteConversation(conversationId: string): void {
 /**
  * Add a message to the active conversation
  */
-export function addMessage(
-	message: Omit<AIMessage, 'id' | 'timestamp'>
-): string {
+export function addMessage(message: Omit<AIMessage, 'id' | 'timestamp'>): string {
 	if (!state.activeConversationId) {
 		createConversation();
 	}
@@ -176,8 +222,8 @@ export function addMessage(
 
 	state.conversations = state.conversations.map((c) =>
 		c.id === state.activeConversationId
-			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
-			? { ...c, messages: [...c.messages, newMessage], updatedAt: new Date() }
+			? // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
+				{ ...c, messages: [...c.messages, newMessage], updatedAt: new Date() }
 			: c
 	);
 
@@ -427,8 +473,8 @@ export function completeEditSession(
 ): void {
 	state.editSessions = state.editSessions.map((s) =>
 		s.id === sessionId
-			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIEditSession object; type expects Date, not SvelteDate
-			? { ...s, status: 'reviewing', proposedContent, diff, completedAt: new Date() }
+			? // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIEditSession object; type expects Date, not SvelteDate
+				{ ...s, status: 'reviewing', proposedContent, diff, completedAt: new Date() }
 			: s
 	);
 }
@@ -473,8 +519,8 @@ export function updateContext(context: Partial<AIContext>): void {
 
 	state.conversations = state.conversations.map((c) =>
 		c.id === state.activeConversationId
-			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
-			? { ...c, context: { ...c.context, ...context }, updatedAt: new Date() }
+			? // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
+				{ ...c, context: { ...c.context, ...context }, updatedAt: new Date() }
 			: c
 	);
 }

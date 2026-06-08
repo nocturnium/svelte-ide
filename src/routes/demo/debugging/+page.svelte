@@ -136,9 +136,7 @@ function privateHelper(value) {
 			message: "Property 'message' does not exist on type 'unknown'",
 			source: 'typescript',
 			code: 'TS2339',
-			fixes: [
-				{ title: "Add type annotation 'Error'", isPreferred: true, edits: [] }
-			]
+			fixes: [{ title: "Add type annotation 'Error'", isPreferred: true, edits: [] }]
 		},
 		{
 			range: { start: { line: 43, column: 25 }, end: { line: 43, column: 26 } },
@@ -165,8 +163,14 @@ function privateHelper(value) {
 		breakpointManager = createBreakpointManager();
 		// Add some demo breakpoints
 		breakpointManager.addBreakpoint(filePath, 19);
-		breakpointManager.addBreakpoint(filePath, 22, { type: 'conditional', condition: 'data !== null' });
-		breakpointManager.addBreakpoint(filePath, 24, { type: 'logpoint', logMessage: 'Error occurred: {err}' });
+		breakpointManager.addBreakpoint(filePath, 22, {
+			type: 'conditional',
+			condition: 'data !== null'
+		});
+		breakpointManager.addBreakpoint(filePath, 24, {
+			type: 'logpoint',
+			logMessage: 'Error occurred: {err}'
+		});
 
 		// Add initial console entries
 		addConsoleEntry('log', 'Debug session started');
@@ -178,7 +182,11 @@ function privateHelper(value) {
 		};
 	});
 
-	function addConsoleEntry(type: ConsoleEntry['type'], content: unknown, source?: { file: string; line: number }) {
+	function addConsoleEntry(
+		type: ConsoleEntry['type'],
+		content: unknown,
+		source?: { file: string; line: number }
+	) {
 		const entry: ConsoleEntry = {
 			id: `entry-${++entryId}`,
 			type,
@@ -779,13 +787,8 @@ function privateHelper(value) {
 			scroll-snap-type: x proximity;
 			-webkit-overflow-scrolling: touch;
 			scrollbar-width: thin;
-			scrollbar-color: color-mix(in srgb, var(--ide-accent, #4a8db7) 50%, transparent)
-				transparent;
-			-webkit-mask-image: linear-gradient(
-				to right,
-				#000 calc(100% - 18px),
-				transparent 100%
-			);
+			scrollbar-color: color-mix(in srgb, var(--ide-accent, #4a8db7) 50%, transparent) transparent;
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent 100%);
 			mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent 100%);
 		}
 
@@ -860,11 +863,7 @@ function privateHelper(value) {
 		/* Right-edge fade signalling horizontal scroll, only where code truly overflows */
 		.editor-container {
 			position: relative;
-			-webkit-mask-image: linear-gradient(
-				to right,
-				#000 calc(100% - 24px),
-				transparent 100%
-			);
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
 			mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent 100%);
 		}
 

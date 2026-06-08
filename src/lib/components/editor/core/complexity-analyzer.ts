@@ -66,7 +66,7 @@ const THRESHOLDS = {
 	low: 30,
 	medium: 50,
 	high: 70,
-	critical: 85,
+	critical: 85
 };
 
 /**
@@ -77,7 +77,7 @@ const WEIGHTS = {
 	branchingFactor: 8,
 	lineCount: 0.3,
 	identifierCount: 0.2,
-	callCount: 0.5,
+	callCount: 0.5
 };
 
 /**
@@ -89,7 +89,8 @@ const PATTERNS = {
 	// Branching statements
 	branching: /\b(if|else\s+if|else|case|default|\?.*:)/g,
 	// Function definitions — exclude control flow keywords from method-style match
-	functionDef: /\b(function\s+(\w+)|(\w+)\s*=\s*(?:async\s*)?\(|(?!(?:if|else|for|while|do|switch|try|catch|finally|with|return|throw|new|typeof|void|delete|await|yield)\b)(\w+)\s*\([^)]*\)\s*\{|class\s+(\w+))/,
+	functionDef:
+		/\b(function\s+(\w+)|(\w+)\s*=\s*(?:async\s*)?\(|(?!(?:if|else|for|while|do|switch|try|catch|finally|with|return|throw|new|typeof|void|delete|await|yield)\b)(\w+)\s*\([^)]*\)\s*\{|class\s+(\w+))/,
 	// Function calls
 	functionCall: /\b\w+\s*\(/g,
 	// Identifiers (simplified)
@@ -97,7 +98,7 @@ const PATTERNS = {
 	// Block openers
 	blockOpen: /\{/g,
 	// Block closers
-	blockClose: /\}/g,
+	blockClose: /\}/g
 };
 
 /**
@@ -126,7 +127,7 @@ export class ComplexityAnalyzer {
 			overall,
 			level: this.getLevel(overall),
 			regions: analyzedRegions,
-			hotspots,
+			hotspots
 		};
 
 		this.cacheKey = key;
@@ -237,12 +238,24 @@ export class ComplexityAnalyzer {
 						braceDepth++;
 						// If this is the opening brace of a function/class def, push it
 						if (funcMatch && this.isDefOpeningBrace(text, ch, funcMatch)) {
-							blockStack.push({ line: i, type: funcMatch[5] ? 'class' : 'function', name: funcMatch[2] || funcMatch[3] || funcMatch[4] || funcMatch[5], depth: braceDepth });
-						} else if (!funcMatch || braceDepth > (blockStack.length > 0 ? blockStack[blockStack.length - 1].depth : 0) + 1) {
+							blockStack.push({
+								line: i,
+								type: funcMatch[5] ? 'class' : 'function',
+								name: funcMatch[2] || funcMatch[3] || funcMatch[4] || funcMatch[5],
+								depth: braceDepth
+							});
+						} else if (
+							!funcMatch ||
+							braceDepth > (blockStack.length > 0 ? blockStack[blockStack.length - 1].depth : 0) + 1
+						) {
 							// Anonymous/inline brace — only push as block if it's a
 							// statement-level block (i.e., after control flow keyword on this line)
 							const prefix = text.slice(0, ch).trim();
-							if (/\b(if|else|for|while|do|switch|try|catch|finally)\b/.test(prefix) || prefix.endsWith('=>') || prefix.endsWith(')')) {
+							if (
+								/\b(if|else|for|while|do|switch|try|catch|finally)\b/.test(prefix) ||
+								prefix.endsWith('=>') ||
+								prefix.endsWith(')')
+							) {
 								blockStack.push({ line: i, type: 'block', depth: braceDepth });
 							}
 							// Otherwise it's an expression brace (object literal, destructuring) — ignore
@@ -256,7 +269,7 @@ export class ComplexityAnalyzer {
 									startLine: block.line,
 									endLine: i,
 									type: block.type,
-									name: block.name,
+									name: block.name
 								});
 							}
 						}
@@ -271,7 +284,7 @@ export class ComplexityAnalyzer {
 			regions.push({
 				startLine: 0,
 				endLine: lines.length - 1,
-				type: 'file',
+				type: 'file'
 			});
 		}
 
@@ -307,14 +320,18 @@ export class ComplexityAnalyzer {
 			...region,
 			score,
 			factors,
-			suggestion,
+			suggestion
 		};
 	}
 
 	/**
 	 * Calculate complexity factors for a range of lines
 	 */
-	private calculateFactors(lines: readonly Line[], startLine: number, endLine: number): ComplexityFactors {
+	private calculateFactors(
+		lines: readonly Line[],
+		startLine: number,
+		endLine: number
+	): ComplexityFactors {
 		let nestingDepth = 0;
 		let maxNesting = 0;
 		let branchingFactor = 0;
@@ -325,7 +342,29 @@ export class ComplexityAnalyzer {
 		const nestingStartGlobal = /\b(if|for|while|switch|try|catch|with)\s*\(|=>\s*\{|\bdo\s*\{/g;
 
 		// Keywords that should NOT be counted as function calls
-		const controlKeywords = new Set(['if', 'for', 'while', 'switch', 'catch', 'function', 'return', 'typeof', 'new', 'throw', 'await', 'yield', 'import', 'export', 'class', 'super', 'this', 'void', 'delete', 'in', 'of']);
+		const controlKeywords = new Set([
+			'if',
+			'for',
+			'while',
+			'switch',
+			'catch',
+			'function',
+			'return',
+			'typeof',
+			'new',
+			'throw',
+			'await',
+			'yield',
+			'import',
+			'export',
+			'class',
+			'super',
+			'this',
+			'void',
+			'delete',
+			'in',
+			'of'
+		]);
 
 		for (let i = startLine; i <= endLine && i < lines.length; i++) {
 			const text = lines[i].text;
@@ -372,7 +411,7 @@ export class ComplexityAnalyzer {
 			branchingFactor,
 			lineCount: endLine - startLine + 1,
 			identifierCount: identifiers.size,
-			callCount,
+			callCount
 		};
 	}
 

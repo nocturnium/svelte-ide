@@ -172,16 +172,56 @@ export function getOnlineCount(): number {
 }
 
 // Legacy aliases for backward compatibility
-export const agents = { get current() { return getAgents(); } };
-export const onlineAgents = { get current() { return getOnlineAgents(); } };
-export const busyAgents = { get current() { return getBusyAgents(); } };
-export const events = { get current() { return getEvents(); } };
-export const activities = { get current() { return getActivities(); } };
-export const cursors = { get current() { return getCursors(); } };
-export const selectedAgent = { get current() { return getSelectedAgent(); } };
-export const filter = { get current() { return getFilter(); } };
-export const connected = { get current() { return getConnected(); } };
-export const error = { get current() { return getError(); } };
+export const agents = {
+	get current() {
+		return getAgents();
+	}
+};
+export const onlineAgents = {
+	get current() {
+		return getOnlineAgents();
+	}
+};
+export const busyAgents = {
+	get current() {
+		return getBusyAgents();
+	}
+};
+export const events = {
+	get current() {
+		return getEvents();
+	}
+};
+export const activities = {
+	get current() {
+		return getActivities();
+	}
+};
+export const cursors = {
+	get current() {
+		return getCursors();
+	}
+};
+export const selectedAgent = {
+	get current() {
+		return getSelectedAgent();
+	}
+};
+export const filter = {
+	get current() {
+		return getFilter();
+	}
+};
+export const connected = {
+	get current() {
+		return getConnected();
+	}
+};
+export const error = {
+	get current() {
+		return getError();
+	}
+};
 
 // ============================================================================
 // Agent Operations

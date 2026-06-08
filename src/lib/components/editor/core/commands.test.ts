@@ -70,11 +70,7 @@ describe('CommandRegistry — registration', () => {
 	});
 
 	it('should register multiple commands at once with registerMany', () => {
-		const cmds = [
-			makeCommand({ id: 'a' }),
-			makeCommand({ id: 'b' }),
-			makeCommand({ id: 'c' })
-		];
+		const cmds = [makeCommand({ id: 'a' }), makeCommand({ id: 'b' }), makeCommand({ id: 'c' })];
 		registry.registerMany(cmds);
 
 		expect(registry.get('a')).toBeDefined();
@@ -83,10 +79,7 @@ describe('CommandRegistry — registration', () => {
 	});
 
 	it('registerMany should return a single unsubscribe that removes all', () => {
-		const cmds = [
-			makeCommand({ id: 'a' }),
-			makeCommand({ id: 'b' })
-		];
+		const cmds = [makeCommand({ id: 'a' }), makeCommand({ id: 'b' })];
 		const unsub = registry.registerMany(cmds);
 		unsub();
 
@@ -240,12 +233,8 @@ describe('CommandRegistry — querying', () => {
 	});
 
 	it('search should match by description', () => {
-		registry.register(
-			makeCommand({ id: 'a', label: 'Fold', description: 'Collapse all imports' })
-		);
-		registry.register(
-			makeCommand({ id: 'b', label: 'Unfold', description: 'Expand all regions' })
-		);
+		registry.register(makeCommand({ id: 'a', label: 'Fold', description: 'Collapse all imports' }));
+		registry.register(makeCommand({ id: 'b', label: 'Unfold', description: 'Expand all regions' }));
 
 		const results = registry.search('imports');
 		expect(results).toHaveLength(1);

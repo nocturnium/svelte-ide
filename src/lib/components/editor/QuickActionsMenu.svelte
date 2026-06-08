@@ -7,14 +7,8 @@
 	 */
 
 	import { onMount } from 'svelte';
-	import type {
-		QuickActionsManager,
-		CodeAction
-	} from './core/quick-actions';
-	import {
-		groupActionsByKind,
-		getKindIcon
-	} from './core/quick-actions';
+	import type { QuickActionsManager, CodeAction } from './core/quick-actions';
+	import { groupActionsByKind, getKindIcon } from './core/quick-actions';
 
 	interface Props {
 		/** Quick actions manager instance */
@@ -184,11 +178,7 @@
 
 		<!-- Actions menu -->
 		{#if isOpen}
-			<div
-				class="actions-menu"
-				role="menu"
-				aria-label="Code actions"
-			>
+			<div class="actions-menu" role="menu" aria-label="Code actions">
 				{#each [...groupedActions.entries()] as [groupLabel, groupActions] (groupLabel)}
 					<div class="action-group">
 						<div class="group-header">
@@ -265,7 +255,8 @@
 	}
 
 	@keyframes pulse {
-		0%, 100% {
+		0%,
+		100% {
 			box-shadow: 0 0 0 0 rgba(249, 230, 79, 0.4);
 		}
 		50% {

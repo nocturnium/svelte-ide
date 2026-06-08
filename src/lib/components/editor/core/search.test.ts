@@ -10,7 +10,7 @@ import {
 	replaceAllMatches,
 	isPositionInMatch,
 	findMatchAtPosition,
-	type SearchMatch,
+	type SearchMatch
 } from './search';
 
 // ---------------------------------------------------------------------------
@@ -23,12 +23,7 @@ function lines(...texts: string[]): readonly { text: string }[] {
 }
 
 /** Build a minimal SearchMatch for helper-level tests */
-function makeMatch(
-	line: number,
-	startCol: number,
-	endCol: number,
-	text: string
-): SearchMatch {
+function makeMatch(line: number, startCol: number, endCol: number, text: string): SearchMatch {
 	return {
 		start: { line, column: startCol },
 		end: { line, column: endCol },
@@ -209,10 +204,7 @@ describe('findAllMatches — regex mode', () => {
 
 describe('match counting', () => {
 	it('should count total matches correctly', () => {
-		const result = findAllMatches(
-			lines('the cat sat on the mat', 'the dog sat on the rug'),
-			'the'
-		);
+		const result = findAllMatches(lines('the cat sat on the mat', 'the dog sat on the rug'), 'the');
 		expect(result).toHaveLength(4);
 	});
 
@@ -230,11 +222,7 @@ describe('match counting', () => {
 // ============================================================
 
 describe('findMatchIndexAtOrAfter', () => {
-	const matches = [
-		makeMatch(0, 0, 3, 'foo'),
-		makeMatch(1, 5, 8, 'bar'),
-		makeMatch(3, 2, 5, 'baz')
-	];
+	const matches = [makeMatch(0, 0, 3, 'foo'), makeMatch(1, 5, 8, 'bar'), makeMatch(3, 2, 5, 'baz')];
 
 	it('should return 0 for position before all matches', () => {
 		expect(findMatchIndexAtOrAfter(matches, { line: 0, column: 0 })).toBe(0);
@@ -262,11 +250,7 @@ describe('findMatchIndexAtOrAfter', () => {
 // ============================================================
 
 describe('findMatchIndexAtOrBefore', () => {
-	const matches = [
-		makeMatch(0, 0, 3, 'foo'),
-		makeMatch(1, 5, 8, 'bar'),
-		makeMatch(3, 2, 5, 'baz')
-	];
+	const matches = [makeMatch(0, 0, 3, 'foo'), makeMatch(1, 5, 8, 'bar'), makeMatch(3, 2, 5, 'baz')];
 
 	it('should return last match index for position after all matches', () => {
 		expect(findMatchIndexAtOrBefore(matches, { line: 10, column: 0 })).toBe(2);
@@ -296,11 +280,7 @@ describe('findMatchIndexAtOrBefore', () => {
 // ============================================================
 
 describe('getNextMatchIndex', () => {
-	const threeMatches = [
-		makeMatch(0, 0, 3, 'a'),
-		makeMatch(1, 0, 3, 'b'),
-		makeMatch(2, 0, 3, 'c')
-	];
+	const threeMatches = [makeMatch(0, 0, 3, 'a'), makeMatch(1, 0, 3, 'b'), makeMatch(2, 0, 3, 'c')];
 
 	it('should advance to next match', () => {
 		expect(getNextMatchIndex(threeMatches, 0)).toBe(1);
@@ -329,11 +309,7 @@ describe('getNextMatchIndex', () => {
 // ============================================================
 
 describe('getPrevMatchIndex', () => {
-	const threeMatches = [
-		makeMatch(0, 0, 3, 'a'),
-		makeMatch(1, 0, 3, 'b'),
-		makeMatch(2, 0, 3, 'c')
-	];
+	const threeMatches = [makeMatch(0, 0, 3, 'a'), makeMatch(1, 0, 3, 'b'), makeMatch(2, 0, 3, 'c')];
 
 	it('should go to previous match', () => {
 		expect(getPrevMatchIndex(threeMatches, 2)).toBe(1);

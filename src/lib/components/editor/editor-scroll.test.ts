@@ -37,12 +37,14 @@ function makeConfig(overrides: Partial<ScrollConfig> = {}): ScrollConfig {
 }
 
 /** Create a minimal mock of an HTMLDivElement with scroll/viewport properties */
-function makeMockElement(props: {
-	scrollTop?: number;
-	scrollLeft?: number;
-	clientHeight?: number;
-	clientWidth?: number;
-} = {}) {
+function makeMockElement(
+	props: {
+		scrollTop?: number;
+		scrollLeft?: number;
+		clientHeight?: number;
+		clientWidth?: number;
+	} = {}
+) {
 	return {
 		scrollTop: props.scrollTop ?? 0,
 		scrollLeft: props.scrollLeft ?? 0,
@@ -68,9 +70,11 @@ describe('createEditorScroll', () => {
 
 describe('scrollCursorIntoView', () => {
 	it('should not throw when editorContent is null', async () => {
-		const scroll = createEditorScroll(makeConfig({
-			getEditorContent: () => null
-		}));
+		const scroll = createEditorScroll(
+			makeConfig({
+				getEditorContent: () => null
+			})
+		);
 
 		await expect(scroll.scrollCursorIntoView()).resolves.toBeUndefined();
 	});
@@ -82,19 +86,21 @@ describe('scrollCursorIntoView', () => {
 			clientWidth: 800
 		});
 
-		const scroll = createEditorScroll(makeConfig({
-			getEditorContent: () => el,
-			getSelection: () => ({
-				anchor: { line: 20, column: 0 },
-				head: { line: 20, column: 0 }
-			}),
-			getMeasurements: () => ({
-				lineHeight: 20,
-				charWidth: 8,
-				gutterWidth: 50,
-				contentPadding: 8
+		const scroll = createEditorScroll(
+			makeConfig({
+				getEditorContent: () => el,
+				getSelection: () => ({
+					anchor: { line: 20, column: 0 },
+					head: { line: 20, column: 0 }
+				}),
+				getMeasurements: () => ({
+					lineHeight: 20,
+					charWidth: 8,
+					gutterWidth: 50,
+					contentPadding: 8
+				})
 			})
-		}));
+		);
 
 		await scroll.scrollCursorIntoView();
 
@@ -111,19 +117,21 @@ describe('scrollCursorIntoView', () => {
 			clientWidth: 800
 		});
 
-		const scroll = createEditorScroll(makeConfig({
-			getEditorContent: () => el,
-			getSelection: () => ({
-				anchor: { line: 2, column: 0 },
-				head: { line: 2, column: 0 }
-			}),
-			getMeasurements: () => ({
-				lineHeight: 20,
-				charWidth: 8,
-				gutterWidth: 50,
-				contentPadding: 8
+		const scroll = createEditorScroll(
+			makeConfig({
+				getEditorContent: () => el,
+				getSelection: () => ({
+					anchor: { line: 2, column: 0 },
+					head: { line: 2, column: 0 }
+				}),
+				getMeasurements: () => ({
+					lineHeight: 20,
+					charWidth: 8,
+					gutterWidth: 50,
+					contentPadding: 8
+				})
 			})
-		}));
+		);
 
 		await scroll.scrollCursorIntoView();
 
@@ -139,19 +147,21 @@ describe('scrollCursorIntoView', () => {
 			clientWidth: 800
 		});
 
-		const scroll = createEditorScroll(makeConfig({
-			getEditorContent: () => el,
-			getSelection: () => ({
-				anchor: { line: 5, column: 0 },
-				head: { line: 5, column: 0 }
-			}),
-			getMeasurements: () => ({
-				lineHeight: 20,
-				charWidth: 8,
-				gutterWidth: 50,
-				contentPadding: 8
+		const scroll = createEditorScroll(
+			makeConfig({
+				getEditorContent: () => el,
+				getSelection: () => ({
+					anchor: { line: 5, column: 0 },
+					head: { line: 5, column: 0 }
+				}),
+				getMeasurements: () => ({
+					lineHeight: 20,
+					charWidth: 8,
+					gutterWidth: 50,
+					contentPadding: 8
+				})
 			})
-		}));
+		);
 
 		await scroll.scrollCursorIntoView();
 
@@ -167,19 +177,21 @@ describe('scrollCursorIntoView', () => {
 			clientWidth: 200
 		});
 
-		const scroll = createEditorScroll(makeConfig({
-			getEditorContent: () => el,
-			getSelection: () => ({
-				anchor: { line: 0, column: 100 },
-				head: { line: 0, column: 100 }
-			}),
-			getMeasurements: () => ({
-				lineHeight: 20,
-				charWidth: 8,
-				gutterWidth: 50,
-				contentPadding: 8
+		const scroll = createEditorScroll(
+			makeConfig({
+				getEditorContent: () => el,
+				getSelection: () => ({
+					anchor: { line: 0, column: 100 },
+					head: { line: 0, column: 100 }
+				}),
+				getMeasurements: () => ({
+					lineHeight: 20,
+					charWidth: 8,
+					gutterWidth: 50,
+					contentPadding: 8
+				})
 			})
-		}));
+		);
 
 		await scroll.scrollCursorIntoView();
 

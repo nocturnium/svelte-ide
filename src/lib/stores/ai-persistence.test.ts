@@ -19,14 +19,20 @@ vi.stubGlobal('crypto', {
 const localStorageData: Record<string, string> = {};
 vi.stubGlobal('localStorage', {
 	getItem: (key: string) => localStorageData[key] ?? null,
-	setItem: (key: string, value: string) => { localStorageData[key] = value; },
-	removeItem: (key: string) => { delete localStorageData[key]; },
-	clear: () => { Object.keys(localStorageData).forEach(k => delete localStorageData[k]); }
+	setItem: (key: string, value: string) => {
+		localStorageData[key] = value;
+	},
+	removeItem: (key: string) => {
+		delete localStorageData[key];
+	},
+	clear: () => {
+		Object.keys(localStorageData).forEach((k) => delete localStorageData[k]);
+	}
 });
 
 beforeEach(() => {
 	uuidCounter = 0;
-	Object.keys(localStorageData).forEach(k => delete localStorageData[k]);
+	Object.keys(localStorageData).forEach((k) => delete localStorageData[k]);
 });
 
 // ============================================================================
@@ -106,9 +112,7 @@ describe('ai-persistence — exportConversationMarkdown', () => {
 					role: 'assistant',
 					content: 'Let me check...',
 					timestamp: new Date(),
-					toolCalls: [
-						{ id: 'tc-1', name: 'read_file', arguments: { path: '/src/a.ts' } }
-					]
+					toolCalls: [{ id: 'tc-1', name: 'read_file', arguments: { path: '/src/a.ts' } }]
 				}
 			]
 		});
@@ -157,7 +161,7 @@ describe('ai-persistence — localStorage fallback', () => {
 		await persistence.saveConversation(conv);
 
 		const loaded = await persistence.loadConversations();
-		expect(loaded.some(c => c.id === 'test-conv-1')).toBe(true);
+		expect(loaded.some((c) => c.id === 'test-conv-1')).toBe(true);
 	});
 
 	it('loadConversation by id', async () => {
@@ -207,11 +211,15 @@ describe('ai-persistence — localStorage fallback', () => {
 
 	it('searchConversations finds by message content', async () => {
 		await persistence.initPersistence();
-		await persistence.saveConversation(makeConversation({
-			id: 'c1',
-			title: 'Chat',
-			messages: [{ id: 'm1', role: 'user', content: 'how to use useState', timestamp: new Date() }]
-		}));
+		await persistence.saveConversation(
+			makeConversation({
+				id: 'c1',
+				title: 'Chat',
+				messages: [
+					{ id: 'm1', role: 'user', content: 'how to use useState', timestamp: new Date() }
+				]
+			})
+		);
 
 		const results = await persistence.searchConversations('useState');
 		expect(results).toHaveLength(1);
@@ -223,7 +231,7 @@ describe('ai-persistence — localStorage fallback', () => {
 		await persistence.toggleStarConversation('star-me', true);
 
 		const starred = await persistence.getStarredConversations();
-		expect(starred.some(c => c.id === 'star-me')).toBe(true);
+		expect(starred.some((c) => c.id === 'star-me')).toBe(true);
 	});
 
 	it('importConversationJSON imports valid JSON', async () => {

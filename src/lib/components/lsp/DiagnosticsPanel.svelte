@@ -1,3 +1,25 @@
+<script module lang="ts">
+	const errorIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="var(--ide-bg-primary)" stroke-width="1.5"/></svg>`;
+	const warningIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 1L1 15h14L8 1z" fill="currentColor"/><path d="M8 6v4M8 12v1" stroke="var(--ide-bg-primary)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+	const infoIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 5v1M8 8v4" stroke="var(--ide-bg-primary)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+	const checkIcon = `<svg viewBox="0 0 16 16" width="24" height="24"><circle cx="8" cy="8" r="7" fill="var(--ide-success)" opacity="0.2"/><path d="M5 8l2 2 4-4" stroke="var(--ide-success)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+	function getSeveritySVG(severity?: number): string {
+		switch (severity) {
+			case 1:
+				return errorIcon;
+			case 2:
+				return warningIcon;
+			case 3:
+				return infoIcon;
+			case 4:
+				return `<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4v5M8 11v1" stroke="var(--ide-bg-primary)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+			default:
+				return infoIcon;
+		}
+	}
+</script>
+
 <script lang="ts">
 	/**
 	 * DiagnosticsPanel - LSP diagnostics list display
@@ -62,10 +84,18 @@
 		diagnostics.forEach((diags) => {
 			for (const diag of diags) {
 				switch (diag.severity) {
-					case 1: result.errors++; break;
-					case 2: result.warnings++; break;
-					case 3: result.info++; break;
-					case 4: result.hints++; break;
+					case 1:
+						result.errors++;
+						break;
+					case 2:
+						result.warnings++;
+						break;
+					case 3:
+						result.info++;
+						break;
+					case 4:
+						result.hints++;
+						break;
 				}
 			}
 		});
@@ -74,11 +104,16 @@
 
 	function getSeverityIcon(severity?: DiagnosticSeverity): string {
 		switch (severity) {
-			case 1: return 'error';
-			case 2: return 'warning';
-			case 3: return 'info';
-			case 4: return 'hint';
-			default: return 'info';
+			case 1:
+				return 'error';
+			case 2:
+				return 'warning';
+			case 3:
+				return 'info';
+			case 4:
+				return 'hint';
+			default:
+				return 'info';
 		}
 	}
 
@@ -149,7 +184,7 @@
 		{#if allDiagnostics().length === 0}
 			<div class="diagnostics-panel__empty">
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG icons are static string literals defined in this file, not user content -->
-			<span class="diagnostics-panel__empty-icon">{@html checkIcon}</span>
+				<span class="diagnostics-panel__empty-icon">{@html checkIcon}</span>
 				<span>No problems detected</span>
 			</div>
 		{:else}
@@ -179,23 +214,6 @@
 		{/if}
 	</div>
 </div>
-
-<script module lang="ts">
-	const errorIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="var(--ide-bg-primary)" stroke-width="1.5"/></svg>`;
-	const warningIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 1L1 15h14L8 1z" fill="currentColor"/><path d="M8 6v4M8 12v1" stroke="var(--ide-bg-primary)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-	const infoIcon = `<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 5v1M8 8v4" stroke="var(--ide-bg-primary)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-	const checkIcon = `<svg viewBox="0 0 16 16" width="24" height="24"><circle cx="8" cy="8" r="7" fill="var(--ide-success)" opacity="0.2"/><path d="M5 8l2 2 4-4" stroke="var(--ide-success)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
-	function getSeveritySVG(severity?: number): string {
-		switch (severity) {
-			case 1: return errorIcon;
-			case 2: return warningIcon;
-			case 3: return infoIcon;
-			case 4: return `<svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4v5M8 11v1" stroke="var(--ide-bg-primary)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-			default: return infoIcon;
-		}
-	}
-</script>
 
 <style>
 	.diagnostics-panel {

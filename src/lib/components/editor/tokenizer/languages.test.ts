@@ -43,13 +43,19 @@ function findTokens(line: TokenizedLine, type: TokenType): Token[] {
 /** Assert that at least one token of the given type exists with the expected text */
 function expectToken(line: TokenizedLine, type: TokenType, text: string): void {
 	const matching = line.tokens.filter((t) => t.type === type && t.text === text);
-	expect(matching.length, `Expected token {type: '${type}', text: '${text}'} but found none in: ${JSON.stringify(line.tokens.map((t) => ({ type: t.type, text: t.text })))}`).toBeGreaterThan(0);
+	expect(
+		matching.length,
+		`Expected token {type: '${type}', text: '${text}'} but found none in: ${JSON.stringify(line.tokens.map((t) => ({ type: t.type, text: t.text })))}`
+	).toBeGreaterThan(0);
 }
 
 /** Assert that at least one token of the given type exists */
 function expectTokenType(line: TokenizedLine, type: TokenType): void {
 	const matching = line.tokens.filter((t) => t.type === type);
-	expect(matching.length, `Expected at least one token of type '${type}' but found none in: ${JSON.stringify(line.tokens.map((t) => ({ type: t.type, text: t.text })))}`).toBeGreaterThan(0);
+	expect(
+		matching.length,
+		`Expected at least one token of type '${type}' but found none in: ${JSON.stringify(line.tokens.map((t) => ({ type: t.type, text: t.text })))}`
+	).toBeGreaterThan(0);
 }
 
 // ============================================================
@@ -544,7 +550,10 @@ describe('Go tokenizer', () => {
 
 	describe('realistic multi-token line', () => {
 		it('tokenizes a function signature', () => {
-			const line = tok('go', 'func (s *Server) Handle(w http.ResponseWriter, r *http.Request) error {');
+			const line = tok(
+				'go',
+				'func (s *Server) Handle(w http.ResponseWriter, r *http.Request) error {'
+			);
 			expectToken(line, 'keyword.definition', 'func');
 			expectToken(line, 'function.call', 'Handle');
 			expectToken(line, 'type.builtin', 'error');

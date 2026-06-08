@@ -68,7 +68,7 @@
 	aria-label="Code complexity: {score} out of 100, {levelLabel} complexity"
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
-	onclick={onclick}
+	{onclick}
 	onkeydown={(e) => e.key === 'Enter' && onclick?.()}
 	tabindex={onclick ? 0 : -1}
 >
@@ -143,7 +143,9 @@
 			{#if metrics.regions.some((r) => r.suggestion)}
 				<div class="cognitive-meter__tooltip-section">
 					<span class="cognitive-meter__tooltip-label">Suggestions:</span>
-					{#each metrics.regions.filter((r) => r.suggestion).slice(0, 2) as region (region.startLine)}
+					{#each metrics.regions
+						.filter((r) => r.suggestion)
+						.slice(0, 2) as region (region.startLine)}
 						<p class="cognitive-meter__tooltip-suggestion">
 							{region.suggestion}
 						</p>

@@ -293,9 +293,7 @@ describe('createDefaultKeybindings', () => {
 
 	it('should include select-all (Ctrl+A)', () => {
 		const bindings = createDefaultKeybindings(state, nav);
-		const selectAll = bindings.find(
-			(b) => b.key === 'a' && b.modifiers?.ctrl
-		);
+		const selectAll = bindings.find((b) => b.key === 'a' && b.modifiers?.ctrl);
 		expect(selectAll).toBeDefined();
 		expect(selectAll!.description).toContain('Select all');
 	});

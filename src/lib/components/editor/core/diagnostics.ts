@@ -200,9 +200,7 @@ export class DiagnosticsManager {
 	 */
 	getDiagnosticsForLine(filePath: string, line: number): Diagnostic[] {
 		const diagnostics = this.getDiagnostics(filePath);
-		return diagnostics.filter(
-			(d) => d.range.start.line <= line && d.range.end.line >= line
-		);
+		return diagnostics.filter((d) => d.range.start.line <= line && d.range.end.line >= line);
 	}
 
 	/**
@@ -259,9 +257,7 @@ export class DiagnosticsManager {
 	private filterDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {
 		if (!this._config.enabled) return [];
 
-		return diagnostics.filter((d) =>
-			this._config.severityFilter.includes(d.severity)
-		);
+		return diagnostics.filter((d) => this._config.severityFilter.includes(d.severity));
 	}
 
 	/**

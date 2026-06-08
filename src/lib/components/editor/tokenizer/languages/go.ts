@@ -7,29 +7,92 @@ import { createToken } from '../base';
 
 // Go keywords
 const keywords = new Set([
-	'break', 'case', 'chan', 'const', 'continue', 'default', 'defer', 'else',
-	'fallthrough', 'for', 'func', 'go', 'goto', 'if', 'import', 'interface',
-	'map', 'package', 'range', 'return', 'select', 'struct', 'switch', 'type', 'var'
+	'break',
+	'case',
+	'chan',
+	'const',
+	'continue',
+	'default',
+	'defer',
+	'else',
+	'fallthrough',
+	'for',
+	'func',
+	'go',
+	'goto',
+	'if',
+	'import',
+	'interface',
+	'map',
+	'package',
+	'range',
+	'return',
+	'select',
+	'struct',
+	'switch',
+	'type',
+	'var'
 ]);
 
 const controlKeywords = new Set([
-	'break', 'case', 'continue', 'default', 'defer', 'else', 'fallthrough',
-	'for', 'go', 'goto', 'if', 'range', 'return', 'select', 'switch'
+	'break',
+	'case',
+	'continue',
+	'default',
+	'defer',
+	'else',
+	'fallthrough',
+	'for',
+	'go',
+	'goto',
+	'if',
+	'range',
+	'return',
+	'select',
+	'switch'
 ]);
 
-const builtins = new Set([
-	'true', 'false', 'nil', 'iota'
-]);
+const builtins = new Set(['true', 'false', 'nil', 'iota']);
 
 const builtinFunctions = new Set([
-	'append', 'cap', 'close', 'complex', 'copy', 'delete', 'imag', 'len',
-	'make', 'new', 'panic', 'print', 'println', 'real', 'recover'
+	'append',
+	'cap',
+	'close',
+	'complex',
+	'copy',
+	'delete',
+	'imag',
+	'len',
+	'make',
+	'new',
+	'panic',
+	'print',
+	'println',
+	'real',
+	'recover'
 ]);
 
 const builtinTypes = new Set([
-	'bool', 'byte', 'complex64', 'complex128', 'error', 'float32', 'float64',
-	'int', 'int8', 'int16', 'int32', 'int64', 'rune', 'string',
-	'uint', 'uint8', 'uint16', 'uint32', 'uint64', 'uintptr'
+	'bool',
+	'byte',
+	'complex64',
+	'complex128',
+	'error',
+	'float32',
+	'float64',
+	'int',
+	'int8',
+	'int16',
+	'int32',
+	'int64',
+	'rune',
+	'string',
+	'uint',
+	'uint8',
+	'uint16',
+	'uint32',
+	'uint64',
+	'uintptr'
 ]);
 
 interface GoTokenizerState extends TokenizerState {
@@ -135,14 +198,18 @@ export class GoTokenizer {
 
 		// Rune literals
 		if (text.startsWith("'")) {
-			const runeMatch = text.match(/^'(?:[^'\\]|\\(?:[abfnrtv\\'"]|[0-7]{3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}))'/);
+			const runeMatch = text.match(
+				/^'(?:[^'\\]|\\(?:[abfnrtv\\'"]|[0-7]{3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}))'/
+			);
 			if (runeMatch) {
 				return createToken('string', runeMatch[0], pos);
 			}
 		}
 
 		// Numbers
-		const numMatch = text.match(/^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?i?)/);
+		const numMatch = text.match(
+			/^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?i?)/
+		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
 		}

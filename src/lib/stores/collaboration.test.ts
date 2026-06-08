@@ -59,7 +59,6 @@ function makeConfig(overrides: Partial<TestConfig> = {}): TestConfig {
 	};
 }
 
-
 // ============================================================================
 // Default state
 // ============================================================================
@@ -189,8 +188,17 @@ describe('collaboration store — user management', () => {
 
 	it('removeUser also removes cursor and awareness', () => {
 		collab.addUser(makeUser('u1'));
-		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } satisfies CollaboratorCursor);
-		collab.updateAwareness({ userId: 'u1', user: makeUser('u1'), state: 'active' } satisfies CollaboratorAwareness);
+		collab.updateCursor({
+			userId: 'u1',
+			user: makeUser('u1'),
+			position: { line: 1, column: 1 },
+			lastActivity: new Date()
+		} satisfies CollaboratorCursor);
+		collab.updateAwareness({
+			userId: 'u1',
+			user: makeUser('u1'),
+			state: 'active'
+		} satisfies CollaboratorAwareness);
 		collab.removeUser('u1');
 		expect(collab.getCursors()).toHaveLength(0);
 		expect(collab.getAwareness()).toHaveLength(0);
@@ -221,8 +229,18 @@ describe('collaboration store — cursors', () => {
 	});
 
 	it('updateCursor overwrites existing cursor for same user', () => {
-		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } satisfies CollaboratorCursor);
-		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 10, column: 5 }, lastActivity: new Date() } satisfies CollaboratorCursor);
+		collab.updateCursor({
+			userId: 'u1',
+			user: makeUser('u1'),
+			position: { line: 1, column: 1 },
+			lastActivity: new Date()
+		} satisfies CollaboratorCursor);
+		collab.updateCursor({
+			userId: 'u1',
+			user: makeUser('u1'),
+			position: { line: 10, column: 5 },
+			lastActivity: new Date()
+		} satisfies CollaboratorCursor);
 		expect(collab.getCursors()).toHaveLength(1);
 		expect(collab.getCursors()[0].position).toEqual({ line: 10, column: 5 });
 	});
@@ -248,7 +266,11 @@ describe('collaboration store — cursors', () => {
 
 describe('collaboration store — awareness', () => {
 	it('updateAwareness adds awareness data', () => {
-		collab.updateAwareness({ userId: 'u1', user: makeUser('u1'), state: 'active' } satisfies CollaboratorAwareness);
+		collab.updateAwareness({
+			userId: 'u1',
+			user: makeUser('u1'),
+			state: 'active'
+		} satisfies CollaboratorAwareness);
 		expect(collab.getAwareness()).toHaveLength(1);
 	});
 
@@ -281,7 +303,7 @@ describe('collaboration store — AI sessions', () => {
 		expect(collab.getAISessions()).toHaveLength(1);
 		expect(collab.getAISessions()[0].status).toBe('pending');
 		// AI user added to users
-		expect(collab.getUsers().some(u => u.isAI)).toBe(true);
+		expect(collab.getUsers().some((u) => u.isAI)).toBe(true);
 	});
 
 	it('updateAISession modifies session', () => {
@@ -309,20 +331,25 @@ describe('collaboration store — AI sessions', () => {
 		const aiUser = makeUser('ai-bot');
 		const id = collab.startAISession('doc-1', aiUser);
 		collab.completeAISession(id);
-		expect(collab.getAISessions().find(s => s.id === id)?.status).toBe('completed');
-		expect(collab.getUsers().find(u => u.id === 'ai-bot')).toBeUndefined();
+		expect(collab.getAISessions().find((s) => s.id === id)?.status).toBe('completed');
+		expect(collab.getUsers().find((u) => u.id === 'ai-bot')).toBeUndefined();
 	});
 
 	it('cancelAISession sets cancelled and rejects pending changes', () => {
 		const aiUser = makeUser('ai-bot');
 		const sessionId = collab.startAISession('doc-1', aiUser);
-		collab.proposeAIChange(sessionId,
+		collab.proposeAIChange(
+			sessionId,
 			// Simplified test shape; store accepts the structural superset at runtime
-			{ type: 'insert', content: 'new code', range: { start: { line: 1, column: 1 }, end: { line: 1, column: 1 } } } as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
+			{
+				type: 'insert',
+				content: 'new code',
+				range: { start: { line: 1, column: 1 }, end: { line: 1, column: 1 } }
+			} as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
 		);
 		collab.cancelAISession(sessionId);
-		expect(collab.getAISessions().find(s => s.id === sessionId)?.status).toBe('cancelled');
-		expect(collab.getPendingChanges().every(c => c.status === 'rejected')).toBe(true);
+		expect(collab.getAISessions().find((s) => s.id === sessionId)?.status).toBe('cancelled');
+		expect(collab.getPendingChanges().every((c) => c.status === 'rejected')).toBe(true);
 	});
 });
 
@@ -340,9 +367,14 @@ describe('collaboration store — AI change proposals', () => {
 	});
 
 	it('proposeAIChange adds a pending change', () => {
-		const _id = collab.proposeAIChange(sessionId,
+		const _id = collab.proposeAIChange(
+			sessionId,
 			// Simplified test shape; store accepts the structural superset at runtime
-			{ type: 'replace', content: 'updated', range: { start: { line: 1, column: 1 }, end: { line: 5, column: 1 } } } as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
+			{
+				type: 'replace',
+				content: 'updated',
+				range: { start: { line: 1, column: 1 }, end: { line: 5, column: 1 } }
+			} as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
 		);
 		expect(collab.getPendingChanges()).toHaveLength(1);
 		expect(collab.getPendingChanges()[0].status).toBe('pending');
@@ -350,18 +382,28 @@ describe('collaboration store — AI change proposals', () => {
 	});
 
 	it('reviewAIChange approves a change', () => {
-		const changeId = collab.proposeAIChange(sessionId,
+		const changeId = collab.proposeAIChange(
+			sessionId,
 			// Simplified test shape; store accepts the structural superset at runtime
-			{ type: 'replace', content: 'x', range: {} as unknown as AIProposedChange['range'] } as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
+			{
+				type: 'replace',
+				content: 'x',
+				range: {} as unknown as AIProposedChange['range']
+			} as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
 		);
 		collab.reviewAIChange(changeId, true, 'reviewer-1');
 		expect(collab.getPendingChanges()[0].status).toBe('approved');
 	});
 
 	it('reviewAIChange rejects a change', () => {
-		const changeId = collab.proposeAIChange(sessionId,
+		const changeId = collab.proposeAIChange(
+			sessionId,
 			// Simplified test shape; store accepts the structural superset at runtime
-			{ type: 'replace', content: 'x', range: {} as unknown as AIProposedChange['range'] } as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
+			{
+				type: 'replace',
+				content: 'x',
+				range: {} as unknown as AIProposedChange['range']
+			} as unknown as Omit<AIProposedChange, 'id' | 'sessionId' | 'status'>
 		);
 		collab.reviewAIChange(changeId, false, 'reviewer-1');
 		expect(collab.getPendingChanges()[0].status).toBe('rejected');
@@ -450,7 +492,12 @@ describe('collaboration store — getUserColor', () => {
 describe('collaboration store — disconnect', () => {
 	it('disconnect clears users, cursors, awareness', () => {
 		collab.addUser(makeUser('u1'));
-		collab.updateCursor({ userId: 'u1', user: makeUser('u1'), position: { line: 1, column: 1 }, lastActivity: new Date() } satisfies CollaboratorCursor);
+		collab.updateCursor({
+			userId: 'u1',
+			user: makeUser('u1'),
+			position: { line: 1, column: 1 },
+			lastActivity: new Date()
+		} satisfies CollaboratorCursor);
 		collab.disconnect();
 		expect(collab.getStatus()).toBe('disconnected');
 		expect(collab.getUsers()).toEqual([]);

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getWordAtPosition, selectNextOccurrence, selectAllOccurrences } from './editor-multicursor';
+import {
+	getWordAtPosition,
+	selectNextOccurrence,
+	selectAllOccurrences
+} from './editor-multicursor';
 import type { EditorState, Position, Selection } from './core';
 
 // ---------------------------------------------------------------------------
@@ -25,9 +29,7 @@ function makeMockState(opts: {
 	const primarySelection: Selection = { anchor, head };
 	const primaryCursorId = 'primary-0';
 
-	const cursors = [
-		{ id: primaryCursorId, selection: primarySelection, isPrimary: true }
-	];
+	const cursors = [{ id: primaryCursorId, selection: primarySelection, isPrimary: true }];
 
 	const cursorManager = {
 		setSelection: vi.fn()
@@ -281,8 +283,8 @@ describe('selectNextOccurrence', () => {
 			selectionAnchor: { line: 0, column: 0 },
 			selectionHead: { line: 1, column: 3 }
 		});
-		(state as unknown as { getTextInSelection: () => string }).getTextInSelection =
-			() => 'foo\nfoo';
+		(state as unknown as { getTextInSelection: () => string }).getTextInSelection = () =>
+			'foo\nfoo';
 
 		expect(() => selectNextOccurrence(state)).not.toThrow();
 		expect(state.addCursorWithSelection).not.toHaveBeenCalled();
@@ -361,8 +363,8 @@ describe('selectAllOccurrences', () => {
 			selectionHead: { line: 1, column: 3 }
 		});
 		// Force getTextInSelection to return multi-line text for this selection.
-		(state as unknown as { getTextInSelection: () => string }).getTextInSelection =
-			() => 'foo\nfoo';
+		(state as unknown as { getTextInSelection: () => string }).getTextInSelection = () =>
+			'foo\nfoo';
 
 		expect(() => selectAllOccurrences(state)).not.toThrow();
 		expect(state.addCursorWithSelection).not.toHaveBeenCalled();

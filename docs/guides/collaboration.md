@@ -1,6 +1,6 @@
 # Realtime Collaboration (CRDT)
 
-`@nocturnium/svelte-ide` ships an optional, conflict-free realtime collaboration layer built on [Yjs](https://docs.yjs.dev/). It lets multiple people (and AI agents) edit the same document at once, with character-level merge resolution, shared undo/redo, and live presence (cursors and selections). The CRDT layer is **opt-in**: it lives behind its own entry point (`@nocturnium/svelte-ide/crdt`) and behind a set of *optional* peer dependencies, so consumers who do not need collaboration pay nothing for it. Crucially, **no collaboration server URL is baked into the library** — every `serverUrl` you see below is supplied by you at runtime, pointing at a Yjs WebSocket backend you operate.
+`@nocturnium/svelte-ide` ships an optional, conflict-free realtime collaboration layer built on [Yjs](https://docs.yjs.dev/). It lets multiple people (and AI agents) edit the same document at once, with character-level merge resolution, shared undo/redo, and live presence (cursors and selections). The CRDT layer is **opt-in**: it lives behind its own entry point (`@nocturnium/svelte-ide/crdt`) and behind a set of _optional_ peer dependencies, so consumers who do not need collaboration pay nothing for it. Crucially, **no collaboration server URL is baked into the library** — every `serverUrl` you see below is supplied by you at runtime, pointing at a Yjs WebSocket backend you operate.
 
 ## Contents
 
@@ -24,10 +24,10 @@ The CRDT module depends on three packages that are declared as **optional** peer
 npm install yjs y-websocket y-protocols
 ```
 
-| Package | Why it is needed |
-| --- | --- |
-| `yjs` | The CRDT data types (`Y.Doc`, `Y.Text`, `Y.UndoManager`). |
-| `y-websocket` | The `WebsocketProvider` that syncs a `Y.Doc` over a WebSocket. |
+| Package       | Why it is needed                                                     |
+| ------------- | -------------------------------------------------------------------- |
+| `yjs`         | The CRDT data types (`Y.Doc`, `Y.Text`, `Y.UndoManager`).            |
+| `y-websocket` | The `WebsocketProvider` that syncs a `Y.Doc` over a WebSocket.       |
 | `y-protocols` | The `Awareness` protocol used for cursors, selections, and presence. |
 
 If these packages are absent, the rest of the library still works; only imports from `@nocturnium/svelte-ide/crdt` (and `<CollaborativeEditor>`) require them.
@@ -38,31 +38,31 @@ Import the collaboration primitives from the dedicated subpath. Use the **publis
 
 ```ts
 import {
-  CollaborativeDocument,
-  CollaborativeProvider,
-  createAwarenessProtocol,
-  createUndoManager
+	CollaborativeDocument,
+	CollaborativeProvider,
+	createAwarenessProtocol,
+	createUndoManager
 } from '@nocturnium/svelte-ide/crdt';
 
 import type {
-  DocumentOptions,
-  ProviderOptions,
-  AwarenessState,
-  ConnectionStatus,
-  CRDTChange,
-  SyncState,
-  CRDTEventMap
+	DocumentOptions,
+	ProviderOptions,
+	AwarenessState,
+	ConnectionStatus,
+	CRDTChange,
+	SyncState,
+	CRDTEventMap
 } from '@nocturnium/svelte-ide/crdt';
 ```
 
 The `/crdt` barrel exports exactly these four runtime values:
 
-| Export | Kind | Summary |
-| --- | --- | --- |
-| `CollaborativeDocument` | class | Wraps a `Y.Doc` with text helpers, snapshots, and built-in undo. |
-| `CollaborativeProvider` | class | Wraps `y-websocket`'s `WebsocketProvider` + `Awareness`, with status/sync subscriptions. |
-| `createAwarenessProtocol` | function | Builds a presence helper (users, cursors, selections) over a `Y.Doc`. |
-| `createUndoManager` | function | Builds a standalone undo manager bound to a `CollaborativeDocument`. |
+| Export                    | Kind     | Summary                                                                                  |
+| ------------------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `CollaborativeDocument`   | class    | Wraps a `Y.Doc` with text helpers, snapshots, and built-in undo.                         |
+| `CollaborativeProvider`   | class    | Wraps `y-websocket`'s `WebsocketProvider` + `Awareness`, with status/sync subscriptions. |
+| `createAwarenessProtocol` | function | Builds a presence helper (users, cursors, selections) over a `Y.Doc`.                    |
+| `createUndoManager`       | function | Builds a standalone undo manager bound to a `CollaborativeDocument`.                     |
 
 ...plus the TypeScript types listed above (`DocumentOptions`, `ProviderOptions`, `AwarenessState`, `ConnectionStatus`, `CRDTChange`, `SyncState`, `CRDTEventMap`).
 
@@ -82,37 +82,33 @@ The smallest end-to-end setup: create a `Y.Doc`, attach a `CollaborativeProvider
 
 ```svelte
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-  import * as Y from 'yjs';
-  import { CollaborativeEditor } from '@nocturnium/svelte-ide';
-  import { CollaborativeProvider } from '@nocturnium/svelte-ide/crdt';
-  import '@nocturnium/svelte-ide/theme.css';
+	import { onDestroy } from 'svelte';
+	import * as Y from 'yjs';
+	import { CollaborativeEditor } from '@nocturnium/svelte-ide';
+	import { CollaborativeProvider } from '@nocturnium/svelte-ide/crdt';
+	import '@nocturnium/svelte-ide/theme.css';
 
-  // 1. A shared Yjs document.
-  const doc = new Y.Doc();
+	// 1. A shared Yjs document.
+	const doc = new Y.Doc();
 
-  // 2. Connect it to YOUR collaboration server. Nothing is baked in —
-  //    this URL comes from your config/env.
-  const provider = new CollaborativeProvider({
-    serverUrl: import.meta.env.VITE_COLLAB_URL, // e.g. 'wss://collab.example.com'
-    roomId: 'project-42:src/main.ts',           // any stable per-document key
-    doc
-  });
+	// 2. Connect it to YOUR collaboration server. Nothing is baked in —
+	//    this URL comes from your config/env.
+	const provider = new CollaborativeProvider({
+		serverUrl: import.meta.env.VITE_COLLAB_URL, // e.g. 'wss://collab.example.com'
+		roomId: 'project-42:src/main.ts', // any stable per-document key
+		doc
+	});
 
-  // 3. Announce who we are (drives the presence list / remote cursors).
-  provider.setLocalState({
-    user: { id: 'u-1', name: 'Ada Lovelace', color: '#a78bfa' },
-    state: 'active'
-  });
+	// 3. Announce who we are (drives the presence list / remote cursors).
+	provider.setLocalState({
+		user: { id: 'u-1', name: 'Ada Lovelace', color: '#a78bfa' },
+		state: 'active'
+	});
 
-  onDestroy(() => provider.destroy());
+	onDestroy(() => provider.destroy());
 </script>
 
-<CollaborativeEditor
-  {doc}
-  textName="content"
-  language="typescript"
-/>
+<CollaborativeEditor {doc} textName="content" language="typescript" />
 ```
 
 Open the same `serverUrl` + `roomId` in two browser tabs and edits merge live.
@@ -123,20 +119,20 @@ Open the same `serverUrl` + `roomId` in two browser tabs and edits merge live.
 
 ### Props
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `doc` | `Y.Doc` | _(internal)_ | The shared Yjs document. If omitted, the component creates an internal, **un-synced** doc — pass your own `doc` to collaborate. |
-| `documentId` | `string` | — | Optional identifier for standalone mode. |
-| `initialContent` | `string` | `''` | Seed content used when the component creates its own internal doc. |
-| `textName` | `string` | `'content'` | The key of the `Y.Text` inside the doc to bind to. Must match what your other peers and `CollaborativeDocument.getText(key)` use. |
-| `language` | `string` | `'plaintext'` | Language id for syntax highlighting (see [Syntax Highlighting](./syntax-highlighting.md)). |
-| `readonly` | `boolean` | `false` | Disable local editing while still receiving remote updates. |
-| `preferences` | `Partial<EditorPreferences>` | `{}` | Editor preferences (tab size, insert-spaces, etc.). |
-| `class` | `string` | `''` | Extra CSS class on the wrapper. |
-| `currentUser` | `CollaborationUser` | — | Local user info used for cursor display. |
-| `onChange` | `(content: string) => void` | — | Fires when the document content changes. |
-| `onCursorChange` | `(line: number, column: number) => void` | — | Fires when the local cursor moves. |
-| `onSave` | `() => void` | — | Fires on the save shortcut (`Ctrl`/`Cmd`+`S`). |
+| Prop             | Type                                     | Default       | Description                                                                                                                       |
+| ---------------- | ---------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `doc`            | `Y.Doc`                                  | _(internal)_  | The shared Yjs document. If omitted, the component creates an internal, **un-synced** doc — pass your own `doc` to collaborate.   |
+| `documentId`     | `string`                                 | —             | Optional identifier for standalone mode.                                                                                          |
+| `initialContent` | `string`                                 | `''`          | Seed content used when the component creates its own internal doc.                                                                |
+| `textName`       | `string`                                 | `'content'`   | The key of the `Y.Text` inside the doc to bind to. Must match what your other peers and `CollaborativeDocument.getText(key)` use. |
+| `language`       | `string`                                 | `'plaintext'` | Language id for syntax highlighting (see [Syntax Highlighting](./syntax-highlighting.md)).                                        |
+| `readonly`       | `boolean`                                | `false`       | Disable local editing while still receiving remote updates.                                                                       |
+| `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Editor preferences (tab size, insert-spaces, etc.).                                                                               |
+| `class`          | `string`                                 | `''`          | Extra CSS class on the wrapper.                                                                                                   |
+| `currentUser`    | `CollaborationUser`                      | —             | Local user info used for cursor display.                                                                                          |
+| `onChange`       | `(content: string) => void`              | —             | Fires when the document content changes.                                                                                          |
+| `onCursorChange` | `(line: number, column: number) => void` | —             | Fires when the local cursor moves.                                                                                                |
+| `onSave`         | `() => void`                             | —             | Fires on the save shortcut (`Ctrl`/`Cmd`+`S`).                                                                                    |
 
 > Pass the **same `doc` instance** to `<CollaborativeEditor>` that you attach to your provider. If you let the component create its own internal doc, edits are local-only — the component never connects to a server on its own.
 
@@ -154,32 +150,32 @@ If you want to manage the Yjs document yourself — or build a non-editor surfac
 import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';
 
 const document = new CollaborativeDocument({
-  documentId: 'src/main.ts',
-  initialContent: 'export const x = 1;\n',
-  enableUndo: true,        // default: true
-  undoCaptureTimeout: 500  // ms to coalesce edits into one undo step
+	documentId: 'src/main.ts',
+	initialContent: 'export const x = 1;\n',
+	enableUndo: true, // default: true
+	undoCaptureTimeout: 500 // ms to coalesce edits into one undo step
 });
 
 // The underlying Y.Doc — hand this to a provider to sync it.
 const ydoc = document.doc;
 
 // Read / mutate text (each method takes an optional key, default 'content').
-document.getContent();                 // -> string
-document.insert(0, '// header\n');     // insert at index
-document.delete(0, 10);                // delete length from index
-document.setContent('replaced');       // replace whole buffer (transactional)
+document.getContent(); // -> string
+document.insert(0, '// header\n'); // insert at index
+document.delete(0, 10); // delete length from index
+document.setContent('replaced'); // replace whole buffer (transactional)
 
 // React to changes.
 const off = document.onTextChange((event, transaction) => {
-  // event.delta describes the change; transaction.origin tells you who made it
+	// event.delta describes the change; transaction.origin tells you who made it
 });
 
 // Sync helpers (handy for custom transports / persistence).
-const snapshot = document.createSnapshot();   // Uint8Array of full state
+const snapshot = document.createSnapshot(); // Uint8Array of full state
 document.applySnapshot(snapshot);
 const sv = document.getStateVector();
-const diff = document.getDiff(sv);            // changes since a peer's state vector
-document.merge(diff);                         // apply an incoming update
+const diff = document.getDiff(sv); // changes since a peer's state vector
+document.merge(diff); // apply an incoming update
 
 off();
 document.destroy();
@@ -187,23 +183,23 @@ document.destroy();
 
 ### `DocumentOptions`
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `documentId` | `string` | _(required)_ | Logical id for the document. |
-| `initialContent` | `string` | — | Seed text inserted into the `'content'` text on creation. |
-| `enableUndo` | `boolean` | `true` | Create a built-in `Y.UndoManager` tracking `null` and `'local'` origins. |
-| `undoCaptureTimeout` | `number` | `500` | Coalesce window (ms) for grouping edits into one undo step. |
+| Field                | Type      | Default      | Description                                                              |
+| -------------------- | --------- | ------------ | ------------------------------------------------------------------------ |
+| `documentId`         | `string`  | _(required)_ | Logical id for the document.                                             |
+| `initialContent`     | `string`  | —            | Seed text inserted into the `'content'` text on creation.                |
+| `enableUndo`         | `boolean` | `true`       | Create a built-in `Y.UndoManager` tracking `null` and `'local'` origins. |
+| `undoCaptureTimeout` | `number`  | `500`        | Coalesce window (ms) for grouping edits into one undo step.              |
 
 ### Built-in undo on the document
 
 `CollaborativeDocument` exposes undo directly when `enableUndo` is on:
 
 ```ts
-document.canUndo();   // boolean
-document.undo();      // boolean — true if something was undone
+document.canUndo(); // boolean
+document.undo(); // boolean — true if something was undone
 document.canRedo();
 document.redo();
-document.trackOrigin('ai');  // also undo edits tagged with this origin
+document.trackOrigin('ai'); // also undo edits tagged with this origin
 document.clearHistory();
 ```
 
@@ -218,49 +214,49 @@ import { CollaborativeProvider } from '@nocturnium/svelte-ide/crdt';
 import type { ProviderOptions } from '@nocturnium/svelte-ide/crdt';
 
 const provider = new CollaborativeProvider({
-  serverUrl: 'wss://collab.example.com', // YOUR server — required, never defaulted
-  roomId: 'project-42:src/main.ts',      // the room/document key
-  doc,                                    // the Y.Doc to sync
-  // --- all optional ---
-  // awareness,                 // bring an existing Awareness instance
-  // params: { token: '...' },  // query params appended to the WS URL (e.g. auth)
-  // connect: true,             // connect immediately (default true)
-  // resyncInterval: 30000,     // periodic resync in ms (default 30000)
-  // maxBackoffTime: 10000      // max reconnect backoff in ms (default 10000)
+	serverUrl: 'wss://collab.example.com', // YOUR server — required, never defaulted
+	roomId: 'project-42:src/main.ts', // the room/document key
+	doc // the Y.Doc to sync
+	// --- all optional ---
+	// awareness,                 // bring an existing Awareness instance
+	// params: { token: '...' },  // query params appended to the WS URL (e.g. auth)
+	// connect: true,             // connect immediately (default true)
+	// resyncInterval: 30000,     // periodic resync in ms (default 30000)
+	// maxBackoffTime: 10000      // max reconnect backoff in ms (default 10000)
 });
 ```
 
 ### `ProviderOptions`
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `serverUrl` | `string` | _(required)_ | WebSocket URL of **your** Yjs server. There is no default. |
-| `roomId` | `string` | _(required)_ | Room/document name appended to the connection. |
-| `doc` | `Y.Doc` | _(required)_ | The document to synchronize. |
-| `awareness` | `Awareness` | _(new)_ | Reuse an existing awareness instance; one is created if omitted. |
-| `params` | `Record<string, string>` | — | Query params on the WS URL (e.g. auth tokens). |
-| `connect` | `boolean` | `true` | Connect on construction. |
-| `resyncInterval` | `number` | `30000` | Interval (ms) for periodic full resync. |
-| `maxBackoffTime` | `number` | `10000` | Cap (ms) on reconnect backoff. |
+| Field            | Type                     | Default      | Description                                                      |
+| ---------------- | ------------------------ | ------------ | ---------------------------------------------------------------- |
+| `serverUrl`      | `string`                 | _(required)_ | WebSocket URL of **your** Yjs server. There is no default.       |
+| `roomId`         | `string`                 | _(required)_ | Room/document name appended to the connection.                   |
+| `doc`            | `Y.Doc`                  | _(required)_ | The document to synchronize.                                     |
+| `awareness`      | `Awareness`              | _(new)_      | Reuse an existing awareness instance; one is created if omitted. |
+| `params`         | `Record<string, string>` | —            | Query params on the WS URL (e.g. auth tokens).                   |
+| `connect`        | `boolean`                | `true`       | Connect on construction.                                         |
+| `resyncInterval` | `number`                 | `30000`      | Interval (ms) for periodic full resync.                          |
+| `maxBackoffTime` | `number`                 | `10000`      | Cap (ms) on reconnect backoff.                                   |
 
 ### Properties & methods
 
 ```ts
-provider.status;     // 'connecting' | 'connected' | 'disconnected'
-provider.synced;     // boolean — initial sync with the server complete
-provider.clientId;   // number — this client's awareness id
-provider.provider;   // the raw y-websocket WebsocketProvider, if you need it
-provider.awareness;  // the raw y-protocols Awareness instance
+provider.status; // 'connecting' | 'connected' | 'disconnected'
+provider.synced; // boolean — initial sync with the server complete
+provider.clientId; // number — this client's awareness id
+provider.provider; // the raw y-websocket WebsocketProvider, if you need it
+provider.awareness; // the raw y-protocols Awareness instance
 
 provider.connect();
 provider.disconnect();
 
 // Subscriptions return an unsubscribe function.
 const offStatus = provider.onStatus((status: ConnectionStatus) => {
-  console.log('connection:', status);
+	console.log('connection:', status);
 });
 const offSync = provider.onSync((synced: boolean) => {
-  if (synced) console.log('document synced');
+	if (synced) console.log('document synced');
 });
 
 provider.destroy(); // tears down provider + awareness and clears listeners
@@ -281,22 +277,22 @@ import type { AwarenessState } from '@nocturnium/svelte-ide/crdt';
 
 // Publish local presence (merged into the existing local state).
 provider.setLocalState({
-  user: { id: 'u-1', name: 'Ada Lovelace', color: '#a78bfa' },
-  cursor: { anchor: 12, head: 12 },
-  selection: { anchor: 12, head: 20 },
-  editingFile: 'src/main.ts',
-  state: 'active'  // 'active' | 'idle' | 'away'
+	user: { id: 'u-1', name: 'Ada Lovelace', color: '#a78bfa' },
+	cursor: { anchor: 12, head: 12 },
+	selection: { anchor: 12, head: 20 },
+	editingFile: 'src/main.ts',
+	state: 'active' // 'active' | 'idle' | 'away'
 });
 
 // Read presence.
-provider.getLocalState();          // AwarenessState | null
-provider.getStates();              // Map<clientId, AwarenessState>
-provider.getState(clientId);       // AwarenessState | undefined
-provider.getClientIds();           // number[]
+provider.getLocalState(); // AwarenessState | null
+provider.getStates(); // Map<clientId, AwarenessState>
+provider.getState(clientId); // AwarenessState | undefined
+provider.getClientIds(); // number[]
 
 // React to anyone joining, leaving, or moving.
 const off = provider.onAwarenessChange((changes, origin) => {
-  // changes: { added: number[]; updated: number[]; removed: number[] }
+	// changes: { added: number[]; updated: number[]; removed: number[] }
 });
 ```
 
@@ -319,12 +315,12 @@ presence.setViewingFile('README.md');
 presence.setState('idle');
 
 // Current participants and their cursors.
-presence.getUsers();    // AwarenessUser[]
-presence.getCursors();  // Map<clientId, { user, cursor: { anchor, head } }>
+presence.getUsers(); // AwarenessUser[]
+presence.getCursors(); // Map<clientId, { user, cursor: { anchor, head } }>
 
 // Subscribe; the callback fires immediately with the current users, then on change.
 const off = presence.onUsersChange((users) => {
-  renderAvatars(users);
+	renderAvatars(users);
 });
 
 off();
@@ -344,13 +340,13 @@ You have two layers of undo, both backed by Yjs's `Y.UndoManager` (collaborative
 import { createUndoManager } from '@nocturnium/svelte-ide/crdt';
 
 const undo = createUndoManager(document, {
-  captureTimeout: 500,                   // group rapid edits (ms)
-  trackedOrigins: new Set([null, 'local']) // which edit origins this manager owns
-  // deleteFilter: (item) => true        // optional Y.Item filter for deletions
+	captureTimeout: 500, // group rapid edits (ms)
+	trackedOrigins: new Set([null, 'local']) // which edit origins this manager owns
+	// deleteFilter: (item) => true        // optional Y.Item filter for deletions
 });
 
-undo.undo();   // boolean — true if a change was undone
-undo.redo();   // boolean
+undo.undo(); // boolean — true if a change was undone
+undo.redo(); // boolean
 undo.clear();
 undo.stopCapturing(); // force the next edit to start a fresh undo step
 
@@ -358,8 +354,8 @@ undo.getState(); // { canUndo, canRedo, undoStackSize, redoStackSize }
 
 // Drive UI button enable/disable; fires immediately, then on every stack change.
 const off = undo.onStateChange((state) => {
-  undoButton.disabled = !state.canUndo;
-  redoButton.disabled = !state.canRedo;
+	undoButton.disabled = !state.canUndo;
+	redoButton.disabled = !state.canRedo;
 });
 
 off();
@@ -381,9 +377,9 @@ PORT=1234 npx y-websocket
 
 ```ts
 const provider = new CollaborativeProvider({
-  serverUrl: 'ws://localhost:1234',
-  roomId: 'demo-room',
-  doc
+	serverUrl: 'ws://localhost:1234',
+	roomId: 'demo-room',
+	doc
 });
 ```
 
@@ -391,10 +387,10 @@ For production, point `serverUrl` at your own deployment (typically `wss://…`)
 
 ```ts
 const provider = new CollaborativeProvider({
-  serverUrl: 'wss://collab.example.com',
-  roomId: `${projectId}:${filePath}`,
-  doc,
-  params: { token: sessionToken }
+	serverUrl: 'wss://collab.example.com',
+	roomId: `${projectId}:${filePath}`,
+	doc,
+	params: { token: sessionToken }
 });
 ```
 
@@ -406,15 +402,15 @@ Collaboration objects hold sockets, observers, and awareness entries. Always tea
 
 ```svelte
 <script lang="ts">
-  import { onDestroy } from 'svelte';
-  // ...create doc, provider, presence, undo...
+	import { onDestroy } from 'svelte';
+	// ...create doc, provider, presence, undo...
 
-  onDestroy(() => {
-    undo.destroy();
-    presence.destroy();
-    provider.destroy();   // closes the WebSocket + awareness
-    document.destroy();   // if you created a CollaborativeDocument
-  });
+	onDestroy(() => {
+		undo.destroy();
+		presence.destroy();
+		provider.destroy(); // closes the WebSocket + awareness
+		document.destroy(); // if you created a CollaborativeDocument
+	});
 </script>
 ```
 

@@ -59,7 +59,10 @@
 
 	// Group by line (in case of overlapping regions, take highest score)
 	let lineScores = $derived.by(() => {
-		const scores = new SvelteMap<number, { score: number; region: ComplexityRegion; isStart: boolean; isEnd: boolean }>();
+		const scores = new SvelteMap<
+			number,
+			{ score: number; region: ComplexityRegion; isStart: boolean; isEnd: boolean }
+		>();
 
 		for (const indicator of lineIndicators) {
 			const existing = scores.get(indicator.line);
@@ -142,10 +145,7 @@
 			style="top: {tooltipPosition.top}px; left: {tooltipPosition.left}px;"
 		>
 			<div class="complexity-tooltip__header">
-				<span
-					class="complexity-tooltip__badge"
-					style="background: {getColor(hoveredRegion.score)}"
-				>
+				<span class="complexity-tooltip__badge" style="background: {getColor(hoveredRegion.score)}">
 					{hoveredRegion.score}
 				</span>
 				<span class="complexity-tooltip__title">
@@ -188,7 +188,9 @@
 		cursor: help;
 		background: var(--indicator-color);
 		opacity: var(--indicator-opacity);
-		transition: opacity 0.15s ease, width 0.15s ease;
+		transition:
+			opacity 0.15s ease,
+			width 0.15s ease;
 	}
 
 	.complexity-gutter__indicator:hover {

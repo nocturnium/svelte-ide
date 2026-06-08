@@ -279,9 +279,10 @@ export class BracketHealer {
 	/**
 	 * Match brackets and find mismatches
 	 */
-	private matchBrackets(
-		tokens: BracketToken[]
-	): { matches: BracketMatch[]; mismatches: BracketMismatch[] } {
+	private matchBrackets(tokens: BracketToken[]): {
+		matches: BracketMatch[];
+		mismatches: BracketMismatch[];
+	} {
 		const matches: BracketMatch[] = [];
 		const mismatches: BracketMismatch[] = [];
 		const stack: Array<{ token: BracketToken; depth: number }> = [];

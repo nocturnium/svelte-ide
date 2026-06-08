@@ -159,7 +159,8 @@ export function Counter() {
 		]
 	}),
 	run_command: () => ({
-		stdout: 'All tests passed!\n\n  PASS  src/utils/math.test.ts\n  PASS  src/components/Button.test.tsx\n\nTest Suites: 2 passed, 2 total\nTests: 8 passed, 8 total',
+		stdout:
+			'All tests passed!\n\n  PASS  src/utils/math.test.ts\n  PASS  src/components/Button.test.tsx\n\nTest Suites: 2 passed, 2 total\nTests: 8 passed, 8 total',
 		exitCode: 0
 	}),
 	edit_file: () => ({
@@ -188,7 +189,8 @@ const DEFAULT_CONFIG: MockAIConfig = {
 function detectResponseType(message: string): string {
 	const lower = message.toLowerCase();
 	if (lower.includes('explain') || lower.includes('what does')) return 'explain';
-	if (lower.includes('refactor') || lower.includes('improve') || lower.includes('async')) return 'refactor';
+	if (lower.includes('refactor') || lower.includes('improve') || lower.includes('async'))
+		return 'refactor';
 	if (lower.includes('bug') || lower.includes('issue') || lower.includes('problem')) return 'bugs';
 	if (lower.includes('test') || lower.includes('spec')) return 'tests';
 	return 'default';
@@ -327,12 +329,15 @@ export function createMockMessage(
 		content,
 		timestamp: new Date(),
 		...options,
-		metadata: role === 'assistant' ? {
-			model: 'claude-3-5-sonnet-mock',
-			tokensUsed: Math.floor(content.length / 4),
-			latencyMs: Math.floor(500 + Math.random() * 1500),
-			...options.metadata
-		} : options.metadata
+		metadata:
+			role === 'assistant'
+				? {
+						model: 'claude-3-5-sonnet-mock',
+						tokensUsed: Math.floor(content.length / 4),
+						latencyMs: Math.floor(500 + Math.random() * 1500),
+						...options.metadata
+					}
+				: options.metadata
 	};
 }
 
@@ -352,14 +357,18 @@ export function generateMockConversation(turns: number = 3): AIMessage[] {
 		const userContent = prompts[i % prompts.length];
 		const responseType = detectResponseType(userContent);
 
-		messages.push(createMockMessage('user', userContent, {
-			timestamp: new Date(Date.now() - (turns - i) * 60000)
-		}));
+		messages.push(
+			createMockMessage('user', userContent, {
+				timestamp: new Date(Date.now() - (turns - i) * 60000)
+			})
+		);
 
-		messages.push(createMockMessage('assistant', MOCK_RESPONSES[responseType], {
-			timestamp: new Date(Date.now() - (turns - i) * 60000 + 5000),
-			toolCalls: i === 1 ? generateToolCalls(userContent) : undefined
-		}));
+		messages.push(
+			createMockMessage('assistant', MOCK_RESPONSES[responseType], {
+				timestamp: new Date(Date.now() - (turns - i) * 60000 + 5000),
+				toolCalls: i === 1 ? generateToolCalls(userContent) : undefined
+			})
+		);
 	}
 
 	return messages;
@@ -367,5 +376,5 @@ export function generateMockConversation(turns: number = 3): AIMessage[] {
 
 // Helper
 function sleep(ms: number): Promise<void> {
-	return new Promise(resolve => setTimeout(resolve, ms));
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }

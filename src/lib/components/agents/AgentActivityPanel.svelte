@@ -57,7 +57,9 @@
 		selectedAgentId ? activities.filter((a) => a.agentId === selectedAgentId) : activities
 	);
 
-	let onlineCount = $derived(agents.filter((a) => a.status === 'online' || a.status === 'busy').length);
+	let onlineCount = $derived(
+		agents.filter((a) => a.status === 'online' || a.status === 'busy').length
+	);
 	let busyCount = $derived(agents.filter((a) => a.status === 'busy').length);
 
 	function formatTime(timestamp: string): string {

@@ -19,13 +19,13 @@ const config = {
 			base: process.env.BASE_PATH || ''
 		},
 		alias: {
-			'$components': 'src/lib/components',
-			'$stores': 'src/lib/stores',
-			'$types': 'src/lib/types',
-			'$utils': 'src/lib/utils',
-			'$plugins': 'src/lib/plugins',
-			'$crdt': 'src/lib/crdt',
-			'$themes': 'src/lib/themes'
+			$components: 'src/lib/components',
+			$stores: 'src/lib/stores',
+			$types: 'src/lib/types',
+			$utils: 'src/lib/utils',
+			$plugins: 'src/lib/plugins',
+			$crdt: 'src/lib/crdt',
+			$themes: 'src/lib/themes'
 		}
 	}
 };

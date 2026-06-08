@@ -111,7 +111,14 @@
 			<!-- Header -->
 			<header class="lock-dialog__header">
 				<div class="lock-dialog__icon">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
 						<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
 						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 					</svg>
@@ -120,11 +127,7 @@
 					<h2 id="lock-dialog-title">File is Locked</h2>
 					<p class="lock-dialog__filename">{fileName}</p>
 				</div>
-				<button
-					class="lock-dialog__close"
-					onclick={onClose}
-					aria-label="Close dialog"
-				>
+				<button class="lock-dialog__close" onclick={onClose} aria-label="Close dialog">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M18 6 6 18M6 6l12 12" />
 					</svg>
@@ -158,7 +161,14 @@
 							{/if}
 						</div>
 						<div class="lock-holder__timer">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								width="14"
+								height="14"
+							>
 								<circle cx="12" cy="12" r="10" />
 								<polyline points="12 6 12 12 16 14" />
 							</svg>
@@ -170,7 +180,14 @@
 				<!-- Error message -->
 				{#if errorMessage}
 					<div class="lock-dialog__error" role="alert">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							width="16"
+							height="16"
+						>
 							<circle cx="12" cy="12" r="10" />
 							<line x1="12" y1="8" x2="12" y2="12" />
 							<line x1="12" y1="16" x2="12.01" y2="16" />
@@ -183,7 +200,14 @@
 				<div class="lock-dialog__reassurance">
 					{#if pendingChanges > 0}
 						<div class="reassurance-item reassurance-item--saved">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								width="14"
+								height="14"
+							>
 								<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
 								<polyline points="22 4 12 14.01 9 11.01" />
 							</svg>
@@ -192,7 +216,14 @@
 					{/if}
 					{#if lastSyncDisplay}
 						<div class="reassurance-item">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								width="14"
+								height="14"
+							>
 								<polyline points="23 4 23 10 17 10" />
 								<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
 							</svg>
@@ -207,11 +238,15 @@
 				<!-- Safe options row -->
 				<div class="action-row action-row--safe">
 					{#if onOpenReadOnly}
-						<button
-							class="action-btn action-btn--safe"
-							onclick={onOpenReadOnly}
-						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+						<button class="action-btn action-btn--safe" onclick={onOpenReadOnly}>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								width="18"
+								height="18"
+							>
 								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
 								<circle cx="12" cy="12" r="3" />
 							</svg>
@@ -219,11 +254,15 @@
 						</button>
 					{/if}
 					{#if onWait}
-						<button
-							class="action-btn action-btn--safe"
-							onclick={onWait}
-						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+						<button class="action-btn action-btn--safe" onclick={onWait}>
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								width="18"
+								height="18"
+							>
 								<circle cx="12" cy="12" r="10" />
 								<polyline points="12 6 12 12 16 14" />
 							</svg>
@@ -234,11 +273,15 @@
 
 				<!-- Primary action -->
 				{#if onRequestAccess}
-					<button
-						class="action-btn action-btn--primary"
-						onclick={onRequestAccess}
-					>
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+					<button class="action-btn action-btn--primary" onclick={onRequestAccess}>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							width="18"
+							height="18"
+						>
 							<line x1="22" y1="2" x2="11" y2="13" />
 							<polygon points="22 2 15 22 11 13 2 9 22 2" />
 						</svg>
@@ -250,27 +293,30 @@
 				<!-- Dangerous action (gated) -->
 				{#if canForceUnlock && onForceUnlock}
 					{#if !showForceSection}
-						<button
-							class="action-toggle"
-							onclick={() => showForceSection = true}
-						>
+						<button class="action-toggle" onclick={() => (showForceSection = true)}>
 							More options...
 						</button>
 					{:else}
 						<div class="force-section">
 							<div class="force-warning">
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-									<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									width="16"
+									height="16"
+								>
+									<path
+										d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+									/>
 									<line x1="12" y1="9" x2="12" y2="13" />
 									<line x1="12" y1="17" x2="12.01" y2="17" />
 								</svg>
 								<span>Force unlock may cause data loss for the current editor</span>
 							</div>
 							<label class="force-confirm">
-								<input
-									type="checkbox"
-									bind:checked={forceUnlockConfirmed}
-								/>
+								<input type="checkbox" bind:checked={forceUnlockConfirmed} />
 								<span>I understand the risks</span>
 							</label>
 							<button
@@ -278,7 +324,14 @@
 								onclick={handleForceUnlock}
 								disabled={!forceUnlockConfirmed}
 							>
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									width="18"
+									height="18"
+								>
 									<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
 									<path d="M7 11V7a5 5 0 0 1 9.9-1" />
 								</svg>
@@ -291,9 +344,7 @@
 
 			<!-- Footer -->
 			<footer class="lock-dialog__footer">
-				<button class="cancel-btn" onclick={onClose}>
-					Cancel
-				</button>
+				<button class="cancel-btn" onclick={onClose}> Cancel </button>
 			</footer>
 		</div>
 	</div>
@@ -314,8 +365,12 @@
 	}
 
 	@keyframes fade-in {
-		from { opacity: 0; }
-		to { opacity: 1; }
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
 	}
 
 	.lock-dialog {
@@ -324,14 +379,22 @@
 		background: var(--ide-bg-secondary);
 		border: 1px solid var(--ide-border);
 		border-radius: var(--ide-radius-xl);
-		box-shadow: var(--ide-shadow-xl), 0 0 60px rgba(0, 0, 0, 0.3);
+		box-shadow:
+			var(--ide-shadow-xl),
+			0 0 60px rgba(0, 0, 0, 0.3);
 		animation: slide-up 0.2s ease-out;
 		overflow: hidden;
 	}
 
 	@keyframes slide-up {
-		from { opacity: 0; transform: translateY(20px) scale(0.98); }
-		to { opacity: 1; transform: translateY(0) scale(1); }
+		from {
+			opacity: 0;
+			transform: translateY(20px) scale(0.98);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+		}
 	}
 
 	/* Header */
@@ -558,7 +621,11 @@
 	.action-btn--primary {
 		flex-direction: column;
 		gap: 4px;
-		background: linear-gradient(135deg, var(--ide-interactive) 0%, var(--ide-interactive-active) 100%);
+		background: linear-gradient(
+			135deg,
+			var(--ide-interactive) 0%,
+			var(--ide-interactive-active) 100%
+		);
 		color: white;
 		padding: 14px 16px;
 	}

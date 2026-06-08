@@ -53,7 +53,12 @@
 	}
 </script>
 
-<div class="message-actions" class:message-actions--user={isUser} role="group" aria-label="Message actions">
+<div
+	class="message-actions"
+	class:message-actions--user={isUser}
+	role="group"
+	aria-label="Message actions"
+>
 	<!-- Copy -->
 	<button
 		class="action-btn"
@@ -78,14 +83,24 @@
 
 	<!-- Retry (user messages to resend, assistant to regenerate) -->
 	{#if onRetry}
-		<button class="action-btn" onclick={handleRetry} title={isUser ? 'Resend' : 'Regenerate'} aria-label={isUser ? 'Resend message' : 'Regenerate response'}>
+		<button
+			class="action-btn"
+			onclick={handleRetry}
+			title={isUser ? 'Resend' : 'Regenerate'}
+			aria-label={isUser ? 'Resend message' : 'Regenerate response'}
+		>
 			<Icon name="refresh" size={16} />
 		</button>
 	{/if}
 
 	<!-- Branch conversation from this point -->
 	{#if onBranch}
-		<button class="action-btn" onclick={handleBranch} title="Branch from here" aria-label="Create branch from this message">
+		<button
+			class="action-btn"
+			onclick={handleBranch}
+			title="Branch from here"
+			aria-label="Create branch from this message"
+		>
 			<Icon name="git-branch" size={16} />
 		</button>
 	{/if}

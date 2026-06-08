@@ -5,7 +5,19 @@
 		/** Display name */
 		name: string;
 		/** Symbol type */
-		type: 'file' | 'module' | 'namespace' | 'class' | 'interface' | 'function' | 'method' | 'property' | 'variable' | 'constant' | 'enum' | 'block';
+		type:
+			| 'file'
+			| 'module'
+			| 'namespace'
+			| 'class'
+			| 'interface'
+			| 'function'
+			| 'method'
+			| 'property'
+			| 'variable'
+			| 'constant'
+			| 'enum'
+			| 'block';
 		/** Line number (0-based) */
 		line: number;
 		/** Column number */
@@ -211,7 +223,10 @@
 				</span>
 				<span class="breadcrumb-label">{symbol.name}</span>
 				{#if symbol.siblings && symbol.siblings.length > 0}
-					<span class="breadcrumb-chevron" class:breadcrumb-chevron--open={activeDropdown === symbol.id}>
+					<span
+						class="breadcrumb-chevron"
+						class:breadcrumb-chevron--open={activeDropdown === symbol.id}
+					>
 						▾
 					</span>
 				{/if}
@@ -233,10 +248,7 @@
 								class:dropdown-item--current={sibling.id === symbol.id}
 								onclick={() => handleSiblingSelect(sibling)}
 							>
-								<span
-									class="dropdown-icon"
-									style="color: {typeColors[sibling.type]};"
-								>
+								<span class="dropdown-icon" style="color: {typeColors[sibling.type]};">
 									{typeIcons[sibling.type]}
 								</span>
 								<span class="dropdown-label">{sibling.name}</span>

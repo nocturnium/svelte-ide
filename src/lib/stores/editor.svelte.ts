@@ -73,16 +73,56 @@ export function getHasDirtyTabs(): boolean {
 }
 
 // Legacy aliases for backward compatibility
-export const tabs = { get current() { return getTabs(); } };
-export const activeTabId = { get current() { return getActiveTabId(); } };
-export const activeTab = { get current() { return getActiveTab(); } };
-export const splitMode = { get current() { return getSplitMode(); } };
-export const preferences = { get current() { return getPreferences(); } };
-export const recentFiles = { get current() { return getRecentFiles(); } };
-export const loading = { get current() { return getLoading(); } };
-export const error = { get current() { return getError(); } };
-export const dirtyTabs = { get current() { return getDirtyTabs(); } };
-export const hasDirtyTabs = { get current() { return getHasDirtyTabs(); } };
+export const tabs = {
+	get current() {
+		return getTabs();
+	}
+};
+export const activeTabId = {
+	get current() {
+		return getActiveTabId();
+	}
+};
+export const activeTab = {
+	get current() {
+		return getActiveTab();
+	}
+};
+export const splitMode = {
+	get current() {
+		return getSplitMode();
+	}
+};
+export const preferences = {
+	get current() {
+		return getPreferences();
+	}
+};
+export const recentFiles = {
+	get current() {
+		return getRecentFiles();
+	}
+};
+export const loading = {
+	get current() {
+		return getLoading();
+	}
+};
+export const error = {
+	get current() {
+		return getError();
+	}
+};
+export const dirtyTabs = {
+	get current() {
+		return getDirtyTabs();
+	}
+};
+export const hasDirtyTabs = {
+	get current() {
+		return getHasDirtyTabs();
+	}
+};
 
 /**
  * Open a file in a new tab or focus existing tab

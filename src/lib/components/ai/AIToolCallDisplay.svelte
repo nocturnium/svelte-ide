@@ -11,14 +11,7 @@
 		startedAt?: Date;
 	}
 
-	let {
-		toolCall,
-		status = 'completed',
-		result,
-		error,
-		duration,
-		startedAt
-	}: Props = $props();
+	let { toolCall, status = 'completed', result, error, duration, startedAt }: Props = $props();
 
 	let expanded = $state(false);
 	let showResult = $state(false);
@@ -74,7 +67,10 @@
 	}
 
 	// Truncate long results
-	function truncateResult(r: string, maxLength: number = 500): { text: string; truncated: boolean } {
+	function truncateResult(
+		r: string,
+		maxLength: number = 500
+	): { text: string; truncated: boolean } {
 		if (r.length <= maxLength) return { text: r, truncated: false };
 		return { text: r.slice(0, maxLength), truncated: true };
 	}
@@ -139,15 +135,15 @@
 						<Icon name="arrow-left" size={12} />
 						<span>Result</span>
 						{#if truncatedResult?.truncated}
-							<button
-								class="tool-call__toggle"
-								onclick={() => (showResult = !showResult)}
-							>
+							<button class="tool-call__toggle" onclick={() => (showResult = !showResult)}>
 								{showResult ? 'Show less' : 'Show full'}
 							</button>
 						{/if}
 					</div>
-					<pre class="tool-call__code tool-call__code--result">{showResult || !truncatedResult?.truncated ? formattedResult : truncatedResult?.text + '...'}</pre>
+					<pre class="tool-call__code tool-call__code--result">{showResult ||
+						!truncatedResult?.truncated
+							? formattedResult
+							: truncatedResult?.text + '...'}</pre>
 				</div>
 			{/if}
 

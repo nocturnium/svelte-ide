@@ -35,7 +35,9 @@
 	let expandedCode = $state('');
 
 	// Diff demo
-	let diffChanges = $state<Array<{ line: number; type: 'added' | 'modified' | 'removed'; originalContent?: string }>>([]);
+	let diffChanges = $state<
+		Array<{ line: number; type: 'added' | 'modified' | 'removed'; originalContent?: string }>
+	>([]);
 	let diffEnabled = $state(true);
 
 	// Sample code for demos
@@ -117,7 +119,11 @@ export function DataComponent({ userId }: { userId: string }) {
 			{ line: 3, type: 'added' },
 			{ line: 4, type: 'added' },
 			{ line: 15, type: 'modified', originalContent: '  const [data, setData] = useState([]);' },
-			{ line: 16, type: 'modified', originalContent: '  const [loading, setLoading] = useState(false);' },
+			{
+				line: 16,
+				type: 'modified',
+				originalContent: '  const [loading, setLoading] = useState(false);'
+			},
 			{ line: 25, type: 'added' },
 			{ line: 26, type: 'added' },
 			{ line: 35, type: 'removed', originalContent: '  if (loading) return null;' },
@@ -159,7 +165,11 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	<!-- Demo tabs -->
 	<div class="demo-tabs">
-		<button class="tab" class:active={activeDemo === 'blame'} onclick={() => (activeDemo = 'blame')}>
+		<button
+			class="tab"
+			class:active={activeDemo === 'blame'}
+			onclick={() => (activeDemo = 'blame')}
+		>
 			Git Blame
 		</button>
 		<button
@@ -179,9 +189,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		<section class="demo-section">
 			<div class="section-header">
 				<h2>Git Blame</h2>
-				<p>
-					View commit history inline with author information, timestamps, and commit messages.
-				</p>
+				<p>View commit history inline with author information, timestamps, and commit messages.</p>
 			</div>
 
 			<div class="blame-demo">
@@ -216,9 +224,9 @@ export function DataComponent({ userId }: { userId: string }) {
 					{#if blameEnabled && blameManager}
 						<GitBlameLayer
 							manager={blameManager}
-							lineHeight={lineHeight}
+							{lineHeight}
 							gutterWidth={0}
-							blameWidth={blameWidth}
+							{blameWidth}
 							enabled={true}
 						/>
 					{/if}
@@ -253,9 +261,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		<section class="demo-section">
 			<div class="section-header">
 				<h2>Code Snippets</h2>
-				<p>
-					Quick code templates with tab stops, placeholders, and variable expansion.
-				</p>
+				<p>Quick code templates with tab stops, placeholders, and variable expansion.</p>
 			</div>
 
 			<div class="snippets-demo">
@@ -289,10 +295,7 @@ export function DataComponent({ userId }: { userId: string }) {
 						{:else}
 							<div class="no-snippet">
 								<p class="no-snippet-text">No snippet selected yet</p>
-								<button
-									class="control-btn primary"
-									onclick={() => (snippetPaletteOpen = true)}
-								>
+								<button class="control-btn primary" onclick={() => (snippetPaletteOpen = true)}>
 									Open Snippet Palette
 								</button>
 								<span class="no-snippet-hint">Browse built-in templates to preview them here</span>
@@ -346,9 +349,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		<section class="demo-section">
 			<div class="section-header">
 				<h2>Inline Diff</h2>
-				<p>
-					Visual indicators showing changes since last commit or save.
-				</p>
+				<p>Visual indicators showing changes since last commit or save.</p>
 			</div>
 
 			<div class="diff-demo">
@@ -381,7 +382,7 @@ export function DataComponent({ userId }: { userId: string }) {
 					<!-- Diff layer -->
 					<InlineDiffLayer
 						changes={diffChanges}
-						lineHeight={lineHeight}
+						{lineHeight}
 						enabled={diffEnabled}
 						gutterOnly={true}
 						indicatorWidth={4}
@@ -411,9 +412,15 @@ export function DataComponent({ userId }: { userId: string }) {
 					<div class="diff-summary">
 						<h5>Changes Summary</h5>
 						<div class="summary-stats">
-							<span class="stat stat--add">+{diffChanges.filter(c => c.type === 'added').length} added</span>
-							<span class="stat stat--mod">~{diffChanges.filter(c => c.type === 'modified').length} modified</span>
-							<span class="stat stat--del">-{diffChanges.filter(c => c.type === 'removed').length} removed</span>
+							<span class="stat stat--add"
+								>+{diffChanges.filter((c) => c.type === 'added').length} added</span
+							>
+							<span class="stat stat--mod"
+								>~{diffChanges.filter((c) => c.type === 'modified').length} modified</span
+							>
+							<span class="stat stat--del"
+								>-{diffChanges.filter((c) => c.type === 'removed').length} removed</span
+							>
 						</div>
 					</div>
 				</div>

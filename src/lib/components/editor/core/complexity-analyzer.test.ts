@@ -16,9 +16,7 @@ describe('ComplexityAnalyzer', () => {
 
 	describe('cache correctness', () => {
 		it('should return different results when middle lines change but line count stays the same', () => {
-			const linesV1 = makeLines(
-				`function foo() {\n  return 1;\n}`
-			);
+			const linesV1 = makeLines(`function foo() {\n  return 1;\n}`);
 			const linesV2 = makeLines(
 				`function foo() {\n  if (x) { if (y) { if (z) { return deep; } } }\n}`
 			);
@@ -46,9 +44,7 @@ describe('ComplexityAnalyzer', () => {
 
 	describe('region detection', () => {
 		it('should correctly detect a simple function region', () => {
-			const lines = makeLines(
-				`function hello() {\n  console.log("hi");\n}`
-			);
+			const lines = makeLines(`function hello() {\n  console.log("hi");\n}`);
 			const result = analyzer.analyze(lines);
 
 			expect(result.regions.length).toBe(1);
@@ -72,7 +68,7 @@ describe('ComplexityAnalyzer', () => {
 			const result = analyzer.analyze(lines);
 
 			// Should detect one function region spanning lines 0-4
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('process');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -92,7 +88,7 @@ describe('ComplexityAnalyzer', () => {
 
 			const result = analyzer.analyze(lines);
 
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].endLine).toBe(4);
 		});
@@ -111,11 +107,11 @@ describe('ComplexityAnalyzer', () => {
 
 			const result = analyzer.analyze(lines);
 
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(2);
 
-			const inner = funcRegions.find(r => r.name === 'inner');
-			const outer = funcRegions.find(r => r.name === 'outer');
+			const inner = funcRegions.find((r) => r.name === 'inner');
+			const outer = funcRegions.find((r) => r.name === 'outer');
 			expect(inner).toBeDefined();
 			expect(outer).toBeDefined();
 			expect(inner!.startLine).toBe(1);
@@ -126,35 +122,25 @@ describe('ComplexityAnalyzer', () => {
 
 		it('should handle arrow functions assigned to variables', () => {
 			const lines = makeLines(
-				[
-					'const handler = (req, res) => {',
-					'  res.send("ok");',
-					'}'
-				].join('\n')
+				['const handler = (req, res) => {', '  res.send("ok");', '}'].join('\n')
 			);
 
 			const result = analyzer.analyze(lines);
 
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('handler');
 		});
 
 		it('should handle class with methods', () => {
 			const lines = makeLines(
-				[
-					'class MyClass {',
-					'  method() {',
-					'    return 1;',
-					'  }',
-					'}'
-				].join('\n')
+				['class MyClass {', '  method() {', '    return 1;', '  }', '}'].join('\n')
 			);
 
 			const result = analyzer.analyze(lines);
 
-			const classRegions = result.regions.filter(r => r.type === 'class');
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const classRegions = result.regions.filter((r) => r.type === 'class');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(classRegions.length).toBe(1);
 			expect(funcRegions.length).toBe(1);
 		});
@@ -173,7 +159,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegion = result.regions.find(r => r.type === 'function');
+			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// Should detect nesting depth of 3 (three nested ifs)
 			expect(funcRegion!.factors.nestingDepth).toBeGreaterThanOrEqual(3);
@@ -195,7 +181,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegion = result.regions.find(r => r.type === 'function');
+			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			expect(funcRegion!.factors.nestingDepth).toBeGreaterThanOrEqual(3);
 		});
@@ -220,7 +206,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegion = result.regions.find(r => r.type === 'function');
+			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// if, for, while, switch should NOT count as function calls
 			// Only actual calls should count
@@ -229,17 +215,11 @@ describe('ComplexityAnalyzer', () => {
 
 		it('should count actual function calls', () => {
 			const lines = makeLines(
-				[
-					'function test() {',
-					'  foo();',
-					'  bar(1, 2);',
-					'  baz(qux());',
-					'}'
-				].join('\n')
+				['function test() {', '  foo();', '  bar(1, 2);', '  baz(qux());', '}'].join('\n')
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegion = result.regions.find(r => r.type === 'function');
+			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// foo(), bar(), baz(), qux() = 4 calls
 			expect(funcRegion!.factors.callCount).toBe(4);
@@ -258,7 +238,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('render');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -267,16 +247,13 @@ describe('ComplexityAnalyzer', () => {
 
 		it('should ignore braces inside single-quoted strings', () => {
 			const lines = makeLines(
-				[
-					"function render() {",
-					"  const tmpl = '{name}: {value}';",
-					"  return tmpl;",
-					"}"
-				].join('\n')
+				['function render() {', "  const tmpl = '{name}: {value}';", '  return tmpl;', '}'].join(
+					'\n'
+				)
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].endLine).toBe(3);
 		});
@@ -292,7 +269,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].endLine).toBe(3);
 		});
@@ -308,7 +285,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].endLine).toBe(3);
 		});
@@ -326,7 +303,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('multiObj');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -346,7 +323,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].endLine).toBe(5);
 		});
@@ -354,20 +331,8 @@ describe('ComplexityAnalyzer', () => {
 
 	describe('cache key robustness', () => {
 		it('should not return stale results after single character edit', () => {
-			const before = makeLines(
-				[
-					'function calc() {',
-					'  return 1;',
-					'}'
-				].join('\n')
-			);
-			const after = makeLines(
-				[
-					'function calc() {',
-					'  return 2;',
-					'}'
-				].join('\n')
-			);
+			const before = makeLines(['function calc() {', '  return 1;', '}'].join('\n'));
+			const after = makeLines(['function calc() {', '  return 2;', '}'].join('\n'));
 
 			analyzer.analyze(before);
 			const result = analyzer.analyze(after);
@@ -387,16 +352,11 @@ describe('ComplexityAnalyzer', () => {
 	describe('function call counting edge cases', () => {
 		it('should not count "new" keyword as a call but should count the constructor', () => {
 			const lines = makeLines(
-				[
-					'function create() {',
-					'  const obj = new MyClass(1, 2);',
-					'  return obj;',
-					'}'
-				].join('\n')
+				['function create() {', '  const obj = new MyClass(1, 2);', '  return obj;', '}'].join('\n')
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegion = result.regions.find(r => r.type === 'function');
+			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// "new" is excluded, "MyClass(" is a call = 1
 			expect(funcRegion!.factors.callCount).toBe(1);
@@ -404,15 +364,13 @@ describe('ComplexityAnalyzer', () => {
 
 		it('should count chained calls correctly', () => {
 			const lines = makeLines(
-				[
-					'function chain() {',
-					'  return getData().filter(x => x > 0).map(x => x * 2);',
-					'}'
-				].join('\n')
+				['function chain() {', '  return getData().filter(x => x > 0).map(x => x * 2);', '}'].join(
+					'\n'
+				)
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegion = result.regions.find(r => r.type === 'function');
+			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// getData(), filter(), map() = 3 calls
 			expect(funcRegion!.factors.callCount).toBe(3);
@@ -436,7 +394,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			// Only "main" should be a function — if/for/while are not functions
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('main');
@@ -460,7 +418,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('handler');
 		});
@@ -480,17 +438,15 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(2);
-			expect(funcRegions.map(r => r.name).sort()).toEqual(['getData', 'setData']);
+			expect(funcRegions.map((r) => r.name).sort()).toEqual(['getData', 'setData']);
 		});
 	});
 
 	describe('score calculation', () => {
 		it('should produce low score for trivial function', () => {
-			const lines = makeLines(
-				`function add(a, b) {\n  return a + b;\n}`
-			);
+			const lines = makeLines(`function add(a, b) {\n  return a + b;\n}`);
 			const result = analyzer.analyze(lines);
 			expect(result.level).toBe('low');
 			expect(result.overall).toBeLessThan(30);
@@ -539,8 +495,10 @@ describe('ComplexityAnalyzer', () => {
 			const lines = makeLines(
 				[
 					'function nightmare() {',
-					...Array.from({ length: 50 }, (_, i) =>
-						`  if (c${i}) { for (let i${i} = 0; i${i} < n; i${i}++) { while (r${i}) { switch (m${i}) { case ${i}: f${i}(g${i}(h${i}())); break; } } } }`
+					...Array.from(
+						{ length: 50 },
+						(_, i) =>
+							`  if (c${i}) { for (let i${i} = 0; i${i} < n; i${i}++) { while (r${i}) { switch (m${i}) { case ${i}: f${i}(g${i}(h${i}())); break; } } } }`
 					),
 					'}'
 				].join('\n')
@@ -553,13 +511,7 @@ describe('ComplexityAnalyzer', () => {
 
 	describe('overall metrics', () => {
 		it('should return file-level fallback when no functions are found', () => {
-			const lines = makeLines(
-				[
-					'const x = 1;',
-					'const y = 2;',
-					'console.log(x + y);'
-				].join('\n')
-			);
+			const lines = makeLines(['const x = 1;', 'const y = 2;', 'console.log(x + y);'].join('\n'));
 
 			const result = analyzer.analyze(lines);
 			expect(result.regions.length).toBe(1);
@@ -573,8 +525,9 @@ describe('ComplexityAnalyzer', () => {
 					'  return 1;',
 					'}',
 					'function monster() {',
-					...Array.from({ length: 30 }, (_, i) =>
-						`  if (c${i}) { for (;;) { while (true) { f${i}(g${i}()); } } }`
+					...Array.from(
+						{ length: 30 },
+						(_, i) => `  if (c${i}) { for (;;) { while (true) { f${i}(g${i}()); } } }`
 					),
 					'}'
 				].join('\n')
@@ -584,7 +537,7 @@ describe('ComplexityAnalyzer', () => {
 			// The monster function should generate hotspots
 			if (result.hotspots.length > 0) {
 				// Hotspot lines should be within the monster function range
-				expect(result.hotspots.every(h => h >= 3)).toBe(true);
+				expect(result.hotspots.every((h) => h >= 3)).toBe(true);
 			}
 		});
 	});
@@ -665,12 +618,12 @@ export class ComplexityAnalyzer {
 			expect(result.overall).toBeLessThanOrEqual(100);
 
 			// Should detect the class
-			const classRegions = result.regions.filter(r => r.type === 'class');
+			const classRegions = result.regions.filter((r) => r.type === 'class');
 			expect(classRegions.length).toBe(1);
 			expect(classRegions[0].name).toBe('ComplexityAnalyzer');
 
 			// Should detect methods
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBeGreaterThanOrEqual(2);
 
 			// No region should have endLine < startLine (corruption signal)
@@ -732,7 +685,7 @@ export class ComplexityAnalyzer {
 			const result = analyzer.analyze(lines);
 
 			// Should detect router as a function region spanning the whole file
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBeGreaterThanOrEqual(1);
 
 			// Should detect meaningful complexity (branching, nesting, calls)
@@ -740,7 +693,7 @@ export class ComplexityAnalyzer {
 
 			// Object literals in .json({...}), destructuring, query objects
 			// should NOT fragment the regions
-			const outerFunc = funcRegions.find(r => r.name === 'router');
+			const outerFunc = funcRegions.find((r) => r.name === 'router');
 			if (outerFunc) {
 				expect(outerFunc.startLine).toBe(0);
 				expect(outerFunc.endLine).toBe(lines.length - 1);
@@ -810,23 +763,23 @@ export class ComplexityAnalyzer {
 			const result = analyzer.analyze(lines);
 
 			// Should detect the class region
-			const classRegions = result.regions.filter(r => r.type === 'class');
+			const classRegions = result.regions.filter((r) => r.type === 'class');
 			expect(classRegions.length).toBe(1);
 			expect(classRegions[0].name).toBe('DataTable');
 			expect(classRegions[0].startLine).toBe(0);
 			expect(classRegions[0].endLine).toBe(lines.length - 1);
 
 			// Should detect methods inside the class
-			const funcRegions = result.regions.filter(r => r.type === 'function');
-			const methodNames = funcRegions.map(r => r.name).sort();
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
+			const methodNames = funcRegions.map((r) => r.name).sort();
 			expect(methodNames).toContain('constructor');
 			expect(methodNames).toContain('sort');
 			expect(methodNames).toContain('getVisibleRows');
 			expect(methodNames).toContain('getTotalPages');
 
 			// getVisibleRows has nested loops + branching — should score higher than getTotalPages
-			const getVisible = funcRegions.find(r => r.name === 'getVisibleRows');
-			const getTotal = funcRegions.find(r => r.name === 'getTotalPages');
+			const getVisible = funcRegions.find((r) => r.name === 'getVisibleRows');
+			const getTotal = funcRegions.find((r) => r.name === 'getTotalPages');
 			expect(getVisible).toBeDefined();
 			expect(getTotal).toBeDefined();
 			expect(getVisible!.score).toBeGreaterThan(getTotal!.score);
@@ -878,7 +831,7 @@ export class ComplexityAnalyzer {
 			const result = analyzer.analyze(lines);
 
 			// Should detect reducer as a single function — NOT fragment at each case
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('reducer');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -925,7 +878,7 @@ export class ComplexityAnalyzer {
 
 			const result = analyzer.analyze(lines);
 
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('fetchDashboard');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -988,7 +941,7 @@ export class ComplexityAnalyzer {
 			const result = analyzer.analyze(lines);
 
 			// Should be a single function, not fragmented
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('processQueue');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -1051,16 +1004,16 @@ export class ComplexityAnalyzer {
 
 			const result = analyzer.analyze(lines);
 
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(3);
 
-			const names = funcRegions.map(r => r.name).sort();
+			const names = funcRegions.map((r) => r.name).sort();
 			expect(names).toEqual(['formatErrors', 'sanitize', 'validate']);
 
 			// validate is most complex (nested loops + branching)
-			const validateFn = funcRegions.find(r => r.name === 'validate')!;
-			const sanitizeFn = funcRegions.find(r => r.name === 'sanitize')!;
-			const formatFn = funcRegions.find(r => r.name === 'formatErrors')!;
+			const validateFn = funcRegions.find((r) => r.name === 'validate')!;
+			const sanitizeFn = funcRegions.find((r) => r.name === 'sanitize')!;
+			const formatFn = funcRegions.find((r) => r.name === 'formatErrors')!;
 
 			expect(validateFn.score).toBeGreaterThan(sanitizeFn.score);
 			expect(sanitizeFn.score).toBeGreaterThan(formatFn.score);
@@ -1116,7 +1069,7 @@ export class ComplexityAnalyzer {
 			const result = analyzer.analyze(lines);
 
 			// Heavily nested object literals should NOT corrupt the function boundary
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('createWebpackConfig');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -1167,18 +1120,21 @@ export class ComplexityAnalyzer {
 			const result = analyzer.analyze(lines);
 
 			// Should detect at least the class and its methods
-			const classRegions = result.regions.filter(r => r.type === 'class');
+			const classRegions = result.regions.filter((r) => r.type === 'class');
 			expect(classRegions.length).toBe(1);
 			expect(classRegions[0].name).toBe('Bus');
 
-			const funcRegions = result.regions.filter(r => r.type === 'function');
-			const methodNames = funcRegions.map(r => r.name).filter(Boolean).sort();
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
+			const methodNames = funcRegions
+				.map((r) => r.name)
+				.filter(Boolean)
+				.sort();
 			expect(methodNames).toContain('on');
 			expect(methodNames).toContain('emit');
 			expect(methodNames).toContain('clear');
 
 			// emit has the deepest nesting (if > for > try/catch)
-			const emitFn = funcRegions.find(r => r.name === 'emit');
+			const emitFn = funcRegions.find((r) => r.name === 'emit');
 			expect(emitFn).toBeDefined();
 			expect(emitFn!.factors.nestingDepth).toBeGreaterThanOrEqual(2);
 		});
@@ -1210,7 +1166,7 @@ export class ComplexityAnalyzer {
 
 			const result = analyzer.analyze(lines);
 
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('mergeDeep');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -1373,7 +1329,7 @@ export class ComplexityAnalyzer {
 					'      severity: warning',
 					'    - linters:',
 					'        - gocyclo',
-					'      severity: warning',
+					'      severity: warning'
 				].join('\n')
 			);
 
@@ -1438,7 +1394,7 @@ export class ComplexityAnalyzer {
 
 			const result = analyzer.analyze(lines);
 
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('parseConfig');
 			expect(funcRegions[0].startLine).toBe(0);
@@ -1531,7 +1487,7 @@ export class ComplexityAnalyzer {
 			const result = analyzer.analyze(lines);
 
 			// The entire thing is one function despite massive nested config objects
-			const funcRegions = result.regions.filter(r => r.type === 'function');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
 			expect(funcRegions.length).toBe(1);
 			expect(funcRegions[0].name).toBe('createLintConfig');
 			expect(funcRegions[0].startLine).toBe(0);

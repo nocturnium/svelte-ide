@@ -131,7 +131,8 @@ const JAVASCRIPT_PATTERNS: LanguagePatterns = new Map([
 	[
 		'function',
 		{
-			startPattern: /^(export\s+)?(async\s+)?function\s+(\w+)|^const\s+(\w+)\s*=\s*(async\s*)?\([^)]*\)\s*=>/,
+			startPattern:
+				/^(export\s+)?(async\s+)?function\s+(\w+)|^const\s+(\w+)\s*=\s*(async\s*)?\([^)]*\)\s*=>/,
 			blockBased: true,
 			getLabel: (m: RegExpMatchArray) => `Function: ${m[3] || m[4] || 'anonymous'}`
 		}
@@ -292,10 +293,8 @@ export class SemanticAnalyzer {
 		let currentDepth = 0;
 
 		// Track multiline regions
-		const multilineRegions: Map<
-			SemanticCategory,
-			{ startLine: number; label?: string }
-		> = new Map();
+		const multilineRegions: Map<SemanticCategory, { startLine: number; label?: string }> =
+			new Map();
 
 		for (let i = 0; i < lines.length; i++) {
 			const text = lines[i].text;
@@ -311,10 +310,7 @@ export class SemanticAnalyzer {
 					if (config.linePattern.test(text)) {
 						// Find or create a contiguous region
 						const lastRegion = regions.find(
-							(r) =>
-								r.category === category &&
-								r.endLine === i - 1 &&
-								!config.blockBased
+							(r) => r.category === category && r.endLine === i - 1 && !config.blockBased
 						);
 
 						if (lastRegion) {

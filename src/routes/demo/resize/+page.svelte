@@ -18,17 +18,21 @@
 <div class="demo-page">
 	<header class="page-header">
 		<h1>Resizable Panes</h1>
-		<p>Drag the handles between panels to resize. Ghost line preview shows where the edge will be.</p>
+		<p>
+			Drag the handles between panels to resize. Ghost line preview shows where the edge will be.
+		</p>
 	</header>
 
 	<p class="touch-note" role="note">
-		Tip: resize handles are drag-driven. On a touch device, view this demo on a wider
-		screen to drag the panel edges directly.
+		Tip: resize handles are drag-driven. On a touch device, view this demo on a wider screen to drag
+		the panel edges directly.
 	</p>
 
 	<section class="demo-section">
 		<h2>Three-Column Layout</h2>
-		<p class="section-desc">Left sidebar, main content, and right sidebar with vertical resize handles</p>
+		<p class="section-desc">
+			Left sidebar, main content, and right sidebar with vertical resize handles
+		</p>
 
 		<div
 			class="three-column-demo"
@@ -136,7 +140,9 @@
 	<section class="demo-section">
 		<h2>Features</h2>
 		<ul class="features-list">
-			<li><strong>Ghost Line Preview:</strong> A glowing line shows where the edge will be during drag</li>
+			<li>
+				<strong>Ghost Line Preview:</strong> A glowing line shows where the edge will be during drag
+			</li>
 			<li><strong>Smooth Transitions:</strong> Panel sizes animate smoothly when released</li>
 			<li><strong>Content Fade:</strong> Panel content fades during resize to hide text reflow</li>
 			<li><strong>Min/Max Constraints:</strong> Panels respect minimum and maximum size limits</li>
@@ -298,7 +304,9 @@
 		padding: 1rem;
 		color: var(--ide-text-secondary);
 		font-size: 0.875rem;
-		transition: opacity 0.1s ease, filter 0.1s ease;
+		transition:
+			opacity 0.1s ease,
+			filter 0.1s ease;
 	}
 
 	.panel__content p {
@@ -351,11 +359,7 @@
 		display: block;
 		height: 0.5rem;
 		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			var(--ide-border) 0%,
-			var(--ide-bg-tertiary) 100%
-		);
+		background: linear-gradient(90deg, var(--ide-border) 0%, var(--ide-bg-tertiary) 100%);
 	}
 
 	.panel__skeleton span:nth-child(1) {

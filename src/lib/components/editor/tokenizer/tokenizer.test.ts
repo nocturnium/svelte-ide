@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { Token, TokenType, TokenizedLine, TokenizerState, LanguageTokenizer, TokenRule, LanguageGrammar } from './types';
+import type {
+	Token,
+	TokenType,
+	TokenizedLine,
+	TokenizerState,
+	LanguageTokenizer,
+	TokenRule,
+	LanguageGrammar
+} from './types';
 import { createToken, PlaintextTokenizer, SimpleTokenizer, GrammarTokenizer } from './base';
 import {
 	getTokenizer,
@@ -124,7 +132,15 @@ describe('createToken', () => {
 	});
 
 	it('should handle various token types', () => {
-		const types: TokenType[] = ['comment', 'string', 'number', 'operator', 'variable', 'punctuation', 'text'];
+		const types: TokenType[] = [
+			'comment',
+			'string',
+			'number',
+			'operator',
+			'variable',
+			'punctuation',
+			'text'
+		];
 		for (const type of types) {
 			const token = createToken(type, 'x', 0);
 			expect(token.type).toBe(type);
@@ -221,9 +237,7 @@ describe('SimpleTokenizer', () => {
 	});
 
 	it('should produce text tokens for unmatched characters', () => {
-		const tokenizer = new SimpleTokenizer('test', [
-			{ type: 'number.integer', regex: /^\d+/ }
-		]);
+		const tokenizer = new SimpleTokenizer('test', [{ type: 'number.integer', regex: /^\d+/ }]);
 
 		const result = tokenizer.tokenizeLine('abc 123', 1);
 		// 'abc ' should be text, '123' should be number.integer
@@ -275,9 +289,7 @@ describe('SimpleTokenizer', () => {
 	});
 
 	it('should set correct start/end positions for tokens', () => {
-		const tokenizer = new SimpleTokenizer('test', [
-			{ type: 'keyword', regex: /^hello/ }
-		]);
+		const tokenizer = new SimpleTokenizer('test', [{ type: 'keyword', regex: /^hello/ }]);
 		const result = tokenizer.tokenizeLine('  hello', 1);
 		// First two characters are unmatched text
 		const kw = result.tokens.find((t) => t.type === 'keyword');
@@ -834,7 +846,7 @@ describe('escapeHTML', () => {
 	});
 
 	it('should escape single quotes', () => {
-		expect(escapeHTML("'hello'")).toBe("&#039;hello&#039;");
+		expect(escapeHTML("'hello'")).toBe('&#039;hello&#039;');
 	});
 
 	it('should escape all special characters together', () => {
@@ -858,17 +870,13 @@ describe('escapeHTML', () => {
 
 describe('tokensToHTML', () => {
 	it('should render non-text tokens as spans with class', () => {
-		const tokens: Token[] = [
-			createToken('keyword', 'const', 0)
-		];
+		const tokens: Token[] = [createToken('keyword', 'const', 0)];
 		const html = tokensToHTML(tokens);
 		expect(html).toBe('<span class="token-keyword">const</span>');
 	});
 
 	it('should render text tokens without a span wrapper', () => {
-		const tokens: Token[] = [
-			createToken('text', ' ', 0)
-		];
+		const tokens: Token[] = [createToken('text', ' ', 0)];
 		const html = tokensToHTML(tokens);
 		expect(html).toBe(' ');
 	});
@@ -886,9 +894,7 @@ describe('tokensToHTML', () => {
 	});
 
 	it('should escape HTML characters in token text', () => {
-		const tokens: Token[] = [
-			createToken('string', '"<script>"', 0)
-		];
+		const tokens: Token[] = [createToken('string', '"<script>"', 0)];
 		const html = tokensToHTML(tokens);
 		expect(html).toBe('<span class="token-string">&quot;&lt;script&gt;&quot;</span>');
 	});
@@ -899,17 +905,13 @@ describe('tokensToHTML', () => {
 	});
 
 	it('should use dot-to-hyphen class naming for nested types', () => {
-		const tokens: Token[] = [
-			createToken('comment.line', '// hello', 0)
-		];
+		const tokens: Token[] = [createToken('comment.line', '// hello', 0)];
 		const html = tokensToHTML(tokens);
 		expect(html).toBe('<span class="token-comment-line">// hello</span>');
 	});
 
 	it('should handle tokens with special characters in text', () => {
-		const tokens: Token[] = [
-			createToken('operator', '&&', 0)
-		];
+		const tokens: Token[] = [createToken('operator', '&&', 0)];
 		const html = tokensToHTML(tokens);
 		expect(html).toBe('<span class="token-operator">&amp;&amp;</span>');
 	});

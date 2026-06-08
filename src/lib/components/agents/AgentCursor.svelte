@@ -56,7 +56,9 @@
 
 	// Calculate selection dimensions if present
 	let hasSelection = $derived(
-		selection && (selection.start.line !== selection.end.line || selection.start.column !== selection.end.column)
+		selection &&
+			(selection.start.line !== selection.end.line ||
+				selection.start.column !== selection.end.column)
 	);
 
 	function getSelectionStyle() {
@@ -64,10 +66,18 @@
 
 		const startLine = Math.min(selection.start.line, selection.end.line);
 		const endLine = Math.max(selection.start.line, selection.end.line);
-		const startCol = selection.start.line < selection.end.line ? selection.start.column :
-			(selection.start.line === selection.end.line ? Math.min(selection.start.column, selection.end.column) : selection.end.column);
-		const endCol = selection.start.line < selection.end.line ? selection.end.column :
-			(selection.start.line === selection.end.line ? Math.max(selection.start.column, selection.end.column) : selection.start.column);
+		const startCol =
+			selection.start.line < selection.end.line
+				? selection.start.column
+				: selection.start.line === selection.end.line
+					? Math.min(selection.start.column, selection.end.column)
+					: selection.end.column;
+		const endCol =
+			selection.start.line < selection.end.line
+				? selection.end.column
+				: selection.start.line === selection.end.line
+					? Math.max(selection.start.column, selection.end.column)
+					: selection.start.column;
 
 		// For single line selection
 		if (startLine === endLine) {

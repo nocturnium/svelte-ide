@@ -9,22 +9,16 @@ import type { VFSLockStatus } from '$lib/types';
 // objects that both the factory and the tests can access.
 // ============================================================================
 
-const {
-	mockVfsStore,
-	mockAgentsStore,
-	mockCollabStore
-} = vi.hoisted(() => {
+const { mockVfsStore, mockAgentsStore, mockCollabStore } = vi.hoisted(() => {
 	const mockVfsStore = {
 		initialize: vi.fn(),
 		onEvent: vi.fn(() => vi.fn()),
 		isLockedByMe: vi.fn(() => false),
 		acquireLock: vi.fn(),
 		releaseLock: vi.fn(),
-		getLockStatus: vi.fn(
-			(): { status: VFSLockStatus['status']; lock?: { holder: string } } => ({
-				status: 'unlocked'
-			})
-		),
+		getLockStatus: vi.fn((): { status: VFSLockStatus['status']; lock?: { holder: string } } => ({
+			status: 'unlocked'
+		})),
 		getLocks: vi.fn((): unknown[] => []),
 		getLock: vi.fn(),
 		getConnected: vi.fn(() => true),

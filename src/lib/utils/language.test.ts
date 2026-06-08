@@ -226,15 +226,12 @@ describe('isLanguageSupported', () => {
 		expect(isLanguageSupported(language)).toBe(true);
 	});
 
-	it.each([
-		'svelte',
-		'vue',
-		'kotlin',
-		'ruby',
-		'unknown'
-	])('should return false for unsupported language: %s', (language) => {
-		expect(isLanguageSupported(language)).toBe(false);
-	});
+	it.each(['svelte', 'vue', 'kotlin', 'ruby', 'unknown'])(
+		'should return false for unsupported language: %s',
+		(language) => {
+			expect(isLanguageSupported(language)).toBe(false);
+		}
+	);
 });
 
 // ============================================================

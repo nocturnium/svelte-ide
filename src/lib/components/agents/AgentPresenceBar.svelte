@@ -57,7 +57,10 @@
 	{#if activeAgents.length > 0}
 		<div class="presence-bar__avatars">
 			{#each visibleAgents as agent, i (agent.id)}
-				<Tooltip content="{agent.name} ({agent.status})" position={orientation === 'vertical' ? 'right' : 'bottom'}>
+				<Tooltip
+					content="{agent.name} ({agent.status})"
+					position={orientation === 'vertical' ? 'right' : 'bottom'}
+				>
 					<button
 						class="presence-bar__avatar"
 						style="--index: {i}; --total: {visibleAgents.length}"
@@ -146,7 +149,9 @@
 		background: transparent;
 		padding: 0;
 		cursor: pointer;
-		transition: transform var(--ide-transition-fast), z-index var(--ide-transition-fast);
+		transition:
+			transform var(--ide-transition-fast),
+			z-index var(--ide-transition-fast);
 	}
 
 	/* Stacked effect for horizontal - overlap avatars */

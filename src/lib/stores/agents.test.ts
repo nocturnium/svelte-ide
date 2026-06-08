@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as agents from './agents.svelte';
-import type { Agent, AgentTask, AgentStatus, AgentType, AgentFilter, AgentCursor, TeamEvent, AgentActivity } from '$lib/types';
+import type {
+	Agent,
+	AgentTask,
+	AgentStatus,
+	AgentType,
+	AgentFilter,
+	AgentCursor,
+	TeamEvent,
+	AgentActivity
+} from '$lib/types';
 
 /**
  * Agents store tests
@@ -123,7 +132,11 @@ describe('agents store — agent CRUD', () => {
 
 	it('removeAgent also removes cursor', () => {
 		agents.addAgent(makeAgent('a1'));
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
+		agents.updateCursor({
+			agentId: 'a1',
+			filePath: '/src/a.ts',
+			position: { line: 1, column: 1 }
+		} as AgentCursor);
 		agents.removeAgent('a1');
 		expect(agents.getCursor('a1')).toBeUndefined();
 	});
@@ -131,7 +144,7 @@ describe('agents store — agent CRUD', () => {
 	it('removeAgent creates a left activity', () => {
 		agents.addAgent(makeAgent('a1'));
 		agents.removeAgent('a1');
-		const leftActivity = agents.getActivities().find(a => a.content.includes('left'));
+		const leftActivity = agents.getActivities().find((a) => a.content.includes('left'));
 		expect(leftActivity).toBeDefined();
 	});
 
@@ -308,28 +321,56 @@ describe('agents store — task management', () => {
 
 describe('agents store — cursors', () => {
 	it('updateCursor adds/updates a cursor', () => {
-		const cursor = { agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor;
+		const cursor = {
+			agentId: 'a1',
+			filePath: '/src/a.ts',
+			position: { line: 1, column: 1 }
+		} as AgentCursor;
 		agents.updateCursor(cursor);
 		expect(agents.getCursors()).toHaveLength(1);
 		expect(agents.getCursor('a1')).toEqual(cursor);
 	});
 
 	it('removeCursor removes a cursor', () => {
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
+		agents.updateCursor({
+			agentId: 'a1',
+			filePath: '/src/a.ts',
+			position: { line: 1, column: 1 }
+		} as AgentCursor);
 		agents.removeCursor('a1');
 		expect(agents.getCursors()).toHaveLength(0);
 	});
 
 	it('getCursorsForFile filters by file path', () => {
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
-		agents.updateCursor({ agentId: 'a2', filePath: '/src/b.ts', position: { line: 1, column: 1 } } as AgentCursor);
+		agents.updateCursor({
+			agentId: 'a1',
+			filePath: '/src/a.ts',
+			position: { line: 1, column: 1 }
+		} as AgentCursor);
+		agents.updateCursor({
+			agentId: 'a2',
+			filePath: '/src/b.ts',
+			position: { line: 1, column: 1 }
+		} as AgentCursor);
 		expect(agents.getCursorsForFile('/src/a.ts')).toHaveLength(1);
 	});
 
 	it('clearCursorsForFile removes all cursors for a file', () => {
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
-		agents.updateCursor({ agentId: 'a2', filePath: '/src/a.ts', position: { line: 2, column: 1 } } as AgentCursor);
-		agents.updateCursor({ agentId: 'a3', filePath: '/src/b.ts', position: { line: 1, column: 1 } } as AgentCursor);
+		agents.updateCursor({
+			agentId: 'a1',
+			filePath: '/src/a.ts',
+			position: { line: 1, column: 1 }
+		} as AgentCursor);
+		agents.updateCursor({
+			agentId: 'a2',
+			filePath: '/src/a.ts',
+			position: { line: 2, column: 1 }
+		} as AgentCursor);
+		agents.updateCursor({
+			agentId: 'a3',
+			filePath: '/src/b.ts',
+			position: { line: 1, column: 1 }
+		} as AgentCursor);
 		agents.clearCursorsForFile('/src/a.ts');
 		expect(agents.getCursors()).toHaveLength(1);
 		expect(agents.getCursorsForFile('/src/a.ts')).toHaveLength(0);
@@ -429,12 +470,20 @@ describe('agents store — activities', () => {
 
 	it('getActivitiesForAgent filters by agent id', () => {
 		agents.addActivity({
-			id: 'act-1', agentId: 'a1', agent: makeAgent('a1'),
-			timestamp: '2025-01-01T00:00:00Z', type: 'action', content: 'A1 action'
+			id: 'act-1',
+			agentId: 'a1',
+			agent: makeAgent('a1'),
+			timestamp: '2025-01-01T00:00:00Z',
+			type: 'action',
+			content: 'A1 action'
 		} as AgentActivity);
 		agents.addActivity({
-			id: 'act-2', agentId: 'a2', agent: makeAgent('a2'),
-			timestamp: '2025-01-01T00:00:00Z', type: 'action', content: 'A2 action'
+			id: 'act-2',
+			agentId: 'a2',
+			agent: makeAgent('a2'),
+			timestamp: '2025-01-01T00:00:00Z',
+			type: 'action',
+			content: 'A2 action'
 		} as AgentActivity);
 		expect(agents.getActivitiesForAgent('a1')).toHaveLength(1);
 	});
@@ -442,8 +491,12 @@ describe('agents store — activities', () => {
 	it('getRecentActivities returns first N activities', () => {
 		for (let i = 0; i < 5; i++) {
 			agents.addActivity({
-				id: `act-${i}`, agentId: 'a1', agent: makeAgent('a1'),
-				timestamp: '2025-01-01T00:00:00Z', type: 'action', content: `Action ${i}`
+				id: `act-${i}`,
+				agentId: 'a1',
+				agent: makeAgent('a1'),
+				timestamp: '2025-01-01T00:00:00Z',
+				type: 'action',
+				content: `Action ${i}`
 			} as AgentActivity);
 		}
 		expect(agents.getRecentActivities(3)).toHaveLength(3);
@@ -451,8 +504,12 @@ describe('agents store — activities', () => {
 
 	it('clearActivities empties the list', () => {
 		agents.addActivity({
-			id: 'act-1', agentId: 'a1', agent: makeAgent('a1'),
-			timestamp: '2025-01-01T00:00:00Z', type: 'action', content: 'Test'
+			id: 'act-1',
+			agentId: 'a1',
+			agent: makeAgent('a1'),
+			timestamp: '2025-01-01T00:00:00Z',
+			type: 'action',
+			content: 'Test'
 		} as AgentActivity);
 		agents.clearActivities();
 		expect(agents.getActivities()).toHaveLength(0);
@@ -460,7 +517,9 @@ describe('agents store — activities', () => {
 
 	it('clearEvents empties the events list', () => {
 		agents.addEvent({
-			type: 'agent_joined', agentId: 'a1', agent: makeAgent('a1'),
+			type: 'agent_joined',
+			agentId: 'a1',
+			agent: makeAgent('a1'),
 			timestamp: '2025-01-01T00:00:00Z'
 		} as TeamEvent);
 		agents.clearEvents();
@@ -516,7 +575,11 @@ describe('agents store — connection and error', () => {
 describe('agents store — reset', () => {
 	it('reset clears all state', () => {
 		agents.addAgent(makeAgent('a1'));
-		agents.updateCursor({ agentId: 'a1', filePath: '/src/a.ts', position: { line: 1, column: 1 } } as AgentCursor);
+		agents.updateCursor({
+			agentId: 'a1',
+			filePath: '/src/a.ts',
+			position: { line: 1, column: 1 }
+		} as AgentCursor);
 		agents.setConnected(true);
 		agents.setError('err');
 		agents.selectAgent('a1');

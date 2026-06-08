@@ -12,12 +12,7 @@
 	import { onMount } from 'svelte';
 	import type { EditorPreferences } from '$lib/types';
 	import type { LSPClient } from '$lib/services/lsp-client';
-	import type {
-		CompletionItem,
-		Hover,
-		SignatureHelp,
-		Diagnostic
-	} from '$lib/types/lsp';
+	import type { CompletionItem, Hover, SignatureHelp, Diagnostic } from '$lib/types/lsp';
 	import type { Cursor } from '../editor/core/multi-cursor';
 	import CustomEditor from '../editor/CustomEditor.svelte';
 	import AutocompleteWidget from './AutocompleteWidget.svelte';
@@ -262,15 +257,13 @@
 			switch (e.key) {
 				case 'ArrowUp':
 					e.preventDefault();
-					completionSelectedIndex = completionSelectedIndex > 0
-						? completionSelectedIndex - 1
-						: completionItems.length - 1;
+					completionSelectedIndex =
+						completionSelectedIndex > 0 ? completionSelectedIndex - 1 : completionItems.length - 1;
 					return;
 				case 'ArrowDown':
 					e.preventDefault();
-					completionSelectedIndex = completionSelectedIndex < completionItems.length - 1
-						? completionSelectedIndex + 1
-						: 0;
+					completionSelectedIndex =
+						completionSelectedIndex < completionItems.length - 1 ? completionSelectedIndex + 1 : 0;
 					return;
 				case 'Enter':
 				case 'Tab':
@@ -369,7 +362,7 @@
 		const gutterWidth = 50; // Approximate
 
 		const x = rect.left + gutterWidth + (cursorColumn - 1) * charWidth;
-		const y = rect.top + (cursorLine) * lineHeight;
+		const y = rect.top + cursorLine * lineHeight;
 
 		return { x, y };
 	}
@@ -459,11 +452,7 @@
 
 	<!-- Hover Tooltip -->
 	{#if showHover && hoverData}
-		<HoverTooltip
-			hover={hoverData}
-			position={hoverPosition}
-			onDismiss={hideHover}
-		/>
+		<HoverTooltip hover={hoverData} position={hoverPosition} onDismiss={hideHover} />
 	{/if}
 
 	<!-- Signature Help -->

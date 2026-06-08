@@ -122,7 +122,10 @@ export { formatPrice, summarize };`);
 			echoManager.enable();
 			echoEnabled = true;
 		}
-		const _cursor = echoManager.addEchoPoint({ line, column: 0 }, { delay, label: `Echo ${line + 1}` });
+		const _cursor = echoManager.addEchoPoint(
+			{ line, column: 0 },
+			{ delay, label: `Echo ${line + 1}` }
+		);
 		echoCursors = echoManager.getEchoCursors();
 	}
 
@@ -223,9 +226,11 @@ export { formatPrice, summarize };`);
 
 						<div class="keystroke-actions">
 							<span class="action-label">Simulate Keystroke:</span>
-							<button class="small-btn" onclick={() => simulateKeystroke('insert')}>Insert 'a'</button
+							<button class="small-btn" onclick={() => simulateKeystroke('insert')}
+								>Insert 'a'</button
 							>
-							<button class="small-btn" onclick={() => simulateKeystroke('delete')}>Backspace</button
+							<button class="small-btn" onclick={() => simulateKeystroke('delete')}
+								>Backspace</button
 							>
 							<button class="small-btn" onclick={() => simulateKeystroke('newline')}>Enter</button>
 						</div>
@@ -239,23 +244,23 @@ export { formatPrice, summarize };`);
 				<div class="echo-visualization">
 					<div class="editor-mock-wrap">
 						<div class="editor-mock">
-						{#each Array(12) as _, i (i)}
-							<div class="mock-line">
-								<span class="line-num">{i + 1}</span>
-								<span class="line-content">// Line {i + 1} content...</span>
-							</div>
-						{/each}
+							{#each Array(12) as _, i (i)}
+								<div class="mock-line">
+									<span class="line-num">{i + 1}</span>
+									<span class="line-content">// Line {i + 1} content...</span>
+								</div>
+							{/each}
 
-						<!-- Echo cursor overlay (simplified for demo) -->
-						{#each echoCursors as cursor (cursor.id)}
-							<div
-								class="echo-marker"
-								style="top: {cursor.position.line * lineHeight}px; --color: {cursor.color};"
-							>
-								<span class="echo-caret"></span>
-								<span class="echo-label">{cursor.label} ({cursor.delayMs}ms)</span>
-							</div>
-						{/each}
+							<!-- Echo cursor overlay (simplified for demo) -->
+							{#each echoCursors as cursor (cursor.id)}
+								<div
+									class="echo-marker"
+									style="top: {cursor.position.line * lineHeight}px; --color: {cursor.color};"
+								>
+									<span class="echo-caret"></span>
+									<span class="echo-label">{cursor.label} ({cursor.delayMs}ms)</span>
+								</div>
+							{/each}
 						</div>
 						<p class="mock-caption" role="note">
 							Illustrative preview — use the buttons above to drive echoes.
@@ -320,8 +325,13 @@ export { formatPrice, summarize };`);
 								<div class="ghost-suggestion">
 									<div class="ghost-info">
 										<span class="ghost-char">'{ghost.character}'</span>
-										<span class="ghost-pos">Line {ghost.position.line + 1}, Col {ghost.position.column}</span>
-										<span class="ghost-confidence" style="color: {ghost.confidence > 0.8 ? '#22c55e' : '#eab308'}">
+										<span class="ghost-pos"
+											>Line {ghost.position.line + 1}, Col {ghost.position.column}</span
+										>
+										<span
+											class="ghost-confidence"
+											style="color: {ghost.confidence > 0.8 ? '#22c55e' : '#eab308'}"
+										>
 											{Math.round(ghost.confidence * 100)}%
 										</span>
 									</div>

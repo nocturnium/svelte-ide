@@ -117,10 +117,7 @@ export function findAllMatches(
 /**
  * Find the match index closest to a position (at or after)
  */
-export function findMatchIndexAtOrAfter(
-	matches: SearchMatch[],
-	position: Position
-): number {
+export function findMatchIndexAtOrAfter(matches: SearchMatch[], position: Position): number {
 	if (matches.length === 0) return -1;
 
 	for (let i = 0; i < matches.length; i++) {
@@ -141,10 +138,7 @@ export function findMatchIndexAtOrAfter(
 /**
  * Find the match index closest to a position (at or before)
  */
-export function findMatchIndexAtOrBefore(
-	matches: SearchMatch[],
-	position: Position
-): number {
+export function findMatchIndexAtOrBefore(matches: SearchMatch[], position: Position): number {
 	if (matches.length === 0) return -1;
 
 	for (let i = matches.length - 1; i >= 0; i--) {
@@ -216,9 +210,7 @@ export function replaceMatch(
 
 	// Replace the match
 	newLines[match.line] =
-		line.substring(0, match.startColumn) +
-		replacement +
-		line.substring(match.endColumn);
+		line.substring(0, match.startColumn) + replacement + line.substring(match.endColumn);
 
 	const lengthDiff = replacement.length - match.text.length;
 
@@ -254,9 +246,7 @@ export function replaceAllMatches(
 	for (const match of sortedMatches) {
 		const line = newLines[match.line];
 		newLines[match.line] =
-			line.substring(0, match.startColumn) +
-			replacement +
-			line.substring(match.endColumn);
+			line.substring(0, match.startColumn) + replacement + line.substring(match.endColumn);
 	}
 
 	return newLines;
@@ -265,10 +255,7 @@ export function replaceAllMatches(
 /**
  * Check if a position is within a match
  */
-export function isPositionInMatch(
-	position: Position,
-	match: SearchMatch
-): boolean {
+export function isPositionInMatch(position: Position, match: SearchMatch): boolean {
 	if (position.line !== match.line) return false;
 	return position.column >= match.startColumn && position.column < match.endColumn;
 }
@@ -276,10 +263,7 @@ export function isPositionInMatch(
 /**
  * Find match at exact position (if cursor is inside a match)
  */
-export function findMatchAtPosition(
-	matches: SearchMatch[],
-	position: Position
-): number {
+export function findMatchAtPosition(matches: SearchMatch[], position: Position): number {
 	for (let i = 0; i < matches.length; i++) {
 		if (isPositionInMatch(position, matches[i])) {
 			return i;

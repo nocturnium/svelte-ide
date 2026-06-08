@@ -52,20 +52,25 @@
 		if (!agent.currentTask?.progress.phase) return null;
 		const phase = agent.currentTask.progress.phase;
 		switch (phase) {
-			case 'planning': return 'Planning...';
-			case 'implementing': return 'Coding...';
-			case 'testing': return 'Testing...';
-			case 'complete': return 'Done';
-			default: return phase;
+			case 'planning':
+				return 'Planning...';
+			case 'implementing':
+				return 'Coding...';
+			case 'testing':
+				return 'Testing...';
+			case 'complete':
+				return 'Done';
+			default:
+				return phase;
 		}
 	});
 
 	// Is this an AI agent?
 	let isAI = $derived(
 		agent.type === 'coder' ||
-		agent.type === 'reviewer' ||
-		agent.type === 'tester' ||
-		agent.type === 'architect'
+			agent.type === 'reviewer' ||
+			agent.type === 'tester' ||
+			agent.type === 'architect'
 	);
 
 	// Unique ID for SVG gradients
@@ -93,10 +98,10 @@
 			</linearGradient>
 			<!-- Glow filter -->
 			<filter id="glow-{agent.id.slice(0, 8)}" x="-50%" y="-50%" width="200%" height="200%">
-				<feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+				<feGaussianBlur stdDeviation="2" result="coloredBlur" />
 				<feMerge>
-					<feMergeNode in="coloredBlur"/>
-					<feMergeNode in="SourceGraphic"/>
+					<feMergeNode in="coloredBlur" />
+					<feMergeNode in="SourceGraphic" />
 				</feMerge>
 			</filter>
 		</defs>
@@ -159,30 +164,65 @@
 			<div class="agent-avatar__badge-inner">
 				{#if agent.type === 'coder'}
 					<!-- Code brackets icon -->
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
 						<polyline points="16 18 22 12 16 6" />
 						<polyline points="8 6 2 12 8 18" />
 					</svg>
 				{:else if agent.type === 'reviewer'}
 					<!-- Checkmark icon -->
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
 						<polyline points="20 6 9 17 4 12" />
 					</svg>
 				{:else if agent.type === 'tester'}
 					<!-- Flask icon -->
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
 						<path d="M9 3h6v6l4 9H5l4-9V3z" />
 						<path d="M9 3h6" />
 					</svg>
 				{:else if agent.type === 'architect'}
 					<!-- Blueprint/compass icon -->
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
 						<circle cx="12" cy="12" r="10" />
 						<polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
 					</svg>
 				{:else}
 					<!-- User icon -->
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<svg
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
 						<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 						<circle cx="12" cy="7" r="4" />
 					</svg>
@@ -230,8 +270,13 @@
 	}
 
 	@keyframes avatar-breathe {
-		0%, 100% { transform: scale(1); }
-		50% { transform: scale(1.02); }
+		0%,
+		100% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.02);
+		}
 	}
 
 	/* Status Ring */
@@ -274,7 +319,8 @@
 	}
 
 	@keyframes ring-pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 			box-shadow: 0 0 8px color-mix(in srgb, var(--ide-agent-online) 40%, transparent);
 		}
@@ -285,18 +331,34 @@
 	}
 
 	@keyframes ring-spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	@keyframes ring-error {
-		0%, 100% { opacity: 1; transform: scale(1); }
-		50% { opacity: 0.6; transform: scale(1.05); }
+		0%,
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.6;
+			transform: scale(1.05);
+		}
 	}
 
 	@keyframes ring-stalled {
-		0%, 100% { opacity: 0.8; }
-		50% { opacity: 0.3; }
+		0%,
+		100% {
+			opacity: 0.8;
+		}
+		50% {
+			opacity: 0.3;
+		}
 	}
 
 	/* Progress Ring */
@@ -361,8 +423,13 @@
 	}
 
 	@keyframes badge-shimmer {
-		0%, 100% { background-position: 0% 50%; }
-		50% { background-position: 100% 50%; }
+		0%,
+		100% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
 	}
 
 	/* Badge Glow */
@@ -380,8 +447,15 @@
 	}
 
 	@keyframes glow-pulse {
-		0%, 100% { opacity: 0.5; transform: scale(1); }
-		50% { opacity: 1; transform: scale(1.3); }
+		0%,
+		100% {
+			opacity: 0.5;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1.3);
+		}
 	}
 
 	/* Phase Label */
@@ -394,15 +468,33 @@
 	}
 
 	@keyframes phase-fade-in {
-		from { opacity: 0; transform: translateY(-4px); }
-		to { opacity: 1; transform: translateY(0); }
+		from {
+			opacity: 0;
+			transform: translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	/* Size-specific adjustments */
-	.agent-avatar--xs .agent-avatar__ring { inset: -2px; border-width: 1.5px; }
-	.agent-avatar--sm .agent-avatar__ring { inset: -2px; border-width: 1.5px; }
-	.agent-avatar--lg .agent-avatar__ring { inset: -4px; border-width: 2.5px; }
-	.agent-avatar--xl .agent-avatar__ring { inset: -4px; border-width: 3px; }
+	.agent-avatar--xs .agent-avatar__ring {
+		inset: -2px;
+		border-width: 1.5px;
+	}
+	.agent-avatar--sm .agent-avatar__ring {
+		inset: -2px;
+		border-width: 1.5px;
+	}
+	.agent-avatar--lg .agent-avatar__ring {
+		inset: -4px;
+		border-width: 2.5px;
+	}
+	.agent-avatar--xl .agent-avatar__ring {
+		inset: -4px;
+		border-width: 3px;
+	}
 
 	/* Hover state */
 	.agent-avatar:hover .agent-avatar__inner {

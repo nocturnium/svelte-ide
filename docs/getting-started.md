@@ -10,7 +10,7 @@ This library targets **Svelte 5 only**. It is built on runes (`$state`, `$derive
 - **Node.js `>=18`** — required for the tooling.
 - A Svelte build setup (SvelteKit or plain Vite + `@sveltejs/vite-plugin-svelte`).
 
-The package itself ships with **zero runtime dependencies**. The collaboration extras (`yjs`, `y-websocket`, `y-protocols`) are *optional* peer dependencies you only install if you use the CRDT module — see [Optional features](#optional-features) below.
+The package itself ships with **zero runtime dependencies**. The collaboration extras (`yjs`, `y-websocket`, `y-protocols`) are _optional_ peer dependencies you only install if you use the CRDT module — see [Optional features](#optional-features) below.
 
 ## Installation
 
@@ -27,12 +27,12 @@ The components ship **unstyled**. They rely on a set of design tokens — CSS cu
 Import the theme **once**, near your application's entry point:
 
 ```js
-import "@nocturnium/svelte-ide/theme.css";
+import '@nocturnium/svelte-ide/theme.css';
 ```
 
 This applies the built-in dark "Nocturnium" theme. The stylesheet intentionally does **not** ship global `html`/`body` resets, so it won't fight your app's base styles — it only defines the tokens, a few keyframes, and the opt-in `.ide-*` utility classes the components use.
 
-Because every value is a CSS variable, you can retheme without forking: load your own stylesheet *after* the theme and override any token. See [Theming](./theming.md) for the full token reference and customization patterns.
+Because every value is a CSS variable, you can retheme without forking: load your own stylesheet _after_ the theme and override any token. See [Theming](./theming.md) for the full token reference and customization patterns.
 
 ## Your first editor
 
@@ -40,17 +40,13 @@ The core editor is `CustomEditor`. It's a controlled component: you own the docu
 
 ```svelte
 <script lang="ts">
-  import { CustomEditor } from "@nocturnium/svelte-ide";
+	import { CustomEditor } from '@nocturnium/svelte-ide';
 
-  let code = $state(`function greet(name) {\n  return \`Hello, \${name}!\`;\n}\n`);
+	let code = $state(`function greet(name) {\n  return \`Hello, \${name}!\`;\n}\n`);
 </script>
 
 <div style="height: 400px;">
-  <CustomEditor
-    content={code}
-    language="javascript"
-    onChange={(value) => (code = value)}
-  />
+	<CustomEditor content={code} language="javascript" onChange={(value) => (code = value)} />
 </div>
 ```
 
@@ -71,9 +67,9 @@ The cleanest place for the one-time theme import is your root layout. Create or 
 
 ```svelte
 <script lang="ts">
-  import "@nocturnium/svelte-ide/theme.css";
+	import '@nocturnium/svelte-ide/theme.css';
 
-  let { children } = $props();
+	let { children } = $props();
 </script>
 
 {@render children()}
@@ -88,11 +84,11 @@ If you render the editor during server-side rendering, keep it inside normal com
 With a plain Vite + Svelte app, import the theme once from your entry module (commonly `src/main.ts`):
 
 ```ts
-import { mount } from "svelte";
-import "@nocturnium/svelte-ide/theme.css";
-import App from "./App.svelte";
+import { mount } from 'svelte';
+import '@nocturnium/svelte-ide/theme.css';
+import App from './App.svelte';
 
-const app = mount(App, { target: document.getElementById("app")! });
+const app = mount(App, { target: document.getElementById('app')! });
 
 export default app;
 ```
@@ -104,14 +100,14 @@ Your `App.svelte` (and any descendant) can then import and render `CustomEditor`
 Everything is re-exported from the package root, so a single import works for most cases:
 
 ```ts
-import { CustomEditor, LSPEditor, AIPanel } from "@nocturnium/svelte-ide";
+import { CustomEditor, LSPEditor, AIPanel } from '@nocturnium/svelte-ide';
 ```
 
 If you'd rather import from a narrower entry point (for clarity or finer tree-shaking), the package also exposes scoped subpaths that mirror its modules:
 
 ```ts
-import { CustomEditor } from "@nocturnium/svelte-ide/components/editor";
-import { AIPanel } from "@nocturnium/svelte-ide/components/ai";
+import { CustomEditor } from '@nocturnium/svelte-ide/components/editor';
+import { AIPanel } from '@nocturnium/svelte-ide/components/ai';
 ```
 
 Available subpaths include `./stores`, `./components/editor`, `./components/core`, `./components/ai`, `./components/layout`, `./components/lsp`, `./components/agents`, `./components/vfs`, `./components/plugins`, `./types`, `./utils`, `./plugins`, and `./crdt`. The CRDT module is the one piece **not** re-exported from root — import it from `@nocturnium/svelte-ide/crdt` (see below).
@@ -132,11 +128,11 @@ Then import the CRDT building blocks from the dedicated subpath:
 
 ```ts
 import {
-  CollaborativeDocument,
-  CollaborativeProvider,
-  createAwarenessProtocol,
-  createUndoManager,
-} from "@nocturnium/svelte-ide/crdt";
+	CollaborativeDocument,
+	CollaborativeProvider,
+	createAwarenessProtocol,
+	createUndoManager
+} from '@nocturnium/svelte-ide/crdt';
 ```
 
 The ready-made `CollaborativeEditor` component is available from the package root. The collaboration server URL is always **caller-supplied** — there's no host baked into the library, so you point it at your own y-websocket server. The full walkthrough lives in the [Collaboration guide](./guides/collaboration.md).
@@ -148,11 +144,11 @@ For autocomplete, hover info, signature help, and diagnostics, the library inclu
 A minimal client looks like this:
 
 ```ts
-import { createLSPClient } from "@nocturnium/svelte-ide";
+import { createLSPClient } from '@nocturnium/svelte-ide';
 
 const client = createLSPClient({
-  serverUrl: "ws://localhost:8765",
-  rootUri: "file:///workspace",
+	serverUrl: 'ws://localhost:8765',
+	rootUri: 'file:///workspace'
 });
 ```
 
@@ -160,20 +156,20 @@ Pass the client to the `LSPEditor` component along with the document `uri`:
 
 ```svelte
 <script lang="ts">
-  import { LSPEditor } from "@nocturnium/svelte-ide";
-  import { client } from "./lsp"; // the createLSPClient instance above
+	import { LSPEditor } from '@nocturnium/svelte-ide';
+	import { client } from './lsp'; // the createLSPClient instance above
 
-  let code = $state("");
+	let code = $state('');
 </script>
 
 <div style="height: 400px;">
-  <LSPEditor
-    content={code}
-    uri="file:///workspace/main.ts"
-    language="typescript"
-    lspClient={client}
-    onChange={(value) => (code = value)}
-  />
+	<LSPEditor
+		content={code}
+		uri="file:///workspace/main.ts"
+		language="typescript"
+		lspClient={client}
+		onChange={(value) => (code = value)}
+	/>
 </div>
 ```
 

@@ -257,7 +257,9 @@ export const capitalize = (str: string): string =>
 <div class="demo-page">
 	<header class="page-header">
 		<h1>Semantic Features</h1>
-		<p>Phase 2: Intelligent code understanding with semantic folding, context lens, and structure map</p>
+		<p>
+			Phase 2: Intelligent code understanding with semantic folding, context lens, and structure map
+		</p>
 	</header>
 
 	<!-- Semantic Regions Overview -->
@@ -271,7 +273,8 @@ export const capitalize = (str: string): string =>
 			{#each [...regionsByCategory.entries()] as [category, regions] (category)}
 				<div class="region-group">
 					<div class="region-group__header">
-						<span class="region-group__color" style="background: {getCategoryColor(category)}"></span>
+						<span class="region-group__color" style="background: {getCategoryColor(category)}"
+						></span>
 						<span class="region-group__name">{category}</span>
 						<span class="region-group__count">{regions.length}</span>
 					</div>
@@ -280,7 +283,9 @@ export const capitalize = (str: string): string =>
 							<li>
 								<button class="region-item" onclick={() => navigateToLine(region.startLine)}>
 									<span class="region-item__label">{region.label || category}</span>
-									<span class="region-item__lines">L{region.startLine + 1}-{region.endLine + 1}</span>
+									<span class="region-item__lines"
+										>L{region.startLine + 1}-{region.endLine + 1}</span
+									>
 								</button>
 							</li>
 						{/each}
@@ -297,15 +302,13 @@ export const capitalize = (str: string): string =>
 	<section class="component-section">
 		<h2>Fold Presets</h2>
 		<p class="section-desc">
-			One-click folding based on semantic understanding. Hide tests, show only exports, focus on debugging.
+			One-click folding based on semantic understanding. Hide tests, show only exports, focus on
+			debugging.
 		</p>
 
 		<div class="presets-grid">
 			{#each DEFAULT_FOLD_PRESETS as preset (preset.id)}
-				<div
-					class="preset-card"
-					class:preset-card--active={activePreset?.id === preset.id}
-				>
+				<div class="preset-card" class:preset-card--active={activePreset?.id === preset.id}>
 					<button
 						class="preset-card__apply"
 						onclick={() => applyPreset(preset)}
@@ -332,9 +335,10 @@ export const capitalize = (str: string): string =>
 
 		{#if activePreset}
 			<div class="active-preset-info">
-				<strong>Active:</strong> {activePreset.name} -
-				Showing: {activePreset.show.join(', ')} |
-				Hiding: {activePreset.hide.join(', ')}
+				<strong>Active:</strong>
+				{activePreset.name} - Showing: {activePreset.show.join(', ')} | Hiding: {activePreset.hide.join(
+					', '
+				)}
 			</div>
 		{/if}
 	</section>
@@ -349,7 +353,7 @@ export const capitalize = (str: string): string =>
 		<div class="editor-with-map">
 			<div class="editor-pane" onscroll={handleScroll}>
 				<CustomEditor
-					content={content}
+					{content}
 					onChange={(value) => (content = value)}
 					language="typescript"
 					readonly={false}
@@ -368,11 +372,11 @@ export const capitalize = (str: string): string =>
 			<div class="structure-pane">
 				<StructureMap
 					lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
-					scrollLine={scrollLine}
+					{scrollLine}
 					visibleLines={25}
 					totalLines={content.split('\n').length}
-					cursorLine={cursorLine}
-					complexityMetrics={complexityMetrics}
+					{cursorLine}
+					{complexityMetrics}
 					language="typescript"
 					width={180}
 					enabled={true}
@@ -389,16 +393,37 @@ export const capitalize = (str: string): string =>
 				aria-expanded={structureMapOpen}
 				aria-controls="structure-map-mobile"
 			>
-				<svg class="structure-accordion__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-					<rect x="3" y="3" width="7" height="7"/>
-					<rect x="14" y="3" width="7" height="7"/>
-					<rect x="3" y="14" width="7" height="7"/>
-					<rect x="14" y="14" width="7" height="7"/>
+				<svg
+					class="structure-accordion__icon"
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"
+				>
+					<rect x="3" y="3" width="7" height="7" />
+					<rect x="14" y="3" width="7" height="7" />
+					<rect x="3" y="14" width="7" height="7" />
+					<rect x="14" y="14" width="7" height="7" />
 				</svg>
 				Structure Map
-				<span class="structure-accordion__badge">{structureSymbolCount} {structureSymbolCount === 1 ? 'symbol' : 'symbols'}</span>
-				<svg class="structure-accordion__chevron" class:structure-accordion__chevron--open={structureMapOpen} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-					<path d="M6 9l6 6 6-6"/>
+				<span class="structure-accordion__badge"
+					>{structureSymbolCount} {structureSymbolCount === 1 ? 'symbol' : 'symbols'}</span
+				>
+				<svg
+					class="structure-accordion__chevron"
+					class:structure-accordion__chevron--open={structureMapOpen}
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"
+				>
+					<path d="M6 9l6 6 6-6" />
 				</svg>
 			</button>
 			{#if structureMapOpen}
@@ -406,11 +431,11 @@ export const capitalize = (str: string): string =>
 					<div class="structure-accordion__scroll">
 						<StructureMap
 							lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
-							scrollLine={scrollLine}
+							{scrollLine}
 							visibleLines={25}
 							totalLines={content.split('\n').length}
-							cursorLine={cursorLine}
-							complexityMetrics={complexityMetrics}
+							{cursorLine}
+							{complexityMetrics}
 							language="typescript"
 							width={340}
 							enabled={true}
@@ -428,8 +453,15 @@ export const capitalize = (str: string): string =>
 		<div class="features-grid">
 			<div class="feature-card">
 				<div class="feature-icon" style="color: #8b5cf6">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M4 6h16M4 12h10M4 18h16"/>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path d="M4 6h16M4 12h10M4 18h16" />
 					</svg>
 				</div>
 				<h3>Semantic Folding</h3>
@@ -438,22 +470,38 @@ export const capitalize = (str: string): string =>
 
 			<div class="feature-card">
 				<div class="feature-icon" style="color: #3b82f6">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<circle cx="12" cy="12" r="10"/>
-						<path d="M12 16v-4M12 8h.01"/>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<circle cx="12" cy="12" r="10" />
+						<path d="M12 16v-4M12 8h.01" />
 					</svg>
 				</div>
 				<h3>Context Lens</h3>
-				<p>Inline type information appears as you navigate. See function signatures without hovering.</p>
+				<p>
+					Inline type information appears as you navigate. See function signatures without hovering.
+				</p>
 			</div>
 
 			<div class="feature-card">
 				<div class="feature-icon" style="color: #22c55e">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<rect x="3" y="3" width="7" height="7"/>
-						<rect x="14" y="3" width="7" height="7"/>
-						<rect x="3" y="14" width="7" height="7"/>
-						<rect x="14" y="14" width="7" height="7"/>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<rect x="3" y="3" width="7" height="7" />
+						<rect x="14" y="3" width="7" height="7" />
+						<rect x="3" y="14" width="7" height="7" />
+						<rect x="14" y="14" width="7" height="7" />
 					</svg>
 				</div>
 				<h3>Structure Map</h3>
@@ -462,12 +510,24 @@ export const capitalize = (str: string): string =>
 
 			<div class="feature-card">
 				<div class="feature-icon" style="color: #f59e0b">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+						/>
 					</svg>
 				</div>
 				<h3>Fold Presets</h3>
-				<p>Save and share folding configurations. Perfect for code review, debugging, or documentation.</p>
+				<p>
+					Save and share folding configurations. Perfect for code review, debugging, or
+					documentation.
+				</p>
 			</div>
 		</div>
 	</section>

@@ -1,10 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-	detectFoldRegions,
-	createFoldManager,
-	FoldManager,
-	type FoldRegion
-} from './folding';
+import { detectFoldRegions, createFoldManager, FoldManager, type FoldRegion } from './folding';
 import type { Line } from './state';
 
 /**
@@ -35,12 +30,9 @@ describe('detectBracketFolds', () => {
 	}
 
 	it('should detect a single function brace fold', () => {
-		const code = [
-			'function greet() {',
-			'  console.log("hi");',
-			'  console.log("bye");',
-			'}'
-		].join('\n');
+		const code = ['function greet() {', '  console.log("hi");', '  console.log("bye");', '}'].join(
+			'\n'
+		);
 
 		const regions = detectBrackets(code);
 		expect(regions.length).toBe(1);
@@ -52,20 +44,20 @@ describe('detectBracketFolds', () => {
 
 	it('should detect nested brace folds', () => {
 		const code = [
-			'function outer() {',   // 0
-			'  if (true) {',        // 1
-			'    doStuff();',       // 2
-			'    doMore();',        // 3
-			'  }',                  // 4
-			'}'                     // 5
+			'function outer() {', // 0
+			'  if (true) {', // 1
+			'    doStuff();', // 2
+			'    doMore();', // 3
+			'  }', // 4
+			'}' // 5
 		].join('\n');
 
 		const regions = detectBrackets(code);
 		// Outer: 0–5, Inner: 1–4
 		expect(regions.length).toBe(2);
 
-		const outer = regions.find(r => r.startLine === 0);
-		const inner = regions.find(r => r.startLine === 1);
+		const outer = regions.find((r) => r.startLine === 0);
+		const inner = regions.find((r) => r.startLine === 1);
 
 		expect(outer).toBeDefined();
 		expect(outer!.endLine).toBe(5);
@@ -75,33 +67,21 @@ describe('detectBracketFolds', () => {
 	});
 
 	it('should skip braces inside double-quoted strings', () => {
-		const code = [
-			'const a = "{";',
-			'const b = "}";',
-			'// no fold expected'
-		].join('\n');
+		const code = ['const a = "{";', 'const b = "}";', '// no fold expected'].join('\n');
 
 		const regions = detectBrackets(code);
 		expect(regions.length).toBe(0);
 	});
 
 	it('should skip braces inside single-quoted strings', () => {
-		const code = [
-			"const a = '{';",
-			"const b = '}';",
-			'// no fold expected'
-		].join('\n');
+		const code = ["const a = '{';", "const b = '}';", '// no fold expected'].join('\n');
 
 		const regions = detectBrackets(code);
 		expect(regions.length).toBe(0);
 	});
 
 	it('should skip braces inside line comments (//) ', () => {
-		const code = [
-			'// function foo() {',
-			'// }',
-			'const x = 1;'
-		].join('\n');
+		const code = ['// function foo() {', '// }', 'const x = 1;'].join('\n');
 
 		const regions = detectBrackets(code);
 		expect(regions.length).toBe(0);
@@ -116,11 +96,7 @@ describe('detectBracketFolds', () => {
 	// --- Regression: block comments must not open phantom folds ---
 
 	it('should skip a lone "{" inside a single-line block comment', () => {
-		const code = [
-			'/* an opening brace { lives here */',
-			'const x = 1;',
-			'const y = 2;'
-		].join('\n');
+		const code = ['/* an opening brace { lives here */', 'const x = 1;', 'const y = 2;'].join('\n');
 
 		const regions = detectBrackets(code);
 		expect(regions.length).toBe(0);
@@ -128,11 +104,11 @@ describe('detectBracketFolds', () => {
 
 	it('should carry block-comment state across lines (multi-line /* */)', () => {
 		const code = [
-			'/*',                  // 0
+			'/*', // 0
 			'  function fake() {', // 1 — brace is INSIDE the comment
-			'  still comment',     // 2
-			'*/',                  // 3
-			'const x = 1;'         // 4
+			'  still comment', // 2
+			'*/', // 3
+			'const x = 1;' // 4
 		].join('\n');
 
 		// No bracket fold: the "{" on line 1 is inside the block comment.
@@ -142,11 +118,11 @@ describe('detectBracketFolds', () => {
 
 	it('should still detect real braces after a block comment closes', () => {
 		const code = [
-			'/* doc { */',          // 0 — phantom brace, ignored
-			'function real() {',    // 1 — real brace
-			'  doStuff();',         // 2
-			'  doMore();',          // 3
-			'}'                     // 4
+			'/* doc { */', // 0 — phantom brace, ignored
+			'function real() {', // 1 — real brace
+			'  doStuff();', // 2
+			'  doMore();', // 3
+			'}' // 4
 		].join('\n');
 
 		const regions = detectBrackets(code);
@@ -157,10 +133,10 @@ describe('detectBracketFolds', () => {
 
 	it('should not be confused by a closing brace inside a block comment', () => {
 		const code = [
-			'function f() {',       // 0 — real open
+			'function f() {', // 0 — real open
 			'  /* a stray } here */', // 1 — phantom close, must be ignored
-			'  doStuff();',         // 2
-			'}'                     // 3 — real close
+			'  doStuff();', // 2
+			'}' // 3 — real close
 		].join('\n');
 
 		const regions = detectBrackets(code);
@@ -174,7 +150,7 @@ describe('detectBracketFolds', () => {
 		const code = [
 			'const s = "/* not a comment {";', // 0
 			'const t = "another } string */";', // 1
-			'const u = 3;'                      // 2
+			'const u = 3;' // 2
 		].join('\n');
 
 		const regions = detectBrackets(code);
@@ -183,11 +159,7 @@ describe('detectBracketFolds', () => {
 
 	it('should respect minLines config', () => {
 		// 3 lines span (0,1,2) — default minLines=2 means endLine-startLine>=2
-		const code = [
-			'function f() {',
-			'  return 1;',
-			'}'
-		].join('\n');
+		const code = ['function f() {', '  return 1;', '}'].join('\n');
 
 		const regions = detectFoldRegions(makeLines(code), 'javascript', {
 			brackets: true,
@@ -227,17 +199,17 @@ describe('detectIndentationFolds', () => {
 
 	it('should detect indentation-based folds (Python-style)', () => {
 		const code = [
-			'def greet():',        // 0
-			'    print("hello")',   // 1
-			'    print("world")',   // 2
-			'',                    // 3
-			'x = 1'               // 4
+			'def greet():', // 0
+			'    print("hello")', // 1
+			'    print("world")', // 2
+			'', // 3
+			'x = 1' // 4
 		].join('\n');
 
 		const regions = detectIndentation(code);
 		expect(regions.length).toBeGreaterThanOrEqual(1);
 
-		const fnFold = regions.find(r => r.startLine === 0);
+		const fnFold = regions.find((r) => r.startLine === 0);
 		expect(fnFold).toBeDefined();
 		expect(fnFold!.endLine).toBe(2);
 		expect(fnFold!.type).toBe('indentation');
@@ -245,32 +217,28 @@ describe('detectIndentationFolds', () => {
 
 	it('should detect nested indentation folds', () => {
 		const code = [
-			'class Foo:',              // 0
-			'    def bar(self):',      // 1
-			'        pass',            // 2
-			'        return True',     // 3
-			'    def baz(self):',      // 4
-			'        pass',            // 5
-			'        return False',    // 6
+			'class Foo:', // 0
+			'    def bar(self):', // 1
+			'        pass', // 2
+			'        return True', // 3
+			'    def baz(self):', // 4
+			'        pass', // 5
+			'        return False' // 6
 		].join('\n');
 
 		const regions = detectIndentation(code);
 		// Class-level fold starting at 0 should exist
-		const classFold = regions.find(r => r.startLine === 0);
+		const classFold = regions.find((r) => r.startLine === 0);
 		expect(classFold).toBeDefined();
 		expect(classFold!.endLine).toBe(6);
 	});
 
 	it('should not create fold for single indented line', () => {
-		const code = [
-			'if True:',
-			'    pass',
-			'done'
-		].join('\n');
+		const code = ['if True:', '    pass', 'done'].join('\n');
 
 		// Only 1 indented line after "if True:" — not enough for minLines=2
 		const regions = detectIndentation(code);
-		const ifFold = regions.find(r => r.startLine === 0);
+		const ifFold = regions.find((r) => r.startLine === 0);
 		// A fold from line 0 to line 1 is only 1 line difference, which is < minLines(2)
 		if (ifFold) {
 			// If it does detect, it should span at least 2 lines
@@ -282,37 +250,37 @@ describe('detectIndentationFolds', () => {
 
 	it('should end an indentation fold at the dedent, not run to EOF', () => {
 		const code = [
-			'def a():',          // 0
-			'    x = 1',         // 1
-			'    y = 2',         // 2
-			'def b():',          // 3 — dedent: closes the `a` block at line 2
-			'    z = 3',         // 4
-			'    w = 4',         // 5
+			'def a():', // 0
+			'    x = 1', // 1
+			'    y = 2', // 2
+			'def b():', // 3 — dedent: closes the `a` block at line 2
+			'    z = 3', // 4
+			'    w = 4' // 5
 		].join('\n');
 
 		const regions = detectIndentation(code);
 
-		const aFold = regions.find(r => r.startLine === 0);
+		const aFold = regions.find((r) => r.startLine === 0);
 		expect(aFold).toBeDefined();
 		// Must stop at line 2 (the last body line of `a`), NOT bleed into `b`.
 		expect(aFold!.endLine).toBe(2);
 
-		const bFold = regions.find(r => r.startLine === 3);
+		const bFold = regions.find((r) => r.startLine === 3);
 		expect(bFold).toBeDefined();
 		expect(bFold!.endLine).toBe(5);
 	});
 
 	it('should absorb trailing blank lines into a fold but not count them as body for minLines', () => {
 		const code = [
-			'def a():',     // 0
-			'    x = 1',     // 1
-			'    y = 2',     // 2
-			'',             // 3 — blank, between blocks
-			'b = 5',        // 4 — dedent
+			'def a():', // 0
+			'    x = 1', // 1
+			'    y = 2', // 2
+			'', // 3 — blank, between blocks
+			'b = 5' // 4 — dedent
 		].join('\n');
 
 		const regions = detectIndentation(code);
-		const aFold = regions.find(r => r.startLine === 0);
+		const aFold = regions.find((r) => r.startLine === 0);
 		expect(aFold).toBeDefined();
 		// endLine is the last non-empty body line (2), blank line 3 is not included.
 		expect(aFold!.endLine).toBe(2);
@@ -354,11 +322,11 @@ describe('detectCommentFolds', () => {
 
 	it('should detect block comments (/* ... */)', () => {
 		const code = [
-			'/*',                      // 0
-			' * This is a big',        // 1
-			' * block comment',        // 2
-			' */',                     // 3
-			'const x = 1;'            // 4
+			'/*', // 0
+			' * This is a big', // 1
+			' * block comment', // 2
+			' */', // 3
+			'const x = 1;' // 4
 		].join('\n');
 
 		const regions = detectComments(code);
@@ -376,13 +344,13 @@ describe('detectCommentFolds', () => {
 
 	it('should detect multiple block comments', () => {
 		const code = [
-			'/*',            // 0
-			' * first',      // 1
-			' */',           // 2
-			'code();',       // 3
-			'/*',            // 4
-			' * second',     // 5
-			' */',           // 6
+			'/*', // 0
+			' * first', // 1
+			' */', // 2
+			'code();', // 3
+			'/*', // 4
+			' * second', // 5
+			' */' // 6
 		].join('\n');
 
 		const regions = detectComments(code);
@@ -395,10 +363,10 @@ describe('detectCommentFolds', () => {
 
 	it('should detect HTML block comments', () => {
 		const code = [
-			'<!--',                      // 0
-			'  This is a long comment',  // 1
-			'  spanning lines',          // 2
-			'-->',                       // 3
+			'<!--', // 0
+			'  This is a long comment', // 1
+			'  spanning lines', // 2
+			'-->' // 3
 		].join('\n');
 
 		const regions = detectComments(code);
@@ -416,23 +384,23 @@ describe('detectCommentFolds', () => {
 describe('detectFoldRegions (combined)', () => {
 	it('should combine bracket and comment folds for JavaScript', () => {
 		const code = [
-			'/*',                    // 0
-			' * Module doc',         // 1
-			' */',                   // 2
-			'function main() {',     // 3
-			'  doStuff();',          // 4
-			'  doMore();',           // 5
-			'}'                      // 6
+			'/*', // 0
+			' * Module doc', // 1
+			' */', // 2
+			'function main() {', // 3
+			'  doStuff();', // 4
+			'  doMore();', // 5
+			'}' // 6
 		].join('\n');
 
 		const regions = detectFoldRegions(makeLines(code), 'javascript');
 
-		const commentFold = regions.find(r => r.type === 'comment');
+		const commentFold = regions.find((r) => r.type === 'comment');
 		expect(commentFold).toBeDefined();
 		expect(commentFold!.startLine).toBe(0);
 		expect(commentFold!.endLine).toBe(2);
 
-		const bracketFold = regions.find(r => r.type === 'bracket');
+		const bracketFold = regions.find((r) => r.type === 'bracket');
 		expect(bracketFold).toBeDefined();
 		expect(bracketFold!.startLine).toBe(3);
 		expect(bracketFold!.endLine).toBe(6);
@@ -440,43 +408,38 @@ describe('detectFoldRegions (combined)', () => {
 
 	it('should use indentation folds for Python', () => {
 		const code = [
-			'def hello():',          // 0
-			'    print("hi")',       // 1
-			'    print("bye")',      // 2
-			'',                      // 3
-			'x = 1'                  // 4
+			'def hello():', // 0
+			'    print("hi")', // 1
+			'    print("bye")', // 2
+			'', // 3
+			'x = 1' // 4
 		].join('\n');
 
 		const regions = detectFoldRegions(makeLines(code), 'python');
 
-		const indentFold = regions.find(r => r.type === 'indentation');
+		const indentFold = regions.find((r) => r.type === 'indentation');
 		expect(indentFold).toBeDefined();
 		expect(indentFold!.startLine).toBe(0);
 	});
 
 	it('should not produce indentation folds for JavaScript', () => {
-		const code = [
-			'function f() {',
-			'  return 1;',
-			'  return 2;',
-			'}'
-		].join('\n');
+		const code = ['function f() {', '  return 1;', '  return 2;', '}'].join('\n');
 
 		const regions = detectFoldRegions(makeLines(code), 'javascript');
-		const indentFolds = regions.filter(r => r.type === 'indentation');
+		const indentFolds = regions.filter((r) => r.type === 'indentation');
 		expect(indentFolds.length).toBe(0);
 	});
 
 	it('should return regions sorted by start line', () => {
 		const code = [
-			'function a() {',      // 0
-			'  x();',              // 1
-			'  y();',              // 2
-			'}',                   // 3
-			'function b() {',      // 4
-			'  z();',              // 5
-			'  w();',              // 6
-			'}'                    // 7
+			'function a() {', // 0
+			'  x();', // 1
+			'  y();', // 2
+			'}', // 3
+			'function b() {', // 4
+			'  z();', // 5
+			'  w();', // 6
+			'}' // 7
 		].join('\n');
 
 		const regions = detectFoldRegions(makeLines(code), 'javascript');
@@ -499,14 +462,14 @@ describe('FoldManager', () => {
 	let manager: FoldManager;
 
 	const sampleCode = [
-		'function outer() {',   // 0
-		'  if (true) {',        // 1
-		'    doA();',           // 2
-		'    doB();',           // 3
-		'  }',                  // 4
-		'  doC();',             // 5
-		'  doD();',             // 6
-		'}'                     // 7
+		'function outer() {', // 0
+		'  if (true) {', // 1
+		'    doA();', // 2
+		'    doB();', // 3
+		'  }', // 4
+		'  doC();', // 5
+		'  doD();', // 6
+		'}' // 7
 	].join('\n');
 
 	const sampleLines = makeLines(sampleCode);
@@ -523,7 +486,7 @@ describe('FoldManager', () => {
 		expect(regions.length).toBeGreaterThanOrEqual(1);
 
 		// Should have the outer function fold
-		const outer = regions.find(r => r.startLine === 0);
+		const outer = regions.find((r) => r.startLine === 0);
 		expect(outer).toBeDefined();
 		expect(outer!.endLine).toBe(7);
 	});
@@ -608,7 +571,7 @@ describe('FoldManager', () => {
 
 	it('should handle nested collapsed folds correctly', () => {
 		// Collapse inner fold only
-		const innerRegion = manager.getRegions().find(r => r.startLine === 1);
+		const innerRegion = manager.getRegions().find((r) => r.startLine === 1);
 		if (innerRegion) {
 			manager.collapse(1);
 			const visible = manager.getVisibleLines(8);
@@ -655,11 +618,11 @@ describe('FoldManager', () => {
 		// The outer fold is at level 0, inner at level 1
 		manager.collapseLevel(0);
 
-		const outer = manager.getRegions().find(r => r.startLine === 0);
+		const outer = manager.getRegions().find((r) => r.startLine === 0);
 		expect(outer?.collapsed).toBe(true);
 
 		// Inner fold may or may not be level 0; check if any level-1 folds are uncollapsed
-		const innerRegions = manager.getRegions().filter(r => r.level !== 0);
+		const innerRegions = manager.getRegions().filter((r) => r.level !== 0);
 		for (const r of innerRegions) {
 			expect(r.collapsed).toBe(false);
 		}
@@ -748,7 +711,7 @@ describe('FoldManager', () => {
 	it('should report hidden lines inside collapsed folds', () => {
 		manager.collapse(0);
 
-		expect(manager.isLineHidden(0)).toBe(false);  // start line is visible
+		expect(manager.isLineHidden(0)).toBe(false); // start line is visible
 		expect(manager.isLineHidden(1)).toBe(true);
 		expect(manager.isLineHidden(7)).toBe(true);
 	});

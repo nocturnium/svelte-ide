@@ -44,7 +44,16 @@ test.describe('Editor Syntax Highlighting', () => {
 
 	test('different languages can be selected', async ({ page }) => {
 		// All language buttons should be visible
-		const languages = ['TypeScript', 'JavaScript', 'Python', 'HTML', 'CSS', 'JSON', 'Go', 'Markdown'];
+		const languages = [
+			'TypeScript',
+			'JavaScript',
+			'Python',
+			'HTML',
+			'CSS',
+			'JSON',
+			'Go',
+			'Markdown'
+		];
 
 		for (const lang of languages) {
 			const btn = page.locator(`.language-btn:has-text("${lang}")`);

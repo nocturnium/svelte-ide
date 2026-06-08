@@ -86,10 +86,7 @@
 		{#if message.toolCalls && message.toolCalls.length > 0}
 			<div class="ai-message__tool-calls">
 				{#each message.toolCalls as toolCall (toolCall.id)}
-					<AIToolCallDisplay
-						{toolCall}
-						status="completed"
-					/>
+					<AIToolCallDisplay {toolCall} status="completed" />
 				{/each}
 			</div>
 		{/if}
@@ -185,7 +182,10 @@
 	}
 
 	.ai-message--user .ai-message__text {
-		background: var(--ide-ai-user, color-mix(in srgb, var(--color-nocturnium-wave) 25%, var(--ide-bg-secondary)));
+		background: var(
+			--ide-ai-user,
+			color-mix(in srgb, var(--color-nocturnium-wave) 25%, var(--ide-bg-secondary))
+		);
 		color: var(--ide-text-primary);
 		border-bottom-right-radius: var(--ide-radius-sm);
 		border: 1px solid color-mix(in srgb, var(--color-nocturnium-wave) 40%, transparent);

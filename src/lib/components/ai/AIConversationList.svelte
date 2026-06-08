@@ -19,16 +19,8 @@
 		onExport?: (conversation: AIConversation, format: 'json' | 'md') => void;
 	}
 
-	let {
-		conversations,
-		activeId,
-		onSelect,
-		onNew,
-		onDelete,
-		onRename,
-		onStar,
-		onExport
-	}: Props = $props();
+	let { conversations, activeId, onSelect, onNew, onDelete, onRename, onStar, onExport }: Props =
+		$props();
 
 	let searchQuery = $state('');
 	let filter = $state<'all' | 'starred' | 'today'>('all');
@@ -138,21 +130,12 @@
 
 	<!-- Search -->
 	<div class="list-search">
-		<Input
-			type="search"
-			placeholder="Search conversations..."
-			bind:value={searchQuery}
-			size="sm"
-		/>
+		<Input type="search" placeholder="Search conversations..." bind:value={searchQuery} size="sm" />
 	</div>
 
 	<!-- Filters -->
 	<div class="list-filters">
-		<button
-			class="filter-btn"
-			class:active={filter === 'all'}
-			onclick={() => (filter = 'all')}
-		>
+		<button class="filter-btn" class:active={filter === 'all'} onclick={() => (filter = 'all')}>
 			All
 		</button>
 		<button
@@ -163,11 +146,7 @@
 			<Icon name="star" size={12} />
 			Starred
 		</button>
-		<button
-			class="filter-btn"
-			class:active={filter === 'today'}
-			onclick={() => (filter = 'today')}
-		>
+		<button class="filter-btn" class:active={filter === 'today'} onclick={() => (filter = 'today')}>
 			Today
 		</button>
 	</div>
@@ -209,7 +188,10 @@
 					<div class="item-actions" bind:this={menuRef}>
 						<button
 							class="action-trigger"
-							onclick={(e) => { e.stopPropagation(); toggleMenu(conv.id); }}
+							onclick={(e) => {
+								e.stopPropagation();
+								toggleMenu(conv.id);
+							}}
 							aria-label="Conversation options"
 							aria-expanded={menuOpenId === conv.id}
 							aria-haspopup="menu"
@@ -220,7 +202,13 @@
 						{#if menuOpenId === conv.id}
 							<div class="action-menu" role="menu" aria-label="Conversation actions">
 								{#if onStar}
-									<button role="menuitem" onclick={() => { onStar(conv, !conv.starred); menuOpenId = null; }}>
+									<button
+										role="menuitem"
+										onclick={() => {
+											onStar(conv, !conv.starred);
+											menuOpenId = null;
+										}}
+									>
 										<Icon name={conv.starred ? 'star-off' : 'star'} size={14} />
 										{conv.starred ? 'Unstar' : 'Star'}
 									</button>
@@ -232,17 +220,36 @@
 									</button>
 								{/if}
 								{#if onExport}
-									<button role="menuitem" onclick={() => { onExport(conv, 'md'); menuOpenId = null; }}>
+									<button
+										role="menuitem"
+										onclick={() => {
+											onExport(conv, 'md');
+											menuOpenId = null;
+										}}
+									>
 										<Icon name="download" size={14} />
 										Export Markdown
 									</button>
-									<button role="menuitem" onclick={() => { onExport(conv, 'json'); menuOpenId = null; }}>
+									<button
+										role="menuitem"
+										onclick={() => {
+											onExport(conv, 'json');
+											menuOpenId = null;
+										}}
+									>
 										<Icon name="code" size={14} />
 										Export JSON
 									</button>
 								{/if}
 								{#if onDelete}
-									<button role="menuitem" class="danger" onclick={() => { onDelete(conv); menuOpenId = null; }}>
+									<button
+										role="menuitem"
+										class="danger"
+										onclick={() => {
+											onDelete(conv);
+											menuOpenId = null;
+										}}
+									>
 										<Icon name="trash" size={14} />
 										Delete
 									</button>
@@ -262,9 +269,7 @@
 					<p>No conversations today</p>
 				{:else}
 					<p>No conversations yet</p>
-					<Button variant="primary" size="sm" onclick={onNew}>
-						Start a conversation
-					</Button>
+					<Button variant="primary" size="sm" onclick={onNew}>Start a conversation</Button>
 				{/if}
 			</div>
 		{/each}

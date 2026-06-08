@@ -350,9 +350,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 				<button class="demo-btn" onclick={addSimulatedUser} disabled={simulatedUsers.length >= 5}>
 					Add Collaborator
 				</button>
-				<button class="demo-btn demo-btn--ai" onclick={addAIAgent}>
-					Add AI Agent
-				</button>
+				<button class="demo-btn demo-btn--ai" onclick={addAIAgent}> Add AI Agent </button>
 				<button
 					class="demo-btn demo-btn--secondary"
 					onclick={clearUsers}

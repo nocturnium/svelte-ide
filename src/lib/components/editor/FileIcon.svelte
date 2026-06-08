@@ -83,7 +83,9 @@
 		file: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H14a1 1 0 01-1-1V3.5z'
 	};
 
-	const iconPath = $derived(isDirectory ? (expanded ? icons.folderOpen : icons.folder) : icons.file);
+	const iconPath = $derived(
+		isDirectory ? (expanded ? icons.folderOpen : icons.folder) : icons.file
+	);
 	const iconColor = $derived(isDirectory ? 'var(--ide-interactive)' : color);
 </script>
 

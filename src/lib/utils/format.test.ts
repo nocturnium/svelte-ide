@@ -165,7 +165,8 @@ describe('formatPath', () => {
 	});
 
 	it('should truncate long paths with ellipsis', () => {
-		const long = 'src/lib/components/editor/core/very-long-directory-name/another-deep-path/file.ts';
+		const long =
+			'src/lib/components/editor/core/very-long-directory-name/another-deep-path/file.ts';
 		const result = formatPath(long, 50);
 		expect(result.length).toBeLessThanOrEqual(50);
 		expect(result).toContain('...');

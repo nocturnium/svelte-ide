@@ -287,10 +287,10 @@ describe('ai store — edit sessions', () => {
 		ai.updateEditSession(id1, { status: 'editing' });
 		// id2 remains 'pending', id1 is 'editing'
 		const activeSessions = ai.getActiveEditSessions();
-		expect(activeSessions.some(s => s.id === id1)).toBe(true);
-		expect(activeSessions.some(s => s.id === id2)).toBe(false);
+		expect(activeSessions.some((s) => s.id === id1)).toBe(true);
+		expect(activeSessions.some((s) => s.id === id2)).toBe(false);
 		// Verify the filter logic: all returned sessions have 'editing' status
-		expect(activeSessions.every(s => s.status === 'editing')).toBe(true);
+		expect(activeSessions.every((s) => s.status === 'editing')).toBe(true);
 	});
 
 	it('completeEditSession sets reviewing status with proposed content', () => {
@@ -311,7 +311,7 @@ describe('ai store — edit sessions', () => {
 		const id2 = ai.startEditSession('conv-1', '/src/b.ts', 'orig');
 		ai.completeEditSession(id2, 'proposed2');
 		ai.resolveEditSession(id2, false);
-		expect(ai.getEditSessions().find(s => s.id === id2)?.status).toBe('rejected');
+		expect(ai.getEditSessions().find((s) => s.id === id2)?.status).toBe('rejected');
 	});
 });
 

@@ -9,7 +9,13 @@ export * from './types';
 export * from './base';
 
 // Language tokenizers
-export { JavaScriptTokenizer, createJavaScriptTokenizer, createTypeScriptTokenizer, createJSXTokenizer, createTSXTokenizer } from './languages/javascript';
+export {
+	JavaScriptTokenizer,
+	createJavaScriptTokenizer,
+	createTypeScriptTokenizer,
+	createJSXTokenizer,
+	createTSXTokenizer
+} from './languages/javascript';
 export { HTMLTokenizer, createHTMLTokenizer, createXMLTokenizer } from './languages/html';
 export { CSSTokenizer, createCSSTokenizer } from './languages/css';
 export { JSONTokenizer, createJSONTokenizer } from './languages/json';
@@ -20,7 +26,12 @@ export { SvelteTokenizer, createSvelteTokenizer } from './languages/svelte';
 
 import type { LanguageTokenizer, Token, TokenizedLine, TokenizerState, TokenType } from './types';
 import { PlaintextTokenizer } from './base';
-import { createJavaScriptTokenizer, createTypeScriptTokenizer, createJSXTokenizer, createTSXTokenizer } from './languages/javascript';
+import {
+	createJavaScriptTokenizer,
+	createTypeScriptTokenizer,
+	createJSXTokenizer,
+	createTSXTokenizer
+} from './languages/javascript';
 import { createHTMLTokenizer, createXMLTokenizer } from './languages/html';
 import { createCSSTokenizer } from './languages/css';
 import { createJSONTokenizer } from './languages/json';

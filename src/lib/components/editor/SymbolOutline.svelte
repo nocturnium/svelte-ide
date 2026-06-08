@@ -272,12 +272,8 @@
 		<div class="outline-header">
 			<h3 class="outline-title">Outline</h3>
 			<div class="outline-actions">
-				<button class="action-btn" onclick={expandAll} title="Expand all">
-					⊞
-				</button>
-				<button class="action-btn" onclick={collapseAll} title="Collapse all">
-					⊟
-				</button>
+				<button class="action-btn" onclick={expandAll} title="Expand all"> ⊞ </button>
+				<button class="action-btn" onclick={collapseAll} title="Collapse all"> ⊟ </button>
 			</div>
 		</div>
 
@@ -290,9 +286,7 @@
 				bind:value={searchQuery}
 			/>
 			{#if searchQuery}
-				<button class="search-clear" onclick={() => (searchQuery = '')}>
-					×
-				</button>
+				<button class="search-clear" onclick={() => (searchQuery = '')}> × </button>
 			{/if}
 		</div>
 
@@ -333,12 +327,7 @@
 							title="{symbol.kind}: {symbol.name}{symbol.detail ? ` - ${symbol.detail}` : ''}"
 						>
 							{#if hasChildren}
-								<span
-									class="symbol-chevron"
-									class:symbol-chevron--collapsed={collapsed}
-								>
-									▾
-								</span>
+								<span class="symbol-chevron" class:symbol-chevron--collapsed={collapsed}> ▾ </span>
 							{:else}
 								<span class="symbol-spacer"></span>
 							{/if}
@@ -385,8 +374,16 @@
 												<span
 													class="symbol-chevron"
 													class:symbol-chevron--collapsed={childCollapsed}
-													onclick={(e) => { e.stopPropagation(); toggleCollapse(child); }}
-													onkeydown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleCollapse(child); } }}
+													onclick={(e) => {
+														e.stopPropagation();
+														toggleCollapse(child);
+													}}
+													onkeydown={(e) => {
+														if (e.key === 'Enter') {
+															e.stopPropagation();
+															toggleCollapse(child);
+														}
+													}}
 													role="button"
 													tabindex={-1}
 												>
@@ -580,7 +577,6 @@
 		font-size: 12px;
 	}
 
-
 	.symbol-item {
 		display: flex;
 		align-items: center;
@@ -673,7 +669,6 @@
 		color: var(--ide-text-muted, #666);
 		margin-left: auto;
 	}
-
 
 	/* Hover preview */
 	.outline-preview {

@@ -44,7 +44,9 @@
 
 	// Filter to active agents with cursors
 	let visibleAgents = $derived(
-		enabled ? agents.filter((a) => a.isActive && (a.cursor?.visible || a.focusRegions.length > 0)) : []
+		enabled
+			? agents.filter((a) => a.isActive && (a.cursor?.visible || a.focusRegions.length > 0))
+			: []
 	);
 
 	/**
@@ -218,7 +220,8 @@
 			rgba(var(--ai-color-rgb, 59, 130, 246), calc(var(--ai-intensity) * 0.05)) 50%,
 			transparent 100%
 		);
-		box-shadow: inset 0 0 20px rgba(var(--ai-color-rgb, 59, 130, 246), calc(var(--ai-intensity) * 0.1));
+		box-shadow: inset 0 0 20px
+			rgba(var(--ai-color-rgb, 59, 130, 246), calc(var(--ai-intensity) * 0.1));
 	}
 
 	/* Thinking - pulsing purple glow */
@@ -255,7 +258,8 @@
 	}
 
 	@keyframes region-think-pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 0.7;
 		}
 		50% {
@@ -333,7 +337,8 @@
 	}
 
 	@keyframes cursor-idle-pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 0.8;
 		}
 		50% {
@@ -353,7 +358,8 @@
 	}
 
 	@keyframes cursor-type-flash {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 		}
 		50% {
@@ -362,7 +368,8 @@
 	}
 
 	@keyframes cursor-think-glow {
-		0%, 100% {
+		0%,
+		100% {
 			filter: brightness(1);
 		}
 		50% {
@@ -375,7 +382,8 @@
 	}
 
 	@keyframes glow-expand {
-		0%, 100% {
+		0%,
+		100% {
 			transform: scale(1);
 			opacity: 0.4;
 		}

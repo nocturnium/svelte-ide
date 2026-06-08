@@ -79,7 +79,10 @@ export function createVFSError(
 /**
  * Parse an error response into a VFSError
  */
-export function parseError(error: unknown, context?: { path?: string; workspaceId?: string }): VFSError {
+export function parseError(
+	error: unknown,
+	context?: { path?: string; workspaceId?: string }
+): VFSError {
 	// Already a VFSError
 	if (isVFSError(error)) {
 		return error;
@@ -103,7 +106,8 @@ export function parseError(error: unknown, context?: { path?: string; workspaceI
 	// Error with status property (from fetch responses)
 	if (error && typeof error === 'object' && 'status' in error) {
 		const status = (error as { status: number }).status;
-		const message = 'message' in error ? String((error as { message: string }).message) : 'Request failed';
+		const message =
+			'message' in error ? String((error as { message: string }).message) : 'Request failed';
 		return parseStatusCode(status, message, context);
 	}
 
@@ -175,13 +179,9 @@ export function isVFSError(error: unknown): error is VFSError {
  * Check if error code is retryable
  */
 function isRetryableError(code: VFSErrorCode): boolean {
-	return [
-		'NETWORK_ERROR',
-		'CONNECTION_LOST',
-		'TIMEOUT',
-		'SERVER_ERROR',
-		'RATE_LIMITED'
-	].includes(code);
+	return ['NETWORK_ERROR', 'CONNECTION_LOST', 'TIMEOUT', 'SERVER_ERROR', 'RATE_LIMITED'].includes(
+		code
+	);
 }
 
 /**

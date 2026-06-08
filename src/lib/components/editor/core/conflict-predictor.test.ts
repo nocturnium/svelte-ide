@@ -105,7 +105,7 @@ describe('ConflictPredictor', () => {
 			// Default proximity threshold is 10
 			const users = [
 				makeUser({ id: 'u1', cursorLine: 22 }), // 2 lines away from region end (20)
-				makeUser({ id: 'u2', cursorLine: 25 })  // 5 lines away from region end
+				makeUser({ id: 'u2', cursorLine: 25 }) // 5 lines away from region end
 			];
 			const region = makeRegion({ startLine: 0, endLine: 20 });
 
@@ -131,10 +131,7 @@ describe('ConflictPredictor', () => {
 			const listener = vi.fn();
 			predictor.subscribe(listener);
 
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 10 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 10 })];
 			const region = makeRegion({ startLine: 0, endLine: 20 });
 
 			predictor.predict(users, [region]);
@@ -231,9 +228,7 @@ describe('ConflictPredictor', () => {
 
 			const zones = predictor.predict(users, [region]);
 			// Should detect a proximity conflict around lines 100-105
-			const proximityZone = zones.find(
-				(z) => z.startLine <= 100 && z.endLine >= 105
-			);
+			const proximityZone = zones.find((z) => z.startLine <= 100 && z.endLine >= 105);
 			// If threshold conditions met
 			if (proximityZone) {
 				expect(proximityZone.participants.length).toBeGreaterThanOrEqual(2);
@@ -241,10 +236,7 @@ describe('ConflictPredictor', () => {
 		});
 
 		it('does not create proximity conflict if already covered by semantic region', () => {
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 8 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 8 })];
 			const region = makeRegion({ startLine: 0, endLine: 20 });
 
 			const zones = predictor.predict(users, [region]);
@@ -351,10 +343,7 @@ describe('ConflictPredictor', () => {
 
 		it('produces zones with a very low threshold', () => {
 			const lenient = new ConflictPredictor({ warningThreshold: 0.01 });
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 10 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 10 })];
 			const region = makeRegion({ startLine: 0, endLine: 20 });
 
 			const zones = lenient.predict(users, [region]);
@@ -369,10 +358,7 @@ describe('ConflictPredictor', () => {
 			const listener = vi.fn();
 			const unsub = predictor.subscribe(listener);
 
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 10 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 10 })];
 			predictor.predict(users, [makeRegion()]);
 			expect(listener).toHaveBeenCalledTimes(1);
 
@@ -387,10 +373,7 @@ describe('ConflictPredictor', () => {
 				throw new Error('listener crash');
 			});
 
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 10 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 10 })];
 
 			expect(() => predictor.predict(users, [makeRegion()])).not.toThrow();
 			expect(consoleSpy).toHaveBeenCalled();
@@ -406,20 +389,14 @@ describe('ConflictPredictor', () => {
 		});
 
 		it('returns zones from last predict call', () => {
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 10 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 10 })];
 			predictor.predict(users, [makeRegion()]);
 			expect(predictor.getLastZones().length).toBeGreaterThanOrEqual(1);
 		});
 
 		it('is cleared when predict finds no conflicts', () => {
 			// First: produce zones
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 10 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 10 })];
 			predictor.predict(users, [makeRegion()]);
 
 			// Second: single user => clears zones
@@ -466,10 +443,7 @@ describe('ConflictPredictor', () => {
 
 	describe('semantic unit labeling', () => {
 		it('uses region label when available', () => {
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 10 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 10 })];
 			const region = makeRegion({ startLine: 0, endLine: 20, label: 'handleClick' });
 
 			const zones = predictor.predict(users, [region]);
@@ -479,10 +453,7 @@ describe('ConflictPredictor', () => {
 		});
 
 		it('falls back to line range when label is missing', () => {
-			const users = [
-				makeUser({ id: 'u1', cursorLine: 5 }),
-				makeUser({ id: 'u2', cursorLine: 10 })
-			];
+			const users = [makeUser({ id: 'u1', cursorLine: 5 }), makeUser({ id: 'u2', cursorLine: 10 })];
 			const region = makeRegion({ startLine: 0, endLine: 20, label: undefined });
 
 			const zones = predictor.predict(users, [region]);

@@ -172,8 +172,8 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		<Badge variant="info">Demo gallery</Badge>
 		<h1>Explore the library</h1>
 		<p class="hub-lede">
-			Every surface of <strong>@nocturnium/svelte-ide</strong> — from the editor core to AI and
-			real-time collaboration. Pick a demo to see it running.
+			Every surface of <strong>@nocturnium/svelte-ide</strong> — from the editor core to AI and real-time
+			collaboration. Pick a demo to see it running.
 		</p>
 	</header>
 

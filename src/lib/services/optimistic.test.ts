@@ -209,9 +209,13 @@ describe('createOptimisticState', () => {
 	it('should rollback on failed update', async () => {
 		const state = createOptimisticState('old');
 
-		const result = await state.update('new', async () => {
-			throw new Error('fail');
-		}, { maxRetries: 0, retryDelay: 1 });
+		const result = await state.update(
+			'new',
+			async () => {
+				throw new Error('fail');
+			},
+			{ maxRetries: 0, retryDelay: 1 }
+		);
 
 		expect(result.success).toBe(false);
 		expect(state.value).toBe('old');
@@ -508,7 +512,11 @@ describe('createDebouncedOptimistic', () => {
 		const commitFn = vi.fn().mockResolvedValue('ok');
 		const debounced = createDebouncedOptimistic(commitFn, 100);
 
-		debounced.update('val', () => {}, () => {});
+		debounced.update(
+			'val',
+			() => {},
+			() => {}
+		);
 		expect(debounced.isPending).toBe(true);
 
 		debounced.flush();

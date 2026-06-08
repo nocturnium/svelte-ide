@@ -1,58 +1,58 @@
 <script lang="ts">
-/**
- * LockOverlay Component
- *
- * Displays a read-only overlay when a file is locked by another user/agent.
- * Shows lock holder info, time remaining, and options to request access.
- */
+	/**
+	 * LockOverlay Component
+	 *
+	 * Displays a read-only overlay when a file is locked by another user/agent.
+	 * Shows lock holder info, time remaining, and options to request access.
+	 */
 
-import type { VFSFileLock } from '$lib/types';
+	import type { VFSFileLock } from '$lib/types';
 
-interface Props {
-	lock: VFSFileLock;
-	onRequestAccess?: () => void;
-	onOpenReadOnly?: () => void;
-	onClose?: () => void;
-	showActions?: boolean;
-}
-
-let { lock, onRequestAccess, onOpenReadOnly, onClose, showActions = true }: Props = $props();
-
-// Calculate time remaining
-let timeRemaining = $derived.by(() => {
-	const expires = new Date(lock.expiresAt).getTime();
-	const now = Date.now();
-	const remaining = Math.max(0, expires - now);
-
-	if (remaining === 0) return 'Expired';
-
-	const minutes = Math.floor(remaining / 60000);
-	const seconds = Math.floor((remaining % 60000) / 1000);
-
-	if (minutes > 0) {
-		return `${minutes}m ${seconds}s remaining`;
+	interface Props {
+		lock: VFSFileLock;
+		onRequestAccess?: () => void;
+		onOpenReadOnly?: () => void;
+		onClose?: () => void;
+		showActions?: boolean;
 	}
-	return `${seconds}s remaining`;
-});
 
-// Lock holder display name
-let holderDisplay = $derived(lock.holderType === 'agent' ? `AI: ${lock.holder}` : lock.holder);
+	let { lock, onRequestAccess, onOpenReadOnly, onClose, showActions = true }: Props = $props();
 
-// Lock purpose display
-let purposeDisplay = $derived.by(() => {
-	switch (lock.purpose) {
-		case 'edit':
-			return 'Editing';
-		case 'refactor':
-			return 'Refactoring';
-		case 'delete':
-			return 'Deleting';
-		case 'rename':
-			return 'Renaming';
-		default:
-			return 'Modifying';
-	}
-});
+	// Calculate time remaining
+	let timeRemaining = $derived.by(() => {
+		const expires = new Date(lock.expiresAt).getTime();
+		const now = Date.now();
+		const remaining = Math.max(0, expires - now);
+
+		if (remaining === 0) return 'Expired';
+
+		const minutes = Math.floor(remaining / 60000);
+		const seconds = Math.floor((remaining % 60000) / 1000);
+
+		if (minutes > 0) {
+			return `${minutes}m ${seconds}s remaining`;
+		}
+		return `${seconds}s remaining`;
+	});
+
+	// Lock holder display name
+	let holderDisplay = $derived(lock.holderType === 'agent' ? `AI: ${lock.holder}` : lock.holder);
+
+	// Lock purpose display
+	let purposeDisplay = $derived.by(() => {
+		switch (lock.purpose) {
+			case 'edit':
+				return 'Editing';
+			case 'refactor':
+				return 'Refactoring';
+			case 'delete':
+				return 'Deleting';
+			case 'rename':
+				return 'Renaming';
+			default:
+				return 'Modifying';
+		}
+	});
 </script>
 
 <div class="lock-overlay">

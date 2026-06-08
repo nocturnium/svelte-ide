@@ -238,7 +238,9 @@ test.describe('Editor Find and Replace', () => {
 		await editor.replaceInput.fill('XXX');
 
 		// Click replace all button
-		const replaceAllBtn = editor.container.locator('.find-replace__action[aria-label="Replace all"]');
+		const replaceAllBtn = editor.container.locator(
+			'.find-replace__action[aria-label="Replace all"]'
+		);
 		await replaceAllBtn.click();
 		await page.waitForTimeout(200);
 

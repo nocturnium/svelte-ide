@@ -7,30 +7,129 @@ import { createToken } from '../base';
 
 // CSS properties (common ones)
 const properties = new Set([
-	'align-content', 'align-items', 'align-self', 'animation', 'animation-delay',
-	'animation-direction', 'animation-duration', 'animation-fill-mode', 'animation-iteration-count',
-	'animation-name', 'animation-play-state', 'animation-timing-function', 'background',
-	'background-attachment', 'background-blend-mode', 'background-clip', 'background-color',
-	'background-image', 'background-origin', 'background-position', 'background-repeat',
-	'background-size', 'border', 'border-bottom', 'border-color', 'border-left', 'border-radius',
-	'border-right', 'border-style', 'border-top', 'border-width', 'bottom', 'box-shadow',
-	'box-sizing', 'color', 'content', 'cursor', 'display', 'filter', 'flex', 'flex-basis',
-	'flex-direction', 'flex-flow', 'flex-grow', 'flex-shrink', 'flex-wrap', 'float', 'font',
-	'font-family', 'font-size', 'font-style', 'font-weight', 'gap', 'grid', 'grid-area',
-	'grid-column', 'grid-gap', 'grid-row', 'grid-template', 'grid-template-areas',
-	'grid-template-columns', 'grid-template-rows', 'height', 'justify-content', 'justify-items',
-	'justify-self', 'left', 'letter-spacing', 'line-height', 'list-style', 'margin',
-	'margin-bottom', 'margin-left', 'margin-right', 'margin-top', 'max-height', 'max-width',
-	'min-height', 'min-width', 'object-fit', 'opacity', 'order', 'outline', 'overflow',
-	'overflow-x', 'overflow-y', 'padding', 'padding-bottom', 'padding-left', 'padding-right',
-	'padding-top', 'place-content', 'place-items', 'place-self', 'pointer-events', 'position',
-	'resize', 'right', 'row-gap', 'text-align', 'text-decoration', 'text-indent', 'text-overflow',
-	'text-shadow', 'text-transform', 'top', 'transform', 'transform-origin', 'transition',
-	'transition-delay', 'transition-duration', 'transition-property', 'transition-timing-function',
-	'user-select', 'vertical-align', 'visibility', 'white-space', 'width', 'word-break',
-	'word-spacing', 'word-wrap', 'z-index'
+	'align-content',
+	'align-items',
+	'align-self',
+	'animation',
+	'animation-delay',
+	'animation-direction',
+	'animation-duration',
+	'animation-fill-mode',
+	'animation-iteration-count',
+	'animation-name',
+	'animation-play-state',
+	'animation-timing-function',
+	'background',
+	'background-attachment',
+	'background-blend-mode',
+	'background-clip',
+	'background-color',
+	'background-image',
+	'background-origin',
+	'background-position',
+	'background-repeat',
+	'background-size',
+	'border',
+	'border-bottom',
+	'border-color',
+	'border-left',
+	'border-radius',
+	'border-right',
+	'border-style',
+	'border-top',
+	'border-width',
+	'bottom',
+	'box-shadow',
+	'box-sizing',
+	'color',
+	'content',
+	'cursor',
+	'display',
+	'filter',
+	'flex',
+	'flex-basis',
+	'flex-direction',
+	'flex-flow',
+	'flex-grow',
+	'flex-shrink',
+	'flex-wrap',
+	'float',
+	'font',
+	'font-family',
+	'font-size',
+	'font-style',
+	'font-weight',
+	'gap',
+	'grid',
+	'grid-area',
+	'grid-column',
+	'grid-gap',
+	'grid-row',
+	'grid-template',
+	'grid-template-areas',
+	'grid-template-columns',
+	'grid-template-rows',
+	'height',
+	'justify-content',
+	'justify-items',
+	'justify-self',
+	'left',
+	'letter-spacing',
+	'line-height',
+	'list-style',
+	'margin',
+	'margin-bottom',
+	'margin-left',
+	'margin-right',
+	'margin-top',
+	'max-height',
+	'max-width',
+	'min-height',
+	'min-width',
+	'object-fit',
+	'opacity',
+	'order',
+	'outline',
+	'overflow',
+	'overflow-x',
+	'overflow-y',
+	'padding',
+	'padding-bottom',
+	'padding-left',
+	'padding-right',
+	'padding-top',
+	'place-content',
+	'place-items',
+	'place-self',
+	'pointer-events',
+	'position',
+	'resize',
+	'right',
+	'row-gap',
+	'text-align',
+	'text-decoration',
+	'text-indent',
+	'text-overflow',
+	'text-shadow',
+	'text-transform',
+	'top',
+	'transform',
+	'transform-origin',
+	'transition',
+	'transition-delay',
+	'transition-duration',
+	'transition-property',
+	'transition-timing-function',
+	'user-select',
+	'vertical-align',
+	'visibility',
+	'white-space',
+	'width',
+	'word-break',
+	'word-spacing',
+	'word-wrap',
+	'z-index'
 ]);
-
 
 interface CSSTokenizerState extends TokenizerState {
 	inRule?: boolean;
@@ -153,7 +252,9 @@ export class CSSTokenizer {
 		}
 
 		// Numbers with units
-		const numMatch = text.match(/^-?(?:\d+\.?\d*|\.\d+)(?:px|em|rem|%|vh|vw|vmin|vmax|ch|ex|cm|mm|in|pt|pc|deg|rad|grad|turn|s|ms|Hz|kHz|dpi|dpcm|dppx)?/);
+		const numMatch = text.match(
+			/^-?(?:\d+\.?\d*|\.\d+)(?:px|em|rem|%|vh|vw|vmin|vmax|ch|ex|cm|mm|in|pt|pc|deg|rad|grad|turn|s|ms|Hz|kHz|dpi|dpcm|dppx)?/
+		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
 		}
@@ -168,11 +269,37 @@ export class CSSTokenizer {
 		if (keywordMatch) {
 			const word = keywordMatch[0];
 			// Common CSS keywords
-			if (['inherit', 'initial', 'unset', 'revert', 'none', 'auto', 'transparent', 'currentColor', 'important'].includes(word)) {
+			if (
+				[
+					'inherit',
+					'initial',
+					'unset',
+					'revert',
+					'none',
+					'auto',
+					'transparent',
+					'currentColor',
+					'important'
+				].includes(word)
+			) {
 				return createToken('keyword', word, pos);
 			}
 			// Color names
-			if (['red', 'blue', 'green', 'white', 'black', 'yellow', 'orange', 'purple', 'pink', 'gray', 'grey'].includes(word)) {
+			if (
+				[
+					'red',
+					'blue',
+					'green',
+					'white',
+					'black',
+					'yellow',
+					'orange',
+					'purple',
+					'pink',
+					'gray',
+					'grey'
+				].includes(word)
+			) {
 				return createToken('constant', word, pos);
 			}
 			return createToken('text', word, pos);

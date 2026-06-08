@@ -65,9 +65,15 @@ export function createAwarenessProtocol(doc: YDoc): AwarenessProtocol {
 		return users;
 	}
 
-	function getCursors(): Map<number, { user: AwarenessUser; cursor: { anchor: number; head: number } }> {
+	function getCursors(): Map<
+		number,
+		{ user: AwarenessUser; cursor: { anchor: number; head: number } }
+	> {
 		const states = awareness.getStates() as Map<number, AwarenessState>;
-		const cursors = new Map<number, { user: AwarenessUser; cursor: { anchor: number; head: number } }>();
+		const cursors = new Map<
+			number,
+			{ user: AwarenessUser; cursor: { anchor: number; head: number } }
+		>();
 
 		states.forEach((state, clientId) => {
 			if (state.user && state.cursor) {

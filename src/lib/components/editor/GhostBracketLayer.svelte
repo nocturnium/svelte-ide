@@ -191,11 +191,11 @@
 			<div
 				class="bracket-mismatch bracket-mismatch--{mismatch.issue}"
 				style="{getMismatchStyle(mismatch)} --mismatch-color: {color};"
-				title="{mismatch.issue === 'unclosed'
+				title={mismatch.issue === 'unclosed'
 					? `Unclosed '${mismatch.character}'`
 					: mismatch.issue === 'unexpected'
 						? `Unexpected '${mismatch.character}'`
-						: `Expected '${mismatch.expected}' but found '${mismatch.character}'`}"
+						: `Expected '${mismatch.expected}' but found '${mismatch.character}'`}
 			>
 				<span class="bracket-mismatch__underline"></span>
 				{#if mismatch.issue === 'mismatched' && mismatch.expected}

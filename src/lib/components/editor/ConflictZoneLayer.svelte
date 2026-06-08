@@ -139,10 +139,7 @@
 				tabindex={-1}
 			>
 				<!-- Gutter indicator -->
-				<div
-					class="conflict-zone__gutter"
-					style="left: -{gutterWidth}px; width: {gutterWidth}px;"
-				>
+				<div class="conflict-zone__gutter" style="left: -{gutterWidth}px; width: {gutterWidth}px;">
 					<span class="conflict-zone__icon">{getSeverityIcon(zone.severity)}</span>
 				</div>
 
@@ -211,10 +208,7 @@
 			<div class="conflict-tooltip__participants">
 				{#each hoveredZone.participants as participant (participant.userId)}
 					<div class="conflict-tooltip__participant">
-						<span
-							class="conflict-tooltip__dot"
-							style="background: {participant.color}"
-						></span>
+						<span class="conflict-tooltip__dot" style="background: {participant.color}"></span>
 						<span class="conflict-tooltip__name">
 							{participant.userName}
 							{#if participant.isAI}

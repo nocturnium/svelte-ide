@@ -8,9 +8,9 @@ Folding is enabled by default on `CustomEditor` and `LSPEditor`. Pass `folding={
 
 ```svelte
 <script lang="ts">
-  import { CustomEditor } from '@nocturnium/svelte-ide';
+	import { CustomEditor } from '@nocturnium/svelte-ide';
 
-  let content = $state(`function greet(name) {\n  return 'Hello, ' + name;\n}`);
+	let content = $state(`function greet(name) {\n  return 'Hello, ' + name;\n}`);
 </script>
 
 <CustomEditor bind:content language="javascript" folding />
@@ -24,13 +24,13 @@ Once enabled, lines that start a foldable region show a chevron in the gutter. C
 
 Folding is computed by running one or more strategies over the document's lines. The strategy (or strategies) used for a given document depend on its `language`:
 
-| Strategy | `type` | What it folds | Languages |
-| --- | --- | --- | --- |
-| Bracket | `'bracket'` | Multi-line `{}`, `[]`, `()` blocks (string- and comment-aware) | Most languages (the default) |
-| Tag | `'bracket'` | Matched HTML/XML element pairs | `html`, `xml`, `xhtml`, `svg`, plus `vue`, `svelte`, `jsx`, `tsx` (alongside brackets) |
-| Indentation | `'indentation'` | Blocks defined purely by indentation | `python`, `yaml`/`yml`, `haml`, `slim`, `pug`/`jade` |
-| Region | `'region'` | Explicit `#region` / `#endregion` marker pairs | All languages |
-| Comment | `'comment'` | Multi-line `/* ... */` and `<!-- ... -->` comments | All languages |
+| Strategy    | `type`          | What it folds                                                  | Languages                                                                              |
+| ----------- | --------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Bracket     | `'bracket'`     | Multi-line `{}`, `[]`, `()` blocks (string- and comment-aware) | Most languages (the default)                                                           |
+| Tag         | `'bracket'`     | Matched HTML/XML element pairs                                 | `html`, `xml`, `xhtml`, `svg`, plus `vue`, `svelte`, `jsx`, `tsx` (alongside brackets) |
+| Indentation | `'indentation'` | Blocks defined purely by indentation                           | `python`, `yaml`/`yml`, `haml`, `slim`, `pug`/`jade`                                   |
+| Region      | `'region'`      | Explicit `#region` / `#endregion` marker pairs                 | All languages                                                                          |
+| Comment     | `'comment'`     | Multi-line `/* ... */` and `<!-- ... -->` comments             | All languages                                                                          |
 
 A few strategies always run regardless of language (region markers and multi-line comments); the bracket/tag and indentation strategies are selected based on the language. See [`detectFoldRegions`](#detectfoldregions) for exactly how the language string maps to strategies.
 
@@ -88,16 +88,16 @@ Each foldable region is described by a `FoldRegion`:
 import type { FoldRegion } from '@nocturnium/svelte-ide/components/editor';
 
 interface FoldRegion {
-  /** Start line (0-based) — the line that shows the fold indicator. */
-  startLine: number;
-  /** End line (0-based) — the last line included in the fold. */
-  endLine: number;
-  /** Nesting / indentation level, used for nested folds. */
-  level: number;
-  /** Which strategy produced this region. */
-  type: 'bracket' | 'indentation' | 'region' | 'comment';
-  /** Whether this region is currently collapsed. */
-  collapsed: boolean;
+	/** Start line (0-based) — the line that shows the fold indicator. */
+	startLine: number;
+	/** End line (0-based) — the last line included in the fold. */
+	endLine: number;
+	/** Nesting / indentation level, used for nested folds. */
+	level: number;
+	/** Which strategy produced this region. */
+	type: 'bracket' | 'indentation' | 'region' | 'comment';
+	/** Whether this region is currently collapsed. */
+	collapsed: boolean;
 }
 ```
 
@@ -109,11 +109,11 @@ Everything below is exported from the `./components/editor` entry point. You onl
 
 ```ts
 import {
-  detectFoldRegions,
-  createFoldManager,
-  FoldManager,
-  type FoldRegion,
-  type FoldingConfig,
+	detectFoldRegions,
+	createFoldManager,
+	FoldManager,
+	type FoldRegion,
+	type FoldingConfig
 } from '@nocturnium/svelte-ide/components/editor';
 ```
 
@@ -123,9 +123,9 @@ import {
 
 ```ts
 function detectFoldRegions(
-  lines: readonly Line[],
-  language?: string,            // default: 'plaintext'
-  config?: Partial<FoldingConfig>,
+	lines: readonly Line[],
+	language?: string, // default: 'plaintext'
+	config?: Partial<FoldingConfig>
 ): FoldRegion[];
 ```
 
@@ -137,11 +137,11 @@ import { detectFoldRegions } from '@nocturnium/svelte-ide/components/editor';
 const lines = source.split('\n').map((text, number) => ({ number, text }));
 
 const regions = detectFoldRegions(lines, 'typescript', {
-  brackets: true,
-  comments: true,
-  regions: true,
-  indentation: false, // ignored for non-indentation languages anyway
-  minLines: 3,        // only fold blocks of 3+ lines
+	brackets: true,
+	comments: true,
+	regions: true,
+	indentation: false, // ignored for non-indentation languages anyway
+	minLines: 3 // only fold blocks of 3+ lines
 });
 ```
 
@@ -149,16 +149,16 @@ const regions = detectFoldRegions(lines, 'typescript', {
 
 ```ts
 interface FoldingConfig {
-  /** Enable bracket- and tag-based folding. */
-  brackets: boolean;
-  /** Enable indentation-based folding (only applies to indentation languages). */
-  indentation: boolean;
-  /** Enable #region / #endregion marker folding. */
-  regions: boolean;
-  /** Enable multi-line comment folding. */
-  comments: boolean;
-  /** Minimum number of lines a region must span to be foldable. */
-  minLines: number;
+	/** Enable bracket- and tag-based folding. */
+	brackets: boolean;
+	/** Enable indentation-based folding (only applies to indentation languages). */
+	indentation: boolean;
+	/** Enable #region / #endregion marker folding. */
+	regions: boolean;
+	/** Enable multi-line comment folding. */
+	comments: boolean;
+	/** Minimum number of lines a region must span to be foldable. */
+	minLines: number;
 }
 ```
 
@@ -179,7 +179,7 @@ folds.updateRegions(lines, 'javascript', { minLines: 2 });
 
 // React to collapse/expand changes.
 const unsubscribe = folds.onChange(() => {
-  render(folds.getVisibleLines(lines.length));
+	render(folds.getVisibleLines(lines.length));
 });
 
 // ...later, when tearing down:
@@ -225,12 +225,12 @@ Lines that begin a foldable region render a chevron in the gutter (`▼` when ex
 
 When `folding` is enabled, the editor binds:
 
-| Shortcut | Action |
-| --- | --- |
+| Shortcut               | Action                                   |
+| ---------------------- | ---------------------------------------- |
 | `Ctrl/Cmd + Shift + [` | Fold (collapse) the region at the cursor |
 | `Ctrl/Cmd + Shift + ]` | Unfold (expand) the region at the cursor |
-| `Ctrl/Cmd + Alt + [` | Fold all regions |
-| `Ctrl/Cmd + Alt + ]` | Unfold all regions |
+| `Ctrl/Cmd + Alt + [`   | Fold all regions                         |
+| `Ctrl/Cmd + Alt + ]`   | Unfold all regions                       |
 
 When you collapse the region the cursor is inside, the cursor is moved to the fold's visible start line so it never lands on a hidden line.
 

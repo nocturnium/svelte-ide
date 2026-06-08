@@ -81,7 +81,9 @@ describe('createAIAwareness', () => {
 
 	it('should override defaults with options', () => {
 		const cursor = makeCursor();
-		const regions: AIFocusRegion[] = [{ startLine: 0, endLine: 5, intensity: 0.8, type: 'writing' }];
+		const regions: AIFocusRegion[] = [
+			{ startLine: 0, endLine: 5, intensity: 0.8, type: 'writing' }
+		];
 		const a = createAIAwareness('a2', 'Claude', {
 			color: '#000',
 			attentionType: 'writing',

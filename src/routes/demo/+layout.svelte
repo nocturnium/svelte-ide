@@ -52,10 +52,7 @@
 	// Routes whose page renders a full application shell (IDE chrome, multi-panel
 	// dashboards) rather than prose. These fill the whole content area instead of
 	// being capped to the centered reading column. Stored without `base`.
-	const FULL_BLEED_PATHS = new Set([
-		'/demo/editor',
-		'/demo/playground'
-	]);
+	const FULL_BLEED_PATHS = new Set(['/demo/editor', '/demo/playground']);
 
 	let isFullBleed = $derived(FULL_BLEED_PATHS.has(currentPath.slice(base.length)));
 

@@ -313,10 +313,7 @@ export class EditorState {
 	 * Set selection range (affects primary cursor only, clears secondary cursors)
 	 */
 	setSelection(anchor: Position, head: Position): void {
-		this._cursorManager.setSingleSelection(
-			this.clampPosition(anchor),
-			this.clampPosition(head)
-		);
+		this._cursorManager.setSingleSelection(this.clampPosition(anchor), this.clampPosition(head));
 		this.emitSelectionChange();
 		this.emitCursorChange();
 	}
@@ -826,12 +823,11 @@ export class EditorState {
 		const now = Date.now();
 
 		// Check if we should merge with the last history entry
-		const shouldMerge = (
+		const shouldMerge =
 			changeType &&
 			changeType === this.lastHistoryType &&
 			this._undoStack.length > 0 &&
-			now - this.lastHistoryTimestamp < this.historyGroupTimeout
-		);
+			now - this.lastHistoryTimestamp < this.historyGroupTimeout;
 
 		// Save cursor state
 		const cursorState = this._cursorManager.clone();

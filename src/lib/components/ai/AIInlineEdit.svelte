@@ -68,9 +68,7 @@
 	</div>
 
 	<div class="ai-inline-edit__actions">
-		<Button variant="ghost" size="sm" onclick={onCancel} disabled={isSubmitting}>
-			Cancel
-		</Button>
+		<Button variant="ghost" size="sm" onclick={onCancel} disabled={isSubmitting}>Cancel</Button>
 		<Button
 			variant="primary"
 			size="sm"

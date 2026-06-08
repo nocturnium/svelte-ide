@@ -21,13 +21,7 @@
 		onClose?: () => void;
 	}
 
-	let {
-		manager,
-		language = 'javascript',
-		open = false,
-		onSelect,
-		onClose
-	}: Props = $props();
+	let { manager, language = 'javascript', open = false, onSelect, onClose }: Props = $props();
 
 	let searchQuery = $state('');
 	let selectedCategory = $state<string | null>(null);
@@ -163,7 +157,14 @@
 	<div class="snippet-backdrop" onclick={() => onClose?.()} role="presentation"></div>
 
 	<!-- Palette -->
-	<div class="snippet-palette" onkeydown={handleKeyDown} role="dialog" tabindex={-1} aria-modal="true" aria-label="Snippet palette">
+	<div
+		class="snippet-palette"
+		onkeydown={handleKeyDown}
+		role="dialog"
+		tabindex={-1}
+		aria-modal="true"
+		aria-label="Snippet palette"
+	>
 		<div class="snippet-header">
 			<input
 				bind:this={searchInput}
@@ -232,7 +233,7 @@
 
 					<div class="preview-body">
 						<!-- eslint-disable-next-line svelte/no-at-html-tags — content is escaped by escapeHtml() before placeholder spans are added -->
-					<pre>{@html getPreview(snippet.body)}</pre>
+						<pre>{@html getPreview(snippet.body)}</pre>
 					</div>
 
 					<div class="preview-footer">
@@ -248,9 +249,7 @@
 						</div>
 					{/if}
 				{:else}
-					<div class="preview-empty">
-						Select a snippet to preview
-					</div>
+					<div class="preview-empty">Select a snippet to preview</div>
 				{/if}
 			</div>
 		</div>

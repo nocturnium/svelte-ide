@@ -1,78 +1,13 @@
-<script lang="ts">
-	/**
-	 * DiagnosticMarker - Inline diagnostic indicator
-	 *
-	 * Renders squiggly underlines and gutter icons for diagnostics
-	 * at specific positions in the editor.
-	 */
-
-	import type { Diagnostic, DiagnosticSeverity } from '$lib/types/lsp';
-
-	interface Props {
-		/** The diagnostic to display */
-		diagnostic: Diagnostic;
-		/** Whether this is a gutter marker or inline underline */
-		type?: 'gutter' | 'inline';
-		/** Called when marker is clicked */
-		onClick?: () => void;
-		class?: string;
-	}
-
-	let {
-		diagnostic,
-		type = 'inline',
-		onClick,
-		class: className = ''
-	}: Props = $props();
-
-	function getSeverityClass(severity?: DiagnosticSeverity): string {
-		switch (severity) {
-			case 1: return 'error';
-			case 2: return 'warning';
-			case 3: return 'info';
-			case 4: return 'hint';
-			default: return 'info';
-		}
-	}
-
-	function getSeverityLabel(severity?: DiagnosticSeverity): string {
-		switch (severity) {
-			case 1: return 'Error';
-			case 2: return 'Warning';
-			case 3: return 'Info';
-			case 4: return 'Hint';
-			default: return 'Diagnostic';
-		}
-	}
-</script>
-
-{#if type === 'gutter'}
-	<button
-		class="diagnostic-gutter diagnostic-gutter--{getSeverityClass(diagnostic.severity)} {className}"
-		title="{getSeverityLabel(diagnostic.severity)}: {diagnostic.message}"
-		onclick={onClick}
-		aria-label="{getSeverityLabel(diagnostic.severity)} on line {diagnostic.range.start.line + 1}"
-	>
-		<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG content is generated internally by getGutterIcon; no user input reaches this output -->
-		{@html getGutterIcon(diagnostic.severity)}
-	</button>
-{:else}
-	<span
-		class="diagnostic-inline diagnostic-inline--{getSeverityClass(diagnostic.severity)} {className}"
-		title="{getSeverityLabel(diagnostic.severity)}: {diagnostic.message}"
-		role="button"
-		tabindex="0"
-		onclick={onClick}
-		onkeydown={(e) => e.key === 'Enter' && onClick?.()}
-	></span>
-{/if}
-
 <script module lang="ts">
 	function getGutterIcon(severity?: number): string {
-		const color = severity === 1 ? 'var(--ide-error)' :
-			severity === 2 ? 'var(--ide-warning)' :
-			severity === 3 ? 'var(--ide-info)' :
-			'var(--ide-text-muted)';
+		const color =
+			severity === 1
+				? 'var(--ide-error)'
+				: severity === 2
+					? 'var(--ide-warning)'
+					: severity === 3
+						? 'var(--ide-info)'
+						: 'var(--ide-text-muted)';
 
 		switch (severity) {
 			case 1: // Error - filled circle with X
@@ -102,6 +37,80 @@
 		}
 	}
 </script>
+
+<script lang="ts">
+	/**
+	 * DiagnosticMarker - Inline diagnostic indicator
+	 *
+	 * Renders squiggly underlines and gutter icons for diagnostics
+	 * at specific positions in the editor.
+	 */
+
+	import type { Diagnostic, DiagnosticSeverity } from '$lib/types/lsp';
+
+	interface Props {
+		/** The diagnostic to display */
+		diagnostic: Diagnostic;
+		/** Whether this is a gutter marker or inline underline */
+		type?: 'gutter' | 'inline';
+		/** Called when marker is clicked */
+		onClick?: () => void;
+		class?: string;
+	}
+
+	let { diagnostic, type = 'inline', onClick, class: className = '' }: Props = $props();
+
+	function getSeverityClass(severity?: DiagnosticSeverity): string {
+		switch (severity) {
+			case 1:
+				return 'error';
+			case 2:
+				return 'warning';
+			case 3:
+				return 'info';
+			case 4:
+				return 'hint';
+			default:
+				return 'info';
+		}
+	}
+
+	function getSeverityLabel(severity?: DiagnosticSeverity): string {
+		switch (severity) {
+			case 1:
+				return 'Error';
+			case 2:
+				return 'Warning';
+			case 3:
+				return 'Info';
+			case 4:
+				return 'Hint';
+			default:
+				return 'Diagnostic';
+		}
+	}
+</script>
+
+{#if type === 'gutter'}
+	<button
+		class="diagnostic-gutter diagnostic-gutter--{getSeverityClass(diagnostic.severity)} {className}"
+		title="{getSeverityLabel(diagnostic.severity)}: {diagnostic.message}"
+		onclick={onClick}
+		aria-label="{getSeverityLabel(diagnostic.severity)} on line {diagnostic.range.start.line + 1}"
+	>
+		<!-- eslint-disable-next-line svelte/no-at-html-tags -- SVG content is generated internally by getGutterIcon; no user input reaches this output -->
+		{@html getGutterIcon(diagnostic.severity)}
+	</button>
+{:else}
+	<span
+		class="diagnostic-inline diagnostic-inline--{getSeverityClass(diagnostic.severity)} {className}"
+		title="{getSeverityLabel(diagnostic.severity)}: {diagnostic.message}"
+		role="button"
+		tabindex="0"
+		onclick={onClick}
+		onkeydown={(e) => e.key === 'Enter' && onClick?.()}
+	></span>
+{/if}
 
 <style>
 	.diagnostic-gutter {

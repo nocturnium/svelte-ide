@@ -1,6 +1,6 @@
 # Architecture
 
-`@nocturnium/svelte-ide` is a zero-dependency, Svelte 5-native editor toolkit. It ships as plain Svelte components, runes-based stores, and small service modules — no UI framework, no CodeMirror, and no bundled server. Every feature that needs a backend (language servers, real-time collaboration, a virtual filesystem, a plugin host, an AI chat endpoint) talks to a network boundary that *you* supply; nothing is reachable until you wire it up. This page is the contributor's and advanced user's map of how the pieces are layered, how editor state flows through runes, where the optional networked seams are, and how the package is built and published.
+`@nocturnium/svelte-ide` is a zero-dependency, Svelte 5-native editor toolkit. It ships as plain Svelte components, runes-based stores, and small service modules — no UI framework, no CodeMirror, and no bundled server. Every feature that needs a backend (language servers, real-time collaboration, a virtual filesystem, a plugin host, an AI chat endpoint) talks to a network boundary that _you_ supply; nothing is reachable until you wire it up. This page is the contributor's and advanced user's map of how the pieces are layered, how editor state flows through runes, where the optional networked seams are, and how the package is built and published.
 
 ## Table of contents
 
@@ -13,7 +13,7 @@
 
 ## Layering
 
-The library is organized as four conceptual tiers. Code only ever depends *downward*: components consume stores and services, stores hold state and may call services, services own I/O, and the optional backends live entirely outside the npm package.
+The library is organized as four conceptual tiers. Code only ever depends _downward_: components consume stores and services, stores hold state and may call services, services own I/O, and the optional backends live entirely outside the npm package.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -49,32 +49,32 @@ LSP bridge   VFS backend   Plugin host    AI chat       CRDT relay   (your
 
 Two rules fall out of this picture and are worth keeping in mind when contributing:
 
-1. **The core is offline-first.** Components, stores, utils, the tokenizer, folding, multi-cursor, and find/replace have *zero* runtime dependencies and never touch the network. You can render an `<Editor>` with nothing but the package and the theme stylesheet.
+1. **The core is offline-first.** Components, stores, utils, the tokenizer, folding, multi-cursor, and find/replace have _zero_ runtime dependencies and never touch the network. You can render an `<Editor>` with nothing but the package and the theme stylesheet.
 2. **Everything networked is opt-in and bring-your-own-backend.** The base URLs (`/api/vfs`, `/api/plugins`, `/api/chat`) are same-origin defaults; the LSP and CRDT endpoints are always caller-supplied. The package never embeds a host.
 
 ## Module map (`src/lib`)
 
-Most of the published surface is re-exported from `src/lib/index.ts` (the root `.` entry point). Two parts are deliberately kept off the root barrel and live only behind their own subpaths: the CRDT *wrappers* (`./crdt`, because they pull in optional peer dependencies) and the client-side *plugin runtime* (`./plugins`). The root barrel still re-exports the plugin *components* (`PluginPanel`, …) from `components/plugins`; only the `pluginRegistry` / `definePlugin` runtime is subpath-only.
+Most of the published surface is re-exported from `src/lib/index.ts` (the root `.` entry point). Two parts are deliberately kept off the root barrel and live only behind their own subpaths: the CRDT _wrappers_ (`./crdt`, because they pull in optional peer dependencies) and the client-side _plugin runtime_ (`./plugins`). The root barrel still re-exports the plugin _components_ (`PluginPanel`, …) from `components/plugins`; only the `pluginRegistry` / `definePlugin` runtime is subpath-only.
 
-| Subdirectory | What it does | Published entry point |
-| --- | --- | --- |
-| `components/core` | Unstyled UI primitives: `Button`, `Icon`, `Input`, `Textarea`, `Tooltip`, `Kbd`, `Badge`, `Spinner`, `Avatar`, `ContextMenu`, `ResizeHandle`, `ErrorBoundary`, `ConnectionStatus`. | `./components/core`, `.` |
-| `components/editor` | The editor itself and its internals: `Editor`, `CustomEditor`, `CollaborativeEditor`, `EditorPane`, `EditorTabs`, `FileExplorer`, `FileIcon`, plus the `core/` subsystems, the `tokenizer/`, `languages.ts`, and `theme.ts`. | `./components/editor`, `.` |
-| `components/layout` | App shell: `IDELayout`, `StatusBar`. | `./components/layout`, `.` |
-| `components/lsp` | LSP-aware UI: `LSPEditor`, `AutocompleteWidget`, `HoverTooltip`, `SignatureHelpWidget`, `DiagnosticsPanel`, `DiagnosticMarker`. | `./components/lsp`, `.` |
-| `components/ai` | AI assistant UI: `AIPanel`, `AIMessage`, `AIToolCallDisplay`, `AIEditPreview`, `AIInlineEdit`, `AISuggestionWidget`. | `./components/ai`, `.` |
-| `components/agents` | Multi-agent presence UI: `AgentAvatar`, `AgentActivityPanel`, `AgentPresenceBar`, `AgentCursor`. | `./components/agents`, `.` |
-| `components/vfs` | Lock and version conflict UI: `LockIndicator`, `LockConflictDialog`, `LockOverlay`, `VersionConflictDialog`. | `./components/vfs`, `.` |
-| `components/plugins` | Plugin marketplace UI: `PluginPanel`, `PluginCard`, `PluginProposalForm`, `PluginStatusBadge`. | `./components/plugins`, `.` |
-| `stores` | Module-scoped Svelte 5 runes stores: `editor`, `ai`, `ai-persistence`, `plugin`, `collaboration`, `vfs`, `agents`, `layout`. | `./stores`, `.` |
-| `services` | I/O and coordination: `lsp-client`, `vfs-client`, `ide-integration`, `optimistic`, `error-handling`. | `.` (re-exported; the LSP client surface is exported by name, the others under namespaces such as `vfsClient`, `ideIntegration`, `optimistic`, `errorHandling`) |
-| `crdt` | Yjs wrappers for real-time collaboration: `CollaborativeDocument`, `CollaborativeProvider`, `createAwarenessProtocol`, `createUndoManager`. Requires optional peers. | `./crdt` **only** |
-| `plugins` | Client-side plugin runtime: `pluginRegistry`, `createPluginLoader`, `definePlugin`, `defineCommand`, `definePanel`. Requires a caller-supplied plugin host. | `./plugins` **only** |
-| `types` | Type-only modules: `editor`, `filesystem`, `vfs`, `ai`, `plugin`, `crdt`, `lsp`, `events`, `agents`. | `./types` (full set); the root `.` re-exports most of these — `editor`, `filesystem`, `ai`, `plugin`, `crdt`, `events`, `lsp` |
-| `utils` | Pure helpers: `language` (detection), `format`, `keybindings`. | `./utils`, `.` |
-| `styles` | `theme.css` — the design tokens (CSS custom properties on `:root`). | `./theme.css` |
+| Subdirectory         | What it does                                                                                                                                                                                                                 | Published entry point                                                                                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `components/core`    | Unstyled UI primitives: `Button`, `Icon`, `Input`, `Textarea`, `Tooltip`, `Kbd`, `Badge`, `Spinner`, `Avatar`, `ContextMenu`, `ResizeHandle`, `ErrorBoundary`, `ConnectionStatus`.                                           | `./components/core`, `.`                                                                                                                                        |
+| `components/editor`  | The editor itself and its internals: `Editor`, `CustomEditor`, `CollaborativeEditor`, `EditorPane`, `EditorTabs`, `FileExplorer`, `FileIcon`, plus the `core/` subsystems, the `tokenizer/`, `languages.ts`, and `theme.ts`. | `./components/editor`, `.`                                                                                                                                      |
+| `components/layout`  | App shell: `IDELayout`, `StatusBar`.                                                                                                                                                                                         | `./components/layout`, `.`                                                                                                                                      |
+| `components/lsp`     | LSP-aware UI: `LSPEditor`, `AutocompleteWidget`, `HoverTooltip`, `SignatureHelpWidget`, `DiagnosticsPanel`, `DiagnosticMarker`.                                                                                              | `./components/lsp`, `.`                                                                                                                                         |
+| `components/ai`      | AI assistant UI: `AIPanel`, `AIMessage`, `AIToolCallDisplay`, `AIEditPreview`, `AIInlineEdit`, `AISuggestionWidget`.                                                                                                         | `./components/ai`, `.`                                                                                                                                          |
+| `components/agents`  | Multi-agent presence UI: `AgentAvatar`, `AgentActivityPanel`, `AgentPresenceBar`, `AgentCursor`.                                                                                                                             | `./components/agents`, `.`                                                                                                                                      |
+| `components/vfs`     | Lock and version conflict UI: `LockIndicator`, `LockConflictDialog`, `LockOverlay`, `VersionConflictDialog`.                                                                                                                 | `./components/vfs`, `.`                                                                                                                                         |
+| `components/plugins` | Plugin marketplace UI: `PluginPanel`, `PluginCard`, `PluginProposalForm`, `PluginStatusBadge`.                                                                                                                               | `./components/plugins`, `.`                                                                                                                                     |
+| `stores`             | Module-scoped Svelte 5 runes stores: `editor`, `ai`, `ai-persistence`, `plugin`, `collaboration`, `vfs`, `agents`, `layout`.                                                                                                 | `./stores`, `.`                                                                                                                                                 |
+| `services`           | I/O and coordination: `lsp-client`, `vfs-client`, `ide-integration`, `optimistic`, `error-handling`.                                                                                                                         | `.` (re-exported; the LSP client surface is exported by name, the others under namespaces such as `vfsClient`, `ideIntegration`, `optimistic`, `errorHandling`) |
+| `crdt`               | Yjs wrappers for real-time collaboration: `CollaborativeDocument`, `CollaborativeProvider`, `createAwarenessProtocol`, `createUndoManager`. Requires optional peers.                                                         | `./crdt` **only**                                                                                                                                               |
+| `plugins`            | Client-side plugin runtime: `pluginRegistry`, `createPluginLoader`, `definePlugin`, `defineCommand`, `definePanel`. Requires a caller-supplied plugin host.                                                                  | `./plugins` **only**                                                                                                                                            |
+| `types`              | Type-only modules: `editor`, `filesystem`, `vfs`, `ai`, `plugin`, `crdt`, `lsp`, `events`, `agents`.                                                                                                                         | `./types` (full set); the root `.` re-exports most of these — `editor`, `filesystem`, `ai`, `plugin`, `crdt`, `events`, `lsp`                                   |
+| `utils`              | Pure helpers: `language` (detection), `format`, `keybindings`.                                                                                                                                                               | `./utils`, `.`                                                                                                                                                  |
+| `styles`             | `theme.css` — the design tokens (CSS custom properties on `:root`).                                                                                                                                                          | `./theme.css`                                                                                                                                                   |
 
-> **Note on `CollaborativeEditor`.** The `<CollaborativeEditor>` component lives under `components/editor` and is exported from the root `.` entry (it does not require Yjs to *import*, because it accepts an externally created `Y.Doc`). The Yjs document/provider *wrappers* it pairs with (`CollaborativeDocument`, `CollaborativeProvider`) live in the `crdt` module and are imported from `@nocturnium/svelte-ide/crdt`, which is where the optional `yjs`/`y-websocket`/`y-protocols` peers come in. See [The networked boundaries](#the-networked-boundaries).
+> **Note on `CollaborativeEditor`.** The `<CollaborativeEditor>` component lives under `components/editor` and is exported from the root `.` entry (it does not require Yjs to _import_, because it accepts an externally created `Y.Doc`). The Yjs document/provider _wrappers_ it pairs with (`CollaborativeDocument`, `CollaborativeProvider`) live in the `crdt` module and are imported from `@nocturnium/svelte-ide/crdt`, which is where the optional `yjs`/`y-websocket`/`y-protocols` peers come in. See [The networked boundaries](#the-networked-boundaries).
 
 ### Inside `components/editor`
 
@@ -92,7 +92,7 @@ State lives in **module-scoped runes**, not in component instances. A store like
 
 ```ts
 // Reading reactive store state in a component
-import { activeTab, dirtyTabs, openFile, updateContent } from "@nocturnium/svelte-ide/stores";
+import { activeTab, dirtyTabs, openFile, updateContent } from '@nocturnium/svelte-ide/stores';
 
 // `activeTab.current` and `dirtyTabs.current` are reactive reads;
 // mutating functions like openFile() / updateContent() drive the $state.
@@ -120,7 +120,7 @@ CustomEditor.svelte  ──uses──►  editor/core (state · navigation · mu
 
 The editor document model in `editor/core/state` (`createEditorState`, `EditorState`, `Position`, `Selection`, `Line`, `ChangeEvent`) is deliberately plain — it is not a rune. Components own the runes; `core/` owns the algorithms. That separation is why every `core/` module is unit-tested in isolation (`*.test.ts` siblings) without a DOM. When you contribute editor logic, prefer adding it to `core/` as a pure function and let a `.svelte` file bind it to `$state`/`$derived`/`$effect`.
 
-> The editor store has no explicit "mark dirty" call: `updateContent(tabId, content)` sets the tab's `isDirty` field by comparing the new content against the saved content, and `markSaved()` clears it. The `dirtyTabs` accessor is derived from those tab flags. (The separate VFS store *does* expose a `markDirty()` for filesystem-level dirty tracking — don't confuse the two.)
+> The editor store has no explicit "mark dirty" call: `updateContent(tabId, content)` sets the tab's `isDirty` field by comparing the new content against the saved content, and `markSaved()` clears it. The `dirtyTabs` accessor is derived from those tab flags. (The separate VFS store _does_ expose a `markDirty()` for filesystem-level dirty tracking — don't confuse the two.)
 
 For deeper, feature-specific flow see [Editor](guides/editor.md), [Multi-cursor](guides/multi-cursor.md), [Code folding](guides/code-folding.md), and the stores reference (`docs/api/stores.md`).
 
@@ -128,43 +128,40 @@ For deeper, feature-specific flow see [Editor](guides/editor.md), [Multi-cursor]
 
 Each networked feature is isolated behind exactly one seam, so you can adopt them independently. None of these connect on import — you must call the connect/configure function with your own endpoint.
 
-| Feature | Client surface | Transport | Default / endpoint | Backend you provide |
-| --- | --- | --- | --- | --- |
-| **LSP** | `createLSPClient` / `LSPClient` + `<LSPEditor>` | WebSocket + JSON-RPC | caller-supplied `serverUrl` | An LSP-over-WebSocket bridge (e.g. the Go server in `backend/`). |
-| **VFS** | `vfsClient` service + `vfs` store | HTTP (`fetch`) | `/api/vfs`, configurable via `vfsClient.configure({ baseUrl })` | A virtual-filesystem REST backend. |
-| **Plugins** | `createPluginLoader(apiBase)` + `plugin` store `connect(endpoint)` | HTTP / SSE | `/api/plugins`, configurable | A "plugin host" that compiles/serves proposals and streams events. |
-| **AI** | `<AIPanel>` + `ai` store `sendMessage()` | HTTP (`fetch`) | `/api/chat`, model id configurable | Your own chat completion endpoint. |
-| **CRDT** | `CollaborativeProvider` (transport) from `./crdt` + `<CollaborativeEditor>` (binding) | WebSocket via `y-websocket` | `serverUrl` always caller-supplied | A Yjs WebSocket relay. |
+| Feature     | Client surface                                                                        | Transport                   | Default / endpoint                                              | Backend you provide                                                |
+| ----------- | ------------------------------------------------------------------------------------- | --------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **LSP**     | `createLSPClient` / `LSPClient` + `<LSPEditor>`                                       | WebSocket + JSON-RPC        | caller-supplied `serverUrl`                                     | An LSP-over-WebSocket bridge (e.g. the Go server in `backend/`).   |
+| **VFS**     | `vfsClient` service + `vfs` store                                                     | HTTP (`fetch`)              | `/api/vfs`, configurable via `vfsClient.configure({ baseUrl })` | A virtual-filesystem REST backend.                                 |
+| **Plugins** | `createPluginLoader(apiBase)` + `plugin` store `connect(endpoint)`                    | HTTP / SSE                  | `/api/plugins`, configurable                                    | A "plugin host" that compiles/serves proposals and streams events. |
+| **AI**      | `<AIPanel>` + `ai` store `sendMessage()`                                              | HTTP (`fetch`)              | `/api/chat`, model id configurable                              | Your own chat completion endpoint.                                 |
+| **CRDT**    | `CollaborativeProvider` (transport) from `./crdt` + `<CollaborativeEditor>` (binding) | WebSocket via `y-websocket` | `serverUrl` always caller-supplied                              | A Yjs WebSocket relay.                                             |
 
 ```ts
 // LSP — connect to your own bridge (e.g. backend/cmd/lsp-bridge on :8765)
-import { createLSPClient } from "@nocturnium/svelte-ide";
+import { createLSPClient } from '@nocturnium/svelte-ide';
 
-const lsp = createLSPClient({ serverUrl: "ws://localhost:8765" });
+const lsp = createLSPClient({ serverUrl: 'ws://localhost:8765' });
 
 // VFS — point the client at your filesystem backend
-import { vfsClient } from "@nocturnium/svelte-ide";
+import { vfsClient } from '@nocturnium/svelte-ide';
 
-vfsClient.configure({ baseUrl: "/api/vfs" });
+vfsClient.configure({ baseUrl: '/api/vfs' });
 
 // Plugins — bind the loader to your plugin host
-import { createPluginLoader } from "@nocturnium/svelte-ide/plugins";
+import { createPluginLoader } from '@nocturnium/svelte-ide/plugins';
 
-const loader = createPluginLoader("/api/plugins");
+const loader = createPluginLoader('/api/plugins');
 
 // CRDT — serverUrl is never baked in; you supply the relay.
 // The provider needs a Yjs doc and a room id (not a "room" field).
-import {
-  CollaborativeDocument,
-  CollaborativeProvider
-} from "@nocturnium/svelte-ide/crdt";
+import { CollaborativeDocument, CollaborativeProvider } from '@nocturnium/svelte-ide/crdt';
 
-const collabDoc = new CollaborativeDocument({ documentId: "doc-123" });
+const collabDoc = new CollaborativeDocument({ documentId: 'doc-123' });
 
 const provider = new CollaborativeProvider({
-  serverUrl: "wss://collab.example.com",
-  roomId: "doc-123",
-  doc: collabDoc.doc
+	serverUrl: 'wss://collab.example.com',
+	roomId: 'doc-123',
+	doc: collabDoc.doc
 });
 ```
 
@@ -176,7 +173,7 @@ For end-to-end setup of each boundary, see [LSP](guides/lsp.md), Collaboration (
 
 A few seams handle untrusted input and are worth knowing about when reviewing changes:
 
-- **AI rendering** — `AIMessageContent` escapes HTML and whitelists link schemes *before* any `{@html}`, so model output can never inject markup.
+- **AI rendering** — `AIMessageContent` escapes HTML and whitelists link schemes _before_ any `{@html}`, so model output can never inject markup.
 - **Untrusted plugin code** — the library ships **no** client-side sandbox. The former in-realm `createSandbox` (`new Function`) evaluator was removed in v1.0.0 because it was not a real security boundary. Run untrusted plugin code on the host (out of band, via `loadModule`) or in `<iframe sandbox>`/Web Worker isolation you control — see the [plugins guide](guides/plugins.md#running-untrusted-plugin-code).
 - **CRDT relay & LSP bridge** — because the URLs are caller-supplied, origin and auth policy are entirely your backend's responsibility. The reference Go bridge in `backend/` defaults to localhost-only origins.
 
@@ -185,7 +182,7 @@ A few seams handle untrusted input and are worth knowing about when reviewing ch
 The repository is two independent units:
 
 1. **The npm package** — everything under `src/lib`. It is compiled to `dist/` by `@sveltejs/package` (`svelte-package`) and validated by `publint`. The `package` script runs `svelte-kit sync && svelte-package && publint`; `prepublishOnly` additionally runs `svelte-check`. Only `dist` is published (`"files": ["dist"]`), and every `exports` subpath maps to a `dist/**` file.
-2. **The backend** — `backend/` is a *standalone Go module* (`lsp-bridge`), not part of the npm package and never bundled. Run it separately with `go run ./cmd/lsp-bridge` (listens on `:8765`, localhost-only origins by default; add more with `-allowed-origins`). It is one possible implementation of the LSP boundary; any LSP-over-WebSocket server works.
+2. **The backend** — `backend/` is a _standalone Go module_ (`lsp-bridge`), not part of the npm package and never bundled. Run it separately with `go run ./cmd/lsp-bridge` (listens on `:8765`, localhost-only origins by default; add more with `-allowed-origins`). It is one possible implementation of the LSP boundary; any LSP-over-WebSocket server works.
 
 ```
  src/lib/  ──(svelte-package + publint)──►  dist/  ──(npm publish)──►  @nocturnium/svelte-ide

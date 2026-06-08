@@ -80,6 +80,7 @@ const ws = new WebSocket('ws://localhost:8765/lsp?language=go');
 ```
 
 Supported languages:
+
 - `go` - Uses gopls
 - `typescript`, `javascript`, `typescriptreact`, `javascriptreact` - Uses typescript-language-server
 
@@ -88,7 +89,7 @@ Supported languages:
 Returns server health status.
 
 ```json
-{"status":"ok","version":"1.0.0"}
+{ "status": "ok", "version": "1.0.0" }
 ```
 
 ### HTTP: `/info`
@@ -97,16 +98,16 @@ Returns information about registered language servers.
 
 ```json
 {
-  "servers": {
-    "go": {
-      "command": "gopls",
-      "languages": ["go"]
-    },
-    "typescript": {
-      "command": "typescript-language-server",
-      "languages": ["typescript", "javascript", "typescriptreact", "javascriptreact"]
-    }
-  }
+	"servers": {
+		"go": {
+			"command": "gopls",
+			"languages": ["go"]
+		},
+		"typescript": {
+			"command": "typescript-language-server",
+			"languages": ["typescript", "javascript", "typescriptreact", "javascriptreact"]
+		}
+	}
 }
 ```
 
@@ -117,9 +118,9 @@ import { createLSPClient } from '@nocturnium/svelte-ide';
 
 // Connect to Go language server
 const client = createLSPClient({
-  serverUrl: 'ws://localhost:8765/lsp?language=go',
-  rootUri: 'file:///path/to/project',
-  clientInfo: { name: 'svelte-ide', version: '1.0.0' }
+	serverUrl: 'ws://localhost:8765/lsp?language=go',
+	rootUri: 'file:///path/to/project',
+	clientInfo: { name: 'svelte-ide', version: '1.0.0' }
 });
 
 // Initialize connection
@@ -127,23 +128,23 @@ await client.connect();
 
 // Open a file
 await client.didOpen({
-  textDocument: {
-    uri: 'file:///path/to/project/main.go',
-    languageId: 'go',
-    version: 1,
-    text: 'package main\n\nfunc main() {\n\t\n}'
-  }
+	textDocument: {
+		uri: 'file:///path/to/project/main.go',
+		languageId: 'go',
+		version: 1,
+		text: 'package main\n\nfunc main() {\n\t\n}'
+	}
 });
 
 // Get completions at cursor position
 const completions = await client.completion({
-  textDocument: { uri: 'file:///path/to/project/main.go' },
-  position: { line: 3, character: 1 }
+	textDocument: { uri: 'file:///path/to/project/main.go' },
+	position: { line: 3, character: 1 }
 });
 
 // Handle diagnostics
 client.onDiagnostics((params) => {
-  console.log('Diagnostics for', params.uri, params.diagnostics);
+	console.log('Diagnostics for', params.uri, params.diagnostics);
 });
 ```
 

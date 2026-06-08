@@ -106,7 +106,7 @@ const DEFAULT_CONFIG: EchoCursorConfig = {
 		'#14b8a6', // teal
 		'#f97316', // orange
 		'#6366f1', // indigo
-		'#84cc16'  // lime
+		'#84cc16' // lime
 	]
 };
 
@@ -165,7 +165,10 @@ export class EchoCursorManager {
 	/**
 	 * Add an echo cursor at a position
 	 */
-	addEchoPoint(position: Position, options?: { delay?: number; label?: string }): EchoCursor | null {
+	addEchoPoint(
+		position: Position,
+		options?: { delay?: number; label?: string }
+	): EchoCursor | null {
 		if (!this.enabled) return null;
 		if (this.echoCursors.size >= this.config.maxEchoCursors) return null;
 
