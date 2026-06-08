@@ -130,12 +130,7 @@
 		generateMockConversation,
 		type MockAIConfig
 	} from '$lib/services/mock-ai';
-	import {
-		createConversation,
-		addMessage,
-		getMessages,
-		clearError
-	} from '$lib/stores/ai.svelte';
+	import { createConversation, addMessage, getMessages, clearError } from '$lib/stores/ai.svelte';
 
 	// Install the scoped chat mock synchronously during this page's setup so the
 	// embedded <AIPanel>'s sendMessage() streams a canned reply instead of hitting
@@ -167,7 +162,11 @@
 		{ id: 'tc1', name: 'read_file', arguments: { path: '/src/lib/utils.ts' } },
 		{ id: 'tc2', name: 'search_files', arguments: { query: 'TODO', include: '**/*.ts' } },
 		{ id: 'tc3', name: 'run_command', arguments: { command: 'npm test' } },
-		{ id: 'tc4', name: 'edit_file', arguments: { path: '/src/lib/utils.ts', startLine: 10, endLine: 25 } }
+		{
+			id: 'tc4',
+			name: 'edit_file',
+			arguments: { path: '/src/lib/utils.ts', startLine: 10, endLine: 25 }
+		}
 	];
 
 	// Sample edit preview
@@ -385,16 +384,36 @@
 						<Icon name="message-circle" size={32} />
 						<p>Send a message to start the demo</p>
 						<div class="suggestions">
-							<button onclick={() => { inputValue = 'Explain this code'; handleSendStreaming(); }}>
+							<button
+								onclick={() => {
+									inputValue = 'Explain this code';
+									handleSendStreaming();
+								}}
+							>
 								Explain this code
 							</button>
-							<button onclick={() => { inputValue = 'Refactor to use async/await'; handleSendStreaming(); }}>
+							<button
+								onclick={() => {
+									inputValue = 'Refactor to use async/await';
+									handleSendStreaming();
+								}}
+							>
 								Refactor code
 							</button>
-							<button onclick={() => { inputValue = 'Find bugs in this file'; handleSendStreaming(); }}>
+							<button
+								onclick={() => {
+									inputValue = 'Find bugs in this file';
+									handleSendStreaming();
+								}}
+							>
 								Find bugs
 							</button>
-							<button onclick={() => { inputValue = 'Write tests for this function'; handleSendStreaming(); }}>
+							<button
+								onclick={() => {
+									inputValue = 'Write tests for this function';
+									handleSendStreaming();
+								}}
+							>
 								Write tests
 							</button>
 						</div>
@@ -544,7 +563,8 @@
 		<p class="section-desc">AI store configuration options</p>
 
 		<div class="config-demo">
-			<pre><code>{`// Configure AI in your app
+			<pre><code
+					>{`// Configure AI in your app
 import { updateConfig } from '$lib/stores/ai.svelte';
 
 updateConfig({
@@ -568,7 +588,8 @@ registerTool({
   handler: async (args) => {
     // Implementation
   }
-});`}</code></pre>
+});`}</code
+				></pre>
 		</div>
 	</section>
 </div>
@@ -644,7 +665,7 @@ registerTool({
 		color: var(--ide-text-secondary);
 	}
 
-	.control-group input[type="range"] {
+	.control-group input[type='range'] {
 		width: 100px;
 		accent-color: var(--color-nocturnium-wave);
 		cursor: pointer;
@@ -659,7 +680,7 @@ registerTool({
 		cursor: pointer;
 	}
 
-	.checkbox-label input[type="checkbox"] {
+	.checkbox-label input[type='checkbox'] {
 		accent-color: var(--color-nocturnium-wave);
 		cursor: pointer;
 	}
@@ -741,13 +762,25 @@ registerTool({
 		animation: bounce 1.4s infinite ease-in-out;
 	}
 
-	.typing-indicator span:nth-child(1) { animation-delay: 0s; }
-	.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-	.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+	.typing-indicator span:nth-child(1) {
+		animation-delay: 0s;
+	}
+	.typing-indicator span:nth-child(2) {
+		animation-delay: 0.2s;
+	}
+	.typing-indicator span:nth-child(3) {
+		animation-delay: 0.4s;
+	}
 
 	@keyframes bounce {
-		0%, 60%, 100% { transform: translateY(0); }
-		30% { transform: translateY(-4px); }
+		0%,
+		60%,
+		100% {
+			transform: translateY(0);
+		}
+		30% {
+			transform: translateY(-4px);
+		}
 	}
 
 	/* Keep the in-flight Send button's loader visibly alive while streaming. */
@@ -901,7 +934,7 @@ registerTool({
 			width: 100%;
 		}
 
-		.control-group label:not(.checkbox-label) input[type="range"] {
+		.control-group label:not(.checkbox-label) input[type='range'] {
 			flex: 1;
 			width: auto;
 			min-width: 0;

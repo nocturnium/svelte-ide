@@ -84,9 +84,12 @@
 					<button
 						class="custom-editor__fold-placeholder"
 						title="{getHiddenLineCount(index)} lines hidden"
-						onclick={(e) => { e.stopPropagation(); onExpandFold(index); }}
-						aria-label="Expand {getHiddenLineCount(index)} hidden lines"
-					>...</button>
+						onclick={(e) => {
+							e.stopPropagation();
+							onExpandFold(index);
+						}}
+						aria-label="Expand {getHiddenLineCount(index)} hidden lines">...</button
+					>
 				{/if}
 			</div>
 		</div>

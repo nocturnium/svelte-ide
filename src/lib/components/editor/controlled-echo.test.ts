@@ -141,7 +141,7 @@ describe('Controlled-mode echo bug', () => {
 		expect(state.getContent()).toBe('completely different');
 	});
 
-	it('treats setting the prop to the editor\'s current content as a no-op', () => {
+	it("treats setting the prop to the editor's current content as a no-op", () => {
 		const { state } = harness;
 
 		// Parent re-passes the unchanged value: must not rebuild.

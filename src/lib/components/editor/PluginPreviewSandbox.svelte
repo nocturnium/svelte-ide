@@ -7,7 +7,6 @@
 	 * code transformation preview with rollback capability.
 	 */
 
-
 	interface PluginTransform {
 		/** Transform ID */
 		id: string;
@@ -387,7 +386,9 @@
 				{:else}
 					<div class="preview-empty">
 						<p>Select a plugin to preview its transformation</p>
-						<p class="preview-hint">Your code will be transformed in this sandbox before applying</p>
+						<p class="preview-hint">
+							Your code will be transformed in this sandbox before applying
+						</p>
 					</div>
 				{/if}
 			</div>

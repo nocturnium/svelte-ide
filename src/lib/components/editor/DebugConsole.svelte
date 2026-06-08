@@ -260,7 +260,7 @@
 			</div>
 
 			<div class="header-filters">
-				{#each (['all', 'error', 'warning', 'info', 'log'] as const) as filterType (filterType)}
+				{#each ['all', 'error', 'warning', 'info', 'log'] as const as filterType (filterType)}
 					{@const count = entryCounts()[filterType]}
 					<button
 						class="filter-btn"
@@ -273,7 +273,9 @@
 							<span class="filter-icon">{getTypeIcon(filterType)}</span>
 						{/if}
 						<span class="filter-label">
-							{filterType === 'all' ? 'All' : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+							{filterType === 'all'
+								? 'All'
+								: filterType.charAt(0).toUpperCase() + filterType.slice(1)}
 						</span>
 						{#if count > 0}
 							<span class="filter-count">{count}</span>
@@ -283,13 +285,9 @@
 			</div>
 
 			<div class="header-actions">
-				<button class="action-btn" onclick={onClear} title="Clear console (Ctrl+L)">
-					🗑
-				</button>
+				<button class="action-btn" onclick={onClear} title="Clear console (Ctrl+L)"> 🗑 </button>
 				{#if onClose}
-					<button class="action-btn" onclick={onClose} title="Close">
-						×
-					</button>
+					<button class="action-btn" onclick={onClose} title="Close"> × </button>
 				{/if}
 			</div>
 		</div>
@@ -317,10 +315,7 @@
 						</span>
 
 						{#if entry.expandable}
-							<button
-								class="entry-expand"
-								onclick={() => toggleExpand(entry.id)}
-							>
+							<button class="entry-expand" onclick={() => toggleExpand(entry.id)}>
 								{isExpanded ? '▾' : '▸'}
 							</button>
 						{/if}
@@ -362,11 +357,7 @@
 					onkeydown={handleKeyDown}
 					placeholder={inputPlaceholder}
 				/>
-				<button
-					class="input-submit"
-					onclick={handleSubmit}
-					disabled={!inputValue.trim()}
-				>
+				<button class="input-submit" onclick={handleSubmit} disabled={!inputValue.trim()}>
 					⏎
 				</button>
 			</div>

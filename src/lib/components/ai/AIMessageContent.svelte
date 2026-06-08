@@ -121,20 +121,22 @@
 	// Format text with basic markdown. Input is escaped FIRST, then a small set of
 	// safe inline elements is re-introduced — so the only HTML emitted is ours.
 	function formatText(text: string): string {
-		return escapeHtml(text)
-			// Bold
-			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-			// Italic
-			.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-			// Links (href is validated; unsafe schemes degrade to plain text)
-			.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
-				const url = safeUrl(href);
-				return url
-					? `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
-					: label;
-			})
-			// Line breaks
-			.replace(/\n/g, '<br>');
+		return (
+			escapeHtml(text)
+				// Bold
+				.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+				// Italic
+				.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+				// Links (href is validated; unsafe schemes degrade to plain text)
+				.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
+					const url = safeUrl(href);
+					return url
+						? `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
+						: label;
+				})
+				// Line breaks
+				.replace(/\n/g, '<br>')
+		);
 	}
 
 	// Copy code to clipboard
@@ -159,11 +161,7 @@
 			<div class="code-block">
 				<div class="code-header">
 					<span class="code-language">{block.language}</span>
-					<button
-						class="code-copy"
-						onclick={() => copyCode(block.content, i)}
-						title="Copy code"
-					>
+					<button class="code-copy" onclick={() => copyCode(block.content, i)} title="Copy code">
 						{#if copiedIndex === i}
 							<Icon name="check" size={14} />
 							<span>Copied!</span>
@@ -173,7 +171,11 @@
 						{/if}
 					</button>
 				</div>
-				<pre class="code-content"><code>{#each tokenizeCode(block.content, block.language || 'plaintext') as token, ti (ti)}<span class="token-{token.type}">{token.text}</span>{/each}</code></pre>
+				<pre class="code-content"><code
+						>{#each tokenizeCode(block.content, block.language || 'plaintext') as token, ti (ti)}<span
+								class="token-{token.type}">{token.text}</span
+							>{/each}</code
+					></pre>
 			</div>
 		{:else if block.type === 'inline-code'}
 			<code class="inline-code">{block.content}</code>

@@ -28,14 +28,16 @@ function makeBlameInfo(overrides: Partial<BlameInfo> = {}): BlameInfo {
 function makeSampleData(count: number): BlameInfo[] {
 	const data: BlameInfo[] = [];
 	for (let i = 0; i < count; i++) {
-		data.push(makeBlameInfo({
-			line: i,
-			commitSha: `sha${i}`,
-			author: i % 2 === 0 ? 'Alice' : 'Bob',
-			authorEmail: i % 2 === 0 ? 'alice@example.com' : 'bob@example.com',
-			timestamp: new Date(Date.now() - i * 24 * 60 * 60 * 1000),
-			message: `Commit for line ${i}`
-		}));
+		data.push(
+			makeBlameInfo({
+				line: i,
+				commitSha: `sha${i}`,
+				author: i % 2 === 0 ? 'Alice' : 'Bob',
+				authorEmail: i % 2 === 0 ? 'alice@example.com' : 'bob@example.com',
+				timestamp: new Date(Date.now() - i * 24 * 60 * 60 * 1000),
+				message: `Commit for line ${i}`
+			})
+		);
 	}
 	return data;
 }
@@ -107,7 +109,7 @@ describe('GitBlameManager -- enable/disable/toggle', () => {
 	});
 
 	it('toggle() should flip the enabled state and return new value', () => {
-		expect(mgr.toggle()).toBe(true);  // was false, now true
+		expect(mgr.toggle()).toBe(true); // was false, now true
 		expect(mgr.isEnabled()).toBe(true);
 		expect(mgr.toggle()).toBe(false); // was true, now false
 		expect(mgr.isEnabled()).toBe(false);
@@ -563,7 +565,9 @@ describe('GitBlameManager -- subscribe', () => {
 	it('should catch listener errors without breaking other listeners', () => {
 		const mgr = new GitBlameManager();
 		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const badListener = vi.fn(() => { throw new Error('boom'); });
+		const badListener = vi.fn(() => {
+			throw new Error('boom');
+		});
 		const goodListener = vi.fn();
 
 		mgr.subscribe(badListener);
@@ -620,9 +624,16 @@ describe('generateMockBlameData', () => {
 
 	it('should use known commit messages from the predefined set', () => {
 		const knownMessages = [
-			'Initial commit', 'Add feature X', 'Fix bug in Y',
-			'Refactor Z module', 'Update dependencies', 'Improve performance',
-			'Add tests', 'Fix typo', 'Clean up code', 'Add documentation'
+			'Initial commit',
+			'Add feature X',
+			'Fix bug in Y',
+			'Refactor Z module',
+			'Update dependencies',
+			'Improve performance',
+			'Add tests',
+			'Fix typo',
+			'Clean up code',
+			'Add documentation'
 		];
 		const data = generateMockBlameData(100);
 		for (const info of data) {
@@ -644,7 +655,7 @@ describe('generateMockBlameData', () => {
 	it('consecutive lines often share the same commit', () => {
 		// With 100 lines, there should be fewer unique commits than lines
 		const data = generateMockBlameData(100);
-		const uniqueCommits = new Set(data.map(d => d.commitSha));
+		const uniqueCommits = new Set(data.map((d) => d.commitSha));
 		expect(uniqueCommits.size).toBeLessThan(100);
 	});
 });
@@ -657,8 +668,16 @@ describe('GitBlameManager -- integration: color recomputation on config change',
 	it('switching from age to author should change colors', () => {
 		const mgr = new GitBlameManager({ colorMode: 'age' });
 		const data = [
-			makeBlameInfo({ line: 0, author: 'Alice', timestamp: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000) }),
-			makeBlameInfo({ line: 1, author: 'Bob', timestamp: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000) })
+			makeBlameInfo({
+				line: 0,
+				author: 'Alice',
+				timestamp: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000)
+			}),
+			makeBlameInfo({
+				line: 1,
+				author: 'Bob',
+				timestamp: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000)
+			})
 		];
 		mgr.setBlameData(data);
 
@@ -680,7 +699,11 @@ describe('GitBlameManager -- integration: color recomputation on config change',
 		const mgr = new GitBlameManager({ colorMode: 'author' });
 		const data = [
 			makeBlameInfo({ line: 0, author: 'Alice', timestamp: new Date() }),
-			makeBlameInfo({ line: 1, author: 'Alice', timestamp: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000) })
+			makeBlameInfo({
+				line: 1,
+				author: 'Alice',
+				timestamp: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000)
+			})
 		];
 		mgr.setBlameData(data);
 

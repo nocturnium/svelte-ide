@@ -7,32 +7,129 @@ import { createToken } from '../base';
 
 // Python keywords
 const keywords = new Set([
-	'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue',
-	'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from',
-	'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not',
-	'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield'
+	'and',
+	'as',
+	'assert',
+	'async',
+	'await',
+	'break',
+	'class',
+	'continue',
+	'def',
+	'del',
+	'elif',
+	'else',
+	'except',
+	'finally',
+	'for',
+	'from',
+	'global',
+	'if',
+	'import',
+	'in',
+	'is',
+	'lambda',
+	'nonlocal',
+	'not',
+	'or',
+	'pass',
+	'raise',
+	'return',
+	'try',
+	'while',
+	'with',
+	'yield'
 ]);
 
 const controlKeywords = new Set([
-	'if', 'elif', 'else', 'for', 'while', 'try', 'except', 'finally',
-	'with', 'break', 'continue', 'return', 'raise', 'yield', 'await'
+	'if',
+	'elif',
+	'else',
+	'for',
+	'while',
+	'try',
+	'except',
+	'finally',
+	'with',
+	'break',
+	'continue',
+	'return',
+	'raise',
+	'yield',
+	'await'
 ]);
 
-const builtins = new Set([
-	'True', 'False', 'None', 'self', 'cls'
-]);
+const builtins = new Set(['True', 'False', 'None', 'self', 'cls']);
 
 const builtinFunctions = new Set([
-	'abs', 'all', 'any', 'ascii', 'bin', 'bool', 'bytearray', 'bytes',
-	'callable', 'chr', 'classmethod', 'compile', 'complex', 'delattr',
-	'dict', 'dir', 'divmod', 'enumerate', 'eval', 'exec', 'filter',
-	'float', 'format', 'frozenset', 'getattr', 'globals', 'hasattr',
-	'hash', 'help', 'hex', 'id', 'input', 'int', 'isinstance', 'issubclass',
-	'iter', 'len', 'list', 'locals', 'map', 'max', 'memoryview', 'min',
-	'next', 'object', 'oct', 'open', 'ord', 'pow', 'print', 'property',
-	'range', 'repr', 'reversed', 'round', 'set', 'setattr', 'slice',
-	'sorted', 'staticmethod', 'str', 'sum', 'super', 'tuple', 'type',
-	'vars', 'zip', '__import__'
+	'abs',
+	'all',
+	'any',
+	'ascii',
+	'bin',
+	'bool',
+	'bytearray',
+	'bytes',
+	'callable',
+	'chr',
+	'classmethod',
+	'compile',
+	'complex',
+	'delattr',
+	'dict',
+	'dir',
+	'divmod',
+	'enumerate',
+	'eval',
+	'exec',
+	'filter',
+	'float',
+	'format',
+	'frozenset',
+	'getattr',
+	'globals',
+	'hasattr',
+	'hash',
+	'help',
+	'hex',
+	'id',
+	'input',
+	'int',
+	'isinstance',
+	'issubclass',
+	'iter',
+	'len',
+	'list',
+	'locals',
+	'map',
+	'max',
+	'memoryview',
+	'min',
+	'next',
+	'object',
+	'oct',
+	'open',
+	'ord',
+	'pow',
+	'print',
+	'property',
+	'range',
+	'repr',
+	'reversed',
+	'round',
+	'set',
+	'setattr',
+	'slice',
+	'sorted',
+	'staticmethod',
+	'str',
+	'sum',
+	'super',
+	'tuple',
+	'type',
+	'vars',
+	'zip',
+	'__import__'
 ]);
 
 interface PythonTokenizerState extends TokenizerState {
@@ -111,7 +208,9 @@ export class PythonTokenizer {
 		}
 
 		// Numbers
-		const numMatch = text.match(/^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?j?)/);
+		const numMatch = text.match(
+			/^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?j?)/
+		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
 		}
@@ -219,7 +318,12 @@ export class PythonTokenizer {
 		return createToken('string', text.slice(0, i), pos);
 	}
 
-	private tokenizeTripleString(text: string, pos: number, delimiter: string, state: PythonTokenizerState): Token {
+	private tokenizeTripleString(
+		text: string,
+		pos: number,
+		delimiter: string,
+		state: PythonTokenizerState
+	): Token {
 		// Find prefix length
 		const prefixMatch = text.match(/^(?:f|r|b|fr|rf|br|rb)?/i);
 		const prefixLen = prefixMatch ? prefixMatch[0].length : 0;

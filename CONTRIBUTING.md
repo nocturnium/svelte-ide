@@ -79,17 +79,17 @@ go run ./cmd/lsp-bridge        # listens on :8765, localhost origins only
 
 ## Everyday scripts
 
-| Script | Purpose |
-| --- | --- |
-| `npm run dev` | Run the demo app (Vite dev server). |
-| `npm run build` | Build the demo app. |
-| `npm run package` | Build the publishable library (`svelte-package` + `publint`). |
-| `npm run check` | Type-check with `svelte-check`. |
-| `npm test` | Run unit tests (Vitest, single run). |
-| `npm run test:watch` | Run unit tests in watch mode. |
-| `npm run test:e2e` | Run Playwright end-to-end tests. |
-| `npm run lint` | Lint with ESLint. |
-| `npm run format` | Format with Prettier. |
+| Script               | Purpose                                                       |
+| -------------------- | ------------------------------------------------------------- |
+| `npm run dev`        | Run the demo app (Vite dev server).                           |
+| `npm run build`      | Build the demo app.                                           |
+| `npm run package`    | Build the publishable library (`svelte-package` + `publint`). |
+| `npm run check`      | Type-check with `svelte-check`.                               |
+| `npm test`           | Run unit tests (Vitest, single run).                          |
+| `npm run test:watch` | Run unit tests in watch mode.                                 |
+| `npm run test:e2e`   | Run Playwright end-to-end tests.                              |
+| `npm run lint`       | Lint with ESLint.                                             |
+| `npm run format`     | Format with Prettier.                                         |
 
 Before opening a PR, please run:
 

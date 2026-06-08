@@ -5,7 +5,7 @@ The editor is the heart of `@nocturnium/svelte-ide`: a custom-built, zero-depend
 > Components ship **unstyled**. Import the theme once in your app root so the design tokens resolve:
 >
 > ```ts
-> import "@nocturnium/svelte-ide/theme.css";
+> import '@nocturnium/svelte-ide/theme.css';
 > ```
 >
 > See [Theming](../theming.md) for how to retheme via CSS custom properties.
@@ -16,11 +16,11 @@ The editor is the heart of `@nocturnium/svelte-ide`: a custom-built, zero-depend
 
 There are two components, and the distinction matters:
 
-| | `Editor` | `CustomEditor` |
-| --- | --- | --- |
-| Role | Thin, stable wrapper | Full implementation |
-| Surface area | Small, curated prop set | Every feature flag |
-| Use when | You want a code editor and sensible defaults | You need folding flags, multi-cursor limits, complexity highlighting, AI-presence layers, or per-cursor callbacks |
+|              | `Editor`                                     | `CustomEditor`                                                                                                    |
+| ------------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Role         | Thin, stable wrapper                         | Full implementation                                                                                               |
+| Surface area | Small, curated prop set                      | Every feature flag                                                                                                |
+| Use when     | You want a code editor and sensible defaults | You need folding flags, multi-cursor limits, complexity highlighting, AI-presence layers, or per-cursor callbacks |
 
 `Editor` simply wraps `CustomEditor`, forwarding `content`, `language`, `readonly`, `preferences`, `onChange`, `onCursorChange`, and `onSave`, and applying the `.ide-editor` container. It is the recommended entry point — start here and reach for `CustomEditor` only when you need a prop that `Editor` does not surface.
 
@@ -28,19 +28,15 @@ Both are exported from the package root and from the `./components/editor` subpa
 
 ```svelte
 <script lang="ts">
-  // Either import path works — root re-exports everything.
-  import { Editor } from "@nocturnium/svelte-ide";
-  // or: import { Editor } from "@nocturnium/svelte-ide/components/editor";
+	// Either import path works — root re-exports everything.
+	import { Editor } from '@nocturnium/svelte-ide';
+	// or: import { Editor } from "@nocturnium/svelte-ide/components/editor";
 
-  let code = $state(`function greet(name) {\n  return "Hello, " + name;\n}\n`);
+	let code = $state(`function greet(name) {\n  return "Hello, " + name;\n}\n`);
 </script>
 
 <div style="height: 400px;">
-  <Editor
-    content={code}
-    language="javascript"
-    onChange={(value) => (code = value)}
-  />
+	<Editor content={code} language="javascript" onChange={(value) => (code = value)} />
 </div>
 ```
 
@@ -52,16 +48,16 @@ Both are exported from the package root and from the `./components/editor` subpa
 
 These are the exact props from the `Editor` component's `Props` interface:
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `content` | `string` | — (required) | Document text to display. |
-| `language` | `string` | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"rust"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set. |
-| `readonly` | `boolean` | `false` | Disables editing; navigation/selection keybindings still work. |
-| `preferences` | `Partial<EditorPreferences>` | `{}` | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences). |
-| `class` | `string` | `""` | Extra CSS class applied to the editor container. |
-| `onChange` | `(content: string) => void` | — | Fired (debounced) whenever the document text changes. |
-| `onCursorChange` | `(line: number, column: number) => void` | — | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them. |
-| `onSave` | `() => void` | — | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs. |
+| Prop             | Type                                     | Default       | Description                                                                                                                                                          |
+| ---------------- | ---------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`        | `string`                                 | — (required)  | Document text to display.                                                                                                                                            |
+| `language`       | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"rust"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set.  |
+| `readonly`       | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                       |
+| `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                  |
+| `class`          | `string`                                 | `""`          | Extra CSS class applied to the editor container.                                                                                                                     |
+| `onChange`       | `(content: string) => void`              | —             | Fired (debounced) whenever the document text changes.                                                                                                                |
+| `onCursorChange` | `(line: number, column: number) => void` | —             | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                        |
+| `onSave`         | `() => void`                             | —             | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs. |
 
 There are no Svelte `createEventDispatcher` events on these components — all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
 
@@ -71,18 +67,18 @@ There are no Svelte `createEventDispatcher` events on these components — all i
 
 `CustomEditor` is a superset of `Editor`. It accepts everything `Editor` does **plus** the following feature flags and extra callbacks (defaults shown are the component's own defaults):
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `folding` | `boolean` | `true` | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md). |
-| `multiCursor` | `boolean` | `true` | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md). |
-| `maxCursors` | `number` | `100` | Upper bound on simultaneous cursors. |
-| `complexityHighlighting` | `boolean` | `true` | Highlights high-complexity regions inline. |
-| `complexityThreshold` | `number` | `50` | Minimum complexity score before highlighting is drawn. |
-| `aiAgents` | `AIAwareness[]` | `[]` | AI agents to visualize (Ghost Pair cursors / focus regions). See [AI and agents](./ai-and-agents.md). |
-| `showAILabels` | `boolean` | `true` | Show name labels next to AI cursors. |
-| `showAIFocusRegions` | `boolean` | `true` | Shade the region an AI agent is focused on. |
-| `onCursorsChange` | `(cursors: readonly Cursor[]) => void` | — | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`. |
-| `onComplexityChange` | `(metrics: ComplexityMetrics \| null) => void` | — | Fired when computed complexity metrics change. |
+| Prop                     | Type                                           | Default | Description                                                                                                        |
+| ------------------------ | ---------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `folding`                | `boolean`                                      | `true`  | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md). |
+| `multiCursor`            | `boolean`                                      | `true`  | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md).                                               |
+| `maxCursors`             | `number`                                       | `100`   | Upper bound on simultaneous cursors.                                                                               |
+| `complexityHighlighting` | `boolean`                                      | `true`  | Highlights high-complexity regions inline.                                                                         |
+| `complexityThreshold`    | `number`                                       | `50`    | Minimum complexity score before highlighting is drawn.                                                             |
+| `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize (Ghost Pair cursors / focus regions). See [AI and agents](./ai-and-agents.md).              |
+| `showAILabels`           | `boolean`                                      | `true`  | Show name labels next to AI cursors.                                                                               |
+| `showAIFocusRegions`     | `boolean`                                      | `true`  | Shade the region an AI agent is focused on.                                                                        |
+| `onCursorsChange`        | `(cursors: readonly Cursor[]) => void`         | —       | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`.  |
+| `onComplexityChange`     | `(metrics: ComplexityMetrics \| null) => void` | —       | Fired when computed complexity metrics change.                                                                     |
 
 > The `AIAwareness` and `ComplexityMetrics` types named in the table above are not re-exported from the package root; if you need to import them, pull them from the editor subpath: `import type { AIAwareness, ComplexityMetrics } from "@nocturnium/svelte-ide/components/editor"`.
 
@@ -90,27 +86,27 @@ Reach for `CustomEditor` directly when you want, for example, to cap cursors, di
 
 ```svelte
 <script lang="ts">
-  import { CustomEditor } from "@nocturnium/svelte-ide";
-  import type { Cursor } from "@nocturnium/svelte-ide";
+	import { CustomEditor } from '@nocturnium/svelte-ide';
+	import type { Cursor } from '@nocturnium/svelte-ide';
 
-  let source = $state("const answer = 42;\n");
-  let cursorCount = $state(1);
+	let source = $state('const answer = 42;\n');
+	let cursorCount = $state(1);
 </script>
 
 <div style="height: 480px;">
-  <CustomEditor
-    content={source}
-    language="typescript"
-    folding={true}
-    multiCursor={true}
-    maxCursors={8}
-    complexityHighlighting={false}
-    onChange={(value) => (source = value)}
-    onCursorsChange={(cursors) => (cursorCount = cursors.length)}
-  />
+	<CustomEditor
+		content={source}
+		language="typescript"
+		folding={true}
+		multiCursor={true}
+		maxCursors={8}
+		complexityHighlighting={false}
+		onChange={(value) => (source = value)}
+		onCursorsChange={(cursors) => (cursorCount = cursors.length)}
+	/>
 </div>
 
-<p>{cursorCount} cursor{cursorCount === 1 ? "" : "s"} active</p>
+<p>{cursorCount} cursor{cursorCount === 1 ? '' : 's'} active</p>
 ```
 
 ---
@@ -121,19 +117,19 @@ Reach for `CustomEditor` directly when you want, for example, to cap cursors, di
 
 ```ts
 interface EditorPreferences {
-  fontSize: number;
-  fontFamily: string;
-  tabSize: number;
-  insertSpaces: boolean;
-  wordWrap: "off" | "on" | "wordWrapColumn";
-  wordWrapColumn: number;
-  lineNumbers: "on" | "off" | "relative";
-  minimap: boolean;
-  bracketMatching: boolean;
-  autoCloseBrackets: boolean;
-  highlightActiveLine: boolean;
-  renderWhitespace: "none" | "boundary" | "all";
-  theme: string;
+	fontSize: number;
+	fontFamily: string;
+	tabSize: number;
+	insertSpaces: boolean;
+	wordWrap: 'off' | 'on' | 'wordWrapColumn';
+	wordWrapColumn: number;
+	lineNumbers: 'on' | 'off' | 'relative';
+	minimap: boolean;
+	bracketMatching: boolean;
+	autoCloseBrackets: boolean;
+	highlightActiveLine: boolean;
+	renderWhitespace: 'none' | 'boundary' | 'all';
+	theme: string;
 }
 ```
 
@@ -161,23 +157,23 @@ The constant is exported as `DEFAULT_EDITOR_PREFERENCES` if you want to start fr
 
 ```svelte
 <script lang="ts">
-  import { Editor } from "@nocturnium/svelte-ide";
-  import { DEFAULT_EDITOR_PREFERENCES } from "@nocturnium/svelte-ide/types";
+	import { Editor } from '@nocturnium/svelte-ide';
+	import { DEFAULT_EDITOR_PREFERENCES } from '@nocturnium/svelte-ide/types';
 
-  let code = $state("");
+	let code = $state('');
 
-  const prefs = {
-    ...DEFAULT_EDITOR_PREFERENCES,
-    fontSize: 16,
-    tabSize: 4,
-    insertSpaces: true,
-    wordWrap: "on" as const,
-    lineNumbers: "relative" as const,
-  };
+	const prefs = {
+		...DEFAULT_EDITOR_PREFERENCES,
+		fontSize: 16,
+		tabSize: 4,
+		insertSpaces: true,
+		wordWrap: 'on' as const,
+		lineNumbers: 'relative' as const
+	};
 </script>
 
 <div style="height: 400px;">
-  <Editor content={code} language="python" preferences={prefs} onChange={(v) => (code = v)} />
+	<Editor content={code} language="python" preferences={prefs} onChange={(v) => (code = v)} />
 </div>
 ```
 
@@ -195,16 +191,16 @@ You hold the source of truth in `$state` and write back to it inside `onChange`.
 
 ```svelte
 <script lang="ts">
-  import { Editor } from "@nocturnium/svelte-ide";
+	import { Editor } from '@nocturnium/svelte-ide';
 
-  let code = $state("// start typing\n");
+	let code = $state('// start typing\n');
 
-  // Derived values stay in sync automatically.
-  let lineCount = $derived(code.split("\n").length);
+	// Derived values stay in sync automatically.
+	let lineCount = $derived(code.split('\n').length);
 </script>
 
 <div style="height: 400px;">
-  <Editor content={code} language="javascript" onChange={(value) => (code = value)} />
+	<Editor content={code} language="javascript" onChange={(value) => (code = value)} />
 </div>
 
 <footer>{lineCount} lines</footer>
@@ -213,11 +209,11 @@ You hold the source of truth in `$state` and write back to it inside `onChange`.
 Because `code` drives `content`, you can also mutate it from outside the editor (load a new file, run a formatter, reset to a template) and the editor re-renders to match:
 
 ```svelte
-<button onclick={() => (code = "")}>Clear</button>
+<button onclick={() => (code = '')}>Clear</button>
 <button onclick={() => (code = templateFor(language))}>Reset to template</button>
 ```
 
-> Avoid feedback loops: update `code` *from* `onChange`, but do not re-derive `content` from a value you also mutate inside `onChange`. Keep one piece of `$state` as the single source of truth.
+> Avoid feedback loops: update `code` _from_ `onChange`, but do not re-derive `content` from a value you also mutate inside `onChange`. Keep one piece of `$state` as the single source of truth.
 
 ### Uncontrolled
 
@@ -225,24 +221,24 @@ If you only need the final value at specific moments (on save, on submit), let t
 
 ```svelte
 <script lang="ts">
-  import { Editor } from "@nocturnium/svelte-ide";
+	import { Editor } from '@nocturnium/svelte-ide';
 
-  // `initial` seeds the editor once; latestValue is updated but not fed back to `content`.
-  const initial = "SELECT * FROM users;\n";
-  let latestValue = initial;
+	// `initial` seeds the editor once; latestValue is updated but not fed back to `content`.
+	const initial = 'SELECT * FROM users;\n';
+	let latestValue = initial;
 
-  function handleSave() {
-    void persist(latestValue);
-  }
+	function handleSave() {
+		void persist(latestValue);
+	}
 </script>
 
 <div style="height: 320px;">
-  <Editor
-    content={initial}
-    language="sql"
-    onChange={(value) => (latestValue = value)}
-    onSave={handleSave}
-  />
+	<Editor
+		content={initial}
+		language="sql"
+		onChange={(value) => (latestValue = value)}
+		onSave={handleSave}
+	/>
 </div>
 ```
 
@@ -264,11 +260,11 @@ For a multi-file experience, the library ships a tab-aware pair backed by the ed
 
 `EditorPane` is **store-driven**: it reads open tabs, the active tab, and the active buffer straight from the editor store, so you manage files by calling store actions (`openFile`, `setActiveTab`, `closeTab`, …) rather than passing tab arrays in as props. Its props are small:
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `preferences` | `Partial<EditorPreferences>` | `{}` | Forwarded to the underlying editor. |
-| `onSave` | `(path: string, content: string) => Promise<void>` | — | Called with the active tab's path and content when Ctrl/Cmd+S fires. The pane marks the tab clean after your promise resolves. |
-| `class` | `string` | `""` | Extra CSS class on the pane container. |
+| Prop          | Type                                               | Default | Description                                                                                                                    |
+| ------------- | -------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `preferences` | `Partial<EditorPreferences>`                       | `{}`    | Forwarded to the underlying editor.                                                                                            |
+| `onSave`      | `(path: string, content: string) => Promise<void>` | —       | Called with the active tab's path and content when Ctrl/Cmd+S fires. The pane marks the tab clean after your promise resolves. |
+| `class`       | `string`                                           | `""`    | Extra CSS class on the pane container.                                                                                         |
 
 `EditorPane` already wires content edits and cursor moves back into the store and shows a "No files open" empty state when there are no tabs. A tab whose `aiEditing` flag is set is rendered read-only.
 
@@ -276,23 +272,23 @@ Open files through the store and the pane updates itself:
 
 ```svelte
 <script lang="ts">
-  import { EditorPane } from "@nocturnium/svelte-ide";
-  import { openFile } from "@nocturnium/svelte-ide/stores";
+	import { EditorPane } from '@nocturnium/svelte-ide';
+	import { openFile } from '@nocturnium/svelte-ide/stores';
 
-  // Seed some tabs (e.g. after loading from your backend).
-  openFile("src/app.ts", "export const app = createApp();\n", { language: "typescript" });
-  openFile("README.md", "# My Project\n", { language: "markdown" });
+	// Seed some tabs (e.g. after loading from your backend).
+	openFile('src/app.ts', 'export const app = createApp();\n', { language: 'typescript' });
+	openFile('README.md', '# My Project\n', { language: 'markdown' });
 
-  async function save(path: string, content: string) {
-    await fetch(`/api/files?path=${encodeURIComponent(path)}`, {
-      method: "PUT",
-      body: content,
-    });
-  }
+	async function save(path: string, content: string) {
+		await fetch(`/api/files?path=${encodeURIComponent(path)}`, {
+			method: 'PUT',
+			body: content
+		});
+	}
 </script>
 
 <div style="height: 600px;">
-  <EditorPane onSave={save} />
+	<EditorPane onSave={save} />
 </div>
 ```
 
@@ -310,14 +306,14 @@ Reactive store getters are exposed both as plain getter functions (`getTabs()`, 
 
 ```svelte
 <script lang="ts">
-  import { tabs, activeTab, hasDirtyTabs } from "@nocturnium/svelte-ide/stores";
+	import { tabs, activeTab, hasDirtyTabs } from '@nocturnium/svelte-ide/stores';
 
-  let openCount = $derived(tabs.current.length);
-  let currentPath = $derived(activeTab.current?.path ?? "—");
-  let unsaved = $derived(hasDirtyTabs.current);
+	let openCount = $derived(tabs.current.length);
+	let currentPath = $derived(activeTab.current?.path ?? '—');
+	let unsaved = $derived(hasDirtyTabs.current);
 </script>
 
-<status-bar>{currentPath} · {openCount} open {unsaved ? "· unsaved changes" : ""}</status-bar>
+<status-bar>{currentPath} · {openCount} open {unsaved ? '· unsaved changes' : ''}</status-bar>
 ```
 
 See [Stores reference](../api/stores.md) for the full editor-store API.
@@ -326,34 +322,34 @@ See [Stores reference](../api/stores.md) for the full editor-store API.
 
 `EditorTabs` is the presentational tab strip. Unlike `EditorPane`, it is fully **prop-driven** — pass it the tab list and callbacks, and it owns no store coupling. Useful when you maintain tab state yourself or want the tab UI without the editor body.
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `tabs` | `EditorTab[]` | — (required) | Tabs to render. |
-| `activeTabId` | `string \| null` | — (required) | Id of the active tab. |
-| `onSelect` | `(tabId: string) => void` | — (required) | Called when a tab is clicked / activated by keyboard. |
-| `onClose` | `(tabId: string) => void` | — (required) | Called when a tab's close button is clicked. |
-| `onContextMenu` | `(tabId: string, event: MouseEvent) => void` | — | Optional right-click handler. |
-| `class` | `string` | `""` | Extra CSS class. |
+| Prop            | Type                                         | Default      | Description                                           |
+| --------------- | -------------------------------------------- | ------------ | ----------------------------------------------------- |
+| `tabs`          | `EditorTab[]`                                | — (required) | Tabs to render.                                       |
+| `activeTabId`   | `string \| null`                             | — (required) | Id of the active tab.                                 |
+| `onSelect`      | `(tabId: string) => void`                    | — (required) | Called when a tab is clicked / activated by keyboard. |
+| `onClose`       | `(tabId: string) => void`                    | — (required) | Called when a tab's close button is clicked.          |
+| `onContextMenu` | `(tabId: string, event: MouseEvent) => void` | —            | Optional right-click handler.                         |
+| `class`         | `string`                                     | `""`         | Extra CSS class.                                      |
 
 Each tab renders a `FileIcon`, the name (italicized when `isDirty`), a dirty dot, a sparkles indicator when `aiEditing` is set, and a close button.
 
 ```svelte
 <script lang="ts">
-  import { EditorTabs } from "@nocturnium/svelte-ide";
-  import type { EditorTab } from "@nocturnium/svelte-ide";
+	import { EditorTabs } from '@nocturnium/svelte-ide';
+	import type { EditorTab } from '@nocturnium/svelte-ide';
 
-  let tabs = $state<EditorTab[]>([
-    { id: "1", path: "a.ts", name: "a.ts", content: "", language: "typescript", isDirty: false },
-    { id: "2", path: "b.css", name: "b.css", content: "", language: "css", isDirty: true },
-  ]);
-  let activeTabId = $state<string | null>("1");
+	let tabs = $state<EditorTab[]>([
+		{ id: '1', path: 'a.ts', name: 'a.ts', content: '', language: 'typescript', isDirty: false },
+		{ id: '2', path: 'b.css', name: 'b.css', content: '', language: 'css', isDirty: true }
+	]);
+	let activeTabId = $state<string | null>('1');
 </script>
 
 <EditorTabs
-  {tabs}
-  {activeTabId}
-  onSelect={(id) => (activeTabId = id)}
-  onClose={(id) => (tabs = tabs.filter((t) => t.id !== id))}
+	{tabs}
+	{activeTabId}
+	onSelect={(id) => (activeTabId = id)}
+	onClose={(id) => (tabs = tabs.filter((t) => t.id !== id))}
 />
 ```
 
@@ -361,16 +357,16 @@ The `EditorTab` shape (from the package types):
 
 ```ts
 interface EditorTab {
-  id: string;
-  path: string;
-  name: string;
-  content: string;
-  language: string;
-  isDirty: boolean;
-  cursorPosition?: { line: number; column: number };
-  scrollPosition?: { top: number; left: number };
-  aiEditing?: boolean; // tab is being edited by an AI agent
-  version?: number;    // CRDT conflict-resolution version
+	id: string;
+	path: string;
+	name: string;
+	content: string;
+	language: string;
+	isDirty: boolean;
+	cursorPosition?: { line: number; column: number };
+	scrollPosition?: { top: number; left: number };
+	aiEditing?: boolean; // tab is being edited by an AI agent
+	version?: number; // CRDT conflict-resolution version
 }
 ```
 
@@ -380,29 +376,31 @@ A file tree (`FileExplorer`) and a per-extension icon (`FileIcon`) round out a t
 
 ```svelte
 <script lang="ts">
-  import { FileExplorer, EditorPane } from "@nocturnium/svelte-ide";
-  import { openFile } from "@nocturnium/svelte-ide/stores";
+	import { FileExplorer, EditorPane } from '@nocturnium/svelte-ide';
+	import { openFile } from '@nocturnium/svelte-ide/stores';
 
-  // FileNode is exported from the FileExplorer module.
-  const files = [
-    {
-      id: "1", name: "src", type: "folder", path: "src", expanded: true,
-      children: [
-        { id: "2", name: "app.ts", type: "file", path: "src/app.ts" },
-      ],
-    },
-  ];
+	// FileNode is exported from the FileExplorer module.
+	const files = [
+		{
+			id: '1',
+			name: 'src',
+			type: 'folder',
+			path: 'src',
+			expanded: true,
+			children: [{ id: '2', name: 'app.ts', type: 'file', path: 'src/app.ts' }]
+		}
+	];
 
-  async function loadAndOpen(node: { path: string; type: string }) {
-    if (node.type !== "file") return;
-    const content = await fetch(`/api/files?path=${node.path}`).then((r) => r.text());
-    openFile(node.path, content);
-  }
+	async function loadAndOpen(node: { path: string; type: string }) {
+		if (node.type !== 'file') return;
+		const content = await fetch(`/api/files?path=${node.path}`).then((r) => r.text());
+		openFile(node.path, content);
+	}
 </script>
 
 <div style="display: grid; grid-template-columns: 240px 1fr; height: 600px;">
-  <FileExplorer {files} onOpen={loadAndOpen} />
-  <EditorPane onSave={async () => {}} />
+	<FileExplorer {files} onOpen={loadAndOpen} />
+	<EditorPane onSave={async () => {}} />
 </div>
 ```
 
@@ -418,20 +416,20 @@ The four factories you will reach for:
 
 ```ts
 import {
-  createEditorState,
-  createNavigation,
-  createKeyboardHandler,
-  createDefaultKeybindings,
-} from "@nocturnium/svelte-ide";
+	createEditorState,
+	createNavigation,
+	createKeyboardHandler,
+	createDefaultKeybindings
+} from '@nocturnium/svelte-ide';
 import type {
-  EditorState,
-  Navigation,
-  KeyboardHandler,
-  Keybinding,
-  Position,
-  Selection,
-  Cursor,
-} from "@nocturnium/svelte-ide";
+	EditorState,
+	Navigation,
+	KeyboardHandler,
+	Keybinding,
+	Position,
+	Selection,
+	Cursor
+} from '@nocturnium/svelte-ide';
 ```
 
 ### `createEditorState(config?)`
@@ -440,17 +438,17 @@ Creates the document model — content, cursors, selections, and undo/redo histo
 
 ```ts
 const state = createEditorState({
-  content: "function add(a, b) {\n  return a + b;\n}\n",
-  language: "javascript",
-  tabSize: 2,
-  insertSpaces: true,
-  maxCursors: 100,
+	content: 'function add(a, b) {\n  return a + b;\n}\n',
+	language: 'javascript',
+	tabSize: 2,
+	insertSpaces: true,
+	maxCursors: 100
 });
 
-state.getContent();          // current text
-state.setContent("...");     // replace whole document
-state.setLanguage("python"); // change tokenizer
-state.undo();                // -> boolean (true if a change was reverted)
+state.getContent(); // current text
+state.setContent('...'); // replace whole document
+state.setLanguage('python'); // change tokenizer
+state.undo(); // -> boolean (true if a change was reverted)
 state.redo();
 ```
 
@@ -463,8 +461,8 @@ Wraps an `EditorState` with cursor movement. Every movement method takes an opti
 ```ts
 const nav = createNavigation(state);
 
-nav.moveLeft();           // collapse + move
-nav.moveRight(true);      // extend selection right
+nav.moveLeft(); // collapse + move
+nav.moveRight(true); // extend selection right
 nav.moveUp();
 nav.moveDown();
 nav.moveToLineStart();
@@ -473,7 +471,7 @@ nav.moveWordLeft();
 nav.moveWordRight(true);
 nav.moveToDocumentStart();
 nav.moveToDocumentEnd();
-nav.movePageUp(20);       // pageSize lines
+nav.movePageUp(20); // pageSize lines
 nav.movePageDown(20, true);
 nav.selectWord();
 nav.selectLine();
@@ -484,21 +482,21 @@ nav.selectLine();
 `createDefaultKeybindings` returns the standard `Keybinding[]` (arrows, word/line/document motions, selection extension, save, etc.). `createKeyboardHandler` is the dispatcher that matches a `KeyboardEvent` against a binding list and runs the handler. Wire them together and feed it `keydown`:
 
 ```ts
-const state = createEditorState({ content: "", language: "javascript" });
+const state = createEditorState({ content: '', language: 'javascript' });
 const nav = createNavigation(state);
 
 const handler = createKeyboardHandler();
 handler.setKeybindings(
-  createDefaultKeybindings(state, nav, {
-    onSave: () => persist(state.getContent()),
-    readonly: false,
-    pageSize: 20,
-  }),
+	createDefaultKeybindings(state, nav, {
+		onSave: () => persist(state.getContent()),
+		readonly: false,
+		pageSize: 20
+	})
 );
 
-element.addEventListener("keydown", (event) => {
-  // returns true (and calls preventDefault) when a binding handled the event
-  handler.handleKeyDown(event, /* readonly */ false);
+element.addEventListener('keydown', (event) => {
+	// returns true (and calls preventDefault) when a binding handled the event
+	handler.handleKeyDown(event, /* readonly */ false);
 });
 ```
 
@@ -506,26 +504,26 @@ The handler also lets you extend or trim the binding set at runtime:
 
 ```ts
 handler.addKeybinding({
-  key: "d",
-  modifiers: { ctrl: true },
-  description: "Duplicate line",
-  handler: () => duplicateCurrentLine(state),
+	key: 'd',
+	modifiers: { ctrl: true },
+	description: 'Duplicate line',
+	handler: () => duplicateCurrentLine(state)
 });
 
-handler.removeKeybinding("d", { ctrl: true });
+handler.removeKeybinding('d', { ctrl: true });
 handler.setEnabled(false); // temporarily ignore all keys
-handler.getKeybindings();  // introspect for a shortcut cheatsheet
+handler.getKeybindings(); // introspect for a shortcut cheatsheet
 ```
 
 A `Keybinding` is:
 
 ```ts
 interface Keybinding {
-  key: string;                       // e.g. "ArrowLeft", "Enter", "s"
-  modifiers?: { ctrl?: boolean; shift?: boolean; alt?: boolean; meta?: boolean };
-  handler: () => boolean | void;     // return false to let the event fall through
-  description?: string;              // shown in help / cheatsheets
-  readonly?: boolean;                // also runs while the editor is read-only
+	key: string; // e.g. "ArrowLeft", "Enter", "s"
+	modifiers?: { ctrl?: boolean; shift?: boolean; alt?: boolean; meta?: boolean };
+	handler: () => boolean | void; // return false to let the event fall through
+	description?: string; // shown in help / cheatsheets
+	readonly?: boolean; // also runs while the editor is read-only
 }
 ```
 

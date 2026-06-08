@@ -1,5 +1,4 @@
 <script lang="ts" module>
-
 	/**
 	 * Sample proposals served to the embedded <PluginPanel> on a static host.
 	 * Shaped to satisfy the wire contract `fetchProposals()` expects from
@@ -94,7 +93,6 @@
 			updatedAt: new Date().toISOString()
 		}
 	];
-
 </script>
 
 <script lang="ts">
@@ -355,7 +353,8 @@
 		<p class="section-desc">Managing plugins programmatically</p>
 
 		<div class="config-demo">
-			<pre><code>{`// Connect to plugin system
+			<pre><code
+					>{`// Connect to plugin system
 import { connect, createProposal, loadPlugin } from '$lib/stores/plugin.svelte';
 
 // Connect to the backend
@@ -389,7 +388,8 @@ registerCommand({
 
 // Load and unload plugins
 await loadPlugin('prettier-format');
-await unloadPlugin('prettier-format');`}</code></pre>
+await unloadPlugin('prettier-format');`}</code
+				></pre>
 		</div>
 	</section>
 </div>

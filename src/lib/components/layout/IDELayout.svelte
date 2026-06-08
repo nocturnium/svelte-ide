@@ -231,7 +231,9 @@
 	.ide-layout--resizing .ide-layout__sidebar > :global(*) {
 		opacity: 0.5;
 		filter: blur(1px);
-		transition: opacity 0.1s ease, filter 0.1s ease;
+		transition:
+			opacity 0.1s ease,
+			filter 0.1s ease;
 	}
 
 	.ide-layout__main {
@@ -278,7 +280,9 @@
 	.ide-layout--resizing .ide-layout__panel > :global(*) {
 		opacity: 0.5;
 		filter: blur(1px);
-		transition: opacity 0.1s ease, filter 0.1s ease;
+		transition:
+			opacity 0.1s ease,
+			filter 0.1s ease;
 	}
 
 	.ide-layout__status-bar {

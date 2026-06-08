@@ -94,10 +94,7 @@ export interface AIToolProperty {
 	properties?: Record<string, AIToolProperty>;
 }
 
-export type AIToolHandler = (
-	args: Record<string, unknown>,
-	context: AIContext
-) => Promise<unknown>;
+export type AIToolHandler = (args: Record<string, unknown>, context: AIContext) => Promise<unknown>;
 
 /**
  * AI Panel configuration

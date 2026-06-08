@@ -244,7 +244,8 @@ class CollaborationSession {
 		<h2>Collaboration Store API</h2>
 
 		<div class="config-demo">
-			<pre><code>{`// Initialize collaboration
+			<pre><code
+					>{`// Initialize collaboration
 import { initialize, setLocalCursor } from '$lib/stores/collaboration.svelte';
 
 await initialize({
@@ -281,7 +282,8 @@ proposeAIChange(session.id, {
   originalContent: '...',
   proposedContent: '...',
   explanation: 'Converted to async/await syntax'
-});`}</code></pre>
+});`}</code
+				></pre>
 		</div>
 	</section>
 </div>
@@ -638,11 +640,7 @@ proposeAIChange(session.id, {
 
 	/* Code block scroll affordance */
 	.config-demo {
-		-webkit-mask-image: linear-gradient(
-			to right,
-			#000 calc(100% - 1.5rem),
-			transparent 100%
-		);
+		-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent 100%);
 		mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent 100%);
 	}
 

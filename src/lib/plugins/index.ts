@@ -13,12 +13,7 @@
  * 4. Providers (services that provide data/functionality)
  */
 
-import type {
-	PluginManifest,
-	PluginInstance,
-	PluginCommand,
-	PluginPanel
-} from '$types';
+import type { PluginManifest, PluginInstance, PluginCommand, PluginPanel } from '$types';
 
 /**
  * Plugin registry for managing loaded plugins
@@ -130,10 +125,7 @@ export interface PluginLoader {
 	/**
 	 * Load a plugin component from the server
 	 */
-	loadComponent(
-		proposalId: string,
-		componentPath: string
-	): Promise<{ default: unknown }>;
+	loadComponent(proposalId: string, componentPath: string): Promise<{ default: unknown }>;
 
 	/**
 	 * Load a plugin module from the server

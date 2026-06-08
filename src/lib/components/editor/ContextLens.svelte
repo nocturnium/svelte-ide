@@ -174,10 +174,7 @@
 {#if enabled && visibleItems.length > 0}
 	<div class="context-lens" aria-hidden="true">
 		{#each visibleItems as item (`${item.line}-${item.type}`)}
-			<div
-				class="context-lens__item context-lens__item--{item.type}"
-				style={getItemStyle(item)}
-			>
+			<div class="context-lens__item context-lens__item--{item.type}" style={getItemStyle(item)}>
 				{#if item.icon}
 					<span class="context-lens__icon">{item.icon}</span>
 				{/if}

@@ -87,11 +87,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 			throw new VFSError('Request timeout', 'NETWORK_ERROR');
 		}
 
-		throw new VFSError(
-			err instanceof Error ? err.message : 'Unknown error',
-			'NETWORK_ERROR',
-			err
-		);
+		throw new VFSError(err instanceof Error ? err.message : 'Unknown error', 'NETWORK_ERROR', err);
 	} finally {
 		clearTimeout(timeoutId);
 	}
@@ -369,10 +365,7 @@ export async function refreshLock(
 	});
 }
 
-export async function getLockInfo(
-	workspaceId: string,
-	path: string
-): Promise<VFSFileLock | null> {
+export async function getLockInfo(workspaceId: string, path: string): Promise<VFSFileLock | null> {
 	try {
 		return await request<VFSFileLock>(
 			`/locks?workspace=${workspaceId}&path=${encodeURIComponent(path)}`

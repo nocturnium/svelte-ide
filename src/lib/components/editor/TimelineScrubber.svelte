@@ -7,10 +7,7 @@
 	 * Supports playback mode with smooth transitions.
 	 */
 
-	import {
-		type SnapshotMetadata,
-		formatTimestamp
-	} from './core/timeline';
+	import { type SnapshotMetadata, formatTimestamp } from './core/timeline';
 
 	interface TimelineMarker {
 		position: number;
@@ -265,7 +262,9 @@
 			</div>
 			<div class="timeline-scrubber__tooltip-content">
 				<div class="timeline-scrubber__tooltip-label">{hoveredMarker.label}</div>
-				<div class="timeline-scrubber__tooltip-time">{formatTimestamp(hoveredMarker.timestamp)}</div>
+				<div class="timeline-scrubber__tooltip-time">
+					{formatTimestamp(hoveredMarker.timestamp)}
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -306,7 +305,9 @@
 		border-radius: 4px;
 		color: var(--color-text-muted, #888);
 		cursor: pointer;
-		transition: background 0.15s ease, color 0.15s ease;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease;
 	}
 
 	.timeline-scrubber__btn:hover {

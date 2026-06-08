@@ -194,7 +194,9 @@ test.describe('Editor Accessibility', () => {
 		expect(hasSelection).toBe(true);
 
 		// Selection elements should have different styling
-		const selectionDivs = editor.container.locator('.custom-editor__selections .custom-editor__selection');
+		const selectionDivs = editor.container.locator(
+			'.custom-editor__selections .custom-editor__selection'
+		);
 		const count = await selectionDivs.count();
 		expect(count).toBeGreaterThan(0);
 	});
@@ -320,8 +322,10 @@ test.describe('Editor Accessibility', () => {
 		await editor.findInput.fill('[invalid regex');
 
 		// Toggle regex mode
-		const regexToggle = editor.container.locator('.find-replace__toggle[aria-label*="regex"], .find-replace__toggle[title*="regex"]');
-		if (await regexToggle.count() > 0) {
+		const regexToggle = editor.container.locator(
+			'.find-replace__toggle[aria-label*="regex"], .find-replace__toggle[title*="regex"]'
+		);
+		if ((await regexToggle.count()) > 0) {
 			await regexToggle.click();
 			await page.waitForTimeout(200);
 

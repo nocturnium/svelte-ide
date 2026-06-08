@@ -383,7 +383,9 @@ describe('CursorManager — Cursor Operations', () => {
 		manager.addCursor(pos(5, 0));
 		manager.addCursor(pos(2, 0));
 
-		const reversed = (manager as InstanceType<typeof CursorManager> & { getSortedCursorsReverse(): Cursor[] }).getSortedCursorsReverse();
+		const reversed = (
+			manager as InstanceType<typeof CursorManager> & { getSortedCursorsReverse(): Cursor[] }
+		).getSortedCursorsReverse();
 		expect(reversed.length).toBe(3);
 		for (let i = 1; i < reversed.length; i++) {
 			const prev = getSelectionStart(reversed[i - 1].selection);
@@ -421,7 +423,7 @@ describe('CursorManager — Cursor Operations', () => {
 
 		// The last added secondary (c3) should be gone
 		const cursors = manager.getCursors();
-		const ids = cursors.map(c => c.id);
+		const ids = cursors.map((c) => c.id);
 		expect(ids).not.toContain(c3.id);
 	});
 
@@ -695,7 +697,7 @@ describe('CursorManager — Additional Operations', () => {
 
 		// One of the cursors should be at line 4
 		const cursors = manager.getCursors();
-		const lines = cursors.map(c => c.selection.head.line);
+		const lines = cursors.map((c) => c.selection.head.line);
 		expect(lines).toContain(4);
 	});
 
@@ -713,7 +715,7 @@ describe('CursorManager — Additional Operations', () => {
 		expect(manager.count).toBe(2);
 
 		const cursors = manager.getCursors();
-		const lines = cursors.map(c => c.selection.head.line);
+		const lines = cursors.map((c) => c.selection.head.line);
 		expect(lines).toContain(1);
 	});
 

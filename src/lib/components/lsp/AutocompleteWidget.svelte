@@ -1,3 +1,22 @@
+<script module lang="ts">
+	// SVG icons for completion item kinds
+	function getKindSVG(kind?: number): string {
+		const icons: Record<number, string> = {
+			2: '<path d="M4 4h4v2H4v4H2V4h2zm10 0h2v6h-4V8h2V4zm-6 8h4v4H8v-4zm8 0h2v4h-4v-2h2v-2z" fill="currentColor"/>',
+			3: '<path d="M4 4h8v2H4v8H2V4h2zm6 4h4v8h-2v-6H8V8h2z" fill="currentColor"/>',
+			6: '<path d="M4 4h8v4H8V6H6v4H4V4zm0 8h2v4H4v-4zm4 0h8v4H8v-4z" fill="currentColor"/>',
+			7: '<path d="M4 4h8v2H4v8H2V4h2zm4 4h6v8H6V8h2zm2 2v4h2v-4h-2z" fill="currentColor"/>',
+			8: '<path d="M6 4h8v2H6v8H4V4h2zm6 4h2v8H8v-2h4V8z" fill="currentColor"/>',
+			9: '<path d="M2 4h4v2H2v8h8v2H2V4zm6 2h8v10H8V6zm2 2v6h4V8h-4z" fill="currentColor"/>',
+			13: '<path d="M4 4h8v2H4v8H2V4h2zm4 4h6v8H6V8h2zm2 2v2h2v-2h-2z" fill="currentColor"/>',
+			14: '<path d="M4 6h10v2H4v6H2V6h2zm4 4h6v6H6v-6h2zm2 2v2h2v-2h-2z" fill="currentColor"/>',
+			15: '<path d="M4 4v12h12V4H4zm2 2h8v8H6V6z" fill="currentColor"/>',
+			21: '<path d="M8 2l6 6-6 6-6-6 6-6zm0 2.83L4.83 8 8 11.17 11.17 8 8 4.83z" fill="currentColor"/>'
+		};
+		return `<svg viewBox="0 0 16 16" width="16" height="16">${icons[kind ?? 1] ?? '<circle cx="8" cy="8" r="4" fill="currentColor"/>'}</svg>`;
+	}
+</script>
+
 <script lang="ts">
 	/**
 	 * AutocompleteWidget - LSP completion suggestions dropdown
@@ -205,25 +224,6 @@
 		</div>
 	{/if}
 </div>
-
-<script module lang="ts">
-	// SVG icons for completion item kinds
-	function getKindSVG(kind?: number): string {
-		const icons: Record<number, string> = {
-			2: '<path d="M4 4h4v2H4v4H2V4h2zm10 0h2v6h-4V8h2V4zm-6 8h4v4H8v-4zm8 0h2v4h-4v-2h2v-2z" fill="currentColor"/>',
-			3: '<path d="M4 4h8v2H4v8H2V4h2zm6 4h4v8h-2v-6H8V8h2z" fill="currentColor"/>',
-			6: '<path d="M4 4h8v4H8V6H6v4H4V4zm0 8h2v4H4v-4zm4 0h8v4H8v-4z" fill="currentColor"/>',
-			7: '<path d="M4 4h8v2H4v8H2V4h2zm4 4h6v8H6V8h2zm2 2v4h2v-4h-2z" fill="currentColor"/>',
-			8: '<path d="M6 4h8v2H6v8H4V4h2zm6 4h2v8H8v-2h4V8z" fill="currentColor"/>',
-			9: '<path d="M2 4h4v2H2v8h8v2H2V4zm6 2h8v10H8V6zm2 2v6h4V8h-4z" fill="currentColor"/>',
-			13: '<path d="M4 4h8v2H4v8H2V4h2zm4 4h6v8H6V8h2zm2 2v2h2v-2h-2z" fill="currentColor"/>',
-			14: '<path d="M4 6h10v2H4v6H2V6h2zm4 4h6v6H6v-6h2zm2 2v2h2v-2h-2z" fill="currentColor"/>',
-			15: '<path d="M4 4v12h12V4H4zm2 2h8v8H6V6z" fill="currentColor"/>',
-			21: '<path d="M8 2l6 6-6 6-6-6 6-6zm0 2.83L4.83 8 8 11.17 11.17 8 8 4.83z" fill="currentColor"/>'
-		};
-		return `<svg viewBox="0 0 16 16" width="16" height="16">${icons[kind ?? 1] ?? '<circle cx="8" cy="8" r="4" fill="currentColor"/>'}</svg>`;
-	}
-</script>
 
 <style>
 	.autocomplete-widget {

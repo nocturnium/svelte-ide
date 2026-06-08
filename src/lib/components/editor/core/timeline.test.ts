@@ -188,7 +188,11 @@ describe('TimelineManager', () => {
 		it('uses provided author overrides', () => {
 			manager.captureSnapshot('a', makeMetadata());
 			vi.advanceTimersByTime(11000);
-			manager.captureOnEdit('b', { author: 'custom-user', isAI: true, changeType: 'ai-suggestion' });
+			manager.captureOnEdit('b', {
+				author: 'custom-user',
+				isAI: true,
+				changeType: 'ai-suggestion'
+			});
 
 			const last = manager.getSnapshots()[manager.getSnapshots().length - 1];
 			expect(last.metadata.author).toBe('custom-user');

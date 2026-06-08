@@ -164,7 +164,11 @@ export { default as FileIcon } from './components/editor/FileIcon.svelte';
  * @public - Stable API (FileExplorer, FileChangeStatus)
  * @experimental - GitFileStatus type may change in future versions
  */
-export { default as FileExplorer, type FileChangeStatus, type GitFileStatus } from './components/editor/FileExplorer.svelte';
+export {
+	default as FileExplorer,
+	type FileChangeStatus,
+	type GitFileStatus
+} from './components/editor/FileExplorer.svelte';
 
 /**
  * Editor core utilities and types
@@ -202,7 +206,13 @@ export {
  * Editor theme utilities and types
  * @public - Stable API
  */
-export { nocturniumTheme, tokenColors, editorColors, getThemeCSS, type EditorTheme } from './components/editor/theme';
+export {
+	nocturniumTheme,
+	tokenColors,
+	editorColors,
+	getThemeCSS,
+	type EditorTheme
+} from './components/editor/theme';
 
 /**
  * Language configuration utilities and types
@@ -338,7 +348,13 @@ export { default as DiagnosticMarker } from './components/lsp/DiagnosticMarker.s
  *
  * @public - Stable API
  */
-export { LSPClient, createLSPClient, positionToOffset, offsetToPosition, rangeToOffsets } from './services/lsp-client';
+export {
+	LSPClient,
+	createLSPClient,
+	positionToOffset,
+	offsetToPosition,
+	rangeToOffsets
+} from './services/lsp-client';
 
 /**
  * Public LSP types

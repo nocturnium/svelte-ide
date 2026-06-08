@@ -15,7 +15,7 @@ In a SvelteKit app, the natural home for this is your root layout:
 ```svelte
 <!-- src/routes/+layout.svelte -->
 <script>
-  import '@nocturnium/svelte-ide/theme.css';
+	import '@nocturnium/svelte-ide/theme.css';
 </script>
 
 <slot />
@@ -40,105 +40,105 @@ Because everything cascades from these variables, you retheme by **redefining to
 
 The base colors everything else derives from.
 
-| Token | Default |
-| --- | --- |
-| `--color-nocturnium-night` | `#0d1421` |
-| `--color-nocturnium-deep` | `#1a2744` |
-| `--color-nocturnium-ocean` | `#2d5a7b` |
-| `--color-nocturnium-wave` | `#4a8db7` |
-| `--color-nocturnium-foam` | `#a8c5d9` |
-| `--color-nocturnium-ember` | `#d4793a` |
-| `--color-nocturnium-flame` | `#e9a456` |
-| `--color-nocturnium-moon` | `#f4f1e0` |
-| `--color-nocturnium-glow` | `#fffdf5` |
-| `--color-nocturnium-aurora-blue` | `#60a5fa` |
+| Token                              | Default   |
+| ---------------------------------- | --------- |
+| `--color-nocturnium-night`         | `#0d1421` |
+| `--color-nocturnium-deep`          | `#1a2744` |
+| `--color-nocturnium-ocean`         | `#2d5a7b` |
+| `--color-nocturnium-wave`          | `#4a8db7` |
+| `--color-nocturnium-foam`          | `#a8c5d9` |
+| `--color-nocturnium-ember`         | `#d4793a` |
+| `--color-nocturnium-flame`         | `#e9a456` |
+| `--color-nocturnium-moon`          | `#f4f1e0` |
+| `--color-nocturnium-glow`          | `#fffdf5` |
+| `--color-nocturnium-aurora-blue`   | `#60a5fa` |
 | `--color-nocturnium-aurora-purple` | `#a78bfa` |
-| `--color-nocturnium-aurora-green` | `#4ade80` |
+| `--color-nocturnium-aurora-green`  | `#4ade80` |
 | `--color-nocturnium-aurora-yellow` | `#facc15` |
-| `--color-nocturnium-aurora-pink` | `#f472b6` |
+| `--color-nocturnium-aurora-pink`   | `#f472b6` |
 
 ### Surfaces
 
 Backgrounds for panels, hovers, and active states.
 
-| Token | Default |
-| --- | --- |
-| `--ide-bg-primary` | `var(--color-nocturnium-night)` |
-| `--ide-bg-secondary` | `var(--color-nocturnium-deep)` |
-| `--ide-bg-tertiary` | `var(--color-nocturnium-ocean)` |
-| `--ide-bg-elevated` | `color-mix(in srgb, var(--ide-bg-secondary) 90%, white 10%)` |
-| `--ide-bg-hover` | `color-mix(in srgb, var(--ide-bg-tertiary) 50%, transparent)` |
-| `--ide-bg-active` | `var(--ide-bg-tertiary)` |
+| Token                | Default                                                       |
+| -------------------- | ------------------------------------------------------------- |
+| `--ide-bg-primary`   | `var(--color-nocturnium-night)`                               |
+| `--ide-bg-secondary` | `var(--color-nocturnium-deep)`                                |
+| `--ide-bg-tertiary`  | `var(--color-nocturnium-ocean)`                               |
+| `--ide-bg-elevated`  | `color-mix(in srgb, var(--ide-bg-secondary) 90%, white 10%)`  |
+| `--ide-bg-hover`     | `color-mix(in srgb, var(--ide-bg-tertiary) 50%, transparent)` |
+| `--ide-bg-active`    | `var(--ide-bg-tertiary)`                                      |
 
 ### Text
 
-| Token | Default |
-| --- | --- |
-| `--ide-text-primary` | `var(--color-nocturnium-moon)` |
-| `--ide-text-secondary` | `var(--color-nocturnium-foam)` |
-| `--ide-text-muted` | `color-mix(in srgb, var(--ide-text-secondary) 60%, transparent)` |
-| `--ide-text-accent` | `var(--color-nocturnium-ember)` |
-| `--ide-text-inverse` | `var(--color-nocturnium-night)` |
+| Token                  | Default                                                          |
+| ---------------------- | ---------------------------------------------------------------- |
+| `--ide-text-primary`   | `var(--color-nocturnium-moon)`                                   |
+| `--ide-text-secondary` | `var(--color-nocturnium-foam)`                                   |
+| `--ide-text-muted`     | `color-mix(in srgb, var(--ide-text-secondary) 60%, transparent)` |
+| `--ide-text-accent`    | `var(--color-nocturnium-ember)`                                  |
+| `--ide-text-inverse`   | `var(--color-nocturnium-night)`                                  |
 
 ### Interactive
 
 States for buttons, links, and focus rings.
 
-| Token | Default |
-| --- | --- |
-| `--ide-interactive` | `var(--color-nocturnium-wave)` |
-| `--ide-interactive-hover` | `var(--color-nocturnium-flame)` |
-| `--ide-interactive-active` | `var(--color-nocturnium-ember)` |
-| `--ide-interactive-focus` | `var(--color-nocturnium-aurora-blue)` |
+| Token                      | Default                               |
+| -------------------------- | ------------------------------------- |
+| `--ide-interactive`        | `var(--color-nocturnium-wave)`        |
+| `--ide-interactive-hover`  | `var(--color-nocturnium-flame)`       |
+| `--ide-interactive-active` | `var(--color-nocturnium-ember)`       |
+| `--ide-interactive-focus`  | `var(--color-nocturnium-aurora-blue)` |
 
 ### Semantic
 
 Status colors shared across the UI.
 
-| Token | Default |
-| --- | --- |
-| `--ide-success` | `var(--color-nocturnium-aurora-green)` |
+| Token           | Default                                 |
+| --------------- | --------------------------------------- |
+| `--ide-success` | `var(--color-nocturnium-aurora-green)`  |
 | `--ide-warning` | `var(--color-nocturnium-aurora-yellow)` |
-| `--ide-error` | `#ef4444` |
-| `--ide-info` | `var(--color-nocturnium-aurora-blue)` |
+| `--ide-error`   | `#ef4444`                               |
+| `--ide-info`    | `var(--color-nocturnium-aurora-blue)`   |
 
 ### AI panel
 
 Used by the AI chat surface (see [AI and Agents](./guides/ai-and-agents.md)).
 
-| Token | Default |
-| --- | --- |
-| `--ide-ai-user` | `var(--color-nocturnium-ocean)` |
+| Token                | Default                                 |
+| -------------------- | --------------------------------------- |
+| `--ide-ai-user`      | `var(--color-nocturnium-ocean)`         |
 | `--ide-ai-assistant` | `var(--color-nocturnium-aurora-purple)` |
-| `--ide-ai-system` | `var(--color-nocturnium-deep)` |
-| `--ide-ai-thinking` | `var(--color-nocturnium-aurora-blue)` |
-| `--ide-ai-tool` | `var(--color-nocturnium-aurora-green)` |
+| `--ide-ai-system`    | `var(--color-nocturnium-deep)`          |
+| `--ide-ai-thinking`  | `var(--color-nocturnium-aurora-blue)`   |
+| `--ide-ai-tool`      | `var(--color-nocturnium-aurora-green)`  |
 
 ### Plugin status
 
 Drives the `.ide-plugin-status--*` badge classes (see [Plugins](./guides/plugins.md)).
 
-| Token | Default |
-| --- | --- |
-| `--ide-plugin-draft` | `var(--ide-text-muted)` |
+| Token                    | Default                                 |
+| ------------------------ | --------------------------------------- |
+| `--ide-plugin-draft`     | `var(--ide-text-muted)`                 |
 | `--ide-plugin-reviewing` | `var(--color-nocturnium-aurora-yellow)` |
-| `--ide-plugin-approved` | `var(--color-nocturnium-aurora-green)` |
-| `--ide-plugin-rejected` | `var(--ide-error)` |
-| `--ide-plugin-deploying` | `var(--color-nocturnium-aurora-blue)` |
-| `--ide-plugin-deployed` | `var(--color-nocturnium-aurora-green)` |
+| `--ide-plugin-approved`  | `var(--color-nocturnium-aurora-green)`  |
+| `--ide-plugin-rejected`  | `var(--ide-error)`                      |
+| `--ide-plugin-deploying` | `var(--color-nocturnium-aurora-blue)`   |
+| `--ide-plugin-deployed`  | `var(--color-nocturnium-aurora-green)`  |
 
 ### Collaboration (CRDT)
 
 Cursor colors for realtime collaborators (see [Collaboration](./guides/collaboration.md)).
 
-| Token | Default |
-| --- | --- |
-| `--ide-collab-cursor-1` | `var(--color-nocturnium-aurora-blue)` |
+| Token                   | Default                                 |
+| ----------------------- | --------------------------------------- |
+| `--ide-collab-cursor-1` | `var(--color-nocturnium-aurora-blue)`   |
 | `--ide-collab-cursor-2` | `var(--color-nocturnium-aurora-purple)` |
-| `--ide-collab-cursor-3` | `var(--color-nocturnium-aurora-green)` |
-| `--ide-collab-cursor-4` | `var(--color-nocturnium-aurora-pink)` |
+| `--ide-collab-cursor-3` | `var(--color-nocturnium-aurora-green)`  |
+| `--ide-collab-cursor-4` | `var(--color-nocturnium-aurora-pink)`   |
 | `--ide-collab-cursor-5` | `var(--color-nocturnium-aurora-yellow)` |
-| `--ide-collab-ai` | `var(--color-nocturnium-ember)` |
+| `--ide-collab-ai`       | `var(--color-nocturnium-ember)`         |
 
 ### Agents
 
@@ -146,133 +146,133 @@ Presence, type, lock, transaction, and progress tokens used by agent and VFS com
 
 **Agent status & type**
 
-| Token | Default |
-| --- | --- |
-| `--ide-agent-online` | `var(--color-nocturnium-aurora-green)` |
-| `--ide-agent-busy` | `var(--color-nocturnium-aurora-yellow)` |
-| `--ide-agent-offline` | `var(--ide-text-muted)` |
-| `--ide-agent-error` | `var(--ide-error)` |
-| `--ide-agent-stalled` | `var(--color-nocturnium-aurora-pink)` |
-| `--ide-agent-human` | `var(--color-nocturnium-aurora-blue)` |
-| `--ide-agent-ai-primary` | `var(--color-nocturnium-ember)` |
+| Token                      | Default                                 |
+| -------------------------- | --------------------------------------- |
+| `--ide-agent-online`       | `var(--color-nocturnium-aurora-green)`  |
+| `--ide-agent-busy`         | `var(--color-nocturnium-aurora-yellow)` |
+| `--ide-agent-offline`      | `var(--ide-text-muted)`                 |
+| `--ide-agent-error`        | `var(--ide-error)`                      |
+| `--ide-agent-stalled`      | `var(--color-nocturnium-aurora-pink)`   |
+| `--ide-agent-human`        | `var(--color-nocturnium-aurora-blue)`   |
+| `--ide-agent-ai-primary`   | `var(--color-nocturnium-ember)`         |
 | `--ide-agent-ai-secondary` | `var(--color-nocturnium-aurora-purple)` |
-| `--ide-agent-system` | `var(--color-nocturnium-ocean)` |
+| `--ide-agent-system`       | `var(--color-nocturnium-ocean)`         |
 
 **Lock status**
 
-| Token | Default |
-| --- | --- |
-| `--ide-lock-owned` | `var(--color-nocturnium-aurora-green)` |
-| `--ide-lock-other` | `var(--color-nocturnium-aurora-yellow)` |
-| `--ide-lock-pending` | `var(--color-nocturnium-aurora-blue)` |
-| `--ide-lock-expired` | `var(--ide-text-muted)` |
-| `--ide-lock-conflict` | `var(--ide-error)` |
+| Token                 | Default                                 |
+| --------------------- | --------------------------------------- |
+| `--ide-lock-owned`    | `var(--color-nocturnium-aurora-green)`  |
+| `--ide-lock-other`    | `var(--color-nocturnium-aurora-yellow)` |
+| `--ide-lock-pending`  | `var(--color-nocturnium-aurora-blue)`   |
+| `--ide-lock-expired`  | `var(--ide-text-muted)`                 |
+| `--ide-lock-conflict` | `var(--ide-error)`                      |
 
 **Transaction status**
 
-| Token | Default |
-| --- | --- |
-| `--ide-transaction-staged` | `var(--color-nocturnium-aurora-blue)` |
-| `--ide-transaction-pending` | `var(--color-nocturnium-aurora-yellow)` |
-| `--ide-transaction-committed` | `var(--color-nocturnium-aurora-green)` |
-| `--ide-transaction-failed` | `var(--ide-error)` |
+| Token                         | Default                                 |
+| ----------------------------- | --------------------------------------- |
+| `--ide-transaction-staged`    | `var(--color-nocturnium-aurora-blue)`   |
+| `--ide-transaction-pending`   | `var(--color-nocturnium-aurora-yellow)` |
+| `--ide-transaction-committed` | `var(--color-nocturnium-aurora-green)`  |
+| `--ide-transaction-failed`    | `var(--ide-error)`                      |
 
 **Progress & glow effects**
 
-| Token | Default |
-| --- | --- |
-| `--ide-progress-track` | `var(--ide-bg-tertiary)` |
-| `--ide-progress-fill` | `var(--color-nocturnium-wave)` |
-| `--ide-progress-stalled` | `var(--color-nocturnium-aurora-pink)` |
-| `--ide-agent-glow` | `0 0 12px color-mix(in srgb, var(--ide-agent-ai-primary) 40%, transparent)` |
-| `--ide-lock-glow` | `0 0 8px color-mix(in srgb, var(--ide-lock-other) 30%, transparent)` |
+| Token                    | Default                                                                     |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `--ide-progress-track`   | `var(--ide-bg-tertiary)`                                                    |
+| `--ide-progress-fill`    | `var(--color-nocturnium-wave)`                                              |
+| `--ide-progress-stalled` | `var(--color-nocturnium-aurora-pink)`                                       |
+| `--ide-agent-glow`       | `0 0 12px color-mix(in srgb, var(--ide-agent-ai-primary) 40%, transparent)` |
+| `--ide-lock-glow`        | `0 0 8px color-mix(in srgb, var(--ide-lock-other) 30%, transparent)`        |
 
 ### Borders & shadows
 
-| Token | Default |
-| --- | --- |
-| `--ide-border` | `color-mix(in srgb, var(--ide-text-secondary) 20%, transparent)` |
-| `--ide-border-focus` | `var(--ide-interactive)` |
-| `--ide-border-error` | `var(--ide-error)` |
-| `--ide-shadow-sm` | `0 1px 2px rgba(0, 0, 0, 0.3)` |
-| `--ide-shadow-md` | `0 4px 6px rgba(0, 0, 0, 0.4)` |
-| `--ide-shadow-lg` | `0 10px 15px rgba(0, 0, 0, 0.5)` |
-| `--ide-shadow-xl` | `0 20px 25px rgba(0, 0, 0, 0.6)` |
+| Token                | Default                                                          |
+| -------------------- | ---------------------------------------------------------------- |
+| `--ide-border`       | `color-mix(in srgb, var(--ide-text-secondary) 20%, transparent)` |
+| `--ide-border-focus` | `var(--ide-interactive)`                                         |
+| `--ide-border-error` | `var(--ide-error)`                                               |
+| `--ide-shadow-sm`    | `0 1px 2px rgba(0, 0, 0, 0.3)`                                   |
+| `--ide-shadow-md`    | `0 4px 6px rgba(0, 0, 0, 0.4)`                                   |
+| `--ide-shadow-lg`    | `0 10px 15px rgba(0, 0, 0, 0.5)`                                 |
+| `--ide-shadow-xl`    | `0 20px 25px rgba(0, 0, 0, 0.6)`                                 |
 
 ### Typography
 
-| Token | Default |
-| --- | --- |
-| `--ide-font-sans` | `'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif` |
-| `--ide-font-mono` | `'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Monaco, 'Courier New', monospace` |
-| `--ide-font-size-xs` | `0.75rem` |
-| `--ide-font-size-sm` | `0.875rem` |
-| `--ide-font-size-base` | `1rem` |
-| `--ide-font-size-lg` | `1.125rem` |
-| `--ide-font-size-xl` | `1.25rem` |
-| `--ide-line-height-tight` | `1.25` |
-| `--ide-line-height-normal` | `1.5` |
-| `--ide-line-height-relaxed` | `1.75` |
+| Token                       | Default                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| `--ide-font-sans`           | `'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`     |
+| `--ide-font-mono`           | `'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Monaco, 'Courier New', monospace` |
+| `--ide-font-size-xs`        | `0.75rem`                                                                           |
+| `--ide-font-size-sm`        | `0.875rem`                                                                          |
+| `--ide-font-size-base`      | `1rem`                                                                              |
+| `--ide-font-size-lg`        | `1.125rem`                                                                          |
+| `--ide-font-size-xl`        | `1.25rem`                                                                           |
+| `--ide-line-height-tight`   | `1.25`                                                                              |
+| `--ide-line-height-normal`  | `1.5`                                                                               |
+| `--ide-line-height-relaxed` | `1.75`                                                                              |
 
 ### Spacing
 
-| Token | Default |
-| --- | --- |
-| `--ide-spacing-xs` | `0.25rem` |
-| `--ide-spacing-sm` | `0.5rem` |
-| `--ide-spacing-md` | `1rem` |
-| `--ide-spacing-lg` | `1.5rem` |
-| `--ide-spacing-xl` | `2rem` |
-| `--ide-spacing-2xl` | `3rem` |
+| Token               | Default   |
+| ------------------- | --------- |
+| `--ide-spacing-xs`  | `0.25rem` |
+| `--ide-spacing-sm`  | `0.5rem`  |
+| `--ide-spacing-md`  | `1rem`    |
+| `--ide-spacing-lg`  | `1.5rem`  |
+| `--ide-spacing-xl`  | `2rem`    |
+| `--ide-spacing-2xl` | `3rem`    |
 
 ### Radii
 
-| Token | Default |
-| --- | --- |
-| `--ide-radius-sm` | `0.25rem` |
-| `--ide-radius-md` | `0.375rem` |
-| `--ide-radius-lg` | `0.5rem` |
-| `--ide-radius-xl` | `0.75rem` |
-| `--ide-radius-full` | `9999px` |
+| Token               | Default    |
+| ------------------- | ---------- |
+| `--ide-radius-sm`   | `0.25rem`  |
+| `--ide-radius-md`   | `0.375rem` |
+| `--ide-radius-lg`   | `0.5rem`   |
+| `--ide-radius-xl`   | `0.75rem`  |
+| `--ide-radius-full` | `9999px`   |
 
 ### Transitions
 
-| Token | Default |
-| --- | --- |
-| `--ide-transition-fast` | `100ms ease` |
-| `--ide-transition-normal` | `200ms ease` |
-| `--ide-transition-slow` | `300ms ease` |
+| Token                     | Default                                        |
+| ------------------------- | ---------------------------------------------- |
+| `--ide-transition-fast`   | `100ms ease`                                   |
+| `--ide-transition-normal` | `200ms ease`                                   |
+| `--ide-transition-slow`   | `300ms ease`                                   |
 | `--ide-transition-bounce` | `300ms cubic-bezier(0.68, -0.55, 0.265, 1.55)` |
 
 ### Z-index scale
 
-| Token | Default |
-| --- | --- |
-| `--ide-z-base` | `0` |
-| `--ide-z-dropdown` | `100` |
-| `--ide-z-sticky` | `200` |
-| `--ide-z-overlay` | `300` |
-| `--ide-z-modal` | `400` |
-| `--ide-z-popover` | `500` |
-| `--ide-z-tooltip` | `600` |
-| `--ide-z-notification` | `700` |
+| Token                  | Default |
+| ---------------------- | ------- |
+| `--ide-z-base`         | `0`     |
+| `--ide-z-dropdown`     | `100`   |
+| `--ide-z-sticky`       | `200`   |
+| `--ide-z-overlay`      | `300`   |
+| `--ide-z-modal`        | `400`   |
+| `--ide-z-popover`      | `500`   |
+| `--ide-z-tooltip`      | `600`   |
+| `--ide-z-notification` | `700`   |
 
 ### Layout sizes
 
 Dimensions used by the [editor and layout](./guides/editor.md) components (activity bar, sidebar, panels, status bar, tabs).
 
-| Token | Default |
-| --- | --- |
-| `--ide-activity-bar-width` | `48px` |
-| `--ide-sidebar-width` | `260px` |
-| `--ide-sidebar-min-width` | `180px` |
-| `--ide-sidebar-max-width` | `500px` |
-| `--ide-panel-height` | `200px` |
-| `--ide-panel-min-height` | `100px` |
-| `--ide-panel-max-height` | `500px` |
-| `--ide-status-bar-height` | `24px` |
-| `--ide-tab-height` | `36px` |
-| `--ide-header-height` | `40px` |
+| Token                      | Default |
+| -------------------------- | ------- |
+| `--ide-activity-bar-width` | `48px`  |
+| `--ide-sidebar-width`      | `260px` |
+| `--ide-sidebar-min-width`  | `180px` |
+| `--ide-sidebar-max-width`  | `500px` |
+| `--ide-panel-height`       | `200px` |
+| `--ide-panel-min-height`   | `100px` |
+| `--ide-panel-max-height`   | `500px` |
+| `--ide-status-bar-height`  | `24px`  |
+| `--ide-tab-height`         | `36px`  |
+| `--ide-header-height`      | `40px`  |
 
 ## Overriding tokens
 
@@ -283,13 +283,13 @@ Define the tokens you want to change in a stylesheet that loads **after** `theme
 ```css
 /* app.css — loaded after '@nocturnium/svelte-ide/theme.css' */
 :root {
-  --color-nocturnium-night: #11111b;
-  --color-nocturnium-deep: #1e1e2e;
-  --color-nocturnium-ocean: #313244;
-  --color-nocturnium-wave: #89b4fa;
-  --color-nocturnium-ember: #fab387;
-  --color-nocturnium-aurora-purple: #cba6f7;
-  --color-nocturnium-aurora-green: #a6e3a1;
+	--color-nocturnium-night: #11111b;
+	--color-nocturnium-deep: #1e1e2e;
+	--color-nocturnium-ocean: #313244;
+	--color-nocturnium-wave: #89b4fa;
+	--color-nocturnium-ember: #fab387;
+	--color-nocturnium-aurora-purple: #cba6f7;
+	--color-nocturnium-aurora-green: #a6e3a1;
 }
 ```
 
@@ -300,36 +300,36 @@ The default theme is dark. To build a light variant, redefine the surface and te
 ```css
 /* app.css — loaded after '@nocturnium/svelte-ide/theme.css' */
 :root[data-theme='light'] {
-  /* Surfaces */
-  --ide-bg-primary: #ffffff;
-  --ide-bg-secondary: #f4f4f5;
-  --ide-bg-tertiary: #e4e4e7;
-  --ide-bg-elevated: #fafafa;
-  --ide-bg-hover: color-mix(in srgb, #e4e4e7 60%, transparent);
-  --ide-bg-active: #e4e4e7;
+	/* Surfaces */
+	--ide-bg-primary: #ffffff;
+	--ide-bg-secondary: #f4f4f5;
+	--ide-bg-tertiary: #e4e4e7;
+	--ide-bg-elevated: #fafafa;
+	--ide-bg-hover: color-mix(in srgb, #e4e4e7 60%, transparent);
+	--ide-bg-active: #e4e4e7;
 
-  /* Text */
-  --ide-text-primary: #18181b;
-  --ide-text-secondary: #3f3f46;
-  --ide-text-muted: color-mix(in srgb, #3f3f46 55%, transparent);
-  --ide-text-inverse: #ffffff;
+	/* Text */
+	--ide-text-primary: #18181b;
+	--ide-text-secondary: #3f3f46;
+	--ide-text-muted: color-mix(in srgb, #3f3f46 55%, transparent);
+	--ide-text-inverse: #ffffff;
 
-  /* Interactive + borders tuned for a light background */
-  --ide-interactive: #2563eb;
-  --ide-interactive-hover: #1d4ed8;
-  --ide-border: color-mix(in srgb, #18181b 12%, transparent);
+	/* Interactive + borders tuned for a light background */
+	--ide-interactive: #2563eb;
+	--ide-interactive-hover: #1d4ed8;
+	--ide-border: color-mix(in srgb, #18181b 12%, transparent);
 
-  /* Semantic */
-  --ide-success: #16a34a;
-  --ide-warning: #d97706;
-  --ide-error: #dc2626;
-  --ide-info: #2563eb;
+	/* Semantic */
+	--ide-success: #16a34a;
+	--ide-warning: #d97706;
+	--ide-error: #dc2626;
+	--ide-info: #2563eb;
 }
 ```
 
 ```html
 <html data-theme="light">
-  <!-- ... -->
+	<!-- ... -->
 </html>
 ```
 
@@ -343,20 +343,20 @@ Alongside the CSS, the package exports a small, typed module that describes the 
 
 ```ts
 import {
-  nocturniumTheme,
-  tokenColors,
-  editorColors,
-  getThemeCSS,
-  type EditorTheme
+	nocturniumTheme,
+	tokenColors,
+	editorColors,
+	getThemeCSS,
+	type EditorTheme
 } from '@nocturnium/svelte-ide';
 
 // or, scoped to the editor entry:
 import {
-  nocturniumTheme,
-  tokenColors,
-  editorColors,
-  getThemeCSS,
-  type EditorTheme
+	nocturniumTheme,
+	tokenColors,
+	editorColors,
+	getThemeCSS,
+	type EditorTheme
 } from '@nocturnium/svelte-ide/components/editor';
 ```
 
@@ -366,7 +366,7 @@ import {
 
   ```ts
   tokenColors.keyword; // 'var(--color-nocturnium-aurora-purple)'
-  tokenColors.string;  // 'var(--color-nocturnium-aurora-green)'
+  tokenColors.string; // 'var(--color-nocturnium-aurora-green)'
   ```
 
 - **`editorColors`** — a readonly object mapping editor-chrome surfaces (background, text, cursor, selection, search match, bracket match, gutter, line numbers, active line, border) to token references. For example `editorColors.cursor` is `var(--ide-interactive)` and `editorColors.activeLine` is `var(--ide-bg-elevated)`.
@@ -375,10 +375,10 @@ import {
 
   ```ts
   interface EditorTheme {
-    name: string;
-    isDark: boolean;
-    tokenColors: typeof tokenColors;
-    editorColors: typeof editorColors;
+  	name: string;
+  	isDark: boolean;
+  	tokenColors: typeof tokenColors;
+  	editorColors: typeof editorColors;
   }
   ```
 
@@ -388,15 +388,15 @@ import {
 
   ```svelte
   <script>
-    import { getThemeCSS, nocturniumTheme } from '@nocturnium/svelte-ide';
+  	import { getThemeCSS, nocturniumTheme } from '@nocturnium/svelte-ide';
 
-    const css = getThemeCSS(nocturniumTheme);
-    // → a block of "--editor-token-comment: var(--ide-text-muted); ...
-    //   --editor-border: var(--ide-border);" declarations
+  	const css = getThemeCSS(nocturniumTheme);
+  	// → a block of "--editor-token-comment: var(--ide-text-muted); ...
+  	//   --editor-border: var(--ide-border);" declarations
   </script>
 
   <div style={css}>
-    <!-- editor mounted here can read --editor-token-* / --editor-* vars -->
+  	<!-- editor mounted here can read --editor-token-* / --editor-* vars -->
   </div>
   ```
 

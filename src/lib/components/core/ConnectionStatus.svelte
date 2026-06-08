@@ -1,79 +1,84 @@
 <script lang="ts">
-/**
- * ConnectionStatus Component
- *
- * Displays the current connection status with the VFS server.
- * Shows connected, disconnected, and reconnecting states.
- */
+	/**
+	 * ConnectionStatus Component
+	 *
+	 * Displays the current connection status with the VFS server.
+	 * Shows connected, disconnected, and reconnecting states.
+	 */
 
-export type ConnectionState = 'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'error';
+	export type ConnectionState =
+		| 'connected'
+		| 'disconnected'
+		| 'connecting'
+		| 'reconnecting'
+		| 'error';
 
-interface Props {
-	state: ConnectionState;
-	reconnectAttempts?: number;
-	maxReconnectAttempts?: number;
-	lastEventTime?: string | null;
-	errorMessage?: string | null;
-	onRetry?: () => void;
-	compact?: boolean;
-	showLabel?: boolean;
-}
-
-let {
-	state,
-	reconnectAttempts = 0,
-	maxReconnectAttempts = 10,
-	lastEventTime = null,
-	errorMessage = null,
-	onRetry,
-	compact = false,
-	showLabel = true
-}: Props = $props();
-
-// Computed display values
-let statusLabel = $derived.by(() => {
-	switch (state) {
-		case 'connected':
-			return 'Connected';
-		case 'disconnected':
-			return 'Disconnected';
-		case 'connecting':
-			return 'Connecting...';
-		case 'reconnecting':
-			return `Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})`;
-		case 'error':
-			return 'Connection Error';
-		default:
-			return 'Unknown';
+	interface Props {
+		state: ConnectionState;
+		reconnectAttempts?: number;
+		maxReconnectAttempts?: number;
+		lastEventTime?: string | null;
+		errorMessage?: string | null;
+		onRetry?: () => void;
+		compact?: boolean;
+		showLabel?: boolean;
 	}
-});
 
-let statusIcon = $derived.by(() => {
-	switch (state) {
-		case 'connected':
-			return 'check';
-		case 'disconnected':
-		case 'error':
-			return 'x';
-		case 'connecting':
-		case 'reconnecting':
-			return 'loader';
-		default:
-			return 'circle';
-	}
-});
+	let {
+		state,
+		reconnectAttempts = 0,
+		maxReconnectAttempts = 10,
+		lastEventTime = null,
+		errorMessage = null,
+		onRetry,
+		compact = false,
+		showLabel = true
+	}: Props = $props();
 
-let lastSyncDisplay = $derived.by(() => {
-	if (!lastEventTime) return null;
-	const date = new Date(lastEventTime);
-	const now = new Date();
-	const diff = now.getTime() - date.getTime();
+	// Computed display values
+	let statusLabel = $derived.by(() => {
+		switch (state) {
+			case 'connected':
+				return 'Connected';
+			case 'disconnected':
+				return 'Disconnected';
+			case 'connecting':
+				return 'Connecting...';
+			case 'reconnecting':
+				return `Reconnecting (${reconnectAttempts}/${maxReconnectAttempts})`;
+			case 'error':
+				return 'Connection Error';
+			default:
+				return 'Unknown';
+		}
+	});
 
-	if (diff < 60000) return 'Just now';
-	if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-	if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-	return date.toLocaleDateString();
-});
+	let statusIcon = $derived.by(() => {
+		switch (state) {
+			case 'connected':
+				return 'check';
+			case 'disconnected':
+			case 'error':
+				return 'x';
+			case 'connecting':
+			case 'reconnecting':
+				return 'loader';
+			default:
+				return 'circle';
+		}
+	});
+
+	let lastSyncDisplay = $derived.by(() => {
+		if (!lastEventTime) return null;
+		const date = new Date(lastEventTime);
+		const now = new Date();
+		const diff = now.getTime() - date.getTime();
+
+		if (diff < 60000) return 'Just now';
+		if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+		if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+		return date.toLocaleDateString();
+	});
 </script>
 
 <div

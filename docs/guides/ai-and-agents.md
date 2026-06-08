@@ -1,6 +1,6 @@
 # AI Panel & Agents
 
-`@nocturnium/svelte-ide` ships two complementary feature sets for building AI-aware editors: a **chat assistant** (the `<AIPanel>` component plus the `ai` store, which talk to *your* chat backend) and a set of **multi-agent presence** components (`AgentAvatar`, `AgentActivityPanel`, `AgentPresenceBar`, `AgentCursor`) that visualize other actors — human or AI — working alongside the user. Neither feature bundles a server or a model: you bring your own chat endpoint and your own source of agent state, and the library renders the UI and manages reactive state around it. This guide covers wiring both, the message/tool-call/edit-preview pieces, the HTML-safety guarantees of the rendered message content, and the agent types.
+`@nocturnium/svelte-ide` ships two complementary feature sets for building AI-aware editors: a **chat assistant** (the `<AIPanel>` component plus the `ai` store, which talk to _your_ chat backend) and a set of **multi-agent presence** components (`AgentAvatar`, `AgentActivityPanel`, `AgentPresenceBar`, `AgentCursor`) that visualize other actors — human or AI — working alongside the user. Neither feature bundles a server or a model: you bring your own chat endpoint and your own source of agent state, and the library renders the UI and manages reactive state around it. This guide covers wiring both, the message/tool-call/edit-preview pieces, the HTML-safety guarantees of the rendered message content, and the agent types.
 
 ---
 
@@ -16,20 +16,20 @@ Drop the panel into a layout and point the store at your endpoint:
 
 ```svelte
 <script lang="ts">
-  import { AIPanel } from '@nocturnium/svelte-ide/components/ai';
-  import { updateConfig } from '@nocturnium/svelte-ide/stores';
+	import { AIPanel } from '@nocturnium/svelte-ide/components/ai';
+	import { updateConfig } from '@nocturnium/svelte-ide/stores';
 
-  // Configure once (e.g. in a top-level component or onMount)
-  updateConfig({
-    endpoint: '/api/chat',          // your backend (default shown)
-    model: 'your-model-id',         // forwarded in the request body
-    systemPrompt: 'You are a coding assistant.',
-    streaming: true
-  });
+	// Configure once (e.g. in a top-level component or onMount)
+	updateConfig({
+		endpoint: '/api/chat', // your backend (default shown)
+		model: 'your-model-id', // forwarded in the request body
+		systemPrompt: 'You are a coding assistant.',
+		streaming: true
+	});
 </script>
 
 <div style="height: 600px">
-  <AIPanel showSidebar />
+	<AIPanel showSidebar />
 </div>
 ```
 
@@ -45,16 +45,16 @@ Everything the AI/agents features expose is also re-exported from the package ro
 
 ```svelte
 <script lang="ts">
-  import { AIPanel } from '@nocturnium/svelte-ide/components/ai';
+	import { AIPanel } from '@nocturnium/svelte-ide/components/ai';
 </script>
 
 <AIPanel showSidebar class="my-panel" />
 ```
 
-| Prop          | Type      | Default | Description                                                        |
-| ------------- | --------- | ------- | ------------------------------------------------------------------ |
-| `showSidebar` | `boolean` | `false` | Show the conversation list sidebar (toggleable from the header).   |
-| `class`       | `string`  | `''`    | Extra class applied to the panel root.                             |
+| Prop          | Type      | Default | Description                                                      |
+| ------------- | --------- | ------- | ---------------------------------------------------------------- |
+| `showSidebar` | `boolean` | `false` | Show the conversation list sidebar (toggleable from the header). |
+| `class`       | `string`  | `''`    | Extra class applied to the panel root.                           |
 
 The panel reads and drives the `ai` store directly — it calls `sendMessage()` on submit, renders `getMessages()`, shows `getIsStreaming()` while a response streams, and surfaces `getError()` in the banner. You don't pass messages in as props; you configure the store and let the panel react.
 
@@ -66,17 +66,17 @@ The store is the programmatic surface behind the panel. Import its functions fro
 
 ```ts
 import {
-  updateConfig,
-  sendMessage,
-  createConversation,
-  setActiveConversation,
-  registerTool,
-  togglePanel,
-  isStreaming,
-  messages,
-  aiConfig,
-  aiError,
-  clearAIError
+	updateConfig,
+	sendMessage,
+	createConversation,
+	setActiveConversation,
+	registerTool,
+	togglePanel,
+	isStreaming,
+	messages,
+	aiConfig,
+	aiError,
+	clearAIError
 } from '@nocturnium/svelte-ide/stores';
 ```
 
@@ -87,24 +87,24 @@ Common operations:
 ```ts
 // 1. Configure the backend
 updateConfig({
-  endpoint: '/api/chat',
-  model: 'your-model-id',
-  systemPrompt: 'You are a helpful coding assistant integrated into an IDE.',
-  maxTokens: 4096,
-  temperature: 0.7,
-  streaming: true,
-  headers: { 'X-Workspace': 'demo' } // merged into every request
+	endpoint: '/api/chat',
+	model: 'your-model-id',
+	systemPrompt: 'You are a helpful coding assistant integrated into an IDE.',
+	maxTokens: 4096,
+	temperature: 0.7,
+	streaming: true,
+	headers: { 'X-Workspace': 'demo' } // merged into every request
 });
 
 // 2. Start (or implicitly create) a conversation and send a message
 const conversationId = createConversation('Refactor session');
 await sendMessage('Explain this function', {
-  selection: { path: 'src/app.ts', content: '…', startLine: 10, endLine: 24 }
+	selection: { path: 'src/app.ts', content: '…', startLine: 10, endLine: 24 }
 });
 
 // 3. React to streaming state in your own UI
 $effect(() => {
-  if (isStreaming.current) console.log('assistant is responding…');
+	if (isStreaming.current) console.log('assistant is responding…');
 });
 ```
 
@@ -142,17 +142,17 @@ import { registerTool } from '@nocturnium/svelte-ide/stores';
 import type { AITool } from '@nocturnium/svelte-ide/types';
 
 const readFile: AITool = {
-  name: 'read_file',
-  description: 'Read the contents of a file in the workspace',
-  parameters: {
-    type: 'object',
-    properties: { path: { type: 'string', description: 'Workspace-relative path' } },
-    required: ['path']
-  },
-  handler: async (args, context) => {
-    // args is Record<string, unknown>; context is the conversation's AIContext
-    return await myVfs.read(String(args.path));
-  }
+	name: 'read_file',
+	description: 'Read the contents of a file in the workspace',
+	parameters: {
+		type: 'object',
+		properties: { path: { type: 'string', description: 'Workspace-relative path' } },
+		required: ['path']
+	},
+	handler: async (args, context) => {
+		// args is Record<string, unknown>; context is the conversation's AIContext
+		return await myVfs.read(String(args.path));
+	}
 };
 
 registerTool(readFile);
@@ -176,17 +176,19 @@ Renders a single `AIMessage` — avatar, role label, relative timestamp, body, a
 
 ```svelte
 <script lang="ts">
-  import { AIMessage } from '@nocturnium/svelte-ide/components/ai';
-  import type { AIMessage as AIMessageType } from '@nocturnium/svelte-ide/types';
+	import { AIMessage } from '@nocturnium/svelte-ide/components/ai';
+	import type { AIMessage as AIMessageType } from '@nocturnium/svelte-ide/types';
 
-  let { message }: { message: AIMessageType } = $props();
+	let { message }: { message: AIMessageType } = $props();
 </script>
 
 <AIMessage
-  {message}
-  showActions
-  onCopy={(m) => navigator.clipboard.writeText(m.content)}
-  onRetry={(m) => { /* re-send */ }}
+	{message}
+	showActions
+	onCopy={(m) => navigator.clipboard.writeText(m.content)}
+	onRetry={(m) => {
+		/* re-send */
+	}}
 />
 ```
 
@@ -198,7 +200,7 @@ Props: `message` (required), `showActions` (default `true`), and the optional ca
 
 ```svelte
 <script lang="ts">
-  import { AIMessageContent } from '@nocturnium/svelte-ide/components/ai';
+	import { AIMessageContent } from '@nocturnium/svelte-ide/components/ai';
 </script>
 
 <AIMessageContent content={message.content} isStreaming={message.isStreaming} />
@@ -211,7 +213,7 @@ Props: `content` (required `string`) and `isStreaming` (default `false`, which a
 1. **HTML is escaped first.** Before any formatting is applied, `&`, `<`, `>`, `"`, and `'` are replaced with entities, so raw markup in the model's reply is shown as literal text and never interpreted as DOM. Only a small, fixed set of inline elements the component generates itself (`<strong>`, `<em>`, links, `<br>`) is re-introduced afterward.
 2. **Link schemes are whitelisted.** Markdown links are only emitted as `<a>` when the href is a relative/anchor URL (`/…`, `#…`, `./…`, `../…`) or uses `http:`, `https:`, or `mailto:`. Anything else (`javascript:`, `data:`, `vbscript:`, …) degrades to plain text. Emitted links always carry `target="_blank" rel="noopener noreferrer"`.
 
-This protects against markup injected *through* the model's response. It does **not** establish trust in the endpoint itself — you still own the security of the backend you point `endpoint` at (authentication, what the model is allowed to return, and any tool side effects). Treat the chat backend as part of your trust boundary.
+This protects against markup injected _through_ the model's response. It does **not** establish trust in the endpoint itself — you still own the security of the backend you point `endpoint` at (authentication, what the model is allowed to return, and any tool side effects). Treat the chat backend as part of your trust boundary.
 
 ### `<AIToolCallDisplay>`
 
@@ -219,10 +221,10 @@ A collapsible card for a single `AIToolCall`: tool name, a status badge, optiona
 
 ```svelte
 <script lang="ts">
-  import { AIToolCallDisplay } from '@nocturnium/svelte-ide/components/ai';
-  import type { AIToolCall } from '@nocturnium/svelte-ide/types';
+	import { AIToolCallDisplay } from '@nocturnium/svelte-ide/components/ai';
+	import type { AIToolCall } from '@nocturnium/svelte-ide/types';
 
-  let { toolCall }: { toolCall: AIToolCall } = $props();
+	let { toolCall }: { toolCall: AIToolCall } = $props();
 </script>
 
 <AIToolCallDisplay {toolCall} status="completed" result={{ ok: true }} duration={1240} />
@@ -244,10 +246,10 @@ Shows a proposed file edit from an `AIEditSession` — file path, a diff, a stat
 
 ```svelte
 <script lang="ts">
-  import { AIEditPreview } from '@nocturnium/svelte-ide/components/ai';
-  import type { AIEditSession } from '@nocturnium/svelte-ide/types';
+	import { AIEditPreview } from '@nocturnium/svelte-ide/components/ai';
+	import type { AIEditSession } from '@nocturnium/svelte-ide/types';
 
-  let { session }: { session: AIEditSession } = $props();
+	let { session }: { session: AIEditSession } = $props();
 </script>
 
 <AIEditPreview {session} />
@@ -261,14 +263,16 @@ A floating prompt box for an "edit this selection" flow. It collects an instruct
 
 ```svelte
 <script lang="ts">
-  import { AIInlineEdit } from '@nocturnium/svelte-ide/components/ai';
+	import { AIInlineEdit } from '@nocturnium/svelte-ide/components/ai';
 </script>
 
 <AIInlineEdit
-  selection={selectedText}
-  initialPrompt=""
-  onSubmit={async (prompt) => { await requestEdit(prompt, selectedText); }}
-  onCancel={() => (editing = false)}
+	selection={selectedText}
+	initialPrompt=""
+	onSubmit={async (prompt) => {
+		await requestEdit(prompt, selectedText);
+	}}
+	onCancel={() => (editing = false)}
 />
 ```
 
@@ -280,16 +284,16 @@ A compact card for an inline `AISuggestion` (completion / refactor / fix / expla
 
 ```svelte
 <script lang="ts">
-  import { AISuggestionWidget } from '@nocturnium/svelte-ide/components/ai';
-  import type { AISuggestion } from '@nocturnium/svelte-ide/types';
+	import { AISuggestionWidget } from '@nocturnium/svelte-ide/components/ai';
+	import type { AISuggestion } from '@nocturnium/svelte-ide/types';
 
-  let { suggestion }: { suggestion: AISuggestion } = $props();
+	let { suggestion }: { suggestion: AISuggestion } = $props();
 </script>
 
 <AISuggestionWidget
-  {suggestion}
-  onAccept={() => applySuggestion(suggestion)}
-  onDismiss={() => dismiss(suggestion.id)}
+	{suggestion}
+	onAccept={() => applySuggestion(suggestion)}
+	onDismiss={() => dismiss(suggestion.id)}
 />
 ```
 
@@ -299,7 +303,7 @@ Props: `suggestion` (required), `onAccept` (required, `() => void`), `onDismiss`
 
 ## Multi-agent presence
 
-The agent components visualize *other* actors in the workspace. They are pure presentation: you feed them `Agent` objects (and activities/cursors), and they render avatars, panels, bars, and remote cursors. Where the agent state comes from — a websocket, the `agents` store, your own polling — is up to you. The agents store (also under `/stores`) provides reactive state and mutators (`addAgent`, `updateAgent`, `setAgentStatus`, `setAgentTask`, `updateAgentProgress`, `getFilteredAgents`, …) if you want a ready-made source.
+The agent components visualize _other_ actors in the workspace. They are pure presentation: you feed them `Agent` objects (and activities/cursors), and they render avatars, panels, bars, and remote cursors. Where the agent state comes from — a websocket, the `agents` store, your own polling — is up to you. The agents store (also under `/stores`) provides reactive state and mutators (`addAgent`, `updateAgent`, `setAgentStatus`, `setAgentTask`, `updateAgentProgress`, `getFilteredAgents`, …) if you want a ready-made source.
 
 All four components are imported from `@nocturnium/svelte-ide/components/agents`, and the types from `@nocturnium/svelte-ide/types`.
 
@@ -312,30 +316,30 @@ import type { Agent, AgentStatus, AgentType } from '@nocturnium/svelte-ide/types
 // AgentType:   'coder' | 'reviewer' | 'tester' | 'architect' | 'coordinator'
 
 const agent: Agent = {
-  id: 'agent-1',
-  name: 'Refactor Bot',
-  type: 'coder',
-  status: 'busy',
-  capabilities: ['code_generation', 'refactoring'],
-  workspaceId: 'ws-1',
-  joinedAt: new Date().toISOString(),
-  lastActivity: new Date().toISOString(),
-  color: '#7c5cff', // used for this agent's remote cursor
-  currentTask: {
-    id: 'task-1',
-    description: 'Extract helper from app.ts',
-    startedAt: new Date().toISOString(),
-    files: ['src/app.ts'],
-    progress: {
-      phase: 'implementing',       // 'planning' | 'implementing' | 'testing' | 'reviewing' | 'complete'
-      percentage: 60,
-      tokensUsed: 1820,
-      stepsCompleted: 3,
-      toolCalls: 7,
-      filesModified: 1,
-      lastUpdate: new Date().toISOString()
-    }
-  }
+	id: 'agent-1',
+	name: 'Refactor Bot',
+	type: 'coder',
+	status: 'busy',
+	capabilities: ['code_generation', 'refactoring'],
+	workspaceId: 'ws-1',
+	joinedAt: new Date().toISOString(),
+	lastActivity: new Date().toISOString(),
+	color: '#7c5cff', // used for this agent's remote cursor
+	currentTask: {
+		id: 'task-1',
+		description: 'Extract helper from app.ts',
+		startedAt: new Date().toISOString(),
+		files: ['src/app.ts'],
+		progress: {
+			phase: 'implementing', // 'planning' | 'implementing' | 'testing' | 'reviewing' | 'complete'
+			percentage: 60,
+			tokensUsed: 1820,
+			stepsCompleted: 3,
+			toolCalls: 7,
+			filesModified: 1,
+			lastUpdate: new Date().toISOString()
+		}
+	}
 };
 ```
 
@@ -347,7 +351,7 @@ An avatar with a status ring, a work-progress ring (for `busy` agents with a tas
 
 ```svelte
 <script lang="ts">
-  import { AgentAvatar } from '@nocturnium/svelte-ide/components/agents';
+	import { AgentAvatar } from '@nocturnium/svelte-ide/components/agents';
 </script>
 
 <AgentAvatar {agent} size="md" showStatus showBadge showProgress />
@@ -361,15 +365,15 @@ A compact, stacked row (or column) of the online/busy agents, with an overflow c
 
 ```svelte
 <script lang="ts">
-  import { AgentPresenceBar } from '@nocturnium/svelte-ide/components/agents';
+	import { AgentPresenceBar } from '@nocturnium/svelte-ide/components/agents';
 </script>
 
 <AgentPresenceBar
-  {agents}
-  maxVisible={5}
-  orientation="horizontal"
-  onAgentClick={(a) => select(a.id)}
-  onExpand={() => openPanel()}
+	{agents}
+	maxVisible={5}
+	orientation="horizontal"
+	onAgentClick={(a) => select(a.id)}
+	onExpand={() => openPanel()}
 />
 ```
 
@@ -381,23 +385,23 @@ A full panel: filterable agent grid/list, a selected-agent detail view with task
 
 ```svelte
 <script lang="ts">
-  import { AgentActivityPanel } from '@nocturnium/svelte-ide/components/agents';
-  import type { AgentFilter, AgentViewMode } from '@nocturnium/svelte-ide/types';
+	import { AgentActivityPanel } from '@nocturnium/svelte-ide/components/agents';
+	import type { AgentFilter, AgentViewMode } from '@nocturnium/svelte-ide/types';
 
-  let selectedAgentId = $state<string | null>(null);
-  let filter = $state<AgentFilter>('all');       // AgentStatus | 'all'
-  let viewMode = $state<AgentViewMode>('grid');  // 'grid' | 'list' | 'compact'
+	let selectedAgentId = $state<string | null>(null);
+	let filter = $state<AgentFilter>('all'); // AgentStatus | 'all'
+	let viewMode = $state<AgentViewMode>('grid'); // 'grid' | 'list' | 'compact'
 </script>
 
 <AgentActivityPanel
-  {agents}
-  {activities}
-  {selectedAgentId}
-  {filter}
-  {viewMode}
-  onSelectAgent={(id) => (selectedAgentId = id)}
-  onFilterChange={(f) => (filter = f)}
-  onViewModeChange={(m) => (viewMode = m)}
+	{agents}
+	{activities}
+	{selectedAgentId}
+	{filter}
+	{viewMode}
+	onSelectAgent={(id) => (selectedAgentId = id)}
+	onFilterChange={(f) => (filter = f)}
+	onViewModeChange={(m) => (viewMode = m)}
 />
 ```
 
@@ -409,20 +413,13 @@ A remote cursor overlay for collaborative editing — a colored caret, a name la
 
 ```svelte
 <script lang="ts">
-  import { AgentCursor } from '@nocturnium/svelte-ide/components/agents';
-  import type { CursorPosition, CursorSelection } from '@nocturnium/svelte-ide/types';
+	import { AgentCursor } from '@nocturnium/svelte-ide/components/agents';
+	import type { CursorPosition, CursorSelection } from '@nocturnium/svelte-ide/types';
 
-  let { agent, position }: { agent: Agent; position: CursorPosition } = $props();
+	let { agent, position }: { agent: Agent; position: CursorPosition } = $props();
 </script>
 
-<AgentCursor
-  {agent}
-  {position}
-  charWidth={8}
-  lineHeight={20}
-  gutterWidth={50}
-  isTyping={false}
-/>
+<AgentCursor {agent} {position} charWidth={8} lineHeight={20} gutterWidth={50} isTyping={false} />
 ```
 
 Props: `agent` (required), `position` (required `CursorPosition` — `{ line, column }`), `charWidth` (required), `lineHeight` (required); optional `selection` (`CursorSelection`), `isTyping` (default `false`), `scrollX`/`scrollY` (default `0`), `gutterWidth` (default `50`), `class`. The caret color comes from `agent.color`, falling back to a theme token.

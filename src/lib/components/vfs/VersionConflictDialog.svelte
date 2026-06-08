@@ -1,67 +1,67 @@
 <script lang="ts">
-/**
- * VersionConflictDialog Component
- *
- * Displays when a file version conflict is detected, allowing the user
- * to choose how to resolve the conflict (merge, overwrite, or discard).
- */
+	/**
+	 * VersionConflictDialog Component
+	 *
+	 * Displays when a file version conflict is detected, allowing the user
+	 * to choose how to resolve the conflict (merge, overwrite, or discard).
+	 */
 
-interface ConflictDetails {
-	path: string;
-	localVersion: number;
-	serverVersion: number;
-	localContent: string;
-	serverContent: string;
-	baseContent?: string;
-	lastModifiedBy?: string;
-	lastModifiedAt?: string;
-}
-
-interface Props {
-	conflict: ConflictDetails;
-	onResolve: (resolution: 'merge' | 'overwrite' | 'discard', mergedContent?: string) => void;
-	onCancel: () => void;
-}
-
-let { conflict, onResolve, onCancel }: Props = $props();
-
-// View state
-let activeView = $state<'side-by-side' | 'unified' | 'local' | 'server'>('side-by-side');
-// Editable merge buffer is intentionally seeded once from the prop: the dialog is
-// mounted per-conflict, so resetting the user's edits if `conflict` changed would be wrong.
-// svelte-ignore state_referenced_locally
-let mergedContent = $state(conflict.localContent);
-let showMergeEditor = $state(false);
-
-// Computed
-let fileName = $derived(conflict.path.split('/').pop() ?? conflict.path);
-let hasChanges = $derived(mergedContent !== conflict.localContent);
-
-// Line diff (simplified)
-let localLines = $derived(conflict.localContent.split('\n'));
-let serverLines = $derived(conflict.serverContent.split('\n'));
-
-function handleOverwrite() {
-	onResolve('overwrite', conflict.localContent);
-}
-
-function handleDiscard() {
-	onResolve('discard');
-}
-
-function handleMerge() {
-	if (showMergeEditor) {
-		onResolve('merge', mergedContent);
-	} else {
-		showMergeEditor = true;
+	interface ConflictDetails {
+		path: string;
+		localVersion: number;
+		serverVersion: number;
+		localContent: string;
+		serverContent: string;
+		baseContent?: string;
+		lastModifiedBy?: string;
+		lastModifiedAt?: string;
 	}
-}
 
-function handleKeydown(event: KeyboardEvent) {
-	if (event.key === 'Escape') {
-		onCancel();
+	interface Props {
+		conflict: ConflictDetails;
+		onResolve: (resolution: 'merge' | 'overwrite' | 'discard', mergedContent?: string) => void;
+		onCancel: () => void;
 	}
-}
+
+	let { conflict, onResolve, onCancel }: Props = $props();
+
+	// View state
+	let activeView = $state<'side-by-side' | 'unified' | 'local' | 'server'>('side-by-side');
+	// Editable merge buffer is intentionally seeded once from the prop: the dialog is
+	// mounted per-conflict, so resetting the user's edits if `conflict` changed would be wrong.
+	// svelte-ignore state_referenced_locally
+	let mergedContent = $state(conflict.localContent);
+	let showMergeEditor = $state(false);
+
+	// Computed
+	let fileName = $derived(conflict.path.split('/').pop() ?? conflict.path);
+	let hasChanges = $derived(mergedContent !== conflict.localContent);
+
+	// Line diff (simplified)
+	let localLines = $derived(conflict.localContent.split('\n'));
+	let serverLines = $derived(conflict.serverContent.split('\n'));
+
+	function handleOverwrite() {
+		onResolve('overwrite', conflict.localContent);
+	}
+
+	function handleDiscard() {
+		onResolve('discard');
+	}
+
+	function handleMerge() {
+		if (showMergeEditor) {
+			onResolve('merge', mergedContent);
+		} else {
+			showMergeEditor = true;
+		}
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') {
+			onCancel();
+		}
+	}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -82,14 +82,24 @@ function handleKeydown(event: KeyboardEvent) {
 					stroke-linecap="round"
 					stroke-linejoin="round"
 				>
-					<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+					<path
+						d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+					/>
 					<line x1="12" y1="9" x2="12" y2="13" />
 					<line x1="12" y1="17" x2="12.01" y2="17" />
 				</svg>
 				<h2 id="conflict-title">Version Conflict</h2>
 			</div>
 			<button class="close-btn" onclick={onCancel} aria-label="Close">
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<path d="M18 6 6 18M6 6l12 12" />
 				</svg>
 			</button>
@@ -196,30 +206,42 @@ function handleKeydown(event: KeyboardEvent) {
 							<span class="modified-indicator">Modified</span>
 						{/if}
 					</div>
-					<textarea
-						class="merge-textarea"
-						bind:value={mergedContent}
-						spellcheck="false"
-					></textarea>
+					<textarea class="merge-textarea" bind:value={mergedContent} spellcheck="false"></textarea>
 				</div>
 			{/if}
 		</div>
 
 		<footer class="conflict-footer">
 			<div class="action-group secondary">
-				<button class="action-btn cancel" onclick={onCancel}>
-					Cancel
-				</button>
+				<button class="action-btn cancel" onclick={onCancel}> Cancel </button>
 			</div>
 			<div class="action-group primary">
 				<button class="action-btn discard" onclick={handleDiscard}>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
+						/>
 					</svg>
 					Use Server Version
 				</button>
 				<button class="action-btn merge" onclick={handleMerge}>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<circle cx="18" cy="18" r="3" />
 						<circle cx="6" cy="6" r="3" />
 						<path d="M6 21V9a9 9 0 0 0 9 9" />
@@ -227,7 +249,15 @@ function handleKeydown(event: KeyboardEvent) {
 					{showMergeEditor ? 'Save Merge' : 'Merge Changes'}
 				</button>
 				<button class="action-btn overwrite" onclick={handleOverwrite}>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
 					</svg>
 					Overwrite with Mine

@@ -92,7 +92,7 @@ const DEFAULT_CONFIG: GitBlameConfig = {
 		'#f97316', // orange
 		'#6366f1', // indigo
 		'#ef4444', // red
-		'#84cc16'  // lime
+		'#84cc16' // lime
 	],
 	ageColors: ['#22c55e', '#6b7280'] // green (new) to gray (old)
 };
@@ -278,12 +278,12 @@ export class GitBlameManager {
 		const oneYear = 365 * oneDay;
 
 		// Return color based on age
-		if (age < oneDay) return '#22c55e';      // Today - bright green
-		if (age < oneWeek) return '#4ade80';     // This week - green
-		if (age < oneMonth) return '#86efac';    // This month - light green
-		if (age < sixMonths) return '#9ca3af';   // Recent - gray
-		if (age < oneYear) return '#6b7280';     // Old - darker gray
-		return '#4b5563';                         // Ancient - darkest gray
+		if (age < oneDay) return '#22c55e'; // Today - bright green
+		if (age < oneWeek) return '#4ade80'; // This week - green
+		if (age < oneMonth) return '#86efac'; // This month - light green
+		if (age < sixMonths) return '#9ca3af'; // Recent - gray
+		if (age < oneYear) return '#6b7280'; // Old - darker gray
+		return '#4b5563'; // Ancient - darkest gray
 	}
 
 	/**
@@ -384,7 +384,7 @@ export function generateMockBlameData(lineCount: number): BlameInfo[] {
 	// Generate commits
 	const commits: Array<{
 		sha: string;
-		author: typeof authors[0];
+		author: (typeof authors)[0];
 		timestamp: Date;
 		message: string;
 	}> = [];

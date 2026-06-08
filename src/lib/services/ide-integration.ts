@@ -133,8 +133,7 @@ function handleVFSEvent(event: VFSEvent): void {
 				const agent = agentsStore.getAgent(updateEvent.actor);
 				if (agent) {
 					const operation = updateEvent.operation;
-					const operationPath =
-						operation.type === 'rename' ? operation.newPath : operation.path;
+					const operationPath = operation.type === 'rename' ? operation.newPath : operation.path;
 					agentsStore.addEvent({
 						id: crypto.randomUUID(),
 						timestamp: updateEvent.timestamp,
@@ -212,9 +211,7 @@ function handleTeamEvent(event: TeamEvent): void {
 		case 'task_completed': {
 			// Find and complete the AI session
 			const sessions = collabStore.getAISessions();
-			const session = sessions.find(
-				(s) => s.aiUser.id === event.agentId && s.status === 'active'
-			);
+			const session = sessions.find((s) => s.aiUser.id === event.agentId && s.status === 'active');
 			if (session) {
 				collabStore.completeAISession(session.id);
 			}

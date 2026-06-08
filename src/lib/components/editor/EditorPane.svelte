@@ -61,12 +61,7 @@
 
 <div class="editor-pane {className}">
 	{#if tabs.length > 0}
-		<EditorTabs
-			{tabs}
-			{activeTabId}
-			onSelect={setActiveTab}
-			onClose={handleCloseTab}
-		/>
+		<EditorTabs {tabs} {activeTabId} onSelect={setActiveTab} onClose={handleCloseTab} />
 
 		{#if activeTab}
 			<div class="editor-pane__content">

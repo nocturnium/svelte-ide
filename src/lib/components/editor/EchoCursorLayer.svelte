@@ -160,7 +160,9 @@
 		{#if echoCursors.length > 0}
 			<div class="echo-mode-indicator">
 				<span class="echo-mode-indicator__icon">~</span>
-				<span class="echo-mode-indicator__count">{echoCursors.length} echo{echoCursors.length !== 1 ? 's' : ''}</span>
+				<span class="echo-mode-indicator__count"
+					>{echoCursors.length} echo{echoCursors.length !== 1 ? 's' : ''}</span
+				>
 			</div>
 		{/if}
 	</div>

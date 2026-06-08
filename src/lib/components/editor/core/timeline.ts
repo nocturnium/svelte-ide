@@ -6,7 +6,6 @@
  * allowing users to scrub through document history.
  */
 
-
 /**
  * Snapshot metadata
  */
@@ -204,9 +203,8 @@ export class TimelineManager {
 	 */
 	captureOnEdit(content: string, author?: Partial<SnapshotMetadata>): void {
 		const lineCount = content.split('\n').length;
-		const lastLineCount = this.snapshots.length > 0
-			? this.snapshots[this.snapshots.length - 1].lineCount
-			: 0;
+		const lastLineCount =
+			this.snapshots.length > 0 ? this.snapshots[this.snapshots.length - 1].lineCount : 0;
 
 		const linesDiff = Math.abs(lineCount - lastLineCount);
 		const timeSinceLastSnapshot = Date.now() - this.lastSnapshotTime;

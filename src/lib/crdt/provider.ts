@@ -19,18 +19,13 @@ export class CollaborativeProvider {
 		this.awareness = options.awareness ?? new Awareness(options.doc);
 
 		// Create WebSocket provider
-		this.provider = new WebsocketProvider(
-			options.serverUrl,
-			options.roomId,
-			options.doc,
-			{
-				awareness: this.awareness,
-				params: options.params,
-				connect: options.connect ?? true,
-				resyncInterval: options.resyncInterval ?? 30000,
-				maxBackoffTime: options.maxBackoffTime ?? 10000
-			}
-		);
+		this.provider = new WebsocketProvider(options.serverUrl, options.roomId, options.doc, {
+			awareness: this.awareness,
+			params: options.params,
+			connect: options.connect ?? true,
+			resyncInterval: options.resyncInterval ?? 30000,
+			maxBackoffTime: options.maxBackoffTime ?? 10000
+		});
 
 		// Setup event forwarding
 		this.setupEventListeners();

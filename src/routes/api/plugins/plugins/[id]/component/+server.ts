@@ -70,7 +70,7 @@ const mockComponents: Record<string, string> = {
   .commit-btn { margin-top: 1rem; }
 </style>`,
 
-	'terminal': `<script lang="ts">
+	terminal: `<script lang="ts">
   let output = $state<string[]>(['$ Welcome to the terminal']);
   let input = $state('');
 

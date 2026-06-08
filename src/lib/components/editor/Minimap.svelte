@@ -118,7 +118,7 @@
 		ctx.fillRect(0, 0, width, editorHeight);
 
 		// Calculate effective line height based on scaling
-		const effectiveLineHeight = needsScaling ? (editorHeight / lines.length) : LINE_HEIGHT;
+		const effectiveLineHeight = needsScaling ? editorHeight / lines.length : LINE_HEIGHT;
 		const effectiveCharWidth = CHAR_WIDTH * (needsScaling ? scaleFactor : 1);
 
 		// Draw highlights first (behind text)
@@ -150,11 +150,18 @@
 
 			if (trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*')) {
 				color = colors.comment;
-			} else if (trimmed.startsWith('import') || trimmed.startsWith('export') ||
-					   trimmed.startsWith('const') || trimmed.startsWith('let') ||
-					   trimmed.startsWith('function') || trimmed.startsWith('class') ||
-					   trimmed.startsWith('if') || trimmed.startsWith('for') ||
-					   trimmed.startsWith('return') || trimmed.startsWith('async')) {
+			} else if (
+				trimmed.startsWith('import') ||
+				trimmed.startsWith('export') ||
+				trimmed.startsWith('const') ||
+				trimmed.startsWith('let') ||
+				trimmed.startsWith('function') ||
+				trimmed.startsWith('class') ||
+				trimmed.startsWith('if') ||
+				trimmed.startsWith('for') ||
+				trimmed.startsWith('return') ||
+				trimmed.startsWith('async')
+			) {
 				color = colors.keyword;
 			} else if (trimmed.includes('"') || trimmed.includes("'") || trimmed.includes('`')) {
 				color = colors.string;
@@ -208,7 +215,7 @@
 	function handleClick(e: MouseEvent) {
 		const rect = container.getBoundingClientRect();
 		const y = e.clientY - rect.top;
-		const effectiveLineHeight = needsScaling ? (editorHeight / lines.length) : LINE_HEIGHT;
+		const effectiveLineHeight = needsScaling ? editorHeight / lines.length : LINE_HEIGHT;
 		const line = Math.floor(y / effectiveLineHeight);
 		onNavigate?.(Math.max(0, Math.min(line, lines.length - 1)));
 	}
@@ -219,7 +226,7 @@
 	function handleMouseMove(e: MouseEvent) {
 		const rect = container.getBoundingClientRect();
 		const y = e.clientY - rect.top;
-		const effectiveLineHeight = needsScaling ? (editorHeight / lines.length) : LINE_HEIGHT;
+		const effectiveLineHeight = needsScaling ? editorHeight / lines.length : LINE_HEIGHT;
 		hoverLine = Math.floor(y / effectiveLineHeight);
 
 		if (isDragging) {
@@ -244,7 +251,7 @@
 			if (isDragging) {
 				const rect = container.getBoundingClientRect();
 				const y = Math.max(0, Math.min(e.clientY - rect.top, editorHeight));
-				const effectiveLineHeight = needsScaling ? (editorHeight / lines.length) : LINE_HEIGHT;
+				const effectiveLineHeight = needsScaling ? editorHeight / lines.length : LINE_HEIGHT;
 				const line = Math.floor(y / effectiveLineHeight);
 				onNavigate?.(Math.max(0, Math.min(line, lines.length - 1)));
 			}

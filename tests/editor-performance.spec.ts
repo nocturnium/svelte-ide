@@ -111,7 +111,9 @@ test.describe('Editor Performance', () => {
 		const startTime = Date.now();
 
 		await editor.replaceInput.fill('DONE');
-		const replaceAllBtn = editor.container.locator('.find-replace__action[aria-label="Replace all"]');
+		const replaceAllBtn = editor.container.locator(
+			'.find-replace__action[aria-label="Replace all"]'
+		);
 		await replaceAllBtn.click();
 		await page.waitForTimeout(100);
 
@@ -210,7 +212,10 @@ test.describe('Editor Performance', () => {
 		const getMemory = async () => {
 			return page.evaluate(() => {
 				if ('memory' in performance) {
-					return (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0;
+					return (
+						(performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+							?.usedJSHeapSize ?? 0
+					);
 				}
 				return 0;
 			});

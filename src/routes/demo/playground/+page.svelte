@@ -487,11 +487,7 @@ MIT License - see LICENSE file for details
 
 	<!-- Mobile scrim: tapping outside an open drawer closes it -->
 	{#if isMobile && (leftPanelOpen || rightPanelOpen)}
-		<button
-			class="mobile-scrim"
-			aria-label="Close panel"
-			onclick={closeDrawers}
-		></button>
+		<button class="mobile-scrim" aria-label="Close panel" onclick={closeDrawers}></button>
 	{/if}
 
 	<!-- Left Panel -->

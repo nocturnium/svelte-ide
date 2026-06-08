@@ -77,11 +77,21 @@
 	/**
 	 * Group consecutive changes of the same type
 	 */
-	function getGroupedChanges(): Array<{ startLine: number; endLine: number; type: DiffLine['type']; changes: DiffLine[] }> {
+	function getGroupedChanges(): Array<{
+		startLine: number;
+		endLine: number;
+		type: DiffLine['type'];
+		changes: DiffLine[];
+	}> {
 		if (changes.length === 0) return [];
 
-		const groups: Array<{ startLine: number; endLine: number; type: DiffLine['type']; changes: DiffLine[] }> = [];
-		let currentGroup: typeof groups[0] | null = null;
+		const groups: Array<{
+			startLine: number;
+			endLine: number;
+			type: DiffLine['type'];
+			changes: DiffLine[];
+		}> = [];
+		let currentGroup: (typeof groups)[0] | null = null;
 
 		// Sort by line number
 		const sortedChanges = [...changes].sort((a, b) => a.line - b.line);
@@ -166,7 +176,9 @@
 				onkeydown={(e) => e.key === 'Enter' && handleClick(group.changes[0])}
 				role="button"
 				tabindex={-1}
-				title="{getLabel(group.type)}: {group.changes.length} line{group.changes.length !== 1 ? 's' : ''}"
+				title="{getLabel(group.type)}: {group.changes.length} line{group.changes.length !== 1
+					? 's'
+					: ''}"
 			></div>
 
 			<!-- Optional full-line highlight -->
@@ -184,7 +196,7 @@
 		{/each}
 
 		<!-- Removed line markers (triangles in gutter) -->
-		{#each changes.filter(c => c.type === 'removed') as removed (removed.line)}
+		{#each changes.filter((c) => c.type === 'removed') as removed (removed.line)}
 			<div
 				class="diff-removed-marker"
 				style="top: {removed.line * lineHeight + lineHeight / 2 - 4}px;"
@@ -195,10 +207,7 @@
 
 	<!-- Tooltip -->
 	{#if hoveredChange}
-		<div
-			class="diff-tooltip"
-			style="top: {tooltipPosition.top}px; left: {tooltipPosition.left}px;"
-		>
+		<div class="diff-tooltip" style="top: {tooltipPosition.top}px; left: {tooltipPosition.left}px;">
 			<div class="tooltip-header" style="color: {getColor(hoveredChange.type)};">
 				{getLabel(hoveredChange.type)} line {hoveredChange.line + 1}
 			</div>

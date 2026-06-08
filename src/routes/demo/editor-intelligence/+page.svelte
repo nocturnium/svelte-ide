@@ -181,7 +181,13 @@ export const DEFAULT_CONFIG = {
 					line: 41,
 					detail: '(id, updates): Promise<boolean>'
 				},
-				{ id: 'method-clearcache', name: 'clearCache', type: 'method', line: 56, detail: '(): void' }
+				{
+					id: 'method-clearcache',
+					name: 'clearCache',
+					type: 'method',
+					line: 56,
+					detail: '(): void'
+				}
 			]
 		}
 	]);
@@ -261,7 +267,13 @@ export const DEFAULT_CONFIG = {
 					detail: 'Logger',
 					visibility: 'private'
 				},
-				{ id: 'method-constructor', name: 'constructor', kind: 'method', line: 21, detail: '(config)' },
+				{
+					id: 'method-constructor',
+					name: 'constructor',
+					kind: 'method',
+					line: 21,
+					detail: '(config)'
+				},
 				{
 					id: 'method-getuser',
 					name: 'getUser',
@@ -278,7 +290,13 @@ export const DEFAULT_CONFIG = {
 					endLine: 54,
 					detail: '(id, updates): Promise<boolean>'
 				},
-				{ id: 'method-clearcache', name: 'clearCache', kind: 'method', line: 56, detail: '(): void' }
+				{
+					id: 'method-clearcache',
+					name: 'clearCache',
+					kind: 'method',
+					line: 56,
+					detail: '(): void'
+				}
 			]
 		},
 		{
@@ -299,7 +317,13 @@ export const DEFAULT_CONFIG = {
 					line: 67,
 					detail: 'useCallback async'
 				},
-				{ id: 'fn-updateprofile', name: 'updateProfile', kind: 'function', line: 82, detail: 'async' }
+				{
+					id: 'fn-updateprofile',
+					name: 'updateProfile',
+					kind: 'function',
+					line: 82,
+					detail: 'async'
+				}
 			]
 		},
 		{
@@ -877,7 +901,11 @@ export const DEFAULT_CONFIG = {
 		margin: 0;
 		/* Lift the lead-in copy one step toward primary so the eye lands
 		   on the demo content rather than washing into the chrome. */
-		color: color-mix(in srgb, var(--ide-text-secondary, #aaa) 55%, var(--ide-text-primary, #e8e8f0));
+		color: color-mix(
+			in srgb,
+			var(--ide-text-secondary, #aaa) 55%,
+			var(--ide-text-primary, #e8e8f0)
+		);
 		font-size: 0.9rem;
 	}
 

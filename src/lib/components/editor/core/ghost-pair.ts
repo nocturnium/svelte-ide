@@ -172,7 +172,10 @@ export class GhostPairController {
 	/**
 	 * Update agent focus regions
 	 */
-	updateAgentFocus(agentId: string, focusLines: { start: number; end: number; intensity?: number }[]): void {
+	updateAgentFocus(
+		agentId: string,
+		focusLines: { start: number; end: number; intensity?: number }[]
+	): void {
 		const agent = this.manager.getAgent(agentId);
 		if (!agent) return;
 

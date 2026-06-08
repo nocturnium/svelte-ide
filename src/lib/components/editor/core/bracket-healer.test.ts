@@ -13,7 +13,11 @@ import {
 /**
  * Shorthand: create a healer, set language, analyzeImmediate, return state.
  */
-function analyzeCode(content: string, language = 'javascript', config: Partial<BracketHealerConfig> = {}): BracketHealerState {
+function analyzeCode(
+	content: string,
+	language = 'javascript',
+	config: Partial<BracketHealerConfig> = {}
+): BracketHealerState {
 	const healer = new BracketHealer(config);
 	healer.setLanguage(language);
 	healer.analyzeImmediate(content);

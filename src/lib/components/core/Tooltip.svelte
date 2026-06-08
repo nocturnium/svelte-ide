@@ -9,13 +9,7 @@
 		children: Snippet;
 	}
 
-	let {
-		content,
-		position = 'top',
-		delay = 300,
-		class: className = '',
-		children
-	}: Props = $props();
+	let { content, position = 'top', delay = 300, class: className = '', children }: Props = $props();
 
 	let visible = $state(false);
 	let timeout: ReturnType<typeof setTimeout> | null = null;

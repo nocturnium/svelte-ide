@@ -43,13 +43,25 @@
 	}: Props = $props();
 
 	// Selection rects memoization
-	let cachedSelectionRects: Array<{ top: number; left: number; width: number; height: number; isPrimary: boolean }> = [];
+	let cachedSelectionRects: Array<{
+		top: number;
+		left: number;
+		width: number;
+		height: number;
+		isPrimary: boolean;
+	}> = [];
 	let cachedSelectionKey = '';
 
 	// Get selection rectangles for all cursors (memoized and virtualized to viewport)
-	function getSelectionRects(): Array<{ top: number; left: number; width: number; height: number; isPrimary: boolean }> {
+	function getSelectionRects(): Array<{
+		top: number;
+		left: number;
+		width: number;
+		height: number;
+		isPrimary: boolean;
+	}> {
 		// Check if any cursor has a selection
-		const anySelection = cursors.some(c => !isSelectionEmpty(c.selection));
+		const anySelection = cursors.some((c) => !isSelectionEmpty(c.selection));
 		if (!anySelection) {
 			cachedSelectionRects = [];
 			cachedSelectionKey = '';
@@ -59,21 +71,27 @@
 		// Calculate visible line range (with 1-line buffer for smooth scrolling)
 		const vh = viewportHeight || FALLBACK_VIEWPORT_HEIGHT;
 		const firstVisibleLine = Math.max(0, Math.floor(scrollTop / lineHeight) - 1);
-		const lastVisibleLine = Math.min(
-			lineCount - 1,
-			Math.ceil((scrollTop + vh) / lineHeight) + 1
-		);
+		const lastVisibleLine = Math.min(lineCount - 1, Math.ceil((scrollTop + vh) / lineHeight) + 1);
 
 		// Create cache key from all cursors, scroll position, and measurement values
-		const cursorKeys = cursors.map(c =>
-			`${c.id}:${c.selection.anchor.line}:${c.selection.anchor.column}-${c.selection.head.line}:${c.selection.head.column}`
-		).join('|');
+		const cursorKeys = cursors
+			.map(
+				(c) =>
+					`${c.id}:${c.selection.anchor.line}:${c.selection.anchor.column}-${c.selection.head.line}:${c.selection.head.column}`
+			)
+			.join('|');
 		const key = `${cursorKeys}@${firstVisibleLine}-${lastVisibleLine}:${charWidth}:${lineHeight}:${gutterWidth}`;
 		if (key === cachedSelectionKey) {
 			return cachedSelectionRects;
 		}
 
-		const rects: Array<{ top: number; left: number; width: number; height: number; isPrimary: boolean }> = [];
+		const rects: Array<{
+			top: number;
+			left: number;
+			width: number;
+			height: number;
+			isPrimary: boolean;
+		}> = [];
 
 		// Process each cursor's selection
 		for (const cursor of cursors) {

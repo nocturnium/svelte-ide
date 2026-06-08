@@ -133,8 +133,11 @@
 	}
 
 	function handleExportConversation(conv: AIConversation, format: 'json' | 'md') {
-		const content = format === 'md' ? exportConversationMarkdown(conv) : exportConversationJSON(conv);
-		const blob = new Blob([content], { type: format === 'md' ? 'text/markdown' : 'application/json' });
+		const content =
+			format === 'md' ? exportConversationMarkdown(conv) : exportConversationJSON(conv);
+		const blob = new Blob([content], {
+			type: format === 'md' ? 'text/markdown' : 'application/json'
+		});
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
@@ -214,7 +217,13 @@
 		</div>
 
 		<!-- Messages -->
-		<div class="ai-panel__messages" bind:this={messagesContainer} role="log" aria-live="polite" aria-label="Conversation messages">
+		<div
+			class="ai-panel__messages"
+			bind:this={messagesContainer}
+			role="log"
+			aria-live="polite"
+			aria-label="Conversation messages"
+		>
 			{#if getMessages().length === 0}
 				<div class="ai-panel__empty">
 					<div class="ai-panel__empty-icon">
@@ -229,18 +238,17 @@
 						<button class="suggestion-chip" onclick={() => (inputValue = 'Find bugs in this file')}>
 							Find bugs
 						</button>
-						<button class="suggestion-chip" onclick={() => (inputValue = 'Write tests for this function')}>
+						<button
+							class="suggestion-chip"
+							onclick={() => (inputValue = 'Write tests for this function')}
+						>
 							Write tests
 						</button>
 					</div>
 				</div>
 			{:else}
 				{#each getMessages() as message (message.id)}
-					<AIMessage
-						{message}
-						onCopy={handleCopyMessage}
-						onRetry={handleRetryMessage}
-					/>
+					<AIMessage {message} onCopy={handleCopyMessage} onRetry={handleRetryMessage} />
 				{/each}
 				{#if getIsStreaming()}
 					<div class="ai-panel__typing">

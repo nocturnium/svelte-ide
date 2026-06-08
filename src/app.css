@@ -28,7 +28,11 @@
 	--ide-bg-elevated: color-mix(in srgb, var(--ide-bg-secondary) 90%, white 10%);
 	--ide-bg-hover: color-mix(in srgb, var(--ide-bg-tertiary) 50%, transparent);
 	--ide-bg-active: var(--ide-bg-tertiary);
-	--ide-bg-selection-secondary: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 22%, transparent);
+	--ide-bg-selection-secondary: color-mix(
+		in srgb,
+		var(--color-nocturnium-aurora-purple) 22%,
+		transparent
+	);
 
 	/* IDE Text Colors */
 	--ide-text-primary: var(--color-nocturnium-moon);
@@ -90,7 +94,8 @@
 
 	/* IDE Typography */
 	--ide-font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	--ide-font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+	--ide-font-mono:
+		'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
 	--ide-font-size-xs: 0.75rem;
 	--ide-font-size-sm: 0.875rem;
 	--ide-font-size-base: 1rem;
@@ -599,7 +604,11 @@ body {
 }
 
 .ide-agent-cursor--ai {
-	background: linear-gradient(180deg, var(--ide-agent-ai-primary) 0%, var(--color-nocturnium-flame) 100%);
+	background: linear-gradient(
+		180deg,
+		var(--ide-agent-ai-primary) 0%,
+		var(--color-nocturnium-flame) 100%
+	);
 	box-shadow: var(--ide-agent-glow);
 }
 
@@ -658,9 +667,9 @@ body {
 }
 
 /* Force default cursor on editor gutter/line numbers */
-[class*="gutter"],
-[class*="line-number"],
-[data-cursor-type="default"],
-[data-cursor-type="default"] * {
+[class*='gutter'],
+[class*='line-number'],
+[data-cursor-type='default'],
+[data-cursor-type='default'] * {
 	cursor: default !important;
 }

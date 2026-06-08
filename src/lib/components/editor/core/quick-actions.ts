@@ -160,37 +160,43 @@ export class QuickActionsManager {
 						kind: 'quickfix',
 						description: 'Remove the declaration of unused variable',
 						edit: {
-							changes: [{
-								range: {
-									start: { line: ctx.position.line, column: 0 },
-									end: { line: ctx.position.line + 1, column: 0 }
-								},
-								newText: ''
-							}]
+							changes: [
+								{
+									range: {
+										start: { line: ctx.position.line, column: 0 },
+										end: { line: ctx.position.line + 1, column: 0 }
+									},
+									newText: ''
+								}
+							]
 						}
 					});
 				}
 			}
 
 			// Add missing semicolon
-			if (!ctx.lineContent.trim().endsWith(';') &&
+			if (
+				!ctx.lineContent.trim().endsWith(';') &&
 				!ctx.lineContent.trim().endsWith('{') &&
 				!ctx.lineContent.trim().endsWith('}') &&
 				!ctx.lineContent.trim().endsWith(',') &&
-				ctx.lineContent.trim().length > 0) {
+				ctx.lineContent.trim().length > 0
+			) {
 				actions.push({
 					id: 'add-semicolon',
 					title: 'Add missing semicolon',
 					kind: 'quickfix',
 					isPreferred: true,
 					edit: {
-						changes: [{
-							range: {
-								start: { line: ctx.position.line, column: ctx.lineContent.trimEnd().length },
-								end: { line: ctx.position.line, column: ctx.lineContent.trimEnd().length }
-							},
-							newText: ';'
-						}]
+						changes: [
+							{
+								range: {
+									start: { line: ctx.position.line, column: ctx.lineContent.trimEnd().length },
+									end: { line: ctx.position.line, column: ctx.lineContent.trimEnd().length }
+								},
+								newText: ';'
+							}
+						]
 					}
 				});
 			}
@@ -259,7 +265,10 @@ export class QuickActionsManager {
 			}
 
 			// Convert to template literal
-			if (ctx.lineContent.includes(' + ') && (ctx.lineContent.includes('"') || ctx.lineContent.includes("'"))) {
+			if (
+				ctx.lineContent.includes(' + ') &&
+				(ctx.lineContent.includes('"') || ctx.lineContent.includes("'"))
+			) {
 				actions.push({
 					id: 'convert-to-template',
 					title: 'Convert to template literal',
@@ -308,9 +317,11 @@ export class QuickActionsManager {
 			const actions: CodeAction[] = [];
 
 			// Generate JSDoc
-			if (ctx.lineContent.includes('function ') ||
+			if (
+				ctx.lineContent.includes('function ') ||
 				ctx.lineContent.includes('const ') ||
-				ctx.lineContent.includes('class ')) {
+				ctx.lineContent.includes('class ')
+			) {
 				actions.push({
 					id: 'generate-jsdoc',
 					title: 'Generate JSDoc comment',
@@ -382,15 +393,15 @@ export class QuickActionsManager {
 
 			// Then by kind priority
 			const kindPriority: Record<CodeActionKind, number> = {
-				'quickfix': 0,
+				quickfix: 0,
 				'refactor.extract': 1,
 				'refactor.inline': 2,
 				'refactor.rename': 3,
-				'refactor': 4,
+				refactor: 4,
 				'source.organizeImports': 5,
 				'source.fixAll': 6,
-				'source': 7,
-				'generate': 8
+				source: 7,
+				generate: 8
 			};
 
 			return (kindPriority[a.kind] ?? 99) - (kindPriority[b.kind] ?? 99);
@@ -561,10 +572,10 @@ export function groupActionsByKind(actions: CodeAction[]): Map<string, CodeActio
  */
 export function getKindLabel(kind: CodeActionKind | string): string {
 	const labels: Record<string, string> = {
-		'quickfix': 'Quick Fix',
-		'refactor': 'Refactor',
-		'source': 'Source Action',
-		'generate': 'Generate'
+		quickfix: 'Quick Fix',
+		refactor: 'Refactor',
+		source: 'Source Action',
+		generate: 'Generate'
 	};
 
 	const baseKind = kind.split('.')[0];
@@ -576,15 +587,15 @@ export function getKindLabel(kind: CodeActionKind | string): string {
  */
 export function getKindIcon(kind: CodeActionKind | string): string {
 	const icons: Record<string, string> = {
-		'quickfix': '🔧',
-		'refactor': '✨',
+		quickfix: '🔧',
+		refactor: '✨',
 		'refactor.extract': '📤',
 		'refactor.inline': '📥',
 		'refactor.rename': '✏️',
-		'source': '📋',
+		source: '📋',
 		'source.organizeImports': '📦',
 		'source.fixAll': '✅',
-		'generate': '⚡'
+		generate: '⚡'
 	};
 
 	return icons[kind] || icons[kind.split('.')[0]] || '💡';

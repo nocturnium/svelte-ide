@@ -110,20 +110,76 @@ export function getOtherUsers(): CollaborationUser[] {
 }
 
 // Legacy aliases for backward compatibility
-export const config = { get current() { return getConfig(); } };
-export const status = { get current() { return getStatus(); } };
-export const error = { get current() { return getError(); } };
-export const synced = { get current() { return getSynced(); } };
-export const users = { get current() { return getUsers(); } };
-export const cursors = { get current() { return getCursors(); } };
-export const awareness = { get current() { return getAwareness(); } };
-export const aiSessions = { get current() { return getAISessions(); } };
-export const activeAISessions = { get current() { return getActiveAISessions(); } };
-export const pendingChanges = { get current() { return getPendingChanges(); } };
-export const snapshots = { get current() { return getSnapshots(); } };
-export const localUser = { get current() { return getLocalUser(); } };
-export const isConnected = { get current() { return getIsConnected(); } };
-export const otherUsers = { get current() { return getOtherUsers(); } };
+export const config = {
+	get current() {
+		return getConfig();
+	}
+};
+export const status = {
+	get current() {
+		return getStatus();
+	}
+};
+export const error = {
+	get current() {
+		return getError();
+	}
+};
+export const synced = {
+	get current() {
+		return getSynced();
+	}
+};
+export const users = {
+	get current() {
+		return getUsers();
+	}
+};
+export const cursors = {
+	get current() {
+		return getCursors();
+	}
+};
+export const awareness = {
+	get current() {
+		return getAwareness();
+	}
+};
+export const aiSessions = {
+	get current() {
+		return getAISessions();
+	}
+};
+export const activeAISessions = {
+	get current() {
+		return getActiveAISessions();
+	}
+};
+export const pendingChanges = {
+	get current() {
+		return getPendingChanges();
+	}
+};
+export const snapshots = {
+	get current() {
+		return getSnapshots();
+	}
+};
+export const localUser = {
+	get current() {
+		return getLocalUser();
+	}
+};
+export const isConnected = {
+	get current() {
+		return getIsConnected();
+	}
+};
+export const otherUsers = {
+	get current() {
+		return getOtherUsers();
+	}
+};
 
 // Collaboration colors for cursors
 const CURSOR_COLORS = [
@@ -229,7 +285,9 @@ export function setLocalCursor(
 /**
  * Update local user's awareness
  */
-export function setLocalAwareness(updates: Partial<Omit<CollaboratorAwareness, 'userId' | 'user'>>): void {
+export function setLocalAwareness(
+	updates: Partial<Omit<CollaboratorAwareness, 'userId' | 'user'>>
+): void {
 	if (!state.localUser) return;
 
 	const current = state.awareness.get(state.localUser.id);
@@ -310,11 +368,7 @@ export function proposeAIChange(
 /**
  * Review an AI proposed change
  */
-export function reviewAIChange(
-	changeId: string,
-	approved: boolean,
-	reviewerId: string
-): void {
+export function reviewAIChange(changeId: string, approved: boolean, reviewerId: string): void {
 	state.pendingChanges = state.pendingChanges.map((c) =>
 		c.id === changeId
 			? {

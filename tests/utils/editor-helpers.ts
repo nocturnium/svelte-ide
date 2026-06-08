@@ -277,7 +277,9 @@ export class EditorHelper {
 	 */
 	async hasSelection(): Promise<boolean> {
 		// Selection divs are .custom-editor__selection inside .custom-editor__selections container
-		const selectionDivs = this.container.locator('.custom-editor__selections .custom-editor__selection');
+		const selectionDivs = this.container.locator(
+			'.custom-editor__selections .custom-editor__selection'
+		);
 		const count = await selectionDivs.count();
 		if (count === 0) return false;
 

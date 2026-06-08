@@ -278,7 +278,12 @@
 					title="Replace all (Shift+Enter)"
 				>
 					<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-						<path d="M1 4h6M1 7h8M1 10h6M10 4l2 2-2 2M10 8l2 2-2 2" stroke="currentColor" stroke-width="1.2" fill="none" />
+						<path
+							d="M1 4h6M1 7h8M1 10h6M10 4l2 2-2 2M10 8l2 2-2 2"
+							stroke="currentColor"
+							stroke-width="1.2"
+							fill="none"
+						/>
 					</svg>
 				</button>
 			</div>
@@ -316,7 +321,9 @@
 		border-radius: 3px;
 		color: var(--ide-text-secondary);
 		cursor: pointer;
-		transition: background 0.1s, color 0.1s;
+		transition:
+			background 0.1s,
+			color 0.1s;
 	}
 
 	.find-replace__toggle:hover {
@@ -386,7 +393,10 @@
 		font-family: var(--ide-font-mono);
 		font-size: 11px;
 		cursor: pointer;
-		transition: background 0.1s, border-color 0.1s, color 0.1s;
+		transition:
+			background 0.1s,
+			border-color 0.1s,
+			color 0.1s;
 	}
 
 	.find-replace__option:hover {
@@ -425,7 +435,9 @@
 		border-radius: 3px;
 		color: var(--ide-text-secondary);
 		cursor: pointer;
-		transition: background 0.1s, color 0.1s;
+		transition:
+			background 0.1s,
+			color 0.1s;
 	}
 
 	.find-replace__action:hover:not(:disabled) {

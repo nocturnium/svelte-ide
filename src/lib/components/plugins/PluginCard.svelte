@@ -19,13 +19,7 @@
 		onUninstall?: () => void;
 	}
 
-	let {
-		plugin,
-		installed = false,
-		showStatus = false,
-		onInstall,
-		onUninstall
-	}: Props = $props();
+	let { plugin, installed = false, showStatus = false, onInstall, onUninstall }: Props = $props();
 
 	function getStatusVariant(
 		status: PluginStatus
@@ -72,13 +66,9 @@
 	</div>
 	<div class="plugin-card__actions">
 		{#if installed}
-			<Button variant="danger" size="xs" onclick={onUninstall}>
-				Uninstall
-			</Button>
+			<Button variant="danger" size="xs" onclick={onUninstall}>Uninstall</Button>
 		{:else if plugin.status === 'deployed'}
-			<Button variant="primary" size="xs" onclick={onInstall}>
-				Install
-			</Button>
+			<Button variant="primary" size="xs" onclick={onInstall}>Install</Button>
 		{/if}
 	</div>
 </div>

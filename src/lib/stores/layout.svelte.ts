@@ -130,7 +130,11 @@ export function getSettingsOpen(): boolean {
 }
 
 // Computed editor area dimensions
-export function getEditorAreaStyle(): { marginLeft: string; marginRight: string; marginBottom: string } {
+export function getEditorAreaStyle(): {
+	marginLeft: string;
+	marginRight: string;
+	marginBottom: string;
+} {
 	const left = state.leftSidebarVisible && !state.zenMode ? state.leftSidebarWidth : 0;
 	const right = state.rightSidebarVisible && !state.zenMode ? state.rightSidebarWidth : 0;
 	const bottom = state.bottomPanelVisible && !state.zenMode ? state.bottomPanelHeight : 0;

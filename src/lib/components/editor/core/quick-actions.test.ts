@@ -124,28 +124,24 @@ describe('QuickActionsManager -- registerProvider', () => {
 	});
 
 	it('should register a custom provider and return unsubscribe function', () => {
-		const provider: CodeActionProvider = () => [
-			makeAction({ id: 'custom-1', title: 'Custom' })
-		];
+		const provider: CodeActionProvider = () => [makeAction({ id: 'custom-1', title: 'Custom' })];
 		const unsub = mgr.registerProvider('my-provider', provider);
 		expect(typeof unsub).toBe('function');
 
 		const ctx = makeContext({ lineContent: '' });
 		const actions = mgr.getActions(ctx);
-		const custom = actions.find(a => a.id === 'custom-1');
+		const custom = actions.find((a) => a.id === 'custom-1');
 		expect(custom).toBeDefined();
 	});
 
 	it('unsubscribe should remove the provider', () => {
-		const provider: CodeActionProvider = () => [
-			makeAction({ id: 'custom-1', title: 'Custom' })
-		];
+		const provider: CodeActionProvider = () => [makeAction({ id: 'custom-1', title: 'Custom' })];
 		const unsub = mgr.registerProvider('my-provider', provider);
 		unsub();
 
 		const ctx = makeContext({ lineContent: '' });
 		const actions = mgr.getActions(ctx);
-		const custom = actions.find(a => a.id === 'custom-1');
+		const custom = actions.find((a) => a.id === 'custom-1');
 		expect(custom).toBeUndefined();
 	});
 
@@ -155,8 +151,8 @@ describe('QuickActionsManager -- registerProvider', () => {
 
 		const ctx = makeContext({ lineContent: '' });
 		const actions = mgr.getActions(ctx);
-		expect(actions.find(a => a.id === 'a')).toBeUndefined();
-		expect(actions.find(a => a.id === 'b')).toBeDefined();
+		expect(actions.find((a) => a.id === 'a')).toBeUndefined();
+		expect(actions.find((a) => a.id === 'b')).toBeDefined();
 	});
 });
 
@@ -187,7 +183,7 @@ describe('QuickActionsManager -- built-in quickfix provider', () => {
 	it('should suggest removing unused variable for const declarations', () => {
 		const ctx = makeContext({ lineContent: 'const unusedVar = 42' });
 		const actions = mgr.getActions(ctx);
-		const removeAction = actions.find(a => a.id.startsWith('remove-unused-'));
+		const removeAction = actions.find((a) => a.id.startsWith('remove-unused-'));
 		expect(removeAction).toBeDefined();
 		expect(removeAction!.title).toContain('unusedVar');
 		expect(removeAction!.kind).toBe('quickfix');
@@ -196,7 +192,7 @@ describe('QuickActionsManager -- built-in quickfix provider', () => {
 	it('should suggest removing unused variable for let declarations', () => {
 		const ctx = makeContext({ lineContent: 'let foo = "bar"' });
 		const actions = mgr.getActions(ctx);
-		const removeAction = actions.find(a => a.id.startsWith('remove-unused-'));
+		const removeAction = actions.find((a) => a.id.startsWith('remove-unused-'));
 		expect(removeAction).toBeDefined();
 		expect(removeAction!.title).toContain('foo');
 	});
@@ -204,7 +200,7 @@ describe('QuickActionsManager -- built-in quickfix provider', () => {
 	it('should suggest adding semicolon when line does not end with ; { } or ,', () => {
 		const ctx = makeContext({ lineContent: 'const x = 42' });
 		const actions = mgr.getActions(ctx);
-		const semicolonAction = actions.find(a => a.id === 'add-semicolon');
+		const semicolonAction = actions.find((a) => a.id === 'add-semicolon');
 		expect(semicolonAction).toBeDefined();
 		expect(semicolonAction!.isPreferred).toBe(true);
 		expect(semicolonAction!.kind).toBe('quickfix');
@@ -213,35 +209,35 @@ describe('QuickActionsManager -- built-in quickfix provider', () => {
 	it('should NOT suggest adding semicolon for lines ending with ;', () => {
 		const ctx = makeContext({ lineContent: 'const x = 42;' });
 		const actions = mgr.getActions(ctx);
-		const semicolonAction = actions.find(a => a.id === 'add-semicolon');
+		const semicolonAction = actions.find((a) => a.id === 'add-semicolon');
 		expect(semicolonAction).toBeUndefined();
 	});
 
 	it('should NOT suggest adding semicolon for lines ending with {', () => {
 		const ctx = makeContext({ lineContent: 'function foo() {' });
 		const actions = mgr.getActions(ctx);
-		const semicolonAction = actions.find(a => a.id === 'add-semicolon');
+		const semicolonAction = actions.find((a) => a.id === 'add-semicolon');
 		expect(semicolonAction).toBeUndefined();
 	});
 
 	it('should NOT suggest adding semicolon for lines ending with }', () => {
 		const ctx = makeContext({ lineContent: '}' });
 		const actions = mgr.getActions(ctx);
-		const semicolonAction = actions.find(a => a.id === 'add-semicolon');
+		const semicolonAction = actions.find((a) => a.id === 'add-semicolon');
 		expect(semicolonAction).toBeUndefined();
 	});
 
 	it('should NOT suggest adding semicolon for lines ending with ,', () => {
 		const ctx = makeContext({ lineContent: '  value: 42,' });
 		const actions = mgr.getActions(ctx);
-		const semicolonAction = actions.find(a => a.id === 'add-semicolon');
+		const semicolonAction = actions.find((a) => a.id === 'add-semicolon');
 		expect(semicolonAction).toBeUndefined();
 	});
 
 	it('should NOT suggest adding semicolon for empty lines', () => {
 		const ctx = makeContext({ lineContent: '   ' });
 		const actions = mgr.getActions(ctx);
-		const semicolonAction = actions.find(a => a.id === 'add-semicolon');
+		const semicolonAction = actions.find((a) => a.id === 'add-semicolon');
 		expect(semicolonAction).toBeUndefined();
 	});
 });
@@ -267,7 +263,7 @@ describe('QuickActionsManager -- built-in refactor provider', () => {
 			}
 		});
 		const actions = mgr.getActions(ctx);
-		const extractVar = actions.find(a => a.id === 'extract-variable');
+		const extractVar = actions.find((a) => a.id === 'extract-variable');
 		expect(extractVar).toBeDefined();
 		expect(extractVar!.kind).toBe('refactor.extract');
 	});
@@ -282,7 +278,7 @@ describe('QuickActionsManager -- built-in refactor provider', () => {
 			}
 		});
 		const actions = mgr.getActions(ctx);
-		const extractFn = actions.find(a => a.id === 'extract-function');
+		const extractFn = actions.find((a) => a.id === 'extract-function');
 		expect(extractFn).toBeDefined();
 		expect(extractFn!.kind).toBe('refactor.extract');
 	});
@@ -298,7 +294,7 @@ describe('QuickActionsManager -- built-in refactor provider', () => {
 			}
 		});
 		const actions = mgr.getActions(ctx);
-		const extractFn = actions.find(a => a.id === 'extract-function');
+		const extractFn = actions.find((a) => a.id === 'extract-function');
 		expect(extractFn).toBeDefined();
 	});
 
@@ -312,15 +308,15 @@ describe('QuickActionsManager -- built-in refactor provider', () => {
 			}
 		});
 		const actions = mgr.getActions(ctx);
-		const extractFn = actions.find(a => a.id === 'extract-function');
+		const extractFn = actions.find((a) => a.id === 'extract-function');
 		expect(extractFn).toBeUndefined();
 	});
 
 	it('should NOT suggest extract actions without selected text', () => {
 		const ctx = makeContext({ lineContent: 'return x' });
 		const actions = mgr.getActions(ctx);
-		expect(actions.find(a => a.id === 'extract-variable')).toBeUndefined();
-		expect(actions.find(a => a.id === 'extract-function')).toBeUndefined();
+		expect(actions.find((a) => a.id === 'extract-variable')).toBeUndefined();
+		expect(actions.find((a) => a.id === 'extract-function')).toBeUndefined();
 	});
 
 	it('should suggest rename symbol when cursor is on a word', () => {
@@ -329,7 +325,7 @@ describe('QuickActionsManager -- built-in refactor provider', () => {
 			position: { line: 5, column: 10 } // cursor at "myVar" position
 		});
 		const actions = mgr.getActions(ctx);
-		const rename = actions.find(a => a.id === 'rename-symbol');
+		const rename = actions.find((a) => a.id === 'rename-symbol');
 		expect(rename).toBeDefined();
 		expect(rename!.kind).toBe('refactor.rename');
 	});
@@ -337,7 +333,7 @@ describe('QuickActionsManager -- built-in refactor provider', () => {
 	it('should suggest convert to arrow function for function declarations', () => {
 		const ctx = makeContext({ lineContent: 'function hello() {' });
 		const actions = mgr.getActions(ctx);
-		const convert = actions.find(a => a.id === 'convert-to-arrow');
+		const convert = actions.find((a) => a.id === 'convert-to-arrow');
 		expect(convert).toBeDefined();
 		expect(convert!.kind).toBe('refactor');
 	});
@@ -345,21 +341,21 @@ describe('QuickActionsManager -- built-in refactor provider', () => {
 	it('should NOT suggest convert to arrow function for non-function lines', () => {
 		const ctx = makeContext({ lineContent: 'const x = 42;' });
 		const actions = mgr.getActions(ctx);
-		const convert = actions.find(a => a.id === 'convert-to-arrow');
+		const convert = actions.find((a) => a.id === 'convert-to-arrow');
 		expect(convert).toBeUndefined();
 	});
 
 	it('should suggest convert to template literal for string concatenation', () => {
 		const ctx = makeContext({ lineContent: 'const msg = "Hello " + name' });
 		const actions = mgr.getActions(ctx);
-		const convert = actions.find(a => a.id === 'convert-to-template');
+		const convert = actions.find((a) => a.id === 'convert-to-template');
 		expect(convert).toBeDefined();
 	});
 
 	it('should NOT suggest convert to template literal without string concat', () => {
 		const ctx = makeContext({ lineContent: 'const sum = a + b;' });
 		const actions = mgr.getActions(ctx);
-		const convert = actions.find(a => a.id === 'convert-to-template');
+		const convert = actions.find((a) => a.id === 'convert-to-template');
 		expect(convert).toBeUndefined();
 	});
 });
@@ -378,7 +374,7 @@ describe('QuickActionsManager -- built-in source provider', () => {
 	it('should suggest organize imports on import lines', () => {
 		const ctx = makeContext({ lineContent: 'import { foo } from "bar"' });
 		const actions = mgr.getActions(ctx);
-		const organize = actions.find(a => a.id === 'organize-imports');
+		const organize = actions.find((a) => a.id === 'organize-imports');
 		expect(organize).toBeDefined();
 		expect(organize!.kind).toBe('source.organizeImports');
 	});
@@ -389,14 +385,14 @@ describe('QuickActionsManager -- built-in source provider', () => {
 			position: { line: 5, column: 0 }
 		});
 		const actions = mgr.getActions(ctx);
-		const organize = actions.find(a => a.id === 'organize-imports');
+		const organize = actions.find((a) => a.id === 'organize-imports');
 		expect(organize).toBeDefined();
 	});
 
 	it('should always suggest fix all auto-fixable problems', () => {
 		const ctx = makeContext({ lineContent: 'anything here', position: { line: 100, column: 0 } });
 		const actions = mgr.getActions(ctx);
-		const fixAll = actions.find(a => a.id === 'fix-all');
+		const fixAll = actions.find((a) => a.id === 'fix-all');
 		expect(fixAll).toBeDefined();
 		expect(fixAll!.kind).toBe('source.fixAll');
 	});
@@ -416,7 +412,7 @@ describe('QuickActionsManager -- built-in generate provider', () => {
 	it('should suggest generate JSDoc for function declarations', () => {
 		const ctx = makeContext({ lineContent: 'function compute() {' });
 		const actions = mgr.getActions(ctx);
-		const jsdoc = actions.find(a => a.id === 'generate-jsdoc');
+		const jsdoc = actions.find((a) => a.id === 'generate-jsdoc');
 		expect(jsdoc).toBeDefined();
 		expect(jsdoc!.kind).toBe('generate');
 	});
@@ -424,22 +420,22 @@ describe('QuickActionsManager -- built-in generate provider', () => {
 	it('should suggest generate JSDoc for const declarations', () => {
 		const ctx = makeContext({ lineContent: 'const API_URL = "https://example.com"' });
 		const actions = mgr.getActions(ctx);
-		const jsdoc = actions.find(a => a.id === 'generate-jsdoc');
+		const jsdoc = actions.find((a) => a.id === 'generate-jsdoc');
 		expect(jsdoc).toBeDefined();
 	});
 
 	it('should suggest generate JSDoc for class declarations', () => {
 		const ctx = makeContext({ lineContent: 'class MyService {' });
 		const actions = mgr.getActions(ctx);
-		const jsdoc = actions.find(a => a.id === 'generate-jsdoc');
+		const jsdoc = actions.find((a) => a.id === 'generate-jsdoc');
 		expect(jsdoc).toBeDefined();
 	});
 
 	it('should suggest getter/setter for private fields', () => {
 		const ctx = makeContext({ lineContent: '  private _name: string' });
 		const actions = mgr.getActions(ctx);
-		const getter = actions.find(a => a.id === 'generate-getter');
-		const setter = actions.find(a => a.id === 'generate-setter');
+		const getter = actions.find((a) => a.id === 'generate-getter');
+		const setter = actions.find((a) => a.id === 'generate-setter');
 		expect(getter).toBeDefined();
 		expect(getter!.title).toContain('_name');
 		expect(setter).toBeDefined();
@@ -449,7 +445,7 @@ describe('QuickActionsManager -- built-in generate provider', () => {
 	it('should suggest getter/setter for protected fields', () => {
 		const ctx = makeContext({ lineContent: '  protected value: number' });
 		const actions = mgr.getActions(ctx);
-		const getter = actions.find(a => a.id === 'generate-getter');
+		const getter = actions.find((a) => a.id === 'generate-getter');
 		expect(getter).toBeDefined();
 		expect(getter!.title).toContain('value');
 	});
@@ -457,7 +453,7 @@ describe('QuickActionsManager -- built-in generate provider', () => {
 	it('should suggest generate constructor for class declarations', () => {
 		const ctx = makeContext({ lineContent: 'class Widget {' });
 		const actions = mgr.getActions(ctx);
-		const ctor = actions.find(a => a.id === 'generate-constructor');
+		const ctor = actions.find((a) => a.id === 'generate-constructor');
 		expect(ctor).toBeDefined();
 	});
 });
@@ -472,7 +468,7 @@ describe('QuickActionsManager -- action sorting', () => {
 		// Line triggers semicolon (preferred quickfix) and other actions
 		const ctx = makeContext({ lineContent: 'const x = 42' });
 		const actions = mgr.getActions(ctx);
-		const preferredIdx = actions.findIndex(a => a.isPreferred);
+		const preferredIdx = actions.findIndex((a) => a.isPreferred);
 		if (preferredIdx >= 0) {
 			// All actions before a preferred action should also be preferred
 			for (let i = 0; i < preferredIdx; i++) {
@@ -491,13 +487,20 @@ describe('QuickActionsManager -- action sorting', () => {
 		const actions = mgr.getActions(ctx);
 
 		const kindOrder: CodeActionKind[] = [
-			'quickfix', 'refactor.extract', 'refactor.inline', 'refactor.rename',
-			'refactor', 'source.organizeImports', 'source.fixAll', 'source', 'generate'
+			'quickfix',
+			'refactor.extract',
+			'refactor.inline',
+			'refactor.rename',
+			'refactor',
+			'source.organizeImports',
+			'source.fixAll',
+			'source',
+			'generate'
 		];
 
 		// Verify no lower-priority kind appears before a higher-priority kind
 		// (ignoring preferred status)
-		const nonPreferred = actions.filter(a => !a.isPreferred);
+		const nonPreferred = actions.filter((a) => !a.isPreferred);
 		for (let i = 1; i < nonPreferred.length; i++) {
 			const prevPriority = kindOrder.indexOf(nonPreferred[i - 1].kind);
 			const currPriority = kindOrder.indexOf(nonPreferred[i].kind);
@@ -559,13 +562,15 @@ describe('QuickActionsManager -- executeAction', () => {
 	it('should return true for action with edit', async () => {
 		const action = makeAction({
 			edit: {
-				changes: [{
-					range: {
-						start: { line: 0, column: 0 },
-						end: { line: 0, column: 5 }
-					},
-					newText: 'hello'
-				}]
+				changes: [
+					{
+						range: {
+							start: { line: 0, column: 0 },
+							end: { line: 0, column: 5 }
+						},
+						newText: 'hello'
+					}
+				]
 			}
 		});
 		const result = await mgr.executeAction(action);
@@ -606,7 +611,7 @@ describe('QuickActionsManager -- updateContext & refresh', () => {
 		mgr.updateContext(ctx);
 		// Actions not yet populated (delay not elapsed)
 		// Wait for the timeout
-		await new Promise(r => setTimeout(r, 50));
+		await new Promise((r) => setTimeout(r, 50));
 
 		expect(mgr.currentActions.length).toBeGreaterThan(0);
 		expect(mgr.hasActions).toBe(true);
@@ -618,7 +623,7 @@ describe('QuickActionsManager -- updateContext & refresh', () => {
 		const ctx = makeContext({ lineContent: 'const x = 42' });
 
 		mgr.updateContext(ctx);
-		await new Promise(r => setTimeout(r, 50));
+		await new Promise((r) => setTimeout(r, 50));
 
 		// Actions should still be empty since autoShow is off
 		expect(mgr.currentActions).toEqual([]);
@@ -635,7 +640,7 @@ describe('QuickActionsManager -- updateContext & refresh', () => {
 		mgr.updateContext(makeContext({ lineContent: 'ab' }));
 		mgr.updateContext(makeContext({ lineContent: 'abc' }));
 
-		await new Promise(r => setTimeout(r, 80));
+		await new Promise((r) => setTimeout(r, 80));
 
 		// Listener should only have been called once (from the last update)
 		// Could be 1+ due to setConfig also calling notify, but the timeout should fire once

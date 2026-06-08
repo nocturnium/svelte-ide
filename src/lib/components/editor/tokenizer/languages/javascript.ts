@@ -7,25 +7,104 @@ import { createToken } from '../base';
 
 // JavaScript/TypeScript keywords
 const keywords = new Set([
-	'await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger',
-	'default', 'delete', 'do', 'else', 'enum', 'export', 'extends', 'finally',
-	'for', 'function', 'if', 'import', 'in', 'instanceof', 'let', 'new', 'of',
-	'return', 'static', 'super', 'switch', 'this', 'throw', 'try', 'typeof',
-	'var', 'void', 'while', 'with', 'yield', 'async', 'from', 'as', 'get', 'set'
+	'await',
+	'break',
+	'case',
+	'catch',
+	'class',
+	'const',
+	'continue',
+	'debugger',
+	'default',
+	'delete',
+	'do',
+	'else',
+	'enum',
+	'export',
+	'extends',
+	'finally',
+	'for',
+	'function',
+	'if',
+	'import',
+	'in',
+	'instanceof',
+	'let',
+	'new',
+	'of',
+	'return',
+	'static',
+	'super',
+	'switch',
+	'this',
+	'throw',
+	'try',
+	'typeof',
+	'var',
+	'void',
+	'while',
+	'with',
+	'yield',
+	'async',
+	'from',
+	'as',
+	'get',
+	'set'
 ]);
 
 // TypeScript-specific keywords
 const tsKeywords = new Set([
-	'abstract', 'any', 'as', 'asserts', 'bigint', 'boolean', 'declare', 'infer',
-	'interface', 'is', 'keyof', 'module', 'namespace', 'never', 'null', 'number',
-	'object', 'override', 'private', 'protected', 'public', 'readonly', 'require',
-	'string', 'symbol', 'type', 'undefined', 'unique', 'unknown', 'void'
+	'abstract',
+	'any',
+	'as',
+	'asserts',
+	'bigint',
+	'boolean',
+	'declare',
+	'infer',
+	'interface',
+	'is',
+	'keyof',
+	'module',
+	'namespace',
+	'never',
+	'null',
+	'number',
+	'object',
+	'override',
+	'private',
+	'protected',
+	'public',
+	'readonly',
+	'require',
+	'string',
+	'symbol',
+	'type',
+	'undefined',
+	'unique',
+	'unknown',
+	'void'
 ]);
 
 // Control flow keywords
 const controlKeywords = new Set([
-	'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'break',
-	'continue', 'return', 'throw', 'try', 'catch', 'finally', 'await', 'yield'
+	'if',
+	'else',
+	'for',
+	'while',
+	'do',
+	'switch',
+	'case',
+	'default',
+	'break',
+	'continue',
+	'return',
+	'throw',
+	'try',
+	'catch',
+	'finally',
+	'await',
+	'yield'
 ]);
 
 // Built-in constants
@@ -33,10 +112,32 @@ const builtins = new Set(['true', 'false', 'null', 'undefined', 'NaN', 'Infinity
 
 // Built-in type names
 const builtinTypes = new Set([
-	'Array', 'Object', 'String', 'Number', 'Boolean', 'Function', 'Symbol',
-	'Promise', 'Map', 'Set', 'WeakMap', 'WeakSet', 'Date', 'RegExp', 'Error',
-	'TypeError', 'ReferenceError', 'SyntaxError', 'JSON', 'Math', 'console',
-	'window', 'document', 'globalThis', 'Buffer', 'process'
+	'Array',
+	'Object',
+	'String',
+	'Number',
+	'Boolean',
+	'Function',
+	'Symbol',
+	'Promise',
+	'Map',
+	'Set',
+	'WeakMap',
+	'WeakSet',
+	'Date',
+	'RegExp',
+	'Error',
+	'TypeError',
+	'ReferenceError',
+	'SyntaxError',
+	'JSON',
+	'Math',
+	'console',
+	'window',
+	'document',
+	'globalThis',
+	'Buffer',
+	'process'
 ]);
 
 interface JSTokenizerState extends TokenizerState {
@@ -58,16 +159,72 @@ interface JSTokenizerState extends TokenizerState {
  */
 const REGEX_VALID_AFTER = new Set([
 	// Keywords that expect expressions
-	'return', 'throw', 'case', 'in', 'of', 'typeof', 'instanceof', 'void',
-	'delete', 'new', 'await', 'yield', 'default', 'extends', 'else', 'do',
+	'return',
+	'throw',
+	'case',
+	'in',
+	'of',
+	'typeof',
+	'instanceof',
+	'void',
+	'delete',
+	'new',
+	'await',
+	'yield',
+	'default',
+	'extends',
+	'else',
+	'do',
 	// Operators
-	'=', '==', '===', '!=', '!==', '<', '>', '<=', '>=',
-	'+', '-', '*', '/', '%', '**', '&', '|', '^', '~', '!',
-	'&&', '||', '??', '?', ':', ',', ';',
-	'+=', '-=', '*=', '/=', '%=', '**=', '&=', '|=', '^=',
-	'&&=', '||=', '??=', '<<', '>>', '>>>', '<<=', '>>=', '>>>=',
+	'=',
+	'==',
+	'===',
+	'!=',
+	'!==',
+	'<',
+	'>',
+	'<=',
+	'>=',
+	'+',
+	'-',
+	'*',
+	'/',
+	'%',
+	'**',
+	'&',
+	'|',
+	'^',
+	'~',
+	'!',
+	'&&',
+	'||',
+	'??',
+	'?',
+	':',
+	',',
+	';',
+	'+=',
+	'-=',
+	'*=',
+	'/=',
+	'%=',
+	'**=',
+	'&=',
+	'|=',
+	'^=',
+	'&&=',
+	'||=',
+	'??=',
+	'<<',
+	'>>',
+	'>>>',
+	'<<=',
+	'>>=',
+	'>>>=',
 	// Opening brackets
-	'(', '[', '{',
+	'(',
+	'[',
+	'{',
 	// Arrow
 	'=>'
 ]);
@@ -77,8 +234,11 @@ const REGEX_VALID_AFTER = new Set([
  */
 const DIVISION_VALID_AFTER = new Set([
 	// These token types indicate an expression just ended
-	')', ']', '}',  // Closing brackets
-	'++', '--',     // Postfix operators
+	')',
+	']',
+	'}', // Closing brackets
+	'++',
+	'--' // Postfix operators
 ]);
 
 export class JavaScriptTokenizer {
@@ -90,8 +250,12 @@ export class JavaScriptTokenizer {
 		this.isTypeScript = options.typescript ?? false;
 		this.isJSX = options.jsx ?? false;
 		this.language = this.isTypeScript
-			? (this.isJSX ? 'tsx' : 'typescript')
-			: (this.isJSX ? 'jsx' : 'javascript');
+			? this.isJSX
+				? 'tsx'
+				: 'typescript'
+			: this.isJSX
+				? 'jsx'
+				: 'javascript';
 	}
 
 	getInitialState(): JSTokenizerState {
@@ -210,7 +374,9 @@ export class JavaScriptTokenizer {
 		}
 
 		// Numbers
-		const numMatch = text.match(/^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?n?)/);
+		const numMatch = text.match(
+			/^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?n?)/
+		);
 		if (numMatch) {
 			const numText = numMatch[0];
 			let type: TokenType = 'number';
@@ -239,7 +405,9 @@ export class JavaScriptTokenizer {
 		}
 
 		// Operators
-		const opMatch = text.match(/^(?:>>>|===|!==|<<=|>>=|=>|&&|\|\||[+\-*/%&|^!<>=]=?|[?:.~]|\?\?|\?\.)/);
+		const opMatch = text.match(
+			/^(?:>>>|===|!==|<<=|>>=|=>|&&|\|\||[+\-*/%&|^!<>=]=?|[?:.~]|\?\?|\?\.)/
+		);
 		if (opMatch) {
 			return createToken('operator', opMatch[0], pos);
 		}
@@ -276,7 +444,13 @@ export class JavaScriptTokenizer {
 		// Check for keywords
 		if (keywords.has(word)) {
 			if (controlKeywords.has(word)) return 'keyword.control';
-			if (word === 'function' || word === 'class' || word === 'const' || word === 'let' || word === 'var') {
+			if (
+				word === 'function' ||
+				word === 'class' ||
+				word === 'const' ||
+				word === 'let' ||
+				word === 'var'
+			) {
 				return 'keyword.definition';
 			}
 			if (word === 'import' || word === 'export' || word === 'from' || word === 'as') {
@@ -291,7 +465,22 @@ export class JavaScriptTokenizer {
 				return 'keyword.definition';
 			}
 			// Type keywords like 'string', 'number', 'boolean' etc
-			if (['string', 'number', 'boolean', 'any', 'unknown', 'never', 'void', 'null', 'undefined', 'object', 'symbol', 'bigint'].includes(word)) {
+			if (
+				[
+					'string',
+					'number',
+					'boolean',
+					'any',
+					'unknown',
+					'never',
+					'void',
+					'null',
+					'undefined',
+					'object',
+					'symbol',
+					'bigint'
+				].includes(word)
+			) {
 				return 'type.builtin';
 			}
 			return 'keyword.storage';

@@ -113,10 +113,14 @@ describe('plugin store — command registration', () => {
 	it('registerCommand allows multiple commands from same plugin', () => {
 		const before = plugin.getCommands().length;
 		plugin.registerCommand('multi-plugin', {
-			id: 'cmd-1', title: 'Cmd 1', handler: async () => {}
+			id: 'cmd-1',
+			title: 'Cmd 1',
+			handler: async () => {}
 		});
 		plugin.registerCommand('multi-plugin', {
-			id: 'cmd-2', title: 'Cmd 2', handler: async () => {}
+			id: 'cmd-2',
+			title: 'Cmd 2',
+			handler: async () => {}
 		});
 		expect(plugin.getCommands().length - before).toBe(2);
 	});
@@ -165,7 +169,9 @@ describe('plugin store — command execution', () => {
 		plugin.registerCommand('my-plugin', {
 			id: 'fail',
 			title: 'Fail',
-			handler: async () => { throw new Error('boom'); }
+			handler: async () => {
+				throw new Error('boom');
+			}
 		});
 		await plugin.executeCommand('my-plugin:fail');
 		expect(plugin.getError()).toBe('boom');

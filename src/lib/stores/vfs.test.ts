@@ -297,16 +297,16 @@ describe('vfs store — derived file queries', () => {
 	it('getDirectories returns only directories', () => {
 		const dirs = vfs.getDirectories();
 		expect(dirs).toHaveLength(2);
-		expect(dirs.every(d => d.isDir)).toBe(true);
+		expect(dirs.every((d) => d.isDir)).toBe(true);
 	});
 
 	it('getFilesInDirectory returns only direct children', () => {
 		const files = vfs.getFilesInDirectory('/src');
 		// /src/main.ts is a direct child of /src (no nested '/')
-		expect(files.some(f => f.path === '/src/main.ts')).toBe(true);
+		expect(files.some((f) => f.path === '/src/main.ts')).toBe(true);
 		// /src/lib/ has a trailing slash, so slice('/src/'.length) = 'lib/' which contains '/' — excluded
 		// /src/lib/utils.ts also excluded (nested)
-		expect(files.some(f => f.path === '/src/lib/utils.ts')).toBe(false);
+		expect(files.some((f) => f.path === '/src/lib/utils.ts')).toBe(false);
 	});
 
 	it('getLockedFiles returns files with locks', () => {
@@ -318,8 +318,8 @@ describe('vfs store — derived file queries', () => {
 	it('getFileTree sorts directories first then alphabetically', () => {
 		const tree = vfs.getFileTree();
 		// Directories should come before files
-		const firstDir = tree.findIndex(f => f.isDir);
-		const firstFile = tree.findIndex(f => !f.isDir);
+		const firstDir = tree.findIndex((f) => f.isDir);
+		const firstFile = tree.findIndex((f) => !f.isDir);
 		if (firstDir !== -1 && firstFile !== -1) {
 			expect(firstDir).toBeLessThan(firstFile);
 		}

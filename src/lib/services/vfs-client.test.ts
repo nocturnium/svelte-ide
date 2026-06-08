@@ -520,7 +520,9 @@ describe('VFS Client — batchUpdate', () => {
 
 describe('VFS Client — Search', () => {
 	it('should search files', async () => {
-		const results = [{ path: '/test.ts', line: 10, column: 5, content: 'match', matchStart: 0, matchEnd: 5 }];
+		const results = [
+			{ path: '/test.ts', line: 10, column: 5, content: 'match', matchStart: 0, matchEnd: 5 }
+		];
 		mockFetchSuccess(results);
 
 		const result = await searchFiles('ws1', { pattern: 'match' });

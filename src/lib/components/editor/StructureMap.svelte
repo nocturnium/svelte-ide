@@ -243,7 +243,8 @@
 				<button
 					class="structure-map__node"
 					class:structure-map__node--active={isCursorInNode(node)}
-					class:structure-map__node--complex={node.metrics.complexity && node.metrics.complexity >= 50}
+					class:structure-map__node--complex={node.metrics.complexity &&
+						node.metrics.complexity >= 50}
 					style="
 						top: {getNodeTop(node)}%;
 						height: {Math.max(1, getNodeHeight(node))}%;

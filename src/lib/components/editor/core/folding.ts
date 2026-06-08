@@ -65,15 +65,30 @@ const BRACKET_PAIRS: Record<string, [string, string][]> = {
  * HTML5 void elements that don't need closing tags
  */
 const HTML_VOID_ELEMENTS = new Set([
-	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-	'link', 'meta', 'param', 'source', 'track', 'wbr'
+	'area',
+	'base',
+	'br',
+	'col',
+	'embed',
+	'hr',
+	'img',
+	'input',
+	'link',
+	'meta',
+	'param',
+	'source',
+	'track',
+	'wbr'
 ]);
 
 /**
  * Extract tag name from an opening or closing tag
  * Returns null if not a valid tag
  */
-function extractTagName(text: string, startPos: number): { name: string; isClosing: boolean; endPos: number; isSelfClosing: boolean } | null {
+function extractTagName(
+	text: string,
+	startPos: number
+): { name: string; isClosing: boolean; endPos: number; isSelfClosing: boolean } | null {
 	if (text[startPos] !== '<') return null;
 
 	let pos = startPos + 1;
@@ -129,10 +144,7 @@ function extractTagName(text: string, startPos: number): { name: string; isClosi
  * Detect fold regions based on HTML/XML tag matching
  * Properly pairs opening tags with their corresponding closing tags
  */
-function detectHtmlTagFolds(
-	lines: readonly Line[],
-	minLines: number = 2
-): FoldRegion[] {
+function detectHtmlTagFolds(lines: readonly Line[], minLines: number = 2): FoldRegion[] {
 	const regions: FoldRegion[] = [];
 
 	interface TagInfo {
@@ -440,10 +452,7 @@ function detectBracketFolds(
 /**
  * Detect fold regions based on region markers
  */
-function detectRegionFolds(
-	lines: readonly Line[],
-	language: string = 'default'
-): FoldRegion[] {
+function detectRegionFolds(lines: readonly Line[], language: string = 'default'): FoldRegion[] {
 	const regions: FoldRegion[] = [];
 	const markers = REGION_MARKERS[language] || REGION_MARKERS.default;
 
@@ -479,10 +488,7 @@ function detectRegionFolds(
 /**
  * Detect fold regions for multi-line comments
  */
-function detectCommentFolds(
-	lines: readonly Line[],
-	minLines: number = 2
-): FoldRegion[] {
+function detectCommentFolds(lines: readonly Line[], minLines: number = 2): FoldRegion[] {
 	const regions: FoldRegion[] = [];
 	let commentStart = -1;
 
@@ -577,7 +583,7 @@ export function detectFoldRegions(
 		if (a.startLine !== b.startLine) {
 			return a.startLine - b.startLine;
 		}
-		return (b.endLine - b.startLine) - (a.endLine - a.startLine);
+		return b.endLine - b.startLine - (a.endLine - a.startLine);
 	});
 
 	// Remove overlapping regions (keep the first/largest one)
@@ -642,7 +648,7 @@ export class FoldManager {
 	 * Get fold region at a specific line (if it starts there)
 	 */
 	getRegionAtLine(line: number): FoldRegion | undefined {
-		return this.regions.find(r => r.startLine === line);
+		return this.regions.find((r) => r.startLine === line);
 	}
 
 	/**
@@ -656,7 +662,7 @@ export class FoldManager {
 	 * Check if a line has a fold indicator
 	 */
 	hasFoldIndicator(line: number): boolean {
-		return this.regions.some(r => r.startLine === line);
+		return this.regions.some((r) => r.startLine === line);
 	}
 
 	/**

@@ -120,18 +120,66 @@ export function getDeployedProposals(): PluginProposal[] {
 }
 
 // Legacy aliases for backward compatibility
-export const proposals = { get current() { return getProposals(); } };
-export const instances = { get current() { return getInstances(); } };
-export const activeInstances = { get current() { return getActiveInstances(); } };
-export const commands = { get current() { return getCommands(); } };
-export const panels = { get current() { return getPanels(); } };
-export const connected = { get current() { return getConnected(); } };
-export const loadingProposals = { get current() { return getLoadingProposals(); } };
-export const loadingInstance = { get current() { return getLoadingInstance(); } };
-export const error = { get current() { return getError(); } };
-export const draftProposals = { get current() { return getDraftProposals(); } };
-export const reviewingProposals = { get current() { return getReviewingProposals(); } };
-export const deployedProposals = { get current() { return getDeployedProposals(); } };
+export const proposals = {
+	get current() {
+		return getProposals();
+	}
+};
+export const instances = {
+	get current() {
+		return getInstances();
+	}
+};
+export const activeInstances = {
+	get current() {
+		return getActiveInstances();
+	}
+};
+export const commands = {
+	get current() {
+		return getCommands();
+	}
+};
+export const panels = {
+	get current() {
+		return getPanels();
+	}
+};
+export const connected = {
+	get current() {
+		return getConnected();
+	}
+};
+export const loadingProposals = {
+	get current() {
+		return getLoadingProposals();
+	}
+};
+export const loadingInstance = {
+	get current() {
+		return getLoadingInstance();
+	}
+};
+export const error = {
+	get current() {
+		return getError();
+	}
+};
+export const draftProposals = {
+	get current() {
+		return getDraftProposals();
+	}
+};
+export const reviewingProposals = {
+	get current() {
+		return getReviewingProposals();
+	}
+};
+export const deployedProposals = {
+	get current() {
+		return getDeployedProposals();
+	}
+};
 
 // Event handlers
 // eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal non-reactive event dispatch registry, not UI state
@@ -282,7 +330,10 @@ export async function fetchProposals(): Promise<void> {
  * Create a new plugin proposal
  */
 export async function createProposal(
-	proposal: Omit<PluginProposal, 'id' | 'version' | 'status' | 'votes' | 'issues' | 'createdAt' | 'updatedAt'>
+	proposal: Omit<
+		PluginProposal,
+		'id' | 'version' | 'status' | 'votes' | 'issues' | 'createdAt' | 'updatedAt'
+	>
 ): Promise<string | null> {
 	state.error = null;
 

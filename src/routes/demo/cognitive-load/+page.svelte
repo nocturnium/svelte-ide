@@ -137,27 +137,29 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	let aiAgents = $state<AIAwareness[]>([]);
 
 	// Simulated AI agent
-	let claudeAgent = $state(createAIAwareness('claude-1', 'Claude', {
-		attentionType: 'reading',
-		cursor: {
-			position: { line: 45, column: 8 },
-			color: '#8B5CF6',
-			visible: true,
-			animation: 'thinking'
-		},
-		focusRegions: [
-			{
-				startLine: 40,
-				endLine: 95,
-				intensity: 0.6,
-				type: 'reading',
-				label: 'Analyzing complexity'
-			}
-		],
-		activity: 'Analyzing high complexity region',
-		confidence: 0.8,
-		isActive: true
-	}));
+	let claudeAgent = $state(
+		createAIAwareness('claude-1', 'Claude', {
+			attentionType: 'reading',
+			cursor: {
+				position: { line: 45, column: 8 },
+				color: '#8B5CF6',
+				visible: true,
+				animation: 'thinking'
+			},
+			focusRegions: [
+				{
+					startLine: 40,
+					endLine: 95,
+					intensity: 0.6,
+					type: 'reading',
+					label: 'Analyzing complexity'
+				}
+			],
+			activity: 'Analyzing high complexity region',
+			confidence: 0.8,
+			isActive: true
+		})
+	);
 
 	// Initialize with Claude agent
 	$effect(() => {
@@ -184,11 +186,13 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 			claudeAgent = {
 				...claudeAgent,
-				cursor: claudeAgent.cursor ? {
-					...claudeAgent.cursor,
-					position: { line: cursorLine, column: 8 + Math.floor(Math.random() * 20) },
-					animation: Math.random() > 0.7 ? 'thinking' : 'moving'
-				} : null,
+				cursor: claudeAgent.cursor
+					? {
+							...claudeAgent.cursor,
+							position: { line: cursorLine, column: 8 + Math.floor(Math.random() * 20) },
+							animation: Math.random() > 0.7 ? 'thinking' : 'moving'
+						}
+					: null,
 				attentionType: Math.random() > 0.8 ? 'thinking' : 'reading',
 				lastUpdate: Date.now()
 			};
@@ -229,7 +233,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			...claudeAgent,
 			attentionType: newType,
 			activity: getActivityDescription(newType),
-			focusRegions: claudeAgent.focusRegions.map(r => ({ ...r, type: newType }))
+			focusRegions: claudeAgent.focusRegions.map((r) => ({ ...r, type: newType }))
 		};
 
 		if (showGhostPair) {
@@ -237,12 +241,16 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		}
 	}
 
-	function getActivityDescription(type: typeof attentionStates[number]): string {
+	function getActivityDescription(type: (typeof attentionStates)[number]): string {
 		switch (type) {
-			case 'reading': return 'Analyzing high complexity region';
-			case 'thinking': return 'Planning refactoring approach';
-			case 'writing': return 'Implementing improvements';
-			case 'reviewing': return 'Verifying changes';
+			case 'reading':
+				return 'Analyzing high complexity region';
+			case 'thinking':
+				return 'Planning refactoring approach';
+			case 'writing':
+				return 'Implementing improvements';
+			case 'reviewing':
+				return 'Verifying changes';
 		}
 	}
 </script>
@@ -257,27 +265,30 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Cognitive Load Meter</h2>
 		<p class="section-desc">
-			Real-time code complexity analysis with visual highlighting. Complex regions are highlighted with color intensity.
+			Real-time code complexity analysis with visual highlighting. Complex regions are highlighted
+			with color intensity.
 		</p>
 
 		<!-- Standalone meter display -->
 		<div class="meter-showcase">
 			<div class="meter-card">
 				<span class="meter-label">Current File Complexity</span>
-				<CognitiveLoadMeter
-					metrics={complexityMetrics}
-					showDetails={true}
-				/>
+				<CognitiveLoadMeter metrics={complexityMetrics} showDetails={true} />
 			</div>
 
 			{#if complexityMetrics}
 				<div class="metrics-summary">
 					<div class="metric">
-						<span class="metric-value" style="color: {
-							complexityMetrics.level === 'critical' ? 'var(--color-error, #ef4444)' :
-							complexityMetrics.level === 'high' ? 'var(--color-warning, #f59e0b)' :
-							complexityMetrics.level === 'medium' ? 'var(--color-info, #3b82f6)' : 'var(--color-success, #22c55e)'
-						}">{complexityMetrics.overall}</span>
+						<span
+							class="metric-value"
+							style="color: {complexityMetrics.level === 'critical'
+								? 'var(--color-error, #ef4444)'
+								: complexityMetrics.level === 'high'
+									? 'var(--color-warning, #f59e0b)'
+									: complexityMetrics.level === 'medium'
+										? 'var(--color-info, #3b82f6)'
+										: 'var(--color-success, #22c55e)'}">{complexityMetrics.overall}</span
+						>
 						<span class="metric-label">Overall Score</span>
 					</div>
 					<div class="metric">
@@ -317,7 +328,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Ghost Pair - AI Presence</h2>
 		<p class="section-desc">
-			Visualize AI agents working alongside you. See where they're looking, what they're thinking, and what they're changing.
+			Visualize AI agents working alongside you. See where they're looking, what they're thinking,
+			and what they're changing.
 		</p>
 
 		<div class="ghost-pair-controls">
@@ -336,9 +348,13 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					<span class="ai-name">{claudeAgent.agentName}</span>
 					<span class="ai-activity">
 						<span class="ai-emoji" aria-hidden="true">
-							{claudeAgent.attentionType === 'reading' ? '\u{1F440}' :
-							 claudeAgent.attentionType === 'thinking' ? '\u{1F4AD}' :
-							 claudeAgent.attentionType === 'writing' ? '\u{270D}\u{FE0F}' : '\u{1F50D}'}
+							{claudeAgent.attentionType === 'reading'
+								? '\u{1F440}'
+								: claudeAgent.attentionType === 'thinking'
+									? '\u{1F4AD}'
+									: claudeAgent.attentionType === 'writing'
+										? '\u{270D}\u{FE0F}'
+										: '\u{1F50D}'}
 						</span>
 						<span class="sr-only">{claudeAgent.attentionType}:</span>
 						{claudeAgent.activity}
@@ -352,18 +368,19 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Live Demo</h2>
 		<p class="section-desc">
-			Edit the code below to see complexity analysis update in real-time. The AI cursor shows where Claude is "looking".
+			Edit the code below to see complexity analysis update in real-time. The AI cursor shows where
+			Claude is "looking".
 		</p>
 
 		<div class="editor-container">
 			<CustomEditor
-				content={content}
+				{content}
 				onChange={(value) => (content = value)}
 				language="typescript"
 				readonly={false}
 				complexityHighlighting={true}
 				complexityThreshold={50}
-				aiAgents={aiAgents}
+				{aiAgents}
 				showAILabels={true}
 				showAIFocusRegions={true}
 				onComplexityChange={handleComplexityChange}
@@ -377,24 +394,44 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		<div class="features-grid">
 			<div class="feature-card" style="--feature-accent: var(--color-error, #ef4444)">
 				<div class="feature-icon">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
-						<path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"
+						/>
+						<path
+							d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"
+						/>
 					</svg>
 				</div>
 				<h3>Cognitive Complexity</h3>
-				<p>Real-time analysis of code complexity based on nesting, branching, and function calls.</p>
+				<p>
+					Real-time analysis of code complexity based on nesting, branching, and function calls.
+				</p>
 			</div>
 
 			<div class="feature-card" style="--feature-accent: #8b5cf6">
 				<div class="feature-icon">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<circle cx="12" cy="12" r="10"/>
-						<circle cx="12" cy="12" r="3"/>
-						<path d="M12 2v2"/>
-						<path d="M12 20v2"/>
-						<path d="M2 12h2"/>
-						<path d="M20 12h2"/>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<circle cx="12" cy="12" r="10" />
+						<circle cx="12" cy="12" r="3" />
+						<path d="M12 2v2" />
+						<path d="M12 20v2" />
+						<path d="M2 12h2" />
+						<path d="M20 12h2" />
 					</svg>
 				</div>
 				<h3>AI Focus Tracking</h3>
@@ -403,11 +440,18 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 			<div class="feature-card" style="--feature-accent: var(--color-success, #22c55e)">
 				<div class="feature-icon">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-						<polyline points="14 2 14 8 20 8"/>
-						<path d="M12 18v-6"/>
-						<path d="m9 15 3 3 3-3"/>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+						<polyline points="14 2 14 8 20 8" />
+						<path d="M12 18v-6" />
+						<path d="m9 15 3 3 3-3" />
 					</svg>
 				</div>
 				<h3>Refactoring Suggestions</h3>
@@ -416,15 +460,22 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 			<div class="feature-card" style="--feature-accent: var(--color-warning, #f59e0b)">
 				<div class="feature-icon">
-					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M12 2v4"/>
-						<path d="m6.343 6.343-2.828 2.828"/>
-						<path d="M2 12h4"/>
-						<path d="m6.343 17.657-2.828-2.828"/>
-						<path d="M12 18v4"/>
-						<path d="m17.657 17.657 2.828-2.828"/>
-						<path d="M18 12h4"/>
-						<path d="m17.657 6.343 2.828 2.828"/>
+					<svg
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path d="M12 2v4" />
+						<path d="m6.343 6.343-2.828 2.828" />
+						<path d="M2 12h4" />
+						<path d="m6.343 17.657-2.828-2.828" />
+						<path d="M12 18v4" />
+						<path d="m17.657 17.657 2.828-2.828" />
+						<path d="M18 12h4" />
+						<path d="m17.657 6.343 2.828 2.828" />
 					</svg>
 				</div>
 				<h3>Activity Visualization</h3>
@@ -574,7 +625,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	.toggle-control input {
 		width: 18px;
 		height: 18px;
-		accent-color: #8B5CF6;
+		accent-color: #8b5cf6;
 	}
 
 	.toggle-label {
@@ -596,7 +647,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	.control-btn:hover:not(:disabled) {
 		background: var(--ide-bg-hover);
 		color: var(--ide-text-primary);
-		border-color: #8B5CF6;
+		border-color: #8b5cf6;
 	}
 
 	.control-btn:disabled {
@@ -628,13 +679,18 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	@keyframes ai-pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.5; }
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.5;
+		}
 	}
 
 	.ai-name {
 		font-weight: 600;
-		color: #8B5CF6;
+		color: #8b5cf6;
 		font-size: 0.875rem;
 	}
 

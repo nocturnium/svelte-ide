@@ -229,8 +229,8 @@ def process_batch(items, batch_size=100):
 				braces, brackets, and parentheses (JavaScript, TypeScript, JSON, etc.)
 			</li>
 			<li>
-				<strong>Indentation-based folding:</strong> For languages like Python that use indentation
-				for structure
+				<strong>Indentation-based folding:</strong> For languages like Python that use indentation for
+				structure
 			</li>
 			<li>
 				<strong>Region markers:</strong> Use <code>// #region</code> and <code>// #endregion</code> comments

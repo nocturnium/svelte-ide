@@ -9,11 +9,7 @@
 import type { EditorState, Position, Selection, Cursor } from './core';
 import type { createNavigation, createKeyboardHandler, FoldManager } from './core';
 import { selectNextOccurrence, selectAllOccurrences } from './editor-multicursor';
-import {
-	CONTENT_PADDING,
-	DEFAULT_FONT_SIZE,
-	LINE_HEIGHT_MULTIPLIER
-} from './constants';
+import { CONTENT_PADDING, DEFAULT_FONT_SIZE, LINE_HEIGHT_MULTIPLIER } from './constants';
 
 // ---------------------------------------------------------------------------
 // Dependency interface
@@ -108,9 +104,7 @@ export function createEditorInput(deps: EditorInputDeps) {
 
 		let visualCol = 0; // visual column in "cells" (each cell == charWidth px)
 		for (let i = 0; i < lineText.length; i++) {
-			const cellsForChar = lineText[i] === '\t'
-				? tabSize - (visualCol % tabSize)
-				: 1;
+			const cellsForChar = lineText[i] === '\t' ? tabSize - (visualCol % tabSize) : 1;
 			const startPx = visualCol * charWidth;
 			const widthPx = cellsForChar * charWidth;
 			// If x falls within the first half of this character's width, the
@@ -163,7 +157,10 @@ export function createEditorInput(deps: EditorInputDeps) {
 		const y = e.clientY - rect.top;
 
 		const editorState = deps.getEditorState();
-		const line = Math.max(0, Math.min(Math.floor((y + scrollTop) / lineHeight), editorState.lineCount - 1));
+		const line = Math.max(
+			0,
+			Math.min(Math.floor((y + scrollTop) / lineHeight), editorState.lineCount - 1)
+		);
 		const lineContent = editorState.getLine(line);
 		const lineText = lineContent?.text ?? '';
 		const tabSize = deps.getTabSize?.() ?? DEFAULT_TAB_SIZE;
@@ -391,7 +388,14 @@ export function createEditorInput(deps: EditorInputDeps) {
 		// Let keyboard handler process it
 		const handled = deps.getKeyboardHandler().handleKeyDown(e, deps.isReadonly());
 
-		if (!handled && !deps.isReadonly() && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+		if (
+			!handled &&
+			!deps.isReadonly() &&
+			e.key.length === 1 &&
+			!e.ctrlKey &&
+			!e.metaKey &&
+			!e.altKey
+		) {
 			// Regular character input - handled by input event
 		}
 	}
@@ -462,7 +466,7 @@ export function createEditorInput(deps: EditorInputDeps) {
 			e.clipboardData?.setData('text/plain', text);
 		} else if (deps.hasMultipleCursors()) {
 			// Multiple cursors with no selection: copy line at each cursor
-			const lines = cursors.map(c => editorState.getLine(c.selection.head.line)?.text ?? '');
+			const lines = cursors.map((c) => editorState.getLine(c.selection.head.line)?.text ?? '');
 			e.clipboardData?.setData('text/plain', lines.join('\n') + '\n');
 		} else {
 			// Single cursor with no selection: copy the entire current line
@@ -488,18 +492,21 @@ export function createEditorInput(deps: EditorInputDeps) {
 			editorState.deleteSelection();
 		} else if (deps.hasMultipleCursors()) {
 			// Multiple cursors with no selection: cut line at each cursor
-			const lines = cursors.map(c => editorState.getLine(c.selection.head.line)?.text ?? '');
+			const lines = cursors.map((c) => editorState.getLine(c.selection.head.line)?.text ?? '');
 			e.clipboardData?.setData('text/plain', lines.join('\n') + '\n');
 
 			// Select and delete each line (in reverse order to maintain positions)
-			const sortedCursors = [...cursors].sort((a, b) => b.selection.head.line - a.selection.head.line);
+			const sortedCursors = [...cursors].sort(
+				(a, b) => b.selection.head.line - a.selection.head.line
+			);
 			for (const cursor of sortedCursors) {
 				const lineNum = cursor.selection.head.line;
 				const line = editorState.getLine(lineNum);
 				const lineStart = { line: lineNum, column: 0 };
-				const lineEnd = lineNum < editorState.lineCount - 1
-					? { line: lineNum + 1, column: 0 }
-					: { line: lineNum, column: line?.text.length ?? 0 };
+				const lineEnd =
+					lineNum < editorState.lineCount - 1
+						? { line: lineNum + 1, column: 0 }
+						: { line: lineNum, column: line?.text.length ?? 0 };
 				editorState.cursorManager.setSelection(cursor.id, lineStart, lineEnd);
 			}
 			editorState.deleteSelection();
@@ -512,9 +519,10 @@ export function createEditorInput(deps: EditorInputDeps) {
 
 			// Delete the entire line
 			const lineStart = { line: lineNum, column: 0 };
-			const lineEnd = lineNum < editorState.lineCount - 1
-				? { line: lineNum + 1, column: 0 }
-				: { line: lineNum, column: line?.text.length ?? 0 };
+			const lineEnd =
+				lineNum < editorState.lineCount - 1
+					? { line: lineNum + 1, column: 0 }
+					: { line: lineNum, column: line?.text.length ?? 0 };
 			editorState.setSelection(lineStart, lineEnd);
 			editorState.deleteSelection();
 		}

@@ -147,10 +147,7 @@ export function createEditorFind(deps: EditorFindDeps) {
 		updateMatches();
 	}
 
-	function computeMatchRects(
-		viewport: ViewportInfo,
-		measurements: MeasurementInfo
-	): MatchRect[] {
+	function computeMatchRects(viewport: ViewportInfo, measurements: MeasurementInfo): MatchRect[] {
 		if (matches.length === 0) return [];
 
 		const { scrollTop, viewportHeight } = viewport;

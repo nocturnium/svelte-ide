@@ -10,7 +10,9 @@ import {
 // Helpers
 // ============================================================
 
-function makeSnippetInput(overrides: Partial<Omit<Snippet, 'id' | 'isUserDefined' | 'usageCount' | 'lastUsed'>> = {}) {
+function makeSnippetInput(
+	overrides: Partial<Omit<Snippet, 'id' | 'isUserDefined' | 'usageCount' | 'lastUsed'>> = {}
+) {
 	return {
 		name: overrides.name ?? 'Test Snippet',
 		prefix: overrides.prefix ?? 'test',
@@ -186,7 +188,9 @@ describe('Snippet registration', () => {
 		const mgr2 = createSnippetManager({ maxUserSnippets: 2 });
 		mgr2.addSnippet(makeSnippetInput({ prefix: 'a' }));
 		mgr2.addSnippet(makeSnippetInput({ prefix: 'b' }));
-		expect(() => mgr2.addSnippet(makeSnippetInput({ prefix: 'c' }))).toThrow(/Maximum snippet limit/);
+		expect(() => mgr2.addSnippet(makeSnippetInput({ prefix: 'c' }))).toThrow(
+			/Maximum snippet limit/
+		);
 	});
 });
 
@@ -451,12 +455,12 @@ describe('Snippet expansion', () => {
 
 		const ts1 = expanded.tabStops.find((t) => t.index === 1)!;
 		expect(ts1.start).toBe(1); // "a" then XX
-		expect(ts1.end).toBe(3);   // "aXX"
+		expect(ts1.end).toBe(3); // "aXX"
 		expect(ts1.placeholder).toBe('XX');
 
 		const ts2 = expanded.tabStops.find((t) => t.index === 2)!;
 		expect(ts2.start).toBe(4); // "aXXb" then YYY
-		expect(ts2.end).toBe(7);   // "aXXbYYY"
+		expect(ts2.end).toBe(7); // "aXXbYYY"
 		expect(ts2.placeholder).toBe('YYY');
 	});
 });
@@ -808,7 +812,9 @@ describe('Events', () => {
 
 	it('should not throw if a listener throws', () => {
 		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		mgr.subscribe(() => { throw new Error('boom'); });
+		mgr.subscribe(() => {
+			throw new Error('boom');
+		});
 		expect(() => mgr.addSnippet(makeSnippetInput())).not.toThrow();
 		consoleSpy.mockRestore();
 	});

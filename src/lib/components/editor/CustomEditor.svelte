@@ -192,7 +192,10 @@
 
 	// Reactive state from editor
 	let lines = $state<readonly ReturnType<typeof editorState.getLine>[]>([]);
-	let selection = $state<Selection>({ anchor: { line: 0, column: 0 }, head: { line: 0, column: 0 } });
+	let selection = $state<Selection>({
+		anchor: { line: 0, column: 0 },
+		head: { line: 0, column: 0 }
+	});
 	let hasSelection = $state(false);
 	let cursors = $state<readonly Cursor[]>([]);
 	let hasMultipleCursors = $state(false);
@@ -386,7 +389,9 @@
 			onUnfoldAll: () => foldManager.expandAll(),
 			onSelectNextOccurrence: () => selectNextOccurrence(editorState),
 			onSelectAllOccurrences: () => selectAllOccurrences(editorState),
-			onShowCommandPalette: () => { showCommandPalette = true; },
+			onShowCommandPalette: () => {
+				showCommandPalette = true;
+			},
 			onSave,
 			announce,
 			resetCursorBlink,
@@ -396,15 +401,25 @@
 				}
 			},
 
-			setCharWidth: (w) => { charWidth = w; },
-			setLineHeight: (h) => { lineHeight = h; },
-			setScrollTop: (v) => { scrollTop = v; },
-			setScrollLeft: (v) => { scrollLeft = v; },
-			setCursorVisible: (v) => { cursorVisible = v; },
+			setCharWidth: (w) => {
+				charWidth = w;
+			},
+			setLineHeight: (h) => {
+				lineHeight = h;
+			},
+			setScrollTop: (v) => {
+				scrollTop = v;
+			},
+			setScrollLeft: (v) => {
+				scrollLeft = v;
+			},
+			setCursorVisible: (v) => {
+				cursorVisible = v;
+			},
 
 			isShowFindReplace: () => showFindReplace,
 			getSearchQuery: () => searchQuery,
-			getSearchMatchCount: () => searchMatches.length,
+			getSearchMatchCount: () => searchMatches.length
 		});
 	}
 
@@ -486,7 +501,7 @@
 		if (!folding || visibleLineIndices.length === 0) {
 			return lines.map((line, index) => ({ line, index }));
 		}
-		return visibleLineIndices.map(index => ({
+		return visibleLineIndices.map((index) => ({
 			line: lines[index],
 			index
 		}));
@@ -512,7 +527,11 @@
 		const firstRow = Math.max(0, Math.floor(scrollTop / lineHeight) - ROW_OVERSCAN);
 		const lastRow = Math.min(rowCount - 1, firstRow + rowsPerViewport + ROW_OVERSCAN * 2);
 
-		const slice: Array<{ line: (typeof visibleLines)[number]['line']; index: number; visualRow: number }> = [];
+		const slice: Array<{
+			line: (typeof visibleLines)[number]['line'];
+			index: number;
+			visualRow: number;
+		}> = [];
 		for (let visualRow = firstRow; visualRow <= lastRow; visualRow++) {
 			const entry = visibleLines[visualRow];
 			slice.push({ line: entry.line, index: entry.index, visualRow });
@@ -629,7 +648,6 @@
 		);
 	});
 
-
 	// Watch for content prop changes (external changes only, not user typing)
 	$effect(() => {
 		// Only react to a GENUINE external change to the `content` prop (e.g. a file
@@ -662,8 +680,14 @@
 				// Use requestAnimationFrame to ensure DOM has updated
 				const rafId = requestAnimationFrame(() => {
 					if (contentEl) {
-						contentEl.scrollTop = Math.min(savedScrollTop, contentEl.scrollHeight - contentEl.clientHeight);
-						contentEl.scrollLeft = Math.min(savedScrollLeft, contentEl.scrollWidth - contentEl.clientWidth);
+						contentEl.scrollTop = Math.min(
+							savedScrollTop,
+							contentEl.scrollHeight - contentEl.clientHeight
+						);
+						contentEl.scrollLeft = Math.min(
+							savedScrollLeft,
+							contentEl.scrollWidth - contentEl.clientWidth
+						);
 					}
 				});
 				// Cleanup: cancel pending RAF if effect re-runs
@@ -687,15 +711,16 @@
 		}
 	});
 
-	
 	// Ensure cursor is on a visible line after fold changes
 	$effect(() => {
 		if (folding && editorState && foldManager.isLineHidden(selection.head.line)) {
 			// Find the fold region containing the cursor and move to its start
 			for (const region of foldRegions) {
-				if (region.collapsed &&
+				if (
+					region.collapsed &&
 					selection.head.line > region.startLine &&
-					selection.head.line <= region.endLine) {
+					selection.head.line <= region.endLine
+				) {
 					editorState.setCursor({ line: region.startLine, column: 0 });
 					break;
 				}
@@ -838,9 +863,18 @@
 			matchCount={searchMatches.length}
 			currentMatch={currentMatchIndex >= 0 ? currentMatchIndex + 1 : 0}
 			onQueryChange={handleQueryChange}
-			onReplaceTextChange={(text) => { editorFind.setReplaceText(text); syncFindState(); }}
-			onCaseSensitiveChange={(value) => { editorFind.setCaseSensitive(value); syncFindState(); }}
-			onUseRegexChange={(value) => { editorFind.setUseRegex(value); syncFindState(); }}
+			onReplaceTextChange={(text) => {
+				editorFind.setReplaceText(text);
+				syncFindState();
+			}}
+			onCaseSensitiveChange={(value) => {
+				editorFind.setCaseSensitive(value);
+				syncFindState();
+			}}
+			onUseRegexChange={(value) => {
+				editorFind.setUseRegex(value);
+				syncFindState();
+			}}
 			onFindNext={handleFindNext}
 			onFindPrev={handleFindPrev}
 			onReplace={handleReplace}
@@ -872,7 +906,12 @@
 
 	<!-- Screen reader status (announces cursor position changes) -->
 	<div class="custom-editor__sr-status" aria-live="polite" aria-atomic="true">
-		{readonly ? 'Read-only. ' : ''}Line {selection.head.line + 1}, Column {selection.head.column + 1}{hasSelection ? `, ${Math.abs(selection.head.line - selection.anchor.line) + 1} lines selected` : ''}{hasMultipleCursors ? `, ${cursors.length} cursors active` : ''}{searchMatches.length > 0 ? `, ${searchMatches.length} search matches, match ${currentMatchIndex + 1} of ${searchMatches.length}` : ''}
+		{readonly ? 'Read-only. ' : ''}Line {selection.head.line + 1}, Column {selection.head.column +
+			1}{hasSelection
+			? `, ${Math.abs(selection.head.line - selection.anchor.line) + 1} lines selected`
+			: ''}{hasMultipleCursors ? `, ${cursors.length} cursors active` : ''}{searchMatches.length > 0
+			? `, ${searchMatches.length} search matches, match ${currentMatchIndex + 1} of ${searchMatches.length}`
+			: ''}
 	</div>
 
 	<!-- Dynamic screen reader announcements for actions -->
@@ -882,7 +921,10 @@
 
 	<!-- Hidden keyboard shortcuts help for screen readers -->
 	<div id="editor-help" class="custom-editor__sr-status">
-		Keyboard shortcuts: Ctrl+F to find, Ctrl+H to replace, Ctrl+D to add cursor at next occurrence, Ctrl+Shift+L to select all occurrences, Escape to clear.{folding ? ' Ctrl+Shift+[ to fold, Ctrl+Shift+] to unfold.' : ''}
+		Keyboard shortcuts: Ctrl+F to find, Ctrl+H to replace, Ctrl+D to add cursor at next occurrence,
+		Ctrl+Shift+L to select all occurrences, Escape to clear.{folding
+			? ' Ctrl+Shift+[ to fold, Ctrl+Shift+] to unfold.'
+			: ''}
 	</div>
 
 	<!-- Main editor content -->
@@ -903,8 +945,8 @@
 		{#if complexityHighlighting && complexityMetrics}
 			<ComplexityLayer
 				metrics={complexityMetrics}
-				lineHeight={lineHeight}
-				gutterWidth={gutterWidth}
+				{lineHeight}
+				{gutterWidth}
 				minScore={complexityThreshold}
 				enabled={complexityHighlighting}
 			/>
@@ -914,9 +956,9 @@
 		{#if aiAgents.length > 0}
 			<AIFocusLayer
 				agents={aiAgents}
-				lineHeight={lineHeight}
-				charWidth={charWidth}
-				gutterWidth={gutterWidth}
+				{lineHeight}
+				{charWidth}
+				{gutterWidth}
 				contentPadding={CONTENT_PADDING}
 				showLabels={showAILabels}
 				showFocusRegions={showAIFocusRegions}
@@ -926,7 +968,10 @@
 
 		<!-- Gutter background (extends full height of content, matching the virtualized spacer) -->
 		{#if mergedPrefs.lineNumbers !== 'off'}
-			<div class="custom-editor__gutter-bg" style="width: {gutterWidth}px; height: {totalContentHeight}px;"></div>
+			<div
+				class="custom-editor__gutter-bg"
+				style="width: {gutterWidth}px; height: {totalContentHeight}px;"
+			></div>
 		{/if}
 
 		<!-- Search match highlights (below selection) -->
@@ -946,7 +991,7 @@
 		<EditorSelections
 			{cursors}
 			{cursorVisible}
-			readonly={readonly}
+			{readonly}
 			{lineHeight}
 			{charWidth}
 			{gutterWidth}
@@ -959,7 +1004,7 @@
 
 		<!-- Lines (virtualized: only the windowed slice is rendered) -->
 		<EditorLines
-			windowedLines={windowedLines}
+			{windowedLines}
 			totalHeight={totalContentHeight}
 			{lineHeight}
 			activeLine={selection.head.line}
@@ -974,15 +1019,11 @@
 			onFoldIndicatorClick={handleFoldIndicatorClick}
 			onExpandFold={(index) => foldManager.expand(index)}
 		/>
-
 	</div>
 </div>
 
 <!-- Command Palette -->
-<CommandPalette
-	bind:open={showCommandPalette}
-	onClose={() => editorContent?.focus()}
-/>
+<CommandPalette bind:open={showCommandPalette} onClose={() => editorContent?.focus()} />
 
 <style>
 	.custom-editor {
@@ -1070,8 +1111,6 @@
 		border-color: rgba(255, 213, 0, 0.8);
 	}
 
-
-
 	/* Gutter background - extends full height of content */
 	.custom-editor__gutter-bg {
 		position: absolute;
@@ -1083,7 +1122,6 @@
 		z-index: 1;
 		pointer-events: none;
 	}
-
 
 	/* Token styles */
 	:global(.token-comment),

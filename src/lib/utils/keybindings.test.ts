@@ -179,25 +179,13 @@ describe('matchesKeybinding', () => {
 	});
 
 	it('should handle arrow key normalization', () => {
-		expect(matchesKeybinding(
-			makeKeyEvent({ key: 'ArrowUp' }),
-			['up']
-		)).toBe(true);
+		expect(matchesKeybinding(makeKeyEvent({ key: 'ArrowUp' }), ['up'])).toBe(true);
 
-		expect(matchesKeybinding(
-			makeKeyEvent({ key: 'ArrowDown' }),
-			['down']
-		)).toBe(true);
+		expect(matchesKeybinding(makeKeyEvent({ key: 'ArrowDown' }), ['down'])).toBe(true);
 
-		expect(matchesKeybinding(
-			makeKeyEvent({ key: 'ArrowLeft' }),
-			['left']
-		)).toBe(true);
+		expect(matchesKeybinding(makeKeyEvent({ key: 'ArrowLeft' }), ['left'])).toBe(true);
 
-		expect(matchesKeybinding(
-			makeKeyEvent({ key: 'ArrowRight' }),
-			['right']
-		)).toBe(true);
+		expect(matchesKeybinding(makeKeyEvent({ key: 'ArrowRight' }), ['right'])).toBe(true);
 	});
 
 	it('should not match when extra ctrl is pressed but not in binding', () => {
@@ -218,9 +206,7 @@ describe('createKeybindingHandler', () => {
 
 	it('should execute command when keybinding matches', () => {
 		const executeCommand = vi.fn();
-		const bindings: Keybinding[] = [
-			{ keys: ['ctrl', 's'], command: 'file.save' }
-		];
+		const bindings: Keybinding[] = [{ keys: ['ctrl', 's'], command: 'file.save' }];
 		const handler = createKeybindingHandler(bindings, executeCommand);
 
 		const event = makeKeyEvent({ key: 's', ctrlKey: true });
@@ -233,9 +219,7 @@ describe('createKeybindingHandler', () => {
 
 	it('should not execute command when no keybinding matches', () => {
 		const executeCommand = vi.fn();
-		const bindings: Keybinding[] = [
-			{ keys: ['ctrl', 's'], command: 'file.save' }
-		];
+		const bindings: Keybinding[] = [{ keys: ['ctrl', 's'], command: 'file.save' }];
 		const handler = createKeybindingHandler(bindings, executeCommand);
 
 		const event = makeKeyEvent({ key: 'a' });

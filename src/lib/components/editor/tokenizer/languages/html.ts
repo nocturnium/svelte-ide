@@ -63,7 +63,12 @@ export class HTMLTokenizer {
 		return { lineNumber, tokens, text: line, state };
 	}
 
-	private getNextToken(text: string, pos: number, state: HTMLTokenizerState, _fullLine: string): Token | null {
+	private getNextToken(
+		text: string,
+		pos: number,
+		state: HTMLTokenizerState,
+		_fullLine: string
+	): Token | null {
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {

@@ -64,18 +64,14 @@ export function positionsEqual(a: Position, b: Position): boolean {
  * Get the start position of a selection (min of anchor and head)
  */
 export function getSelectionStart(selection: Selection): Position {
-	return isPositionBefore(selection.anchor, selection.head)
-		? selection.anchor
-		: selection.head;
+	return isPositionBefore(selection.anchor, selection.head) ? selection.anchor : selection.head;
 }
 
 /**
  * Get the end position of a selection (max of anchor and head)
  */
 export function getSelectionEnd(selection: Selection): Position {
-	return isPositionBefore(selection.anchor, selection.head)
-		? selection.head
-		: selection.anchor;
+	return isPositionBefore(selection.anchor, selection.head) ? selection.head : selection.anchor;
 }
 
 /**
@@ -276,7 +272,7 @@ export class CursorManager {
 
 		// Get all non-primary cursors sorted by ID (most recent last)
 		const secondaries = [...this.cursors.values()]
-			.filter(c => !c.isPrimary)
+			.filter((c) => !c.isPrimary)
 			.sort((a, b) => {
 				// Extract numeric part of ID for comparison
 				const idA = parseInt(a.id.replace('cursor-', ''), 10);
@@ -437,7 +433,8 @@ export class CursorManager {
 
 		for (const cursor of this.cursors.values()) {
 			const cursorPos = cursor.selection.head;
-			const distance = Math.abs(cursorPos.line - position.line) * 10000 +
+			const distance =
+				Math.abs(cursorPos.line - position.line) * 10000 +
 				Math.abs(cursorPos.column - position.column);
 
 			if (distance < closestDistance) {
@@ -594,7 +591,7 @@ export class CursorManager {
 	 */
 	clone(): { cursors: Cursor[]; primaryId: string } {
 		return {
-			cursors: [...this.cursors.values()].map(c => ({
+			cursors: [...this.cursors.values()].map((c) => ({
 				id: c.id,
 				selection: {
 					anchor: { ...c.selection.anchor },

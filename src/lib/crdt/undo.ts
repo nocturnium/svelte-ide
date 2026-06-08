@@ -35,11 +35,7 @@ export function createUndoManager(
 	document: CollaborativeDocument,
 	options: UndoManagerOptions = {}
 ): UndoManagerInstance {
-	const {
-		captureTimeout = 500,
-		trackedOrigins = new Set([null, 'local']),
-		deleteFilter
-	} = options;
+	const { captureTimeout = 500, trackedOrigins = new Set([null, 'local']), deleteFilter } = options;
 
 	const text = document.getText();
 	const manager = new Y.UndoManager(text, {

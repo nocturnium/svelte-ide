@@ -26,10 +26,13 @@ function makeDeps(overrides: Partial<EditorInputDeps> = {}): EditorInputDeps {
 	};
 
 	return {
-		getEditorState: () => ({} as unknown as EditorState),
-		getNavigation: () => ({} as unknown as ReturnType<typeof createNavigation>),
-		getKeyboardHandler: () => ({ handleKeyDown: vi.fn(() => false) } as unknown as ReturnType<typeof createKeyboardHandler>),
-		getFoldManager: () => ({} as unknown as FoldManager),
+		getEditorState: () => ({}) as unknown as EditorState,
+		getNavigation: () => ({}) as unknown as ReturnType<typeof createNavigation>,
+		getKeyboardHandler: () =>
+			({ handleKeyDown: vi.fn(() => false) }) as unknown as ReturnType<
+				typeof createKeyboardHandler
+			>,
+		getFoldManager: () => ({}) as unknown as FoldManager,
 
 		getEditorContent: () => null,
 		getHiddenInput: () => null,
@@ -181,7 +184,7 @@ describe('IME composition', () => {
 		const deps = makeDeps();
 		const mockState = { insert: vi.fn() };
 		deps.getEditorState = () => mockState as unknown as EditorState;
-		deps.getHiddenInput = () => ({ value: '' } as unknown as HTMLTextAreaElement);
+		deps.getHiddenInput = () => ({ value: '' }) as unknown as HTMLTextAreaElement;
 
 		const input = createEditorInput(deps);
 
@@ -324,8 +327,11 @@ describe('mouse hit-testing with tabs', () => {
 		const deps = makeDeps({
 			getEditorState: () => editorState as unknown as EditorState,
 			getEditorContent: () => editorContent,
-			getHiddenInput: () => ({ focus: vi.fn() } as unknown as HTMLTextAreaElement),
-			getNavigation: () => ({ selectWord: vi.fn(), selectLine: vi.fn() } as unknown as ReturnType<typeof createNavigation>),
+			getHiddenInput: () => ({ focus: vi.fn() }) as unknown as HTMLTextAreaElement,
+			getNavigation: () =>
+				({ selectWord: vi.fn(), selectLine: vi.fn() }) as unknown as ReturnType<
+					typeof createNavigation
+				>,
 			getMeasurements: () => ({
 				charWidth: opts.charWidth ?? 10,
 				lineHeight: 20,

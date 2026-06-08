@@ -81,7 +81,6 @@
 		if (minutes > 0) return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 		return `${seconds}s`;
 	}
-
 </script>
 
 {#if status.status !== 'unlocked'}

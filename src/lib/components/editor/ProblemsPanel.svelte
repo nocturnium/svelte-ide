@@ -9,11 +9,7 @@
 	 * - Batch actions
 	 */
 
-	import type {
-		DiagnosticsManager,
-		Diagnostic,
-		DiagnosticSeverity
-	} from './core/diagnostics';
+	import type { DiagnosticsManager, Diagnostic, DiagnosticSeverity } from './core/diagnostics';
 	import {
 		getSeverityIcon,
 		getSeverityColor,
@@ -34,13 +30,7 @@
 		onClose?: () => void;
 	}
 
-	let {
-		manager,
-		open = true,
-		height = 200,
-		onNavigate,
-		onClose
-	}: Props = $props();
+	let { manager, open = true, height = 200, onNavigate, onClose }: Props = $props();
 
 	let allDiagnostics = $state<Map<string, Diagnostic[]>>(new Map());
 	let searchQuery = $state('');
@@ -195,7 +185,7 @@
 
 			<div class="header-filters">
 				<!-- Severity filters -->
-				{#each (['error', 'warning', 'info', 'hint'] as const) as severity (severity)}
+				{#each ['error', 'warning', 'info', 'hint'] as const as severity (severity)}
 					{@const count = counts()[severity]}
 					<button
 						class="severity-filter"
@@ -211,11 +201,7 @@
 				{/each}
 
 				<!-- Source filter -->
-				<select
-					class="source-filter"
-					bind:value={sourceFilter}
-					title="Filter by source"
-				>
+				<select class="source-filter" bind:value={sourceFilter} title="Filter by source">
 					<option value={null}>All sources</option>
 					{#each allSources() as source (source)}
 						<option value={source}>{source}</option>
@@ -224,12 +210,8 @@
 			</div>
 
 			<div class="header-actions">
-				<button class="action-btn" onclick={expandAll} title="Expand all">
-					⊞
-				</button>
-				<button class="action-btn" onclick={collapseAll} title="Collapse all">
-					⊟
-				</button>
+				<button class="action-btn" onclick={expandAll} title="Expand all"> ⊞ </button>
+				<button class="action-btn" onclick={collapseAll} title="Collapse all"> ⊟ </button>
 				<button
 					class="action-btn"
 					class:active={groupByFile}
@@ -239,9 +221,7 @@
 					📁
 				</button>
 				{#if onClose}
-					<button class="action-btn close-btn" onclick={onClose} title="Close panel">
-						×
-					</button>
+					<button class="action-btn close-btn" onclick={onClose} title="Close panel"> × </button>
 				{/if}
 			</div>
 		</div>
@@ -255,9 +235,7 @@
 				bind:value={searchQuery}
 			/>
 			{#if searchQuery}
-				<button class="search-clear" onclick={() => (searchQuery = '')}>
-					×
-				</button>
+				<button class="search-clear" onclick={() => (searchQuery = '')}> × </button>
 			{/if}
 		</div>
 
@@ -303,7 +281,8 @@
 											<span class="diagnostic-code">{diagnostic.code}</span>
 										{/if}
 										<span class="diagnostic-location">
-											[Ln {diagnostic.range.start.line + 1}, Col {diagnostic.range.start.column + 1}]
+											[Ln {diagnostic.range.start.line + 1}, Col {diagnostic.range.start.column +
+												1}]
 										</span>
 									</button>
 								{/each}
@@ -319,10 +298,7 @@
 							class="diagnostic-item diagnostic-item--flat"
 							onclick={() => handleDiagnosticClick(filePath, diagnostic)}
 						>
-							<span
-								class="diagnostic-icon"
-								style="color: {getSeverityColor(diagnostic.severity)};"
-							>
+							<span class="diagnostic-icon" style="color: {getSeverityColor(diagnostic.severity)};">
 								{getSeverityIcon(diagnostic.severity)}
 							</span>
 							<span class="diagnostic-message">{diagnostic.message}</span>

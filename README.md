@@ -50,17 +50,13 @@ without the design tokens):
 
 ```svelte
 <script>
-  import { CustomEditor } from '@nocturnium/svelte-ide';
-  import '@nocturnium/svelte-ide/theme.css';
+	import { CustomEditor } from '@nocturnium/svelte-ide';
+	import '@nocturnium/svelte-ide/theme.css';
 
-  let code = $state('function hello() {\n  console.log("world");\n}');
+	let code = $state('function hello() {\n  console.log("world");\n}');
 </script>
 
-<CustomEditor
-  content={code}
-  language="javascript"
-  onChange={(value) => (code = value)}
-/>
+<CustomEditor content={code} language="javascript" onChange={(value) => (code = value)} />
 ```
 
 `<CustomEditor>` also accepts `readonly`, `folding`, `multiCursor`, `maxCursors`,
@@ -83,24 +79,24 @@ to enumerate them at runtime.
 
 ```svelte
 <script>
-  import { LSPEditor, createLSPClient } from '@nocturnium/svelte-ide';
-  import '@nocturnium/svelte-ide/theme.css';
+	import { LSPEditor, createLSPClient } from '@nocturnium/svelte-ide';
+	import '@nocturnium/svelte-ide/theme.css';
 
-  const client = createLSPClient({
-    serverUrl: 'ws://localhost:8765/lsp?language=typescript',
-    rootUri: 'file:///workspace',
-  });
+	const client = createLSPClient({
+		serverUrl: 'ws://localhost:8765/lsp?language=typescript',
+		rootUri: 'file:///workspace'
+	});
 
-  let code = $state('const greeting: string = "hi";');
+	let code = $state('const greeting: string = "hi";');
 </script>
 
 <LSPEditor
-  content={code}
-  uri="file:///workspace/main.ts"
-  language="typescript"
-  lspClient={client}
-  onChange={(value) => (code = value)}
-  onDiagnostics={(diagnostics) => console.log(diagnostics)}
+	content={code}
+	uri="file:///workspace/main.ts"
+	language="typescript"
+	lspClient={client}
+	onChange={(value) => (code = value)}
+	onDiagnostics={(diagnostics) => console.log(diagnostics)}
 />
 ```
 
@@ -112,18 +108,18 @@ You supply the LSP bridge. A ready-to-run Go WebSocket bridge lives in
 
 ```svelte
 <script>
-  import { CollaborativeEditor } from '@nocturnium/svelte-ide';
-  import '@nocturnium/svelte-ide/theme.css';
-  // requires: npm install yjs y-websocket y-protocols
+	import { CollaborativeEditor } from '@nocturnium/svelte-ide';
+	import '@nocturnium/svelte-ide/theme.css';
+	// requires: npm install yjs y-websocket y-protocols
 
-  let content = $state('');
+	let content = $state('');
 </script>
 
 <CollaborativeEditor
-  documentId="room-1"
-  initialContent="// edit together"
-  language="javascript"
-  onChange={(value) => (content = value)}
+	documentId="room-1"
+	initialContent="// edit together"
+	language="javascript"
+	onChange={(value) => (content = value)}
 />
 ```
 
@@ -134,8 +130,8 @@ See the [Collaboration guide](https://github.com/nocturnium/svelte-ide/blob/main
 
 ```svelte
 <script>
-  import { AIPanel } from '@nocturnium/svelte-ide';
-  import '@nocturnium/svelte-ide/theme.css';
+	import { AIPanel } from '@nocturnium/svelte-ide';
+	import '@nocturnium/svelte-ide/theme.css';
 </script>
 
 <AIPanel />
@@ -152,22 +148,22 @@ The package root exposes the **stable core**. Backend-dependent and
 experimental subsystems live behind dedicated subpaths — this keeps intent
 explicit and tree-shaking clean.
 
-| Import | Contents |
-| --- | --- |
-| `@nocturnium/svelte-ide` | Stable core: editors, layout shell, file explorer, core UI primitives, editor/language/tokenizer/theme utilities, LSP client, layout-store functions, public types |
-| `@nocturnium/svelte-ide/theme.css` | Default theme (design tokens + component styles) |
-| `.../components/editor` | `CustomEditor`, `Editor`, `EditorPane`, `EditorTabs`, … |
-| `.../components/core` | `Button`, `Icon`, `Input`, `Tooltip`, `ResizeHandle`, … |
-| `.../components/ai` | `AIPanel`, `AIMessage`, `AIInlineEdit`, … |
-| `.../components/lsp` | `LSPEditor`, `AutocompleteWidget`, `HoverTooltip`, … |
-| `.../components/agents` | `AgentAvatar`, `AgentActivityPanel`, `AgentCursor`, … |
-| `.../components/vfs` | `LockIndicator`, `LockConflictDialog`, … |
-| `.../components/layout` | `IDELayout`, `StatusBar` |
-| `.../components/plugins` | `PluginPanel`, `PluginCard`, … |
-| `.../stores` | Full Svelte 5 runes store surface (layout, editor, ai, plugin, …) |
-| `.../plugins` | Plugin runtime (`createPluginLoader`, `definePlugin`, `defineCommand`, `definePanel`, `pluginRegistry`) |
-| `.../crdt` | CRDT collaboration primitives (requires Yjs) |
-| `.../types`, `.../utils` | Full type and helper-function surface |
+| Import                             | Contents                                                                                                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@nocturnium/svelte-ide`           | Stable core: editors, layout shell, file explorer, core UI primitives, editor/language/tokenizer/theme utilities, LSP client, layout-store functions, public types |
+| `@nocturnium/svelte-ide/theme.css` | Default theme (design tokens + component styles)                                                                                                                   |
+| `.../components/editor`            | `CustomEditor`, `Editor`, `EditorPane`, `EditorTabs`, …                                                                                                            |
+| `.../components/core`              | `Button`, `Icon`, `Input`, `Tooltip`, `ResizeHandle`, …                                                                                                            |
+| `.../components/ai`                | `AIPanel`, `AIMessage`, `AIInlineEdit`, …                                                                                                                          |
+| `.../components/lsp`               | `LSPEditor`, `AutocompleteWidget`, `HoverTooltip`, …                                                                                                               |
+| `.../components/agents`            | `AgentAvatar`, `AgentActivityPanel`, `AgentCursor`, …                                                                                                              |
+| `.../components/vfs`               | `LockIndicator`, `LockConflictDialog`, …                                                                                                                           |
+| `.../components/layout`            | `IDELayout`, `StatusBar`                                                                                                                                           |
+| `.../components/plugins`           | `PluginPanel`, `PluginCard`, …                                                                                                                                     |
+| `.../stores`                       | Full Svelte 5 runes store surface (layout, editor, ai, plugin, …)                                                                                                  |
+| `.../plugins`                      | Plugin runtime (`createPluginLoader`, `definePlugin`, `defineCommand`, `definePanel`, `pluginRegistry`)                                                            |
+| `.../crdt`                         | CRDT collaboration primitives (requires Yjs)                                                                                                                       |
+| `.../types`, `.../utils`           | Full type and helper-function surface                                                                                                                              |
 
 ## API Stability
 

@@ -399,10 +399,20 @@
 	<div class="file-explorer__header">
 		<span class="file-explorer__title">Explorer</span>
 		<div class="file-explorer__actions">
-			<Button variant="ghost" size="xs" onclick={() => startInlineCreation('', 'file')} title="New File">
+			<Button
+				variant="ghost"
+				size="xs"
+				onclick={() => startInlineCreation('', 'file')}
+				title="New File"
+			>
 				<Icon name="file-plus" size={14} />
 			</Button>
-			<Button variant="ghost" size="xs" onclick={() => startInlineCreation('', 'folder')} title="New Folder">
+			<Button
+				variant="ghost"
+				size="xs"
+				onclick={() => startInlineCreation('', 'folder')}
+				title="New Folder"
+			>
 				<Icon name="folder-plus" size={14} />
 			</Button>
 		</div>
@@ -462,7 +472,13 @@
 					class:file-node__status-dot--modified={changeStatus === 'modified'}
 					class:file-node__status-dot--deleted={changeStatus === 'deleted'}
 					class:file-node__status-dot--renamed={changeStatus === 'renamed'}
-					title={changeStatus === 'created' ? 'New' : changeStatus === 'modified' ? 'Modified' : changeStatus === 'deleted' ? 'Deleted' : 'Renamed'}
+					title={changeStatus === 'created'
+						? 'New'
+						: changeStatus === 'modified'
+							? 'Modified'
+							: changeStatus === 'deleted'
+								? 'Deleted'
+								: 'Renamed'}
 				></span>
 			{/if}
 			{#if node.type === 'folder'}
@@ -493,7 +509,13 @@
 				<div class="file-node__agents">
 					{#each fileAgents.slice(0, 3) as agent (agent.id)}
 						<Tooltip content="{agent.name} is editing">
-							<AgentAvatar {agent} size="xs" showStatus={false} showBadge={false} showProgress={false} />
+							<AgentAvatar
+								{agent}
+								size="xs"
+								showStatus={false}
+								showBadge={false}
+								showProgress={false}
+							/>
 						</Tooltip>
 					{/each}
 					{#if fileAgents.length > 3}

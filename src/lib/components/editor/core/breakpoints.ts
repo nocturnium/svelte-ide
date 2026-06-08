@@ -88,7 +88,9 @@ export class BreakpointManager {
 	addBreakpoint(
 		filePath: string,
 		line: number,
-		options?: Partial<Omit<Breakpoint, 'id' | 'filePath' | 'line' | 'hitCount' | 'verified' | 'createdAt'>>
+		options?: Partial<
+			Omit<Breakpoint, 'id' | 'filePath' | 'line' | 'hitCount' | 'verified' | 'createdAt'>
+		>
 	): Breakpoint {
 		const id = `bp-${++this._idCounter}`;
 		const breakpoint: Breakpoint = {
@@ -140,7 +142,10 @@ export class BreakpointManager {
 	/**
 	 * Update a breakpoint
 	 */
-	updateBreakpoint(id: string, updates: Partial<Omit<Breakpoint, 'id' | 'createdAt'>>): Breakpoint | null {
+	updateBreakpoint(
+		id: string,
+		updates: Partial<Omit<Breakpoint, 'id' | 'createdAt'>>
+	): Breakpoint | null {
 		const breakpoint = this._breakpoints.get(id);
 		if (!breakpoint) return null;
 
@@ -245,7 +250,10 @@ export class BreakpointManager {
 		}
 		// Sort each file's breakpoints by line
 		for (const [path, bps] of byFile) {
-			byFile.set(path, bps.sort((a, b) => a.line - b.line));
+			byFile.set(
+				path,
+				bps.sort((a, b) => a.line - b.line)
+			);
 		}
 		return byFile;
 	}

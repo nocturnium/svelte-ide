@@ -49,15 +49,28 @@ export interface SvelteTokenizerState extends TokenizerState {
  * Svelte keywords and directives
  */
 const SVELTE_BLOCK_KEYWORDS = new Set([
-	'if', 'else', 'each', 'await', 'then', 'catch', 'key', 'snippet'
+	'if',
+	'else',
+	'each',
+	'await',
+	'then',
+	'catch',
+	'key',
+	'snippet'
 ]);
 
-const SVELTE_TAG_KEYWORDS = new Set([
-	'html', 'debug', 'const', 'render'
-]);
+const SVELTE_TAG_KEYWORDS = new Set(['html', 'debug', 'const', 'render']);
 
 const SVELTE_ATTRIBUTE_PREFIXES = [
-	'bind:', 'on:', 'use:', 'transition:', 'in:', 'out:', 'animate:', 'let:', 'class:'
+	'bind:',
+	'on:',
+	'use:',
+	'transition:',
+	'in:',
+	'out:',
+	'animate:',
+	'let:',
+	'class:'
 ];
 
 /**
@@ -91,7 +104,11 @@ export class SvelteTokenizer implements LanguageTokenizer {
 				// Tokenize JavaScript part
 				const scriptPart = line.substring(0, closeScriptMatch.index);
 				if (scriptPart) {
-					const result = this.tsTokenizer.tokenizeLine(scriptPart, lineNumber, state.innerState || this.tsTokenizer.getInitialState());
+					const result = this.tsTokenizer.tokenizeLine(
+						scriptPart,
+						lineNumber,
+						state.innerState || this.tsTokenizer.getInitialState()
+					);
 					tokens.push(...result.tokens);
 					state.innerState = result.state;
 				}
@@ -112,7 +129,11 @@ export class SvelteTokenizer implements LanguageTokenizer {
 				}
 			} else {
 				// Entire line is JavaScript
-				const result = this.tsTokenizer.tokenizeLine(line, lineNumber, state.innerState || this.tsTokenizer.getInitialState());
+				const result = this.tsTokenizer.tokenizeLine(
+					line,
+					lineNumber,
+					state.innerState || this.tsTokenizer.getInitialState()
+				);
 				tokens.push(...result.tokens);
 				state.innerState = result.state;
 			}
@@ -127,7 +148,11 @@ export class SvelteTokenizer implements LanguageTokenizer {
 				// Tokenize CSS part
 				const cssPart = line.substring(0, closeStyleMatch.index);
 				if (cssPart) {
-					const result = this.cssTokenizer.tokenizeLine(cssPart, lineNumber, state.innerState || this.cssTokenizer.getInitialState());
+					const result = this.cssTokenizer.tokenizeLine(
+						cssPart,
+						lineNumber,
+						state.innerState || this.cssTokenizer.getInitialState()
+					);
 					tokens.push(...result.tokens);
 					state.innerState = result.state;
 				}
@@ -148,7 +173,11 @@ export class SvelteTokenizer implements LanguageTokenizer {
 				}
 			} else {
 				// Entire line is CSS
-				const result = this.cssTokenizer.tokenizeLine(line, lineNumber, state.innerState || this.cssTokenizer.getInitialState());
+				const result = this.cssTokenizer.tokenizeLine(
+					line,
+					lineNumber,
+					state.innerState || this.cssTokenizer.getInitialState()
+				);
 				tokens.push(...result.tokens);
 				state.innerState = result.state;
 			}
@@ -331,11 +360,13 @@ export class SvelteTokenizer implements LanguageTokenizer {
 			const attrMatch = tag.substring(pos).match(/^([\w:-]+)(?:=)?/);
 			if (attrMatch) {
 				const attrName = attrMatch[1];
-				const isSvelteAttr = SVELTE_ATTRIBUTE_PREFIXES.some(prefix => attrName.startsWith(prefix));
+				const isSvelteAttr = SVELTE_ATTRIBUTE_PREFIXES.some((prefix) =>
+					attrName.startsWith(prefix)
+				);
 
 				if (isSvelteAttr) {
 					// Highlight Svelte-specific attributes
-					const prefixMatch = SVELTE_ATTRIBUTE_PREFIXES.find(p => attrName.startsWith(p));
+					const prefixMatch = SVELTE_ATTRIBUTE_PREFIXES.find((p) => attrName.startsWith(p));
 					if (prefixMatch) {
 						tokens.push({ type: 'keyword.control', text: prefixMatch });
 						tokens.push({ type: 'tag.attribute', text: attrName.substring(prefixMatch.length) });

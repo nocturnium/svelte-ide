@@ -87,9 +87,7 @@
 	let featuredAgent = $derived.by(() => {
 		// Prefer agent working on current file
 		if (currentFilePath) {
-			const agentOnFile = busyAgents.find(a =>
-				a.currentTask?.files?.includes(currentFilePath)
-			);
+			const agentOnFile = busyAgents.find((a) => a.currentTask?.files?.includes(currentFilePath));
 			if (agentOnFile) return agentOnFile;
 		}
 		// Otherwise show first busy agent
@@ -107,10 +105,18 @@
 		const phase = featuredAgent.currentTask?.progress?.phase;
 		let action = 'working';
 		switch (phase) {
-			case 'planning': action = 'planning'; break;
-			case 'implementing': action = 'coding'; break;
-			case 'testing': action = 'testing'; break;
-			case 'complete': action = 'done'; break;
+			case 'planning':
+				action = 'planning';
+				break;
+			case 'implementing':
+				action = 'coding';
+				break;
+			case 'testing':
+				action = 'testing';
+				break;
+			case 'complete':
+				action = 'done';
+				break;
 		}
 
 		const otherBusy = busyAgents.length - 1;
@@ -120,14 +126,10 @@
 
 	// Lock context for current file
 	let currentFileLock = $derived(
-		currentFilePath ? locks.find(l => l.path === currentFilePath) : undefined
+		currentFilePath ? locks.find((l) => l.path === currentFilePath) : undefined
 	);
-	let isMyLock = $derived(
-		currentFileLock && userId ? currentFileLock.holder === userId : false
-	);
-	let otherLocks = $derived(
-		locks.filter(l => l.path !== currentFilePath)
-	);
+	let isMyLock = $derived(currentFileLock && userId ? currentFileLock.holder === userId : false);
+	let otherLocks = $derived(locks.filter((l) => l.path !== currentFilePath));
 
 	// Lock expiry countdown
 	let lockExpiryText = $state<string | null>(null);
@@ -196,7 +198,7 @@
 			return `${currentFileLock.holder} is editing this file.`;
 		}
 		if (locks.length === 0) return 'No files locked';
-		const holders = [...new Set(locks.map(l => l.holder))];
+		const holders = [...new Set(locks.map((l) => l.holder))];
 		return `Locked by: ${holders.join(', ')}`;
 	});
 </script>
@@ -434,8 +436,13 @@
 	}
 
 	@keyframes ai-dot-shimmer {
-		0%, 100% { background-position: 0% 50%; }
-		50% { background-position: 100% 50%; }
+		0%,
+		100% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
 	}
 
 	/* Lock Status */
@@ -468,8 +475,13 @@
 	}
 
 	@keyframes expiry-pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.6; }
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.6;
+		}
 	}
 
 	.status-bar__separator {
@@ -493,7 +505,7 @@
 
 	/* Responsive: hide less important info on narrow screens */
 	@media (max-width: 600px) {
-		.status-bar__right > :nth-child(n+3):nth-child(-n+5) {
+		.status-bar__right > :nth-child(n + 3):nth-child(-n + 5) {
 			display: none;
 		}
 	}

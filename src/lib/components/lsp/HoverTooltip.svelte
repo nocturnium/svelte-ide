@@ -1,3 +1,58 @@
+<script module lang="ts">
+	// Simple markdown renderer for hover content
+	// Handles code blocks, inline code, bold, italic, and links
+	function renderMarkdown(text: string): string {
+		let html = escapeHtml(text);
+
+		// Code blocks with language
+		html = html.replace(
+			/```(\w+)?\n([\s\S]*?)```/g,
+			(_, lang, code) =>
+				`<pre class="hover-tooltip__code-block" data-lang="${lang || ''}">${code.trim()}</pre>`
+		);
+
+		// Inline code
+		html = html.replace(/`([^`]+)`/g, '<code class="hover-tooltip__inline-code">$1</code>');
+
+		// Bold
+		html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+		// Italic
+		html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+		// Links (href is validated; unsafe schemes degrade to plain text)
+		html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
+			const url = safeUrl(href);
+			return url ? `<a href="${url}" target="_blank" rel="noopener">${label}</a>` : label;
+		});
+
+		// Line breaks
+		html = html.replace(/\n/g, '<br>');
+
+		return html;
+	}
+
+	function escapeHtml(text: string): string {
+		const map: Record<string, string> = {
+			'&': '&amp;',
+			'<': '&lt;',
+			'>': '&gt;',
+			'"': '&quot;',
+			"'": '&#039;'
+		};
+		return text.replace(/[&<>"']/g, (char) => map[char]);
+	}
+
+	// Whitelist link schemes. Relative/anchor URLs and http(s)/mailto are allowed;
+	// anything else (e.g. javascript:, data:, vbscript:) is rejected.
+	function safeUrl(url: string): string | null {
+		const trimmed = url.trim();
+		if (/^(\/|#|\.\/|\.\.\/)/.test(trimmed)) return trimmed;
+		if (/^(https?:|mailto:)/i.test(trimmed)) return trimmed;
+		return null;
+	}
+</script>
+
 <script lang="ts">
 	/**
 	 * HoverTooltip - LSP hover information display
@@ -20,13 +75,7 @@
 		class?: string;
 	}
 
-	let {
-		hover,
-		position,
-		maxWidth = 500,
-		onDismiss,
-		class: className = ''
-	}: Props = $props();
+	let { hover, position, maxWidth = 500, onDismiss, class: className = '' }: Props = $props();
 
 	let tooltipRef: HTMLElement;
 
@@ -123,60 +172,6 @@
 		{/each}
 	</div>
 </div>
-
-<script module lang="ts">
-	// Simple markdown renderer for hover content
-	// Handles code blocks, inline code, bold, italic, and links
-	function renderMarkdown(text: string): string {
-		let html = escapeHtml(text);
-
-		// Code blocks with language
-		html = html.replace(
-			/```(\w+)?\n([\s\S]*?)```/g,
-			(_, lang, code) => `<pre class="hover-tooltip__code-block" data-lang="${lang || ''}">${code.trim()}</pre>`
-		);
-
-		// Inline code
-		html = html.replace(/`([^`]+)`/g, '<code class="hover-tooltip__inline-code">$1</code>');
-
-		// Bold
-		html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-		// Italic
-		html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-
-		// Links (href is validated; unsafe schemes degrade to plain text)
-		html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
-			const url = safeUrl(href);
-			return url ? `<a href="${url}" target="_blank" rel="noopener">${label}</a>` : label;
-		});
-
-		// Line breaks
-		html = html.replace(/\n/g, '<br>');
-
-		return html;
-	}
-
-	function escapeHtml(text: string): string {
-		const map: Record<string, string> = {
-			'&': '&amp;',
-			'<': '&lt;',
-			'>': '&gt;',
-			'"': '&quot;',
-			"'": '&#039;'
-		};
-		return text.replace(/[&<>"']/g, (char) => map[char]);
-	}
-
-	// Whitelist link schemes. Relative/anchor URLs and http(s)/mailto are allowed;
-	// anything else (e.g. javascript:, data:, vbscript:) is rejected.
-	function safeUrl(url: string): string | null {
-		const trimmed = url.trim();
-		if (/^(\/|#|\.\/|\.\.\/)/.test(trimmed)) return trimmed;
-		if (/^(https?:|mailto:)/i.test(trimmed)) return trimmed;
-		return null;
-	}
-</script>
 
 <style>
 	.hover-tooltip {

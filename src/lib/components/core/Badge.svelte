@@ -2,7 +2,15 @@
 	import type { Snippet } from 'svelte';
 
 	interface Props {
-		variant?: 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'danger' | 'info';
+		variant?:
+			| 'default'
+			| 'primary'
+			| 'secondary'
+			| 'success'
+			| 'warning'
+			| 'error'
+			| 'danger'
+			| 'info';
 		size?: 'sm' | 'md';
 		dot?: boolean;
 		class?: string;

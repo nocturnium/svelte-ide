@@ -92,7 +92,9 @@ function openDatabase(): Promise<IDBDatabase> {
 /**
  * Save a conversation
  */
-export async function saveConversation(conversation: AIConversation & { starred?: boolean }): Promise<void> {
+export async function saveConversation(
+	conversation: AIConversation & { starred?: boolean }
+): Promise<void> {
 	if (!initialized) await initPersistence();
 
 	const data = {
@@ -127,9 +129,7 @@ export async function saveConversation(conversation: AIConversation & { starred?
 /**
  * Auto-save with debounce
  */
-export function autoSaveConversation(
-	conversation: AIConversation & { starred?: boolean }
-): void {
+export function autoSaveConversation(conversation: AIConversation & { starred?: boolean }): void {
 	if (!config.autoSave) return;
 
 	if (saveTimer) {
@@ -296,7 +296,8 @@ export function exportConversationMarkdown(conversation: AIConversation): string
 	];
 
 	for (const message of conversation.messages) {
-		const role = message.role === 'user' ? 'You' : message.role === 'assistant' ? 'AI' : message.role;
+		const role =
+			message.role === 'user' ? 'You' : message.role === 'assistant' ? 'AI' : message.role;
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- transient formatting value in a pure export function, not reactive state
 		const time = new Date(message.timestamp).toLocaleTimeString();
 

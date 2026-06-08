@@ -7,10 +7,7 @@ import {
 	type GhostPairAgent,
 	type AgentFileContext
 } from './ghost-pair';
-import {
-	AIAwarenessManager,
-	createAIAwarenessManager
-} from './ai-awareness';
+import { AIAwarenessManager, createAIAwarenessManager } from './ai-awareness';
 
 // ---------------------------------------------------------------------------
 // Helpers

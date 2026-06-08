@@ -13,23 +13,23 @@ Types are type-only re-exports; utilities are real runtime functions.
 ```ts
 // Types — from the root or the dedicated entry point (both work)
 import type {
-  EditorTab,
-  CursorPosition,
-  FileEntry,
-  AIMessage,
-  Diagnostic,
-  LSPConnectionState
-} from "@nocturnium/svelte-ide";
+	EditorTab,
+	CursorPosition,
+	FileEntry,
+	AIMessage,
+	Diagnostic,
+	LSPConnectionState
+} from '@nocturnium/svelte-ide';
 
-import type { CollaborationUser, VFSFileLock } from "@nocturnium/svelte-ide/types";
+import type { CollaborationUser, VFSFileLock } from '@nocturnium/svelte-ide/types';
 
 // Utilities — runtime functions
 import {
-  detectLanguage,
-  formatFileSize,
-  formatKeybinding,
-  defaultKeybindings
-} from "@nocturnium/svelte-ide/utils";
+	detectLanguage,
+	formatFileSize,
+	formatKeybinding,
+	defaultKeybindings
+} from '@nocturnium/svelte-ide/utils';
 ```
 
 Both entry points expose the same names; the root re-exports `./types` and `./utils` wholesale.
@@ -38,17 +38,17 @@ Both entry points expose the same names; the root re-exports `./types` and `./ut
 
 ## Type modules at a glance
 
-| Module | Domain | Headline exported types |
-| --- | --- | --- |
-| `editor` | Tabs, cursors, view state, preferences | `EditorTab`, `CursorPosition`, `EditorPreferences`, `EditorSelection`, `EditorViewState`, `SplitMode`, `DEFAULT_EDITOR_PREFERENCES` |
-| `filesystem` | Files, search, pluggable backends | `FileNode`, `FileEntry`, `FileStat`, `FileOperation`, `SearchOptions`, `SearchResult`, `FilesystemAdapter` |
-| `ai` | Chat, tools, suggestions, edit sessions | `AIMessage`, `AIRole`, `AITool`, `AIContext`, `AIConversation`, `AIPanelConfig`, `AISuggestion`, `AIEditSession` |
-| `events` | IDE-wide event bus | `IDEEvent`, `IDEEventType`, `EventBus`, `IDECommand`, `IDEKeybinding`, plus per-event payload types |
-| `plugin` | Proposal-based plugin lifecycle | `PluginProposal`, `PluginStatus`, `PluginManifest`, `PluginInstance`, `PluginPermission`, `PluginContributions`, `PluginEvent` |
-| `crdt` | Yjs-backed collaboration | `CollaborationConfig`, `CollaborationUser`, `CollaborationState`, `CollaboratorAwareness`, `CollaborationEvent`, `YjsDocumentOptions` |
-| `agents` | Multi-agent presence & coordination | `Agent`, `AgentStatus`, `AgentType`, `AgentTask`, `AgentProgress`, `TeamEvent`, `AgentActivity`, `AgentCursor` |
-| `vfs` | Virtual filesystem backend | `VFSFileInfo`, `VFSFile`, `VFSWorkspace`, `VFSTransaction`, `VFSOperation`, `VFSFileLock`, `VFSEvent`, `VFSError` |
-| `lsp` | Language Server Protocol (LSP 3.17) | `Position`, `Range`, `Diagnostic`, `CompletionItem`, `Hover`, `ServerCapabilities`, `LSPClientConfig`, `LSPConnectionState` |
+| Module       | Domain                                  | Headline exported types                                                                                                               |
+| ------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `editor`     | Tabs, cursors, view state, preferences  | `EditorTab`, `CursorPosition`, `EditorPreferences`, `EditorSelection`, `EditorViewState`, `SplitMode`, `DEFAULT_EDITOR_PREFERENCES`   |
+| `filesystem` | Files, search, pluggable backends       | `FileNode`, `FileEntry`, `FileStat`, `FileOperation`, `SearchOptions`, `SearchResult`, `FilesystemAdapter`                            |
+| `ai`         | Chat, tools, suggestions, edit sessions | `AIMessage`, `AIRole`, `AITool`, `AIContext`, `AIConversation`, `AIPanelConfig`, `AISuggestion`, `AIEditSession`                      |
+| `events`     | IDE-wide event bus                      | `IDEEvent`, `IDEEventType`, `EventBus`, `IDECommand`, `IDEKeybinding`, plus per-event payload types                                   |
+| `plugin`     | Proposal-based plugin lifecycle         | `PluginProposal`, `PluginStatus`, `PluginManifest`, `PluginInstance`, `PluginPermission`, `PluginContributions`, `PluginEvent`        |
+| `crdt`       | Yjs-backed collaboration                | `CollaborationConfig`, `CollaborationUser`, `CollaborationState`, `CollaboratorAwareness`, `CollaborationEvent`, `YjsDocumentOptions` |
+| `agents`     | Multi-agent presence & coordination     | `Agent`, `AgentStatus`, `AgentType`, `AgentTask`, `AgentProgress`, `TeamEvent`, `AgentActivity`, `AgentCursor`                        |
+| `vfs`        | Virtual filesystem backend              | `VFSFileInfo`, `VFSFile`, `VFSWorkspace`, `VFSTransaction`, `VFSOperation`, `VFSFileLock`, `VFSEvent`, `VFSError`                     |
+| `lsp`        | Language Server Protocol (LSP 3.17)     | `Position`, `Range`, `Diagnostic`, `CompletionItem`, `Hover`, `ServerCapabilities`, `LSPClientConfig`, `LSPConnectionState`           |
 
 The sections below describe each module's most important shapes. The tables above are not exhaustive — open the corresponding `src/lib/types/*.ts` file (or your editor's go-to-definition) for every field.
 
@@ -68,18 +68,18 @@ The editor module describes the documents you put in front of users and the per-
 - **`DEFAULT_EDITOR_PREFERENCES`** — a ready-to-use `EditorPreferences` constant (a real runtime value, not just a type) you can spread and override.
 
 ```ts
-import { DEFAULT_EDITOR_PREFERENCES } from "@nocturnium/svelte-ide";
-import type { EditorPreferences } from "@nocturnium/svelte-ide";
+import { DEFAULT_EDITOR_PREFERENCES } from '@nocturnium/svelte-ide';
+import type { EditorPreferences } from '@nocturnium/svelte-ide';
 
 const prefs: EditorPreferences = {
-  ...DEFAULT_EDITOR_PREFERENCES,
-  fontSize: 16,
-  lineNumbers: "relative",
-  minimap: true
+	...DEFAULT_EDITOR_PREFERENCES,
+	fontSize: 16,
+	lineNumbers: 'relative',
+	minimap: true
 };
 ```
 
-> Note: the editor *component* core (from `@nocturnium/svelte-ide`) also exports `Position` and `Selection` types from the tokenizer/editor-state layer. Those are distinct from the LSP `Position` and the model `CursorPosition` here. See [Editor guide](../guides/editor.md) and [Multi-cursor](../guides/multi-cursor.md).
+> Note: the editor _component_ core (from `@nocturnium/svelte-ide`) also exports `Position` and `Selection` types from the tokenizer/editor-state layer. Those are distinct from the LSP `Position` and the model `CursorPosition` here. See [Editor guide](../guides/editor.md) and [Multi-cursor](../guides/multi-cursor.md).
 
 ---
 
@@ -96,23 +96,38 @@ This module is backend-agnostic: it describes file shapes and a pluggable adapte
 - **`FilesystemAdapter`** — the interface to implement for a custom backend. Read ops (`readFile`, `readDirectory`, `exists`, `stat`), write ops (`writeFile`, `createDirectory`, `delete`, `rename`, `copy`), `search`, and an optional `watch`.
 
 ```ts
-import type { FilesystemAdapter, FileEntry } from "@nocturnium/svelte-ide";
+import type { FilesystemAdapter, FileEntry } from '@nocturnium/svelte-ide';
 
 const memoryAdapter: FilesystemAdapter = {
-  async readFile(path): Promise<FileEntry> {
-    /* ... */
-    return { path, name: path.split("/").pop()!, content: "", language: "plaintext", size: 0, lineCount: 0 };
-  },
-  async readDirectory(path) { return []; },
-  async exists(path) { return true; },
-  async stat(path) { /* ... */ throw new Error("not implemented"); },
-  async writeFile(path, content) {},
-  async createDirectory(path) {},
-  async delete(path) {},
-  async rename(oldPath, newPath) {},
-  async copy(source, destination) {},
-  async search(query, options) { return []; }
-  // watch is optional
+	async readFile(path): Promise<FileEntry> {
+		/* ... */
+		return {
+			path,
+			name: path.split('/').pop()!,
+			content: '',
+			language: 'plaintext',
+			size: 0,
+			lineCount: 0
+		};
+	},
+	async readDirectory(path) {
+		return [];
+	},
+	async exists(path) {
+		return true;
+	},
+	async stat(path) {
+		/* ... */ throw new Error('not implemented');
+	},
+	async writeFile(path, content) {},
+	async createDirectory(path) {},
+	async delete(path) {},
+	async rename(oldPath, newPath) {},
+	async copy(source, destination) {},
+	async search(query, options) {
+		return [];
+	}
+	// watch is optional
 };
 ```
 
@@ -135,20 +150,20 @@ Types behind the `<AIPanel>` component and the `ai` store. The panel talks to yo
 - **`AIEditSession`** — a collaborative-edit session over one file, tracking `status`, `originalContent`, and `proposedContent`/`diff`.
 
 ```ts
-import type { AITool } from "@nocturnium/svelte-ide";
+import type { AITool } from '@nocturnium/svelte-ide';
 
 const readFileTool: AITool = {
-  name: "read_file",
-  description: "Read the contents of a file by path",
-  parameters: {
-    type: "object",
-    properties: { path: { type: "string", description: "Absolute file path" } },
-    required: ["path"]
-  },
-  handler: async (args, context) => {
-    const path = args.path as string;
-    return { path, workspace: context.workspace?.name };
-  }
+	name: 'read_file',
+	description: 'Read the contents of a file by path',
+	parameters: {
+		type: 'object',
+		properties: { path: { type: 'string', description: 'Absolute file path' } },
+		required: ['path']
+	},
+	handler: async (args, context) => {
+		const path = args.path as string;
+		return { path, workspace: context.workspace?.name };
+	}
 };
 ```
 
@@ -168,13 +183,13 @@ A typed pub/sub layer for IDE-wide coordination.
 - **Payload interfaces** — strongly-typed payloads per event family, e.g. `FileOpenPayload`, `FileSavePayload`, `EditorChangePayload`, `EditorCursorPayload`, `CommandExecutePayload`, `AIMessagePayload`, `CollabCursorPayload`.
 
 ```ts
-import type { EventBus, EditorCursorPayload } from "@nocturnium/svelte-ide";
+import type { EventBus, EditorCursorPayload } from '@nocturnium/svelte-ide';
 
 function trackCursor(bus: EventBus) {
-  return bus.on<EditorCursorPayload>("editor:cursor", (event) => {
-    const { path, line, column } = event.payload;
-    console.log(`${path} @ ${line}:${column}`);
-  });
+	return bus.on<EditorCursorPayload>('editor:cursor', (event) => {
+		const { path, line, column } = event.payload;
+		console.log(`${path} @ ${line}:${column}`);
+	});
 }
 ```
 
@@ -194,10 +209,10 @@ The plugin types model a governed lifecycle (`draft → submitted → reviewing 
 - **`PluginContributions`** — UI contribution points: `commands`, `menus`, `keybindings`, `panels`, `statusBarItems`, `decorations`, `iconThemes`.
 
 ```ts
-import type { PluginProposal } from "@nocturnium/svelte-ide";
+import type { PluginProposal } from '@nocturnium/svelte-ide';
 
 function isDeployable(p: PluginProposal): boolean {
-  return p.status === "approved" && p.testCases.length > 0;
+	return p.status === 'approved' && p.testCases.length > 0;
 }
 ```
 
@@ -221,13 +236,13 @@ Types for the optional Yjs-backed collaboration layer. The collab server URL is 
 - **`YjsDocumentOptions`** — `documentId`, optional `initialContent`, undo-manager toggles, and IndexedDB `persistence`.
 
 ```ts
-import type { CollaborationConfig } from "@nocturnium/svelte-ide";
+import type { CollaborationConfig } from '@nocturnium/svelte-ide';
 
 const config: CollaborationConfig = {
-  serverUrl: "wss://collab.example.com",
-  roomId: "doc-42",
-  user: { id: "u1", name: "Ada", color: "#7c3aed" },
-  awareness: true
+	serverUrl: 'wss://collab.example.com',
+	roomId: 'doc-42',
+	user: { id: 'u1', name: 'Ada', color: '#7c3aed' },
+	awareness: true
 };
 ```
 
@@ -247,17 +262,17 @@ Types for visualizing and coordinating multiple AI/human agents in a workspace.
 - **`AgentFilter`** / **`AgentViewMode`** / **`AgentFilterOptions`** — filtering and view-mode helpers for presence UIs.
 
 ```ts
-import type { Agent } from "@nocturnium/svelte-ide";
+import type { Agent } from '@nocturnium/svelte-ide';
 
 const reviewer: Agent = {
-  id: "agent-2",
-  name: "Reviewer",
-  type: "reviewer",
-  status: "busy",
-  capabilities: ["code_review", "testing"],
-  workspaceId: "ws-1",
-  joinedAt: new Date().toISOString(),
-  lastActivity: new Date().toISOString()
+	id: 'agent-2',
+	name: 'Reviewer',
+	type: 'reviewer',
+	status: 'busy',
+	capabilities: ['code_review', 'testing'],
+	workspaceId: 'ws-1',
+	joinedAt: new Date().toISOString(),
+	lastActivity: new Date().toISOString()
 };
 ```
 
@@ -278,20 +293,20 @@ Types for the networked virtual filesystem backend the VFS service and component
 - **`VFSError`** (a runtime `class`) / **`VFSErrorCode`** — a typed error carrying a `code` such as `'FILE_LOCKED'`, `'VERSION_CONFLICT'`, or `'FILE_NOT_FOUND'`. Because it is a real class, you can `instanceof`-check it.
 
 ```ts
-import type { VFSEvent } from "@nocturnium/svelte-ide";
+import type { VFSEvent } from '@nocturnium/svelte-ide';
 
 function onEvent(event: VFSEvent) {
-  switch (event.type) {
-    case "lock_acquired":
-      // event is narrowed to VFSLockAcquiredEvent; its `lock` is a VFSFileLock
-      console.log("locked", event.lock.path, "by", event.lock.holder);
-      break;
-    case "lock_released":
-      console.log("released", event.path, "held by", event.holder);
-      break;
-    // Note: version conflicts are NOT an SSE event type — they surface as a
-    // thrown VFSError with code "VERSION_CONFLICT". Handle them at the call site.
-  }
+	switch (event.type) {
+		case 'lock_acquired':
+			// event is narrowed to VFSLockAcquiredEvent; its `lock` is a VFSFileLock
+			console.log('locked', event.lock.path, 'by', event.lock.holder);
+			break;
+		case 'lock_released':
+			console.log('released', event.path, 'held by', event.holder);
+			break;
+		// Note: version conflicts are NOT an SSE event type — they surface as a
+		// thrown VFSError with code "VERSION_CONFLICT". Handle them at the call site.
+	}
 }
 ```
 
@@ -313,11 +328,11 @@ The LSP module is a TypeScript port of the LSP 3.17 specification, consumed by `
 Note that several LSP exports are runtime `enum`s (`DiagnosticSeverity`, `CompletionItemKind`, `TextDocumentSyncKind`, `JSONRPCErrorCode`, …), so they exist as values you can reference, not just types.
 
 ```ts
-import { DiagnosticSeverity } from "@nocturnium/svelte-ide";
-import type { Diagnostic } from "@nocturnium/svelte-ide";
+import { DiagnosticSeverity } from '@nocturnium/svelte-ide';
+import type { Diagnostic } from '@nocturnium/svelte-ide';
 
 function isBlocking(d: Diagnostic): boolean {
-  return d.severity === DiagnosticSeverity.Error;
+	return d.severity === DiagnosticSeverity.Error;
 }
 ```
 
@@ -362,16 +377,16 @@ function getLanguageIcon(language: string): string;
 
 ```ts
 import {
-  detectLanguage,
-  getLanguageDisplayName,
-  isLanguageSupported
-} from "@nocturnium/svelte-ide/utils";
+	detectLanguage,
+	getLanguageDisplayName,
+	isLanguageSupported
+} from '@nocturnium/svelte-ide/utils';
 
-detectLanguage("src/App.svelte");     // "svelte"
-detectLanguage("Dockerfile");          // "dockerfile"
-detectLanguage("notes.txt");           // "plaintext"
-getLanguageDisplayName("cpp");         // "C++"
-isLanguageSupported("python");         // true
+detectLanguage('src/App.svelte'); // "svelte"
+detectLanguage('Dockerfile'); // "dockerfile"
+detectLanguage('notes.txt'); // "plaintext"
+getLanguageDisplayName('cpp'); // "C++"
+isLanguageSupported('python'); // true
 ```
 
 See the [Syntax-highlighting guide](../guides/syntax-highlighting.md) for the full language list.
@@ -409,11 +424,11 @@ function snakeToTitle(text: string): string;
 - **`camelToTitle(text)`** / **`snakeToTitle(text)`** — `"toggleComment" → "Toggle Comment"`, `"save_all" → "Save All"`.
 
 ```ts
-import { formatFileSize, formatDuration, pluralize } from "@nocturnium/svelte-ide/utils";
+import { formatFileSize, formatDuration, pluralize } from '@nocturnium/svelte-ide/utils';
 
-formatFileSize(2_500_000);          // "2.4 MB"
-formatDuration(95_000);             // "1m 35s"
-pluralize(0, "error");              // "0 errors"
+formatFileSize(2_500_000); // "2.4 MB"
+formatDuration(95_000); // "1m 35s"
+pluralize(0, 'error'); // "0 errors"
 ```
 
 ### Keybinding utilities
@@ -422,10 +437,10 @@ Cross-platform keyboard-shortcut handling. Bindings are arrays of key tokens; th
 
 ```ts
 interface Keybinding {
-  keys: string[];
-  command: string;
-  when?: string;
-  label?: string;
+	keys: string[];
+	command: string;
+	when?: string;
+	label?: string;
 }
 
 function isMac(): boolean;
@@ -433,8 +448,8 @@ function getModKey(): string;
 function formatKeybinding(keys: string[]): string;
 function matchesKeybinding(event: KeyboardEvent, keys: string[]): boolean;
 function createKeybindingHandler(
-  bindings: Keybinding[],
-  executeCommand: (command: string) => void
+	bindings: Keybinding[],
+	executeCommand: (command: string) => void
 ): (event: KeyboardEvent) => void;
 
 const defaultKeybindings: Keybinding[];
@@ -450,20 +465,20 @@ const defaultKeybindings: Keybinding[];
 
 ```svelte
 <script lang="ts">
-  import {
-    createKeybindingHandler,
-    defaultKeybindings,
-    formatKeybinding
-  } from "@nocturnium/svelte-ide/utils";
+	import {
+		createKeybindingHandler,
+		defaultKeybindings,
+		formatKeybinding
+	} from '@nocturnium/svelte-ide/utils';
 
-  function run(command: string) {
-    console.log("execute", command);
-  }
+	function run(command: string) {
+		console.log('execute', command);
+	}
 
-  const onKeydown = createKeybindingHandler(defaultKeybindings, run);
+	const onKeydown = createKeybindingHandler(defaultKeybindings, run);
 
-  // Show the platform-correct hint for Save
-  const saveHint = formatKeybinding(["mod", "s"]); // "⌘S" or "Ctrl+S"
+	// Show the platform-correct hint for Save
+	const saveHint = formatKeybinding(['mod', 's']); // "⌘S" or "Ctrl+S"
 </script>
 
 <svelte:window on:keydown={onKeydown} />

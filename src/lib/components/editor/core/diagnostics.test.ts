@@ -24,9 +24,7 @@ function makeRange(startLine: number, startCol: number, endLine: number, endCol:
 	};
 }
 
-function makeDiag(
-	overrides: Partial<Omit<Diagnostic, 'id'>> = {}
-): Omit<Diagnostic, 'id'> {
+function makeDiag(overrides: Partial<Omit<Diagnostic, 'id'>> = {}): Omit<Diagnostic, 'id'> {
 	return {
 		range: overrides.range ?? makeRange(0, 0, 0, 10),
 		severity: overrides.severity ?? 'error',
@@ -101,9 +99,7 @@ describe('DiagnosticsManager — setDiagnostics / getDiagnostics', () => {
 	});
 
 	it('should limit diagnostics per file to maxPerFile config', () => {
-		const many = Array.from({ length: 200 }, (_, i) =>
-			makeDiag({ message: `diag-${i}` })
-		);
+		const many = Array.from({ length: 200 }, (_, i) => makeDiag({ message: `diag-${i}` }));
 		mgr.setDiagnostics(FILE_A, many);
 		expect(mgr.getDiagnostics(FILE_A).length).toBeLessThanOrEqual(100);
 	});
@@ -135,14 +131,9 @@ describe('DiagnosticsManager — addDiagnostics', () => {
 	});
 
 	it('should respect maxPerFile when combining', () => {
-		const initial = Array.from({ length: 99 }, (_, i) =>
-			makeDiag({ message: `init-${i}` })
-		);
+		const initial = Array.from({ length: 99 }, (_, i) => makeDiag({ message: `init-${i}` }));
 		mgr.setDiagnostics(FILE_A, initial);
-		mgr.addDiagnostics(FILE_A, [
-			makeDiag({ message: 'extra1' }),
-			makeDiag({ message: 'extra2' })
-		]);
+		mgr.addDiagnostics(FILE_A, [makeDiag({ message: 'extra1' }), makeDiag({ message: 'extra2' })]);
 		// 99 + 2 = 101, should be limited to 100
 		expect(mgr.getDiagnostics(FILE_A).length).toBeLessThanOrEqual(100);
 	});
@@ -243,10 +234,7 @@ describe('DiagnosticsManager — counts', () => {
 			makeDiag({ severity: 'warning' }),
 			makeDiag({ severity: 'info' })
 		]);
-		mgr.setDiagnostics(FILE_B, [
-			makeDiag({ severity: 'hint' }),
-			makeDiag({ severity: 'error' })
-		]);
+		mgr.setDiagnostics(FILE_B, [makeDiag({ severity: 'hint' }), makeDiag({ severity: 'error' })]);
 	});
 
 	it('should count by severity across all files', () => {
@@ -416,9 +404,7 @@ describe('DiagnosticsManager — applyFix', () => {
 		const fix = {
 			title: 'Fix it',
 			isPreferred: true,
-			edits: [
-				{ range: makeRange(1, 0, 1, 5), newText: 'const' }
-			]
+			edits: [{ range: makeRange(1, 0, 1, 5), newText: 'const' }]
 		};
 		const diag = { ...makeDiag(), id: 'test', fixes: [fix] } as Diagnostic;
 		const edits = mgr.applyFix(diag, fix);
@@ -517,9 +503,7 @@ describe('DiagnosticsManager — edge cases', () => {
 	});
 
 	it('should handle diagnostics at line 0', () => {
-		mgr.setDiagnostics(FILE_A, [
-			makeDiag({ range: makeRange(0, 0, 0, 5) })
-		]);
+		mgr.setDiagnostics(FILE_A, [makeDiag({ range: makeRange(0, 0, 0, 5) })]);
 		expect(mgr.getDiagnosticsForLine(FILE_A, 0)).toHaveLength(1);
 	});
 
@@ -594,9 +578,7 @@ describe('sortDiagnostics', () => {
 			{ ...makeDiag({ severity: 'hint', range: makeRange(0, 0, 0, 5) }), id: '5' }
 		];
 		const sorted = sortDiagnostics(diags);
-		expect(sorted.map((d) => d.severity)).toEqual([
-			'error', 'error', 'warning', 'info', 'hint'
-		]);
+		expect(sorted.map((d) => d.severity)).toEqual(['error', 'error', 'warning', 'info', 'hint']);
 		// Within errors, line 2 before line 10
 		expect(sorted[0].range.start.line).toBe(2);
 		expect(sorted[1].range.start.line).toBe(10);
@@ -633,9 +615,7 @@ describe('generateMockDiagnostics', () => {
 			const prev = severityOrder[diags[i - 1].severity];
 			const curr = severityOrder[diags[i].severity];
 			if (prev === curr) {
-				expect(diags[i].range.start.line).toBeGreaterThanOrEqual(
-					diags[i - 1].range.start.line
-				);
+				expect(diags[i].range.start.line).toBeGreaterThanOrEqual(diags[i - 1].range.start.line);
 			} else {
 				expect(curr).toBeGreaterThanOrEqual(prev);
 			}

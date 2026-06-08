@@ -335,9 +335,7 @@ export class Navigation {
 		const { line, column } = this.state.cursor;
 		const targetLine = Math.max(0, line - pageSize);
 		const targetLineContent = this.state.getLine(targetLine);
-		const newColumn = targetLineContent
-			? Math.min(column, targetLineContent.text.length)
-			: 0;
+		const newColumn = targetLineContent ? Math.min(column, targetLineContent.text.length) : 0;
 
 		this.moveTo({ line: targetLine, column: newColumn }, extend);
 	}
@@ -349,9 +347,7 @@ export class Navigation {
 		const { line, column } = this.state.cursor;
 		const targetLine = Math.min(this.state.lineCount - 1, line + pageSize);
 		const targetLineContent = this.state.getLine(targetLine);
-		const newColumn = targetLineContent
-			? Math.min(column, targetLineContent.text.length)
-			: 0;
+		const newColumn = targetLineContent ? Math.min(column, targetLineContent.text.length) : 0;
 
 		this.moveTo({ line: targetLine, column: newColumn }, extend);
 	}
@@ -442,7 +438,10 @@ export class Navigation {
 	): Position {
 		// Calculate line from y position
 		const adjustedY = y + scrollTop;
-		const line = Math.max(0, Math.min(Math.floor(adjustedY / lineHeight), this.state.lineCount - 1));
+		const line = Math.max(
+			0,
+			Math.min(Math.floor(adjustedY / lineHeight), this.state.lineCount - 1)
+		);
 
 		// Calculate column from x position
 		const adjustedX = x + scrollLeft - paddingLeft - gutterWidth;

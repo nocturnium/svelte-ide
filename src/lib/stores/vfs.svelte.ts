@@ -21,16 +21,8 @@ import type {
 } from '$lib/types';
 import * as vfsClient from '$lib/services/vfs-client';
 import { SvelteMap } from 'svelte/reactivity';
-import {
-	parseError,
-	isConflictError,
-	logError,
-	type VFSError
-} from '$lib/services/error-handling';
-import {
-	optimisticUpdate,
-	type OptimisticResult
-} from '$lib/services/optimistic';
+import { parseError, isConflictError, logError, type VFSError } from '$lib/services/error-handling';
+import { optimisticUpdate, type OptimisticResult } from '$lib/services/optimistic';
 
 interface VFSState {
 	// Workspace
@@ -211,7 +203,11 @@ export function getStructuredError(): VFSError | null {
 	return state.structuredError;
 }
 
-export function getConflictQueue(): Array<{ path: string; localContent: string; serverVersion: number }> {
+export function getConflictQueue(): Array<{
+	path: string;
+	localContent: string;
+	serverVersion: number;
+}> {
 	return state.conflictQueue;
 }
 
@@ -238,20 +234,62 @@ export function getDirectories(): VFSFileInfo[] {
 
 export function getFilesInDirectory(dirPath: string): VFSFileInfo[] {
 	const prefix = dirPath.endsWith('/') ? dirPath : `${dirPath}/`;
-	return state.files.filter((f) => f.path.startsWith(prefix) && !f.path.slice(prefix.length).includes('/'));
+	return state.files.filter(
+		(f) => f.path.startsWith(prefix) && !f.path.slice(prefix.length).includes('/')
+	);
 }
 
 // Legacy aliases for backward compatibility
-export const workspace = { get current() { return getWorkspace(); } };
-export const workspaceLoading = { get current() { return getWorkspaceLoading(); } };
-export const files = { get current() { return getFiles(); } };
-export const fileTree = { get current() { return getFileTree(); } };
-export const locks = { get current() { return getLocks(); } };
-export const dirtyFiles = { get current() { return getDirtyFiles(); } };
-export const activeTransactions = { get current() { return getActiveTransactions(); } };
-export const connected = { get current() { return getConnected(); } };
-export const syncing = { get current() { return getSyncing(); } };
-export const error = { get current() { return getError(); } };
+export const workspace = {
+	get current() {
+		return getWorkspace();
+	}
+};
+export const workspaceLoading = {
+	get current() {
+		return getWorkspaceLoading();
+	}
+};
+export const files = {
+	get current() {
+		return getFiles();
+	}
+};
+export const fileTree = {
+	get current() {
+		return getFileTree();
+	}
+};
+export const locks = {
+	get current() {
+		return getLocks();
+	}
+};
+export const dirtyFiles = {
+	get current() {
+		return getDirtyFiles();
+	}
+};
+export const activeTransactions = {
+	get current() {
+		return getActiveTransactions();
+	}
+};
+export const connected = {
+	get current() {
+		return getConnected();
+	}
+};
+export const syncing = {
+	get current() {
+		return getSyncing();
+	}
+};
+export const error = {
+	get current() {
+		return getError();
+	}
+};
 
 // ============================================================================
 // Initialization
@@ -337,7 +375,15 @@ export async function writeFileOptimistic(
 		return {
 			success: false,
 			error,
-			operation: { id: '', type: 'file_write', payload: { path, content }, timestamp: Date.now(), status: 'failed', retryCount: 0, maxRetries: 3 }
+			operation: {
+				id: '',
+				type: 'file_write',
+				payload: { path, content },
+				timestamp: Date.now(),
+				status: 'failed',
+				retryCount: 0,
+				maxRetries: 3
+			}
 		};
 	}
 
@@ -402,7 +448,15 @@ export async function deleteFileOptimistic(path: string): Promise<OptimisticResu
 		return {
 			success: false,
 			error,
-			operation: { id: '', type: 'file_delete', payload: { path }, timestamp: Date.now(), status: 'failed', retryCount: 0, maxRetries: 3 }
+			operation: {
+				id: '',
+				type: 'file_delete',
+				payload: { path },
+				timestamp: Date.now(),
+				status: 'failed',
+				retryCount: 0,
+				maxRetries: 3
+			}
 		};
 	}
 
@@ -451,7 +505,7 @@ export function resolveConflict(
 	resolution: 'use_local' | 'use_server' | 'merge',
 	mergedContent?: string
 ): void {
-	const conflictIndex = state.conflictQueue.findIndex(c => c.path === path);
+	const conflictIndex = state.conflictQueue.findIndex((c) => c.path === path);
 	if (conflictIndex === -1) return;
 
 	const conflict = state.conflictQueue[conflictIndex];
@@ -461,12 +515,13 @@ export function resolveConflict(
 		case 'use_local':
 			// Re-attempt write with force flag
 			if (state.workspace) {
-				vfsClient.quickWriteFile(state.workspace.id, path, conflict.localContent)
-					.then(result => {
+				vfsClient
+					.quickWriteFile(state.workspace.id, path, conflict.localContent)
+					.then((result) => {
 						updateFileInfo(result);
 						markClean(path);
 					})
-					.catch(err => {
+					.catch((err) => {
 						state.structuredError = parseError(err, { path });
 					});
 			}
@@ -480,12 +535,13 @@ export function resolveConflict(
 		case 'merge':
 			// Write merged content
 			if (mergedContent && state.workspace) {
-				vfsClient.quickWriteFile(state.workspace.id, path, mergedContent)
-					.then(result => {
+				vfsClient
+					.quickWriteFile(state.workspace.id, path, mergedContent)
+					.then((result) => {
 						updateFileInfo(result);
 						markClean(path);
 					})
-					.catch(err => {
+					.catch((err) => {
 						state.structuredError = parseError(err, { path });
 					});
 			}
@@ -606,7 +662,10 @@ async function refreshLockTTL(path: string): Promise<void> {
 }
 
 // Public lock acquisition
-export async function acquireLock(path: string, purpose?: VFSFileLock['purpose']): Promise<VFSFileLock | null> {
+export async function acquireLock(
+	path: string,
+	purpose?: VFSFileLock['purpose']
+): Promise<VFSFileLock | null> {
 	if (!state.workspace || !currentUserId) {
 		state.error = 'Workspace or user not initialized';
 		return null;

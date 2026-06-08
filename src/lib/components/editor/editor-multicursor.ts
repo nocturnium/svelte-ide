@@ -54,7 +54,10 @@ function findOccurrences(
 /**
  * Get word at cursor position
  */
-export function getWordAtPosition(state: EditorState, pos: Position): { text: string; start: Position; end: Position } | null {
+export function getWordAtPosition(
+	state: EditorState,
+	pos: Position
+): { text: string; start: Position; end: Position } | null {
 	const line = state.getLine(pos.line);
 	if (!line) return null;
 
@@ -111,11 +114,7 @@ export function selectNextOccurrence(state: EditorState): void {
 		wholeWord = true;
 
 		// Select the word under cursor for the primary cursor
-		state.cursorManager.setSelection(
-			primary.id,
-			word.start,
-			word.end
-		);
+		state.cursorManager.setSelection(primary.id, word.start, word.end);
 	}
 
 	if (!searchText) return;
@@ -136,20 +135,24 @@ export function selectNextOccurrence(state: EditorState): void {
 	let lastCursorEnd = { line: 0, column: 0 };
 	for (const cursor of currentCursors) {
 		const end = getSelectionEnd(cursor.selection);
-		if (end.line > lastCursorEnd.line ||
-			(end.line === lastCursorEnd.line && end.column > lastCursorEnd.column)) {
+		if (
+			end.line > lastCursorEnd.line ||
+			(end.line === lastCursorEnd.line && end.column > lastCursorEnd.column)
+		) {
 			lastCursorEnd = end;
 		}
 	}
 
 	// Find next match
-	let foundMatch: typeof matches[0] | null = null;
+	let foundMatch: (typeof matches)[0] | null = null;
 	for (const match of matches) {
 		const matchStart = match.start;
-		if (matchStart.line > lastCursorEnd.line ||
-			(matchStart.line === lastCursorEnd.line && matchStart.column >= lastCursorEnd.column)) {
+		if (
+			matchStart.line > lastCursorEnd.line ||
+			(matchStart.line === lastCursorEnd.line && matchStart.column >= lastCursorEnd.column)
+		) {
 			// Check if this match is already covered by a cursor
-			const alreadySelected = currentCursors.some(cursor => {
+			const alreadySelected = currentCursors.some((cursor) => {
 				const start = getSelectionStart(cursor.selection);
 				return start.line === matchStart.line && start.column === matchStart.column;
 			});
@@ -165,7 +168,7 @@ export function selectNextOccurrence(state: EditorState): void {
 	if (!foundMatch) {
 		for (const match of matches) {
 			const matchStart = match.start;
-			const alreadySelected = currentCursors.some(cursor => {
+			const alreadySelected = currentCursors.some((cursor) => {
 				const start = getSelectionStart(cursor.selection);
 				return start.line === matchStart.line && start.column === matchStart.column;
 			});
@@ -204,11 +207,7 @@ export function selectAllOccurrences(state: EditorState): void {
 		wholeWord = true;
 
 		// Select the word under cursor for the primary cursor
-		state.cursorManager.setSelection(
-			primary.id,
-			word.start,
-			word.end
-		);
+		state.cursorManager.setSelection(primary.id, word.start, word.end);
 	}
 
 	if (!searchText) return;

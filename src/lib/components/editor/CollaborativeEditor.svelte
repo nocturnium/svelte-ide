@@ -9,11 +9,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import * as Y from 'yjs';
 	import CustomEditor from './CustomEditor.svelte';
-	import {
-		createEditorState,
-		createCRDTBinding,
-		type CRDTBinding
-	} from './core';
+	import { createEditorState, createCRDTBinding, type CRDTBinding } from './core';
 	import type { EditorPreferences } from '$types';
 	import type { CollaborationUser } from '$lib/types/crdt';
 

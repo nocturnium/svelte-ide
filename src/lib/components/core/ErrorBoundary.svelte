@@ -1,60 +1,62 @@
 <script lang="ts">
-/**
- * ErrorBoundary Component
- *
- * Catches errors in child components and displays a fallback UI.
- * Provides retry and recovery options.
- */
+	/**
+	 * ErrorBoundary Component
+	 *
+	 * Catches errors in child components and displays a fallback UI.
+	 * Provides retry and recovery options.
+	 */
 
-import type { Snippet } from 'svelte';
-import type { VFSError, RecoveryOption } from '$lib/services/error-handling';
-import { isVFSError } from '$lib/services/error-handling';
+	import type { Snippet } from 'svelte';
+	import type { VFSError, RecoveryOption } from '$lib/services/error-handling';
+	import { isVFSError } from '$lib/services/error-handling';
 
-interface Props {
-	children: Snippet;
-	fallback?: Snippet<[{ error: Error; reset: () => void }]>;
-	onError?: (error: Error) => void;
-	onReset?: () => void;
-	showDetails?: boolean;
-}
+	interface Props {
+		children: Snippet;
+		fallback?: Snippet<[{ error: Error; reset: () => void }]>;
+		onError?: (error: Error) => void;
+		onReset?: () => void;
+		showDetails?: boolean;
+	}
 
-let { children, fallback, onError, onReset, showDetails = false }: Props = $props();
+	let { children, fallback, onError, onReset, showDetails = false }: Props = $props();
 
-let error = $state<Error | null>(null);
-let showTechnicalDetails = $state(false);
+	let error = $state<Error | null>(null);
+	let showTechnicalDetails = $state(false);
 
-// Derived error info
-let vfsError = $derived(error && isVFSError(error) ? (error as VFSError) : null);
-let errorTitle = $derived(vfsError?.code ?? 'Error');
-let errorMessage = $derived(vfsError?.userMessage ?? error?.message ?? 'An unexpected error occurred');
-let recoveryOptions = $derived(vfsError?.recoveryOptions ?? []);
+	// Derived error info
+	let vfsError = $derived(error && isVFSError(error) ? (error as VFSError) : null);
+	let errorTitle = $derived(vfsError?.code ?? 'Error');
+	let errorMessage = $derived(
+		vfsError?.userMessage ?? error?.message ?? 'An unexpected error occurred'
+	);
+	let recoveryOptions = $derived(vfsError?.recoveryOptions ?? []);
 
-function handleError(e: Error) {
-	error = e;
-	onError?.(e);
-}
+	function handleError(e: Error) {
+		error = e;
+		onError?.(e);
+	}
 
-function reset() {
-	error = null;
-	showTechnicalDetails = false;
-	onReset?.();
-}
+	function reset() {
+		error = null;
+		showTechnicalDetails = false;
+		onReset?.();
+	}
 
-function handleRecovery(option: RecoveryOption) {
-	if (option.action === 'retry' || option.action === 'refresh') {
+	function handleRecovery(option: RecoveryOption) {
+		if (option.action === 'retry' || option.action === 'refresh') {
+			reset();
+		}
+		// Other actions would be handled by parent via onError
+	}
+
+	// Expose error handler for programmatic use
+	export function setError(e: Error) {
+		handleError(e);
+	}
+
+	export function clearError() {
 		reset();
 	}
-	// Other actions would be handled by parent via onError
-}
-
-// Expose error handler for programmatic use
-export function setError(e: Error) {
-	handleError(e);
-}
-
-export function clearError() {
-	reset();
-}
 </script>
 
 {#if error}
@@ -99,9 +101,7 @@ export function clearError() {
 					</div>
 				{:else}
 					<div class="recovery-options">
-						<button class="recovery-btn recommended" onclick={reset}>
-							Try Again
-						</button>
+						<button class="recovery-btn recommended" onclick={reset}> Try Again </button>
 					</div>
 				{/if}
 

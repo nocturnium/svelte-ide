@@ -400,10 +400,7 @@ export class LSPClient {
 							handler(message.params);
 						} catch (err) {
 							if (this.config.debug) {
-								console.error(
-									`[LSP] Notification handler for "${message.method}" threw:`,
-									err
-								);
+								console.error(`[LSP] Notification handler for "${message.method}" threw:`, err);
 							}
 						}
 					}
@@ -531,11 +528,7 @@ export class LSPClient {
 		this.sendNotification('textDocument/didOpen', { textDocument: params });
 	}
 
-	didChange(
-		uri: string,
-		version: number,
-		changes: TextDocumentContentChangeEvent[]
-	): void {
+	didChange(uri: string, version: number, changes: TextDocumentContentChangeEvent[]): void {
 		const doc = this.openDocuments.get(uri);
 		if (doc) {
 			doc.version = version;
@@ -700,10 +693,7 @@ export class LSPClient {
 			context: { includeDeclaration }
 		};
 
-		const result = await this.sendRequest<Location[] | null>(
-			'textDocument/references',
-			params
-		);
+		const result = await this.sendRequest<Location[] | null>('textDocument/references', params);
 
 		return result ?? [];
 	}
@@ -727,10 +717,7 @@ export class LSPClient {
 			context: { diagnostics }
 		};
 
-		const result = await this.sendRequest<CodeAction[] | null>(
-			'textDocument/codeAction',
-			params
-		);
+		const result = await this.sendRequest<CodeAction[] | null>('textDocument/codeAction', params);
 
 		return result ?? [];
 	}
@@ -788,10 +775,7 @@ export class LSPClient {
 			}
 		};
 
-		const result = await this.sendRequest<TextEdit[] | null>(
-			'textDocument/formatting',
-			params
-		);
+		const result = await this.sendRequest<TextEdit[] | null>('textDocument/formatting', params);
 
 		return result ?? [];
 	}
@@ -868,10 +852,7 @@ export function offsetToPosition(content: string, offset: number): Position {
 	};
 }
 
-export function rangeToOffsets(
-	content: string,
-	range: Range
-): { start: number; end: number } {
+export function rangeToOffsets(content: string, range: Range): { start: number; end: number } {
 	return {
 		start: positionToOffset(content, range.start),
 		end: positionToOffset(content, range.end)

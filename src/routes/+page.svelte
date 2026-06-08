@@ -52,7 +52,9 @@ const editor = mount(CustomEditor, {
 	// Lazy-mounted live editor: paint the static <pre> immediately, then swap in the
 	// real CustomEditor once it scrolls near the viewport and the main thread is idle.
 	let heroEditorHost = $state<HTMLDivElement | null>(null);
-	let HeroEditor = $state<typeof import('$lib/components/editor/CustomEditor.svelte').default | null>(null);
+	let HeroEditor = $state<
+		typeof import('$lib/components/editor/CustomEditor.svelte').default | null
+	>(null);
 
 	onMount(() => {
 		if (!heroEditorHost) return;
@@ -203,8 +205,10 @@ const editor = mount(CustomEditor, {
 	function onTabKeydown(event: KeyboardEvent, index: number) {
 		const last = quickTabs.length - 1;
 		let next = index;
-		if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = index === last ? 0 : index + 1;
-		else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = index === 0 ? last : index - 1;
+		if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+			next = index === last ? 0 : index + 1;
+		else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+			next = index === 0 ? last : index - 1;
 		else if (event.key === 'Home') next = 0;
 		else if (event.key === 'End') next = last;
 		else return;
@@ -238,14 +242,14 @@ const editor = mount(CustomEditor, {
 
 	<!-- Top bar -->
 	<header class="topbar">
-		<a class="brand" href={resolve("/")} aria-label="Nocturnium Svelte IDE — home">
+		<a class="brand" href={resolve('/')} aria-label="Nocturnium Svelte IDE — home">
 			<span class="brand-mark" aria-hidden="true">◉</span>
 			<span class="brand-name">Nocturnium</span>
 			<span class="brand-sub">Svelte IDE</span>
 		</a>
 		<nav class="topnav" aria-label="Primary">
-			<a href={resolve("/demo")}>Demos</a>
-			<a class="topnav-secondary" href={resolve("/demo/editor")}>Editor</a>
+			<a href={resolve('/demo')}>Demos</a>
+			<a class="topnav-secondary" href={resolve('/demo/editor')}>Editor</a>
 			<a href="https://github.com/nocturnium/svelte-ide" target="_blank" rel="noopener">GitHub ↗</a>
 		</nav>
 	</header>
@@ -262,15 +266,14 @@ const editor = mount(CustomEditor, {
 					The IDE toolkit for <span class="grad">Svelte 5</span>.
 				</h1>
 				<p class="lede">
-					Build code editors, AI assistants, and collaborative tools with one runes-native
-					component library. No CodeMirror. No Monaco. Just Svelte — fast, themeable, and
-					production-ready.
+					Build code editors, AI assistants, and collaborative tools with one runes-native component
+					library. No CodeMirror. No Monaco. Just Svelte — fast, themeable, and production-ready.
 				</p>
 				<div class="hero-actions">
-					<Button variant="primary" size="lg" onclick={() => goto(resolve("/demo/editor"))}>
+					<Button variant="primary" size="lg" onclick={() => goto(resolve('/demo/editor'))}>
 						Try the editor
 					</Button>
-					<Button variant="secondary" size="lg" onclick={() => goto(resolve("/demo"))}>
+					<Button variant="secondary" size="lg" onclick={() => goto(resolve('/demo'))}>
 						Browse demos
 					</Button>
 				</div>
@@ -389,7 +392,7 @@ const editor = mount(CustomEditor, {
 				{/each}
 			</div>
 			<div class="quickstart-cta">
-				<Button variant="primary" size="md" onclick={() => goto(resolve("/demo/editor"))}>
+				<Button variant="primary" size="md" onclick={() => goto(resolve('/demo/editor'))}>
 					See it in action →
 				</Button>
 			</div>
@@ -407,10 +410,12 @@ const editor = mount(CustomEditor, {
 				</div>
 			</div>
 			<nav class="footer-links" aria-label="Footer">
-				<a href={resolve("/demo")}>Demos</a>
-				<a href={resolve("/demo/editor")}>Editor</a>
-				<a href={resolve("/demo/playground")}>Playground</a>
-				<a href="https://github.com/nocturnium/svelte-ide" target="_blank" rel="noopener">GitHub ↗</a>
+				<a href={resolve('/demo')}>Demos</a>
+				<a href={resolve('/demo/editor')}>Editor</a>
+				<a href={resolve('/demo/playground')}>Playground</a>
+				<a href="https://github.com/nocturnium/svelte-ide" target="_blank" rel="noopener"
+					>GitHub ↗</a
+				>
 			</nav>
 		</div>
 		<div class="footer-base">

@@ -18,12 +18,7 @@
 		class?: string;
 	}
 
-	let {
-		signatureHelp,
-		position,
-		onDismiss,
-		class: className = ''
-	}: Props = $props();
+	let { signatureHelp, position, onDismiss, class: className = '' }: Props = $props();
 
 	let activeSignature = $derived(
 		signatureHelp.signatures[signatureHelp.activeSignature ?? 0] as SignatureInformation | undefined
@@ -52,7 +47,11 @@
 		return '';
 	}
 
-	function parseSignatureLabel(sig: SignatureInformation): { before: string; param: string; after: string } {
+	function parseSignatureLabel(sig: SignatureInformation): {
+		before: string;
+		param: string;
+		after: string;
+	} {
 		const params = sig.parameters;
 		if (!params || params.length === 0 || activeParameterIndex >= params.length) {
 			return { before: sig.label, param: '', after: '' };
@@ -116,12 +115,16 @@
 		{@const parsed = parseSignatureLabel(activeSignature)}
 		<div class="signature-help__signature">
 			<code class="signature-help__label">
-				<span class="signature-help__label-before">{parsed.before}</span><span class="signature-help__label-param">{parsed.param}</span><span class="signature-help__label-after">{parsed.after}</span>
+				<span class="signature-help__label-before">{parsed.before}</span><span
+					class="signature-help__label-param">{parsed.param}</span
+				><span class="signature-help__label-after">{parsed.after}</span>
 			</code>
 		</div>
 
 		{#if activeSignature.parameters && activeSignature.parameters[activeParameterIndex]}
-			{@const paramDoc = getParameterDocumentation(activeSignature.parameters[activeParameterIndex])}
+			{@const paramDoc = getParameterDocumentation(
+				activeSignature.parameters[activeParameterIndex]
+			)}
 			{#if paramDoc}
 				<div class="signature-help__param-doc">
 					<span class="signature-help__param-name">

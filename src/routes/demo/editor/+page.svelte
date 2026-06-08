@@ -267,9 +267,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 	);
 
 	// Dirty tracking
-	let dirty = $derived(
-		Object.fromEntries(files.map((f) => [f.id, buffers[f.id] !== f.content]))
-	);
+	let dirty = $derived(Object.fromEntries(files.map((f) => [f.id, buffers[f.id] !== f.content])));
 
 	let tabs = $derived<EditorTab[]>(
 		openIds
@@ -312,8 +310,8 @@ A **zero-dependency** IDE component library for Svelte 5.
 			<Badge variant="primary">Flagship</Badge>
 			<h1>Code Editor</h1>
 			<p>
-				A real mini-IDE built entirely from <strong>@nocturnium/svelte-ide</strong> primitives —
-				switch files, change languages, and toggle features live.
+				A real mini-IDE built entirely from <strong>@nocturnium/svelte-ide</strong> primitives — switch
+				files, change languages, and toggle features live.
 			</p>
 		</div>
 	</header>

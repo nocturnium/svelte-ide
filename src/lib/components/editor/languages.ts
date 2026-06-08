@@ -5,7 +5,11 @@
  * using the custom tokenizer system (no CodeMirror dependency).
  */
 
-import { resolveLanguage, isLanguageSupported as tokenizerSupported, getSupportedLanguages as getTokenizerLanguages } from './tokenizer';
+import {
+	resolveLanguage,
+	isLanguageSupported as tokenizerSupported,
+	getSupportedLanguages as getTokenizerLanguages
+} from './tokenizer';
 
 /**
  * Language configuration
