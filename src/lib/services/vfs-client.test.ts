@@ -617,7 +617,7 @@ describe('VFS Client — Error Handling', () => {
 		}
 	});
 
-	it('should throw VFSError with NETWORK_ERROR on timeout (AbortError)', async () => {
+	it('should throw VFSError with TIMEOUT on timeout (AbortError)', async () => {
 		fetchMock.mockImplementationOnce(() => {
 			const error = new Error('Aborted');
 			error.name = 'AbortError';
@@ -629,7 +629,7 @@ describe('VFS Client — Error Handling', () => {
 			expect.fail('Should have thrown');
 		} catch (err) {
 			expect(err).toBeInstanceOf(VFSError);
-			expect((err as VFSError).code).toBe('NETWORK_ERROR');
+			expect((err as VFSError).code).toBe('TIMEOUT');
 		}
 	});
 });

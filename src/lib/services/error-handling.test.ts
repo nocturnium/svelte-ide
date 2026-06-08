@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+	VFSError,
 	createVFSError,
 	parseError,
 	isVFSError,
@@ -27,6 +28,7 @@ describe('createVFSError', () => {
 		});
 
 		expect(err).toBeInstanceOf(Error);
+		expect(err).toBeInstanceOf(VFSError);
 		expect(err.name).toBe('VFSError');
 		expect(err.code).toBe('FILE_NOT_FOUND');
 		expect(err.message).toBe('File missing');
@@ -214,6 +216,19 @@ describe('parseError', () => {
 		const original = createVFSError('FILE_NOT_FOUND', 'missing');
 		const result = parseError(original);
 		expect(result).toBe(original);
+	});
+
+	it('should enrich canonical VFSError instances from the VFS client', () => {
+		const original = new VFSError('locked', 'FILE_LOCKED');
+		const result = parseError(original, { path: '/src/app.ts', workspaceId: 'ws1' });
+
+		expect(result).toBe(original);
+		expect(result).toBeInstanceOf(VFSError);
+		expect(result.path).toBe('/src/app.ts');
+		expect(result.workspaceId).toBe('ws1');
+		expect(result.retryable).toBe(false);
+		expect(result.userMessage).toContain('app.ts');
+		expect(result.recoveryOptions.length).toBeGreaterThan(0);
 	});
 
 	it('should parse TypeError with fetch in message as NETWORK_ERROR', () => {

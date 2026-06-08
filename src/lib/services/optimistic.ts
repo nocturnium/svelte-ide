@@ -11,6 +11,7 @@
 
 export interface OptimisticOperation<T> {
 	id: string;
+	scopeKey?: string;
 	type: string;
 	payload: T;
 	timestamp: number;
@@ -37,6 +38,8 @@ export interface OptimisticResult<T> {
 
 type RollbackFn = () => void | Promise<void>;
 type CommitFn<T> = () => Promise<T>;
+
+const DEFAULT_SCOPE_KEY = '__global__';
 
 // ============================================================================
 // Operation Queue
@@ -73,6 +76,7 @@ const rollbackFunctions: Map<string, RollbackFn> = new Map();
  * ```
  */
 export async function optimisticUpdate<T, R>(options: {
+	scopeKey?: string;
 	type: string;
 	payload: T;
 	apply: () => void;
@@ -82,9 +86,11 @@ export async function optimisticUpdate<T, R>(options: {
 }): Promise<OptimisticResult<R>> {
 	const { type, payload, apply, rollback, commit, config = {} } = options;
 	const { maxRetries = 3, retryDelay = 1000, onCommit, onRollback, onRetry } = config;
+	const scopeKey = options.scopeKey ?? getScopeKeyFromPayload(payload);
 
 	const operation: OptimisticOperation<T> = {
 		id: crypto.randomUUID(),
+		scopeKey,
 		type,
 		payload,
 		timestamp: Date.now(),
@@ -134,7 +140,7 @@ export async function optimisticUpdate<T, R>(options: {
 
 			if (operation.retryCount <= maxRetries) {
 				onRetry?.(operation as OptimisticOperation<unknown>, operation.retryCount);
-				await delay(retryDelay * operation.retryCount); // Exponential backoff
+				await delay(getRetryDelay(retryDelay, operation.retryCount));
 			}
 		}
 	}
@@ -247,6 +253,7 @@ export function createOptimisticState<T>(initialValue: T) {
  */
 export async function batchOptimisticUpdates(
 	operations: Array<{
+		scopeKey?: string;
 		type: string;
 		payload: unknown;
 		apply: () => void;
@@ -306,10 +313,12 @@ export async function batchOptimisticUpdates(
 // ============================================================================
 
 /**
- * Get all pending operations
+ * Get pending operations, optionally limited to one document/workspace scope.
  */
-export function getPendingOperations(): OptimisticOperation<unknown>[] {
-	return Array.from(operationQueue.values()).filter((op) => op.status === 'pending');
+export function getPendingOperations(scopeKey?: string): OptimisticOperation<unknown>[] {
+	return Array.from(operationQueue.values()).filter(
+		(op) => op.status === 'pending' && (!scopeKey || op.scopeKey === scopeKey)
+	);
 }
 
 /**
@@ -322,9 +331,9 @@ export function getOperation(id: string): OptimisticOperation<unknown> | undefin
 /**
  * Cancel a pending operation
  */
-export async function cancelOperation(id: string): Promise<boolean> {
+export async function cancelOperation(id: string, scopeKey?: string): Promise<boolean> {
 	const operation = operationQueue.get(id);
-	if (!operation || operation.status !== 'pending') {
+	if (!operation || operation.status !== 'pending' || (scopeKey && operation.scopeKey !== scopeKey)) {
 		return false;
 	}
 
@@ -345,12 +354,12 @@ export async function cancelOperation(id: string): Promise<boolean> {
 }
 
 /**
- * Cancel all pending operations
+ * Cancel pending operations, optionally limited to one document/workspace scope.
  */
-export async function cancelAllOperations(): Promise<void> {
-	const pending = getPendingOperations();
+export async function cancelAllOperations(scopeKey?: string): Promise<void> {
+	const pending = getPendingOperations(scopeKey);
 	for (const op of pending) {
-		await cancelOperation(op.id);
+		await cancelOperation(op.id, scopeKey);
 	}
 }
 
@@ -423,6 +432,27 @@ export function parseConflictDetails(
 
 function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getScopeKeyFromPayload(payload: unknown): string {
+	if (payload && typeof payload === 'object') {
+		const candidate = payload as { scopeKey?: unknown; workspaceId?: unknown; workspace?: unknown; path?: unknown };
+		if (typeof candidate.scopeKey === 'string') return candidate.scopeKey;
+		if (typeof candidate.workspaceId === 'string' && typeof candidate.path === 'string') {
+			return `${candidate.workspaceId}:${candidate.path}`;
+		}
+		if (typeof candidate.workspace === 'string' && typeof candidate.path === 'string') {
+			return `${candidate.workspace}:${candidate.path}`;
+		}
+		if (typeof candidate.path === 'string') return candidate.path;
+	}
+	return DEFAULT_SCOPE_KEY;
+}
+
+function getRetryDelay(baseDelay: number, attempt: number): number {
+	const exponentialDelay = baseDelay * 2 ** (attempt - 1);
+	const jitter = 0.75 + Math.random() * 0.5;
+	return Math.round(exponentialDelay * jitter);
 }
 
 /**

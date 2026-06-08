@@ -84,7 +84,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		if (err instanceof VFSError) throw err;
 
 		if (err instanceof Error && err.name === 'AbortError') {
-			throw new VFSError('Request timeout', 'NETWORK_ERROR');
+			throw new VFSError('Request timeout', 'TIMEOUT');
 		}
 
 		throw new VFSError(err instanceof Error ? err.message : 'Unknown error', 'NETWORK_ERROR', err);
@@ -95,14 +95,22 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 function mapStatusToErrorCode(status: number): VFSErrorCode {
 	switch (status) {
-		case 404:
-			return 'FILE_NOT_FOUND';
+		case 401:
 		case 403:
 			return 'PERMISSION_DENIED';
+		case 404:
+			return 'FILE_NOT_FOUND';
 		case 409:
 			return 'VERSION_CONFLICT';
 		case 423:
 			return 'FILE_LOCKED';
+		case 429:
+			return 'RATE_LIMITED';
+		case 500:
+		case 502:
+		case 503:
+		case 504:
+			return 'SERVER_ERROR';
 		default:
 			return 'NETWORK_ERROR';
 	}

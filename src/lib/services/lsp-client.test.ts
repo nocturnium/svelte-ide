@@ -17,6 +17,7 @@ class MockWebSocket {
 	static readonly OPEN = 1;
 	static readonly CLOSING = 2;
 	static readonly CLOSED = 3;
+	static instances: MockWebSocket[] = [];
 	readonly CONNECTING = 0;
 	readonly OPEN = 1;
 	readonly CLOSING = 2;
@@ -37,6 +38,7 @@ class MockWebSocket {
 
 	constructor(url: string) {
 		this.url = url;
+		MockWebSocket.instances.push(this);
 	}
 
 	/** Test helper: simulate connection opened */
@@ -64,6 +66,10 @@ class MockWebSocket {
 
 // Assign globals
 vi.stubGlobal('WebSocket', MockWebSocket);
+
+beforeEach(() => {
+	MockWebSocket.instances = [];
+});
 
 // ============================================================================
 // Helpers
@@ -371,6 +377,7 @@ describe('LSPClient — Disconnect & Reconnect', () => {
 	});
 
 	it('should attempt reconnection when autoReconnect is enabled', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
 		const client = new LSPClient(
 			getDefaultConfig({ autoReconnect: true, maxReconnectAttempts: 3, reconnectDelay: 100 })
 		);
@@ -390,20 +397,28 @@ describe('LSPClient — Disconnect & Reconnect', () => {
 		// Simulate disconnect
 		ws1.simulateClose();
 		expect(client.state).toBe('disconnected');
+		expect(ws1.close).toHaveBeenCalled();
+		expect(ws1.onopen).toBeNull();
+		expect(ws1.onclose).toBeNull();
+		expect(ws1.onerror).toBeNull();
+		expect(ws1.onmessage).toBeNull();
+		expect(MockWebSocket.instances).toHaveLength(1);
 
 		// Advance timer to trigger reconnect
-		vi.advanceTimersByTime(200);
+		vi.advanceTimersByTime(100);
 
 		// A new WebSocket should have been created (connect called again)
 		const ws2 = (client as unknown as { ws: MockWebSocket }).ws;
 		expect(ws2).toBeDefined();
 		expect(ws2).not.toBe(ws1);
+		expect(MockWebSocket.instances).toHaveLength(2);
 	});
 
-	it('should stop reconnecting after maxReconnectAttempts', async () => {
+	it('should use growing reconnect delays and stop after maxReconnectAttempts', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
 		const errorHandler = vi.fn();
 		const client = new LSPClient(
-			getDefaultConfig({ autoReconnect: true, maxReconnectAttempts: 1, reconnectDelay: 50 })
+			getDefaultConfig({ autoReconnect: true, maxReconnectAttempts: 2, reconnectDelay: 50 })
 		);
 		client.on('onError', errorHandler);
 
@@ -421,16 +436,87 @@ describe('LSPClient — Disconnect & Reconnect', () => {
 
 		// Disconnect — triggers reconnect attempt 1
 		ws1.simulateClose();
-		vi.advanceTimersByTime(100);
+		expect(vi.getTimerCount()).toBe(1);
+		expect(MockWebSocket.instances).toHaveLength(1);
+
+		vi.advanceTimersByTime(49);
+		expect(MockWebSocket.instances).toHaveLength(1);
+		vi.advanceTimersByTime(1);
 
 		// The second WS attempt fails
 		const ws2 = (client as unknown as { ws: MockWebSocket }).ws;
 		ws2.simulateError();
 		ws2.simulateClose();
+		expect(errorHandler).toHaveBeenCalled();
+		expect(vi.getTimerCount()).toBe(1);
+		expect(MockWebSocket.instances).toHaveLength(2);
 
-		// No more attempts should be queued (max was 1)
-		// After the second disconnect, reconnectAttempts=1 which equals max
-		// The handleDisconnect won't schedule more
+		vi.advanceTimersByTime(99);
+		expect(MockWebSocket.instances).toHaveLength(2);
+		vi.advanceTimersByTime(1);
+
+		const ws3 = (client as unknown as { ws: MockWebSocket }).ws;
+		expect(ws3).not.toBe(ws2);
+		expect(MockWebSocket.instances).toHaveLength(3);
+
+		ws3.simulateError();
+		ws3.simulateClose();
+		expect(vi.getTimerCount()).toBe(0);
+		vi.advanceTimersByTime(1000);
+		expect(MockWebSocket.instances).toHaveLength(3);
+	});
+
+	it('should not reconnect after intentional disconnect', async () => {
+		vi.useRealTimers();
+		const { client, ws } = await createConnectedClient({
+			autoReconnect: true,
+			maxReconnectAttempts: 3,
+			reconnectDelay: 50
+		});
+		vi.useFakeTimers();
+
+		const disconnectPromise = client.disconnect();
+		const shutdownCall = ws.send.mock.calls.find((c) => JSON.parse(c[0]).method === 'shutdown');
+		expect(shutdownCall).toBeDefined();
+
+		const shutdownReq = JSON.parse(shutdownCall![0]);
+		ws.simulateMessage({ jsonrpc: '2.0', id: shutdownReq.id, result: null });
+		await disconnectPromise;
+
+		expect(client.state).toBe('disconnected');
+		expect(ws.close).toHaveBeenCalled();
+		expect(vi.getTimerCount()).toBe(0);
+		vi.advanceTimersByTime(500);
+		expect(MockWebSocket.instances).toHaveLength(1);
+	});
+
+	it('should clear a pending reconnect timer when a manual connect succeeds', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		const client = new LSPClient(
+			getDefaultConfig({ autoReconnect: true, maxReconnectAttempts: 3, reconnectDelay: 100 })
+		);
+
+		const firstConnect = client.connect();
+		const ws1 = (client as unknown as { ws: MockWebSocket }).ws;
+		ws1.simulateOpen();
+		const initReq1 = JSON.parse(ws1.send.mock.calls[0][0]);
+		ws1.simulateMessage({ jsonrpc: '2.0', id: initReq1.id, result: { capabilities: {} } });
+		await firstConnect;
+
+		ws1.simulateClose();
+		expect(vi.getTimerCount()).toBe(1);
+
+		const secondConnect = client.connect();
+		const ws2 = (client as unknown as { ws: MockWebSocket }).ws;
+		expect(ws2).not.toBe(ws1);
+		ws2.simulateOpen();
+		const initReq2 = JSON.parse(ws2.send.mock.calls[0][0]);
+		ws2.simulateMessage({ jsonrpc: '2.0', id: initReq2.id, result: { capabilities: {} } });
+		await secondConnect;
+
+		expect(vi.getTimerCount()).toBe(0);
+		vi.advanceTimersByTime(500);
+		expect(MockWebSocket.instances).toHaveLength(2);
 	});
 });
 

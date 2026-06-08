@@ -4,36 +4,13 @@
  * Provides structured error types, recovery strategies, and user-friendly error messages.
  */
 
+import { VFSError, type VFSErrorCode } from '$lib/types/vfs';
+
 // ============================================================================
 // Error Types
 // ============================================================================
 
-export type VFSErrorCode =
-	| 'NETWORK_ERROR'
-	| 'CONNECTION_LOST'
-	| 'TIMEOUT'
-	| 'FILE_LOCKED'
-	| 'LOCK_EXPIRED'
-	| 'LOCK_CONFLICT'
-	| 'VERSION_CONFLICT'
-	| 'FILE_NOT_FOUND'
-	| 'PERMISSION_DENIED'
-	| 'WORKSPACE_NOT_FOUND'
-	| 'INVALID_OPERATION'
-	| 'SERVER_ERROR'
-	| 'RATE_LIMITED'
-	| 'UNKNOWN';
-
-export interface VFSError extends Error {
-	code: VFSErrorCode;
-	statusCode?: number;
-	path?: string;
-	workspaceId?: string;
-	retryable: boolean;
-	userMessage: string;
-	technicalDetails?: string;
-	recoveryOptions: RecoveryOption[];
-}
+export { VFSError, type VFSErrorCode };
 
 export interface RecoveryOption {
 	id: string;
@@ -61,9 +38,7 @@ export function createVFSError(
 		cause?: Error;
 	} = {}
 ): VFSError {
-	const error = new Error(message) as VFSError;
-	error.name = 'VFSError';
-	error.code = code;
+	const error = new VFSError(message, code, options.cause);
 	error.statusCode = options.statusCode;
 	error.path = options.path;
 	error.workspaceId = options.workspaceId;
@@ -85,6 +60,14 @@ export function parseError(
 ): VFSError {
 	// Already a VFSError
 	if (isVFSError(error)) {
+		error.path ??= context?.path;
+		error.workspaceId ??= context?.workspaceId;
+		error.retryable = isRetryableError(error.code);
+		error.userMessage = getUserMessage(error.code, error.path);
+		error.technicalDetails ??= error.message;
+		if (error.recoveryOptions.length === 0) {
+			error.recoveryOptions = getRecoveryOptions(error.code);
+		}
 		return error;
 	}
 
@@ -172,7 +155,7 @@ function parseStatusCode(
  * Check if error is a VFSError
  */
 export function isVFSError(error: unknown): error is VFSError {
-	return error instanceof Error && 'code' in error && 'retryable' in error;
+	return error instanceof VFSError;
 }
 
 /**
