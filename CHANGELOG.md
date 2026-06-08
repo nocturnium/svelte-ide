@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/nocturnium/svelte-ide/compare/v1.0.0...v1.0.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* **editor:** fold/unfold the block containing the cursor, not only the header line ([863752a](https://github.com/nocturnium/svelte-ide/commit/863752a20839e8111f39e6038a67228946c7cc8a))
+
 # 1.0.0 (2026-06-08)
 
 
