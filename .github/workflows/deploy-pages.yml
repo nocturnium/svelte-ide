@@ -11,6 +11,12 @@ name: Deploy demo to GitHub Pages
 on:
   push:
     branches: [main]
+  # Redeploy when a release is published: semantic-release's version-bump commit
+  # carries [skip ci] (so it can't trigger the push deploy), but by the time the
+  # GitHub Release exists, main/tag already has the bumped package.json — this
+  # rebuild is what makes the site's injected __APP_VERSION__ show the new version.
+  release:
+    types: [published]
   workflow_dispatch:
 
 # Least privilege + the scopes the Pages deployment needs.
