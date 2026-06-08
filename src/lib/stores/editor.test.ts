@@ -271,6 +271,19 @@ describe('editor store — content management', () => {
 		expect(editor.getHasDirtyTabs()).toBe(true);
 	});
 
+	it('updateContent clears dirty when content returns to saved value and closeTab succeeds', () => {
+		const id = editor.openFile('/src/a.ts', 'original');
+		editor.updateContent(id, 'modified');
+		expect(editor.getTab(id)?.isDirty).toBe(true);
+
+		editor.updateContent(id, 'original');
+
+		expect(editor.getTab(id)?.isDirty).toBe(false);
+		expect(editor.getHasDirtyTabs()).toBe(false);
+		expect(editor.closeTab(id)).toBe(true);
+		expect(editor.getTab(id)).toBeUndefined();
+	});
+
 	it('markSaved clears dirty state', () => {
 		const id = editor.openFile('/src/a.ts', 'original');
 		editor.updateContent(id, 'modified');

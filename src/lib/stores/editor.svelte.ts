@@ -6,6 +6,7 @@
  * We use getter functions to expose reactive derived state.
  */
 
+import { SvelteMap } from 'svelte/reactivity';
 import type { EditorTab, EditorPreferences, SplitMode, CursorPosition } from '$types';
 import { DEFAULT_EDITOR_PREFERENCES } from '$types';
 import { detectLanguage } from '$utils/language';
@@ -30,6 +31,14 @@ const state = $state<EditorState>({
 	loading: false,
 	error: null
 });
+
+// Private saved-content baseline used to compute dirty state without changing
+// the exported EditorTab shape.
+const savedContents = new SvelteMap<string, string>();
+
+function isTabDirty(tab: EditorTab): boolean {
+	return tab.content !== (savedContents.get(tab.id) ?? tab.content);
+}
 
 // Getter functions for derived values (Svelte 5 module-safe)
 export function getTabs(): EditorTab[] {
@@ -154,6 +163,7 @@ export function openFile(
 		cursorPosition: { line: 1, column: 1 }
 	};
 
+	savedContents.set(id, content);
 	state.tabs = [...state.tabs, tab];
 
 	if (options?.focus !== false) {
@@ -174,11 +184,12 @@ export function closeTab(tabId: string): boolean {
 	if (index === -1) return false;
 
 	const tab = state.tabs[index];
-	if (tab.isDirty) {
+	if (isTabDirty(tab)) {
 		// Could prompt for save here - returning false indicates unsaved changes
 		return false;
 	}
 
+	savedContents.delete(tabId);
 	state.tabs = state.tabs.filter((t) => t.id !== tabId);
 
 	// Update active tab if we closed the active one
@@ -197,6 +208,7 @@ export function forceCloseTab(tabId: string): void {
 	const index = state.tabs.findIndex((t) => t.id === tabId);
 	if (index === -1) return;
 
+	savedContents.delete(tabId);
 	state.tabs = state.tabs.filter((t) => t.id !== tabId);
 
 	if (state.activeTabId === tabId) {
@@ -209,9 +221,10 @@ export function forceCloseTab(tabId: string): void {
  * Close all tabs
  */
 export function closeAllTabs(force = false): boolean {
-	if (!force && state.tabs.some((t) => t.isDirty)) {
+	if (!force && state.tabs.some(isTabDirty)) {
 		return false;
 	}
+	savedContents.clear();
 	state.tabs = [];
 	state.activeTabId = null;
 	return true;
@@ -221,8 +234,13 @@ export function closeAllTabs(force = false): boolean {
  * Close other tabs (keep the specified one)
  */
 export function closeOtherTabs(keepTabId: string, force = false): boolean {
-	if (!force && state.tabs.some((t) => t.id !== keepTabId && t.isDirty)) {
+	if (!force && state.tabs.some((t) => t.id !== keepTabId && isTabDirty(t))) {
 		return false;
+	}
+	for (const tab of state.tabs) {
+		if (tab.id !== keepTabId) {
+			savedContents.delete(tab.id);
+		}
 	}
 	state.tabs = state.tabs.filter((t) => t.id === keepTabId);
 	state.activeTabId = keepTabId;
@@ -243,7 +261,9 @@ export function setActiveTab(tabId: string): void {
  */
 export function updateContent(tabId: string, content: string): void {
 	state.tabs = state.tabs.map((t) =>
-		t.id === tabId ? { ...t, content, isDirty: t.content !== content || t.isDirty } : t
+		t.id === tabId
+			? { ...t, content, isDirty: content !== (savedContents.get(tabId) ?? t.content) }
+			: t
 	);
 }
 
@@ -252,7 +272,13 @@ export function updateContent(tabId: string, content: string): void {
  */
 export function markSaved(tabId: string, newContent?: string): void {
 	state.tabs = state.tabs.map((t) =>
-		t.id === tabId ? { ...t, isDirty: false, content: newContent ?? t.content } : t
+		t.id === tabId
+			? (() => {
+					const content = newContent ?? t.content;
+					savedContents.set(tabId, content);
+					return { ...t, isDirty: false, content };
+				})()
+			: t
 	);
 }
 

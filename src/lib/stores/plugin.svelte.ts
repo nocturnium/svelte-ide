@@ -11,6 +11,8 @@
  * We use getter functions to expose reactive derived state.
  */
 
+import { browser } from '$app/environment';
+import { SvelteMap } from 'svelte/reactivity';
 import type {
 	PluginProposal,
 	PluginInstance,
@@ -44,9 +46,9 @@ interface PluginState {
 // Reactive state
 const state = $state<PluginState>({
 	proposals: [],
-	instances: new Map(),
-	commands: new Map(),
-	panels: new Map(),
+	instances: new SvelteMap(),
+	commands: new SvelteMap(),
+	panels: new SvelteMap(),
 	eventSource: null,
 	connected: false,
 	loadingProposals: false,
@@ -198,6 +200,11 @@ export function connect(endpoint = '/api/plugins/stream'): void {
 	}
 	if (state.eventSource) {
 		state.eventSource.close();
+	}
+
+	if (!browser || typeof EventSource === 'undefined') {
+		state.connected = false;
+		return;
 	}
 
 	const eventSource = new EventSource(endpoint);

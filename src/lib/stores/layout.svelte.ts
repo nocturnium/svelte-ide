@@ -6,6 +6,8 @@
  * We use getter functions to expose reactive derived state.
  */
 
+import { browser } from '$app/environment';
+
 interface LayoutState {
 	// Sidebar
 	leftSidebarVisible: boolean;
@@ -288,6 +290,8 @@ export function toggleStatusBar(): void {
  */
 export function toggleFullScreen(): void {
 	state.isFullScreen = !state.isFullScreen;
+
+	if (!browser || typeof document === 'undefined') return;
 
 	if (state.isFullScreen) {
 		document.documentElement.requestFullscreen?.();

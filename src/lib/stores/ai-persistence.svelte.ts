@@ -4,6 +4,7 @@
  * Handles saving and loading AI conversations to IndexedDB/localStorage
  */
 
+import { browser } from '$app/environment';
 import type { AIConversation } from '$types';
 
 // Configuration
@@ -48,7 +49,7 @@ export async function initPersistence(options?: Partial<PersistenceConfig>): Pro
 
 	try {
 		// Check if IndexedDB is available
-		if (!('indexedDB' in globalThis)) {
+		if (!browser || !('indexedDB' in globalThis)) {
 			console.warn('IndexedDB not available, using localStorage fallback');
 			initialized = true;
 			return true;
@@ -70,7 +71,7 @@ export async function initPersistence(options?: Partial<PersistenceConfig>): Pro
  */
 function openDatabase(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
-		const request = indexedDB.open(config.dbName, config.version);
+		const request = globalThis.indexedDB.open(config.dbName, config.version);
 
 		request.onerror = () => reject(request.error);
 
@@ -369,6 +370,8 @@ export async function pruneOldConversations(): Promise<number> {
 
 // localStorage helpers
 function getLocalStorageConversations(): AIConversation[] {
+	if (typeof localStorage === 'undefined') return [];
+
 	try {
 		const data = localStorage.getItem('ai-conversations');
 		return data ? JSON.parse(data) : [];
@@ -378,6 +381,8 @@ function getLocalStorageConversations(): AIConversation[] {
 }
 
 function setLocalStorageConversations(conversations: AIConversation[]): void {
+	if (typeof localStorage === 'undefined') return;
+
 	try {
 		localStorage.setItem('ai-conversations', JSON.stringify(conversations));
 	} catch (err) {
