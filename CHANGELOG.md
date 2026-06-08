@@ -1,3 +1,30 @@
+# 1.0.0 (2026-06-08)
+
+
+* feat(layout)!: migrate IDELayout from slots to snippet props ([1e5d4a8](https://github.com/nocturnium/svelte-ide/commit/1e5d4a846cfd2135fdcda333ad31fd561ba3dbf3)), closes [#snippet](https://github.com/nocturnium/svelte-ide/issues/snippet)
+
+
+### Bug Fixes
+
+* **ai:** stop AIPanel auto-save effect from looping ([08e21d9](https://github.com/nocturnium/svelte-ide/commit/08e21d9f280b2397d9f0a501712ea7504316aaa1))
+* **demo:** make all demo pages responsive and usable on mobile ([88f7eb6](https://github.com/nocturnium/svelte-ide/commit/88f7eb6473bb119f42eaaed3c1feb3446b0e140c))
+* **demo:** scope full-bleed to the IDE pages and widen docs pages on large screens ([33c4d53](https://github.com/nocturnium/svelte-ide/commit/33c4d53f39884e5a6fdad1c808cee3fd583d589b))
+* **demo:** seed plugin store offline in the playground to stop /api/plugins 404s ([1933df1](https://github.com/nocturnium/svelte-ide/commit/1933df1f8095e0a188a7693e0348cc0f81e17e4f))
+* **editor:** prevent StructureMap each_key_duplicate crash ([978e570](https://github.com/nocturnium/svelte-ide/commit/978e5709e15c11e3b45c1b7d2b6f169beab7df0c))
+* **test:** polyfill CloseEvent for Node < 23 so the LSP tests pass in CI ([6162ce0](https://github.com/nocturnium/svelte-ide/commit/6162ce0170b45a3c8adc1c410dbaa8c3b63aee0b))
+
+
+### Features
+
+* **demo:** full-bleed IDE pages and single-source version badge ([9dd2886](https://github.com/nocturnium/svelte-ide/commit/9dd2886037a33b3bb9f0833f6227d30678e44171))
+* from nocturnium/docs/site-visual-and-content-correctness ([f38ffda](https://github.com/nocturnium/svelte-ide/commit/f38ffda374926dc8b07d8ca1f0a2089481e7c7ea))
+
+
+### BREAKING CHANGES
+
+* IDELayout content is now passed as snippet props
+(activityBar, leftSidebar, editor, bottomPanel, rightSidebar, statusBar)
+
 # Changelog
 
 ## [Unreleased]
