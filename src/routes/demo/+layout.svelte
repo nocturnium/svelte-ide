@@ -54,14 +54,7 @@
 	// being capped to the centered reading column. Stored without `base`.
 	const FULL_BLEED_PATHS = new Set([
 		'/demo/editor',
-		'/demo/playground',
-		'/demo/editor-intelligence',
-		'/demo/semantic-features',
-		'/demo/cognitive-load',
-		'/demo/debugging',
-		'/demo/devx-features',
-		'/demo/collaboration-features',
-		'/demo/power-features'
+		'/demo/playground'
 	]);
 
 	let isFullBleed = $derived(FULL_BLEED_PATHS.has(currentPath.slice(base.length)));
@@ -503,6 +496,19 @@
 		box-sizing: border-box;
 	}
 
+	/* Centered prose/card pages use progressively more of the screen on large
+	   displays for a modern, less-empty feel (full-bleed pages opt out above). */
+	@media (min-width: 1600px) {
+		.demo-content__inner {
+			max-width: 1440px;
+		}
+	}
+	@media (min-width: 1920px) {
+		.demo-content__inner {
+			max-width: 1600px;
+		}
+	}
+
 	@media (max-width: 860px) {
 		.demo-content__inner {
 			padding: var(--ide-spacing-lg) var(--ide-spacing-lg) var(--ide-spacing-2xl);
@@ -528,14 +534,27 @@
 		max-width: none;
 		margin-inline: 0;
 		padding: 0;
-		display: flex;
-		flex-direction: column;
-		flex: 1;
-		min-height: 0;
 	}
+	/* Defeat the routed page's own root max-width/centering so it truly fills.
+	   Inner prose keeps its own narrower max-width (it's a deeper descendant). */
 	.demo-content--bleed .demo-content__inner > :global(*) {
-		flex: 1;
-		min-height: 0;
+		max-width: none;
+		margin-inline: 0;
+	}
+	/* Fill the viewport height only on wider screens. On mobile each full-bleed
+	   page keeps its own natural single-column flow, so we don't force flex heights
+	   that leave dead space under the stacked mobile layout. */
+	@media (min-width: 861px) {
+		.demo-content--bleed .demo-content__inner {
+			display: flex;
+			flex-direction: column;
+			flex: 1;
+			min-height: 0;
+		}
+		.demo-content--bleed .demo-content__inner > :global(*) {
+			flex: 1;
+			min-height: 0;
+		}
 	}
 
 	.mobile-backdrop {
