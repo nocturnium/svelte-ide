@@ -142,9 +142,6 @@ const builtinTypes = new Set([
 
 interface JSTokenizerState extends TokenizerState {
 	templateDepth?: number;
-	jsxDepth?: number;
-	/** Track if regex is valid in current context (for division vs regex ambiguity) */
-	expectExpression?: boolean;
 	/**
 	 * Last significant token text, used for regex/division disambiguation.
 	 * Stored per-line in the threaded state (not on the tokenizer instance) so a
@@ -260,8 +257,7 @@ export class JavaScriptTokenizer {
 
 	getInitialState(): JSTokenizerState {
 		return {
-			templateDepth: 0,
-			jsxDepth: 0
+			templateDepth: 0
 		};
 	}
 

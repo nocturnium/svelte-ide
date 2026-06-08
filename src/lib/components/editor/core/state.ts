@@ -971,13 +971,45 @@ export class EditorState {
 	private tokenizerStatesEqual(a?: TokenizerState, b?: TokenizerState): boolean {
 		if (a === b) return true;
 		if (!a || !b) return a === b;
-		return (
-			a.inBlockComment === b.inBlockComment &&
-			a.inTemplateLiteral === b.inTemplateLiteral &&
-			a.inMultilineString === b.inMultilineString &&
-			a.stringDelimiter === b.stringDelimiter &&
-			a.templateDepth === b.templateDepth
-		);
+
+		const aKeys = Object.keys(a).filter((key) => a[key as keyof TokenizerState] !== undefined).sort();
+		const bKeys = Object.keys(b).filter((key) => b[key as keyof TokenizerState] !== undefined).sort();
+		if (aKeys.length !== bKeys.length) return false;
+
+		for (let i = 0; i < aKeys.length; i++) {
+			const key = aKeys[i];
+			if (key !== bKeys[i]) return false;
+			if (!this.tokenizerStateValuesEqual(a[key as keyof TokenizerState], b[key as keyof TokenizerState])) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private tokenizerStateValuesEqual(a: unknown, b: unknown): boolean {
+		if (a === b) return true;
+		if (typeof a !== typeof b) return false;
+		if (a === null || b === null) return a === b;
+		if (typeof a !== 'object' || typeof b !== 'object') return false;
+		if (Array.isArray(a) || Array.isArray(b)) {
+			if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+			return a.every((value, index) => this.tokenizerStateValuesEqual(value, b[index]));
+		}
+
+		const aRecord = a as Record<string, unknown>;
+		const bRecord = b as Record<string, unknown>;
+		const aKeys = Object.keys(aRecord).filter((key) => aRecord[key] !== undefined).sort();
+		const bKeys = Object.keys(bRecord).filter((key) => bRecord[key] !== undefined).sort();
+		if (aKeys.length !== bKeys.length) return false;
+
+		for (let i = 0; i < aKeys.length; i++) {
+			const key = aKeys[i];
+			if (key !== bKeys[i]) return false;
+			if (!this.tokenizerStateValuesEqual(aRecord[key], bRecord[key])) return false;
+		}
+
+		return true;
 	}
 
 	/**

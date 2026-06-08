@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { getTokenizer } from './index';
-import type { TokenizedLine, Token, TokenType } from './types';
+import { getTokenizer, SvelteTokenizer } from './index';
+import type { TokenizedLine, Token, TokenType, TokenizerState } from './types';
 
 // ============================================================
 // Helpers
@@ -300,6 +300,27 @@ describe('JavaScript tokenizer', () => {
 			expectToken(line, 'punctuation.paren', ')');
 			expectToken(line, 'punctuation.brace', '{');
 		});
+	});
+});
+
+describe('Svelte tokenizer state', () => {
+	it('does not mutate the previous line state object or nested innerState', () => {
+		const tokenizer = new SvelteTokenizer();
+		const prevState = {
+			context: 'script',
+			tagDepth: 0,
+			innerState: { inBlockComment: true }
+		} satisfies TokenizerState & {
+			context: 'script';
+			tagDepth: number;
+			innerState: TokenizerState;
+		};
+
+		const before = structuredClone(prevState);
+
+		tokenizer.tokenizeLine('*/ const value = 1', 2, prevState);
+
+		expect(prevState).toEqual(before);
 	});
 });
 

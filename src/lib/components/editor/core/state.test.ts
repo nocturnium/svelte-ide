@@ -139,6 +139,72 @@ describe('EditorState — setContent', () => {
 	});
 });
 
+describe('EditorState — tokenizer state propagation', () => {
+	function tokenTypes(state: EditorState, lineNumber: number): string[] {
+		return state.getLine(lineNumber)?.tokens?.tokens.map((token) => token.type) ?? [];
+	}
+
+	it('retokenizes following Go lines after closing a raw string with a single-line edit', () => {
+		const state = createEditorState({
+			language: 'go',
+			content: 's := `raw\nmiddle\nfmt.Println("done")'
+		});
+
+		expect(tokenTypes(state, 1)).toEqual(['string']);
+		expect(tokenTypes(state, 2)).toEqual(['string']);
+
+		state.insertAt({ line: 0, column: 's := `raw'.length }, '`');
+
+		expect(tokenTypes(state, 1)).not.toEqual(['string']);
+		expect(tokenTypes(state, 2)).toContain('function.call');
+	});
+
+	it('retokenizes following Markdown lines after removing a fenced code opener', () => {
+		const state = createEditorState({
+			language: 'markdown',
+			content: '```js\nconst x = 1\n# heading'
+		});
+
+		expect(tokenTypes(state, 1)).toEqual(['markup.code']);
+		expect(tokenTypes(state, 2)).toEqual(['markup.code']);
+
+		state.deleteRange({ line: 0, column: 0 }, { line: 0, column: 3 });
+
+		expect(tokenTypes(state, 1)).not.toEqual(['markup.code']);
+		expect(tokenTypes(state, 2)).toContain('markup.heading');
+	});
+
+	it('retokenizes following Python lines after closing a triple-quoted string with a single-line edit', () => {
+		const state = createEditorState({
+			language: 'python',
+			content: 'x = """hello\nmiddle\nprint("done")'
+		});
+
+		expect(tokenTypes(state, 1)).toEqual(['string']);
+		expect(tokenTypes(state, 2)).toEqual(['string']);
+
+		state.insertAt({ line: 0, column: 'x = """hello'.length }, '"""');
+
+		expect(tokenTypes(state, 1)).not.toEqual(['string']);
+		expect(tokenTypes(state, 2)).toContain('function.call');
+	});
+
+	it('retokenizes following Svelte lines after removing a script region opener', () => {
+		const state = createEditorState({
+			language: 'svelte',
+			content: '<script>\nconst value = 1\nlet other = 2\n</script>'
+		});
+
+		expect(tokenTypes(state, 1)).toContain('keyword.definition');
+		expect(tokenTypes(state, 2)).toContain('keyword.definition');
+
+		state.deleteRange({ line: 0, column: 0 }, { line: 0, column: '<script>'.length });
+
+		expect(tokenTypes(state, 1)).not.toContain('keyword.definition');
+		expect(tokenTypes(state, 2)).not.toContain('keyword.definition');
+	});
+});
+
 // ============================================================
 // insert
 // ============================================================

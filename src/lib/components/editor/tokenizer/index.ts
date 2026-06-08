@@ -106,7 +106,7 @@ const languageAliases: Record<string, string> = {
 /**
  * Tokenizer factory functions by language
  */
-const tokenizerFactories: Record<string, () => LanguageTokenizer> = {
+export const tokenizerFactories: Record<string, () => LanguageTokenizer> = {
 	javascript: createJavaScriptTokenizer,
 	typescript: createTypeScriptTokenizer,
 	jsx: createJSXTokenizer,
