@@ -23,7 +23,7 @@ LSP, collaboration, AI, and plugin pieces into a full IDE experience.
 - **Find & replace** with regex support.
 - **LSP client** — autocomplete, hover, signatures, diagnostics over WebSocket.
 - **Realtime collaboration** (optional) — CRDT/Yjs, tree-shakeable.
-- **AI panel & agent presence** layers for assistant-driven editing.
+- **AI panel & agent presence** layers for assistant UI and presence patterns.
 - **Plugin system** with a proposal-based lifecycle (bring your own backend).
 - **Themeable** — every color/size is a CSS custom property you can override.
 - **Zero external UI dependencies**; collaboration deps are optional peers.
@@ -138,8 +138,10 @@ See the [Collaboration guide](https://github.com/nocturnium/svelte-ide/blob/main
 ```
 
 `<AIPanel>` talks to **your own** chat endpoint (configurable; defaults to
-`/api/chat`) via the AI store. Model output is HTML-escaped with link-scheme
-whitelisting before rendering. See the
+`/api/chat`) via the AI store. The repository's demo route returns canned mock
+responses only; it does not connect to a real model provider. Consumers should
+bring their own backend for inference. Model output is HTML-escaped with
+link-scheme whitelisting before rendering. See the
 [AI & agents guide](https://github.com/nocturnium/svelte-ide/blob/main/docs/guides/ai-and-agents.md).
 
 ## Entry points

@@ -51,7 +51,7 @@ These are the exact props from the `Editor` component's `Props` interface:
 | Prop             | Type                                     | Default       | Description                                                                                                                                                          |
 | ---------------- | ---------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `content`        | `string`                                 | — (required)  | Document text to display.                                                                                                                                            |
-| `language`       | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"rust"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set.  |
+| `language`       | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"svelte"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set. |
 | `readonly`       | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                       |
 | `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                  |
 | `class`          | `string`                                 | `""`          | Extra CSS class applied to the editor container.                                                                                                                     |
@@ -224,7 +224,7 @@ If you only need the final value at specific moments (on save, on submit), let t
 	import { Editor } from '@nocturnium/svelte-ide';
 
 	// `initial` seeds the editor once; latestValue is updated but not fed back to `content`.
-	const initial = 'SELECT * FROM users;\n';
+	const initial = 'const users = await db.query("users");\n';
 	let latestValue = initial;
 
 	function handleSave() {
@@ -235,7 +235,7 @@ If you only need the final value at specific moments (on save, on submit), let t
 <div style="height: 320px;">
 	<Editor
 		content={initial}
-		language="sql"
+		language="typescript"
 		onChange={(value) => (latestValue = value)}
 		onSave={handleSave}
 	/>

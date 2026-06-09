@@ -53,7 +53,7 @@ The core editor is `CustomEditor`. It's a controlled component: you own the docu
 A few things worth knowing:
 
 - **Give it a height.** The editor fills its container, so wrap it in an element with a defined height (a fixed `height`, a flex child, etc.).
-- **`language`** drives syntax highlighting. The built-in tokenizer supports 8+ languages; omit it (it defaults to `"plaintext"`) for no highlighting. See [Syntax Highlighting](./guides/syntax-highlighting.md) for the supported set and token classes.
+- **`language`** drives syntax highlighting. The built-in tokenizer supports JavaScript, TypeScript, JSX, TSX, HTML, XML, CSS, JSON, Python, Go, Markdown, and Svelte; omit it (it defaults to `"plaintext"`) for no highlighting. See [Syntax Highlighting](./guides/syntax-highlighting.md) for the supported set and token classes.
 - **`onChange`** receives the new content string. Write it back to your `$state` to keep the editor in sync.
 - **Other useful props:** `readonly`, `preferences` (a partial `EditorPreferences` object — font size, tab size, line numbers, word wrap, and more), `folding`, `multiCursor`, and `onSave` (fired on Ctrl+S). See the [Editor guide](./guides/editor.md) for the complete prop list.
 
