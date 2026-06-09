@@ -73,7 +73,8 @@
 	};
 
 	const ext = $derived(getExtension(filename));
-	const color = $derived(extensionColors[ext] ?? 'var(--ide-text-muted)');
+	const colorKey = $derived(ext || filename.toLowerCase().replace(/^\./, ''));
+	const color = $derived(extensionColors[colorKey] ?? 'var(--ide-text-muted)');
 
 	// Simple file type icon paths
 	const icons = {

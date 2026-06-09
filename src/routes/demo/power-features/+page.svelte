@@ -467,14 +467,14 @@ export { formatPrice, summarize };`);
 	}
 
 	.tab:focus-visible {
-		outline: 2px solid var(--ide-interactive-focus, #a855f7);
+		outline: 2px solid var(--ide-interactive-focus, var(--color-nocturnium-aurora-purple));
 		outline-offset: 2px;
 	}
 
 	.tab.active {
-		color: #a855f7;
-		background: rgba(168, 85, 247, 0.1);
-		border-bottom-color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		border-bottom-color: var(--color-nocturnium-aurora-purple);
 	}
 
 	/* Section */
@@ -515,21 +515,21 @@ export { formatPrice, summarize };`);
 
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: rgba(168, 85, 247, 0.2);
-		border: 1px solid rgba(168, 85, 247, 0.3);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
 		border-radius: 6px;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 		font-size: 0.875rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.control-btn:hover {
-		background: rgba(168, 85, 247, 0.3);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
 	}
 
 	.control-btn.active {
-		background: #a855f7;
+		background: var(--color-nocturnium-aurora-purple);
 		color: #fff;
 	}
 
@@ -689,14 +689,14 @@ export { formatPrice, summarize };`);
 
 	.echo-info {
 		padding: 1rem;
-		background: rgba(168, 85, 247, 0.1);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
 		border-radius: 8px;
 	}
 
 	.echo-info h4 {
 		margin: 0 0 0.5rem;
 		font-size: 0.9rem;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	.echo-info ul {
@@ -899,7 +899,7 @@ export { formatPrice, summarize };`);
 
 	.open-sandbox-btn {
 		padding: 0.375rem 1rem;
-		background: #a855f7;
+		background: var(--color-nocturnium-aurora-purple);
 		border: none;
 		border-radius: 4px;
 		color: #fff;
@@ -931,7 +931,7 @@ export { formatPrice, summarize };`);
 	}
 
 	.plugin-info {
-		background: rgba(168, 85, 247, 0.1);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
 		border-radius: 8px;
 		padding: 1rem;
 	}
@@ -939,7 +939,7 @@ export { formatPrice, summarize };`);
 	.plugin-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	.plugin-info ul {

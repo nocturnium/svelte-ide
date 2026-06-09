@@ -277,13 +277,13 @@
 		gap: 8px;
 		height: 32px;
 		padding: 0 12px;
-		background: var(--color-surface, #1e1e2e);
-		border-top: 1px solid var(--color-border, #333);
+		background: var(--ide-bg-secondary, #1a2744);
+		border-top: 1px solid var(--ide-border, #a8c5d9);
 		user-select: none;
 	}
 
 	.timeline-scrubber--playback {
-		background: var(--color-surface-elevated, #252535);
+		background: var(--ide-bg-elevated, #1a2744);
 	}
 
 	.timeline-scrubber__controls {
@@ -303,7 +303,7 @@
 		background: transparent;
 		border: none;
 		border-radius: 4px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		cursor: pointer;
 		transition:
 			background 0.15s ease,
@@ -312,7 +312,7 @@
 
 	.timeline-scrubber__btn:hover {
 		background: rgba(255, 255, 255, 0.1);
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.timeline-scrubber__btn--live {
@@ -397,7 +397,7 @@
 	.timeline-scrubber__thumb-handle {
 		width: 14px;
 		height: 14px;
-		background: var(--color-primary, #4a9eff);
+		background: var(--ide-interactive, #4a8db7);
 		border: 2px solid #fff;
 		border-radius: 50%;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -413,7 +413,7 @@
 		text-align: center;
 		font-size: 11px;
 		font-family: var(--font-mono, monospace);
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 	}
 
 	.timeline-scrubber__live {
@@ -439,8 +439,8 @@
 		align-items: center;
 		gap: 8px;
 		padding: 8px 12px;
-		background: var(--color-surface, #1e1e2e);
-		border: 1px solid var(--color-border, #333);
+		background: var(--ide-bg-secondary, #1a2744);
+		border: 1px solid var(--ide-border, #a8c5d9);
 		border-radius: 6px;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 		pointer-events: none;
@@ -460,11 +460,11 @@
 	.timeline-scrubber__tooltip-label {
 		font-size: 12px;
 		font-weight: 500;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.timeline-scrubber__tooltip-time {
 		font-size: 10px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 	}
 </style>

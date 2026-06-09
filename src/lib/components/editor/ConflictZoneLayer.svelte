@@ -308,7 +308,7 @@
 		font-size: 10px;
 		font-weight: 600;
 		color: #fff;
-		border: 2px solid var(--color-surface, #1e1e2e);
+		border: 2px solid var(--ide-bg-secondary, #1a2744);
 		margin-left: -8px;
 	}
 
@@ -344,8 +344,8 @@
 		min-width: 220px;
 		max-width: 300px;
 		padding: 12px;
-		background: var(--color-surface, #1e1e2e);
-		border: 1px solid var(--color-border, #333);
+		background: var(--ide-bg-secondary, #1a2744);
+		border: 1px solid var(--ide-border, #a8c5d9);
 		border-radius: 8px;
 		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 		font-size: 12px;
@@ -372,14 +372,14 @@
 
 	.conflict-tooltip__title {
 		font-weight: 600;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.conflict-tooltip__region {
 		padding: 6px 8px;
 		background: rgba(255, 255, 255, 0.05);
 		border-radius: 4px;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		margin-bottom: 8px;
 	}
 
@@ -405,12 +405,12 @@
 
 	.conflict-tooltip__name {
 		flex: 1;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.conflict-tooltip__line {
 		font-size: 10px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 	}
 
 	.ai-badge {
@@ -428,7 +428,7 @@
 		background: rgba(255, 200, 0, 0.1);
 		border-radius: 4px;
 		border-left: 2px solid #eab308;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		font-size: 11px;
 		line-height: 1.4;
 	}

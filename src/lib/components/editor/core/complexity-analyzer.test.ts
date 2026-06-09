@@ -144,6 +144,99 @@ describe('ComplexityAnalyzer', () => {
 			expect(classRegions.length).toBe(1);
 			expect(funcRegions.length).toBe(1);
 		});
+
+		it('should detect functions with TypeScript return type annotations', () => {
+			const source = [
+				'function add(a: number, b: number): number {',
+				'  return a + b;',
+				'}',
+				'',
+				'function processUser(user: { active: boolean; roles: string[] }): string {',
+				'  if (!user.active) {',
+				'    return "inactive";',
+				'  }',
+				'  if (user.roles.includes("admin")) {',
+				'    return "admin";',
+				'  }',
+				'  return "user";',
+				'}',
+				'',
+				'const capitalize = (value: string): string => {',
+				'  return value.charAt(0).toUpperCase() + value.slice(1);',
+				'}'
+			];
+			const result = analyzer.analyze(makeLines(source.join('\n')), 'typescript');
+
+			expect(result.regions).not.toHaveLength(1);
+			expect(result.regions[0].type).not.toBe('file');
+
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
+			expect(funcRegions.map((r) => r.name).sort()).toEqual(['add', 'capitalize', 'processUser']);
+
+			const add = funcRegions.find((r) => r.name === 'add')!;
+			const processUser = funcRegions.find((r) => r.name === 'processUser')!;
+			const capitalize = funcRegions.find((r) => r.name === 'capitalize')!;
+
+			expect(add.startLine).toBe(0);
+			expect(add.endLine).toBe(2);
+			expect(processUser.startLine).toBe(4);
+			expect(processUser.endLine).toBe(12);
+			expect(capitalize.startLine).toBe(14);
+			expect(capitalize.endLine).toBe(16);
+			expect(add.score).toBeLessThan(processUser.score);
+		});
+
+		it('should detect a multi-line TypeScript signature instead of falling back to file', () => {
+			const source = [
+				'type AnalysisResult = { total: number; flagged: number };',
+				'',
+				'function add(a: number, b: number): number {',
+				'  return a + b;',
+				'}',
+				'',
+				'function analyzeDataMatrix(',
+				'  data: number[][],',
+				'  threshold: number',
+				'): Promise<AnalysisResult | null> {',
+				'  let total = 0;',
+				'  let flagged = 0;',
+				'  for (const row of data) {',
+				'    for (const value of row) {',
+				'      if (value > threshold) {',
+				'        flagged++;',
+				'        if (value % 2 === 0) {',
+				'          total += value;',
+				'        } else {',
+				'          while (total < threshold) {',
+				'            total++;',
+				'          }',
+				'        }',
+				'      }',
+				'    }',
+				'  }',
+				'  return total > 0 ? { total, flagged } : null;',
+				'}'
+			];
+			const result = analyzer.analyze(makeLines(source.join('\n')), 'typescript');
+
+			expect(result.regions).not.toEqual([
+				expect.objectContaining({ startLine: 0, endLine: source.length - 1, type: 'file' })
+			]);
+
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
+			expect(funcRegions.map((r) => r.name).sort()).toEqual(['add', 'analyzeDataMatrix']);
+
+			const add = funcRegions.find((r) => r.name === 'add')!;
+			const analyzeDataMatrix = funcRegions.find((r) => r.name === 'analyzeDataMatrix')!;
+
+			expect(add.startLine).toBe(2);
+			expect(add.endLine).toBe(4);
+			expect(analyzeDataMatrix.startLine).toBe(6);
+			expect(analyzeDataMatrix.endLine).toBe(27);
+			expect(add.score).toBeLessThan(30);
+			expect(analyzeDataMatrix.score).toBeGreaterThanOrEqual(85);
+			expect(analyzeDataMatrix.score).toBeGreaterThan(add.score);
+		});
 	});
 
 	describe('nesting depth', () => {

@@ -355,7 +355,7 @@
 		<div class="config-demo">
 			<pre><code
 					>{`// Connect to plugin system
-import { connect, createProposal, loadPlugin } from '$lib/stores/plugin.svelte';
+import { connect, createProposal, loadPlugin } from '@nocturnium/svelte-ide/stores';
 
 // Connect to the backend
 await connect('wss://plugins.example.com');
@@ -375,7 +375,7 @@ const proposal = await createProposal({
 });
 
 // Register commands
-import { registerCommand } from '$lib/stores/plugin.svelte';
+import { registerCommand } from '@nocturnium/svelte-ide/stores';
 
 registerCommand({
   name: 'myPlugin.run',
@@ -594,7 +594,7 @@ await unloadPlugin('prettier-format');`}</code
 	}
 
 	.config-demo {
-		background: var(--ide-bg-tertiary);
+		background: var(--ide-bg-primary);
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
 		padding: 1.25rem;

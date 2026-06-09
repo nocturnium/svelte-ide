@@ -272,11 +272,11 @@
 		<div class="demo-group">
 			<h3>With Colors</h3>
 			<div class="demo-row">
-				<Avatar name="Alice" color="#4a9eff" />
-				<Avatar name="Bob" color="#22c55e" />
-				<Avatar name="Charlie" color="#f59e0b" />
-				<Avatar name="Diana" color="#ef4444" />
-				<Avatar name="Eve" color="#a855f7" />
+				<Avatar name="Alice" color="var(--ide-collab-cursor-1)" />
+				<Avatar name="Bob" color="var(--ide-collab-cursor-3)" />
+				<Avatar name="Charlie" color="var(--ide-collab-cursor-5)" />
+				<Avatar name="Diana" color="var(--ide-collab-cursor-4)" />
+				<Avatar name="Eve" color="var(--ide-collab-cursor-2)" />
 			</div>
 		</div>
 

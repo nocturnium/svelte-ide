@@ -198,12 +198,34 @@ export class ComplexityAnalyzer {
 		}> = [];
 
 		let braceDepth = 0;
+		let pendingDef:
+			| {
+					line: number;
+					type: 'function' | 'class';
+					name?: string;
+					depth: number;
+			  }
+			| undefined;
 
 		for (let i = 0; i < lines.length; i++) {
 			const text = lines[i].text;
 
 			// Check for function/class definition
 			const funcMatch = text.match(PATTERNS.functionDef);
+			const currentBlock = blockStack[blockStack.length - 1];
+			const defCandidate = this.getDefinitionCandidate(
+				text,
+				funcMatch,
+				currentBlock?.type === 'class' && braceDepth === currentBlock.depth
+			);
+			if (defCandidate) {
+				pendingDef = {
+					line: i,
+					type: defCandidate.type,
+					name: defCandidate.name,
+					depth: braceDepth
+				};
+			}
 
 			// Process character by character to properly match braces
 			// Skip braces inside strings and comments
@@ -237,13 +259,18 @@ export class ComplexityAnalyzer {
 					if (c === '{') {
 						braceDepth++;
 						// If this is the opening brace of a function/class def, push it
-						if (funcMatch && this.isDefOpeningBrace(text, ch, funcMatch)) {
+						if (
+							pendingDef &&
+							braceDepth === pendingDef.depth + 1 &&
+							this.isDefOpeningBrace(text, ch, pendingDef.type)
+						) {
 							blockStack.push({
-								line: i,
-								type: funcMatch[5] ? 'class' : 'function',
-								name: funcMatch[2] || funcMatch[3] || funcMatch[4] || funcMatch[5],
+								line: pendingDef.line,
+								type: pendingDef.type,
+								name: pendingDef.name,
 								depth: braceDepth
 							});
+							pendingDef = undefined;
 						} else if (
 							!funcMatch ||
 							braceDepth > (blockStack.length > 0 ? blockStack[blockStack.length - 1].depth : 0) + 1
@@ -274,6 +301,9 @@ export class ComplexityAnalyzer {
 							}
 						}
 						braceDepth = Math.max(0, braceDepth - 1);
+						if (pendingDef && braceDepth < pendingDef.depth) {
+							pendingDef = undefined;
+						}
 					}
 				}
 			}
@@ -294,15 +324,45 @@ export class ComplexityAnalyzer {
 	/**
 	 * Check if a `{` at position `ch` is the opening brace of a function/class definition
 	 */
-	private isDefOpeningBrace(text: string, ch: number, funcMatch: RegExpMatchArray): boolean {
+	private isDefOpeningBrace(text: string, ch: number, type: 'function' | 'class'): boolean {
 		// For class: `class Foo {` — the `{` follows the class name
-		if (funcMatch[5]) {
+		if (type === 'class') {
 			return true; // First `{` on a class line is the class body
 		}
 		// For functions: the `{` should follow the parameter list closing `)`
-		// or follow `=>` for arrow functions
+		// with an optional TypeScript return type, or follow `=>` for arrow functions.
 		const before = text.slice(0, ch).trimEnd();
-		return before.endsWith(')') || before.endsWith('=>');
+		return /\)\s*(:\s*[^{};]+)?\s*$/.test(before) || before.endsWith('=>');
+	}
+
+	/**
+	 * Extract a definition candidate before its body brace is seen.
+	 */
+	private getDefinitionCandidate(
+		text: string,
+		funcMatch: RegExpMatchArray | null,
+		allowMethodStyle: boolean
+	): { type: 'function' | 'class'; name?: string } | undefined {
+		if (funcMatch) {
+			return {
+				type: funcMatch[5] ? 'class' : 'function',
+				name: funcMatch[2] || funcMatch[3] || funcMatch[4] || funcMatch[5]
+			};
+		}
+
+		if (!allowMethodStyle) {
+			return undefined;
+		}
+
+		const trimmed = text.trim();
+		const methodMatch = trimmed.match(
+			/^(?:(?:public|private|protected|static|async|readonly|override)\s+)*(?!(?:if|else|for|while|do|switch|try|catch|finally|with|return|throw|new|typeof|void|delete|await|yield)\b)(\w+)\s*\(/
+		);
+		if (methodMatch) {
+			return { type: 'function', name: methodMatch[1] };
+		}
+
+		return undefined;
 	}
 
 	/**

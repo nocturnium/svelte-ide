@@ -14,6 +14,10 @@
 	import type { SemanticCategory } from './core/semantic-analyzer';
 	import { getSemanticAnalyzer } from './core/semantic-analyzer';
 	import type { ComplexityMetrics } from './core/complexity-analyzer';
+	import { layoutStructureRows } from './core/structure-layout';
+
+	/** Minimum legible height of a single node row, in px (kept in sync with CSS). */
+	const ROW_HEIGHT = 18;
 
 	interface StructureNode {
 		/** Stable unique id (keyed-each safe — multiple regions can share a start line) */
@@ -134,26 +138,38 @@
 		// Sort by line number
 		nodes.sort((a, b) => a.startLine - b.startLine);
 
-		return nodes;
+		// Drop a generic `exports` node when a more specific structural node
+		// (class / function / types) begins on the same line. `export class Foo`
+		// emits both an `exports` region ("Export: class") and a `class` region
+		// ("Class: Foo") at the identical start line; without this they render as
+		// two stacked rows saying the same thing.
+		const specificStartLines = new Set(
+			nodes
+				.filter((n) => n.type === 'function' || n.type === 'class' || n.type === 'types')
+				.map((n) => n.startLine)
+		);
+
+		return nodes.filter((n) => !(n.type === 'exports' && specificStartLines.has(n.startLine)));
 	});
+
+	// Measured height of the scrollable node area, kept current by a ResizeObserver
+	// via Svelte's `bind:clientHeight`. Drives collision-free row placement.
+	let contentHeight = $state(0);
+
+	// Non-overlapping top offset (px) for each node, proportional to its start
+	// line but de-collided so labels never overprint. See structure-layout.ts.
+	let nodeTops = $derived(
+		layoutStructureRows(
+			structure.map((n) => n.startLine),
+			totalLines,
+			contentHeight,
+			ROW_HEIGHT
+		)
+	);
 
 	// Calculate viewport indicator position
 	let viewportTop = $derived((scrollLine / Math.max(1, totalLines)) * 100);
 	let viewportHeight = $derived((visibleLines / Math.max(1, totalLines)) * 100);
-
-	/**
-	 * Get node height as percentage
-	 */
-	function getNodeHeight(node: StructureNode): number {
-		return ((node.endLine - node.startLine + 1) / Math.max(1, totalLines)) * 100;
-	}
-
-	/**
-	 * Get node top position as percentage
-	 */
-	function getNodeTop(node: StructureNode): number {
-		return (node.startLine / Math.max(1, totalLines)) * 100;
-	}
 
 	/**
 	 * Get color for node type
@@ -231,7 +247,7 @@
 			<span class="structure-map__count">{structure.length}</span>
 		</div>
 
-		<div class="structure-map__content">
+		<div class="structure-map__content" bind:clientHeight={contentHeight}>
 			<!-- Viewport indicator -->
 			<div
 				class="structure-map__viewport"
@@ -239,15 +255,15 @@
 			></div>
 
 			<!-- Structure nodes -->
-			{#each structure as node (node.id)}
+			{#each structure as node, i (node.id)}
 				<button
 					class="structure-map__node"
 					class:structure-map__node--active={isCursorInNode(node)}
 					class:structure-map__node--complex={node.metrics.complexity &&
 						node.metrics.complexity >= 50}
 					style="
-						top: {getNodeTop(node)}%;
-						height: {Math.max(1, getNodeHeight(node))}%;
+						top: {nodeTops[i] ?? 0}px;
+						height: {ROW_HEIGHT}px;
 						--node-color: {getNodeColor(node.type)};
 						--complexity-color: {getComplexityColor(node.metrics.complexity ?? 0)};
 					"
@@ -296,8 +312,8 @@
 		display: flex;
 		flex-direction: column;
 		height: 100%;
-		background: var(--color-surface, #1a1a2e);
-		border-left: 1px solid var(--color-border, #333);
+		background: var(--ide-bg-secondary, #1a2744);
+		border-left: 1px solid var(--ide-border, #a8c5d9);
 		font-size: 11px;
 		user-select: none;
 	}
@@ -307,12 +323,12 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 8px 10px;
-		border-bottom: 1px solid var(--color-border, #333);
+		border-bottom: 1px solid var(--ide-border, #a8c5d9);
 	}
 
 	.structure-map__title {
 		font-weight: 600;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 		text-transform: uppercase;
 		font-size: 10px;
 		letter-spacing: 0.05em;
@@ -323,7 +339,7 @@
 		background: rgba(255, 255, 255, 0.1);
 		border-radius: 10px;
 		font-size: 10px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 	}
 
 	.structure-map__content {
@@ -349,7 +365,8 @@
 		left: 4px;
 		right: 4px;
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
+		box-sizing: border-box;
 		gap: 4px;
 		padding: 2px 6px;
 		background: rgba(var(--node-color-rgb, 59, 130, 246), 0.15);
@@ -358,7 +375,7 @@
 		border-radius: 0 3px 3px 0;
 		cursor: pointer;
 		text-align: left;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 		font-size: 10px;
 		overflow: hidden;
 		transition: background 0.15s ease;
@@ -407,17 +424,17 @@
 		left: 0;
 		right: 0;
 		height: 2px;
-		background: var(--color-cursor, #4a9eff);
+		background: var(--ide-interactive-focus, #60a5fa);
 		pointer-events: none;
 		z-index: 10;
-		box-shadow: 0 0 4px var(--color-cursor, #4a9eff);
+		box-shadow: 0 0 4px var(--ide-interactive-focus, #60a5fa);
 	}
 
 	.structure-map__legend {
 		display: flex;
 		gap: 8px;
 		padding: 6px 10px;
-		border-top: 1px solid var(--color-border, #333);
+		border-top: 1px solid var(--ide-border, #a8c5d9);
 		flex-wrap: wrap;
 	}
 
@@ -425,7 +442,7 @@
 		display: flex;
 		align-items: center;
 		gap: 4px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		font-size: 9px;
 	}
 

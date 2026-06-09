@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Icon from './Icon.svelte';
+
 	interface Props {
 		name: string;
 		src?: string;
@@ -45,7 +47,10 @@
 	}
 
 	const initials = $derived(getInitials(name));
-	const bgColor = $derived(color ?? (isAI ? 'var(--ide-collab-ai)' : 'var(--ide-interactive)'));
+	// Default AI tint is the conversational "assistant" hue. Collaboration/presence
+	// call sites (cursors, locks) pass an explicit `--ide-collab-ai` color instead.
+	const bgColor = $derived(color ?? (isAI ? 'var(--ide-ai-assistant)' : 'var(--ide-interactive)'));
+	const aiGlyphSize = $derived(Math.round(parseInt(sizeMap[size], 10) * 0.58));
 </script>
 
 <div
@@ -60,11 +65,10 @@
 >
 	{#if src}
 		<img class="ide-avatar__img" {src} alt={name} />
+	{:else if isAI}
+		<span class="ide-avatar__ai-glyph"><Icon name="sparkles" size={aiGlyphSize} /></span>
 	{:else}
 		<span class="ide-avatar__initials">{initials}</span>
-	{/if}
-	{#if isAI}
-		<span class="ide-avatar__ai-badge">AI</span>
 	{/if}
 </div>
 
@@ -96,15 +100,11 @@
 		line-height: 1;
 	}
 
-	.ide-avatar__ai-badge {
-		position: absolute;
-		bottom: -2px;
-		right: -2px;
-		padding: 1px 3px;
-		font-size: 7px;
-		font-weight: 700;
-		background: var(--ide-collab-ai);
-		border-radius: var(--ide-radius-sm);
-		border: 1px solid var(--ide-bg-primary);
+	.ide-avatar__ai-glyph {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		line-height: 0;
+		color: white;
 	}
 </style>

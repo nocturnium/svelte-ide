@@ -281,7 +281,7 @@
 		right: 8px;
 		top: 2px;
 		font-size: 10px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		opacity: 0.7;
 	}
 
@@ -401,7 +401,7 @@
 		gap: 4px;
 		padding: 2px 8px;
 		background: rgba(30, 30, 30, 0.95);
-		border: 1px solid var(--color-border, #333);
+		border: 1px solid var(--ide-border, #a8c5d9);
 		border-radius: 4px;
 		font-size: 11px;
 		white-space: nowrap;
@@ -420,7 +420,7 @@
 	}
 
 	.ai-focus-layer__label-activity {
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		font-size: 10px;
 		max-width: 150px;
 		overflow: hidden;

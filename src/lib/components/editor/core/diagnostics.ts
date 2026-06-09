@@ -361,13 +361,13 @@ export function getSeverityIcon(severity: DiagnosticSeverity): string {
 export function getSeverityColor(severity: DiagnosticSeverity): string {
 	switch (severity) {
 		case 'error':
-			return '#f44747';
+			return 'var(--ide-error)';
 		case 'warning':
-			return '#ff8c00';
+			return 'var(--ide-warning)';
 		case 'info':
-			return '#3794ff';
+			return 'var(--ide-info)';
 		case 'hint':
-			return '#6c6c6c';
+			return 'var(--ide-text-muted)';
 	}
 }
 

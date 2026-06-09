@@ -405,8 +405,8 @@
 		width: 90vw;
 		max-width: 1200px;
 		height: 80vh;
-		background: var(--color-surface, #1e1e2e);
-		border: 1px solid var(--color-border, #333);
+		background: var(--ide-bg-secondary, #1a2744);
+		border: 1px solid var(--ide-border, #a8c5d9);
 		border-radius: 12px;
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 		display: flex;
@@ -419,14 +419,14 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 12px 16px;
-		border-bottom: 1px solid var(--color-border, #333);
+		border-bottom: 1px solid var(--ide-border, #a8c5d9);
 	}
 
 	.plugin-sandbox__title {
 		margin: 0;
 		font-size: 16px;
 		font-weight: 600;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.plugin-sandbox__actions {
@@ -447,14 +447,14 @@
 		background: transparent;
 		border: none;
 		border-radius: 4px;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		font-size: 12px;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.mode-btn:hover {
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.mode-btn.active {
@@ -486,7 +486,7 @@
 	/* Plugin sidebar */
 	.plugin-sidebar {
 		width: 240px;
-		border-right: 1px solid var(--color-border, #333);
+		border-right: 1px solid var(--ide-border, #a8c5d9);
 		padding: 12px;
 		overflow-y: auto;
 	}
@@ -495,7 +495,7 @@
 		margin: 0 0 12px;
 		font-size: 12px;
 		font-weight: 600;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		text-transform: uppercase;
 	}
 
@@ -520,7 +520,7 @@
 
 	.plugin-item:hover {
 		background: rgba(255, 255, 255, 0.05);
-		border-color: var(--color-border, #333);
+		border-color: var(--ide-border, #a8c5d9);
 	}
 
 	.plugin-item--selected {
@@ -555,12 +555,12 @@
 	.plugin-item__name {
 		font-size: 13px;
 		font-weight: 500;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.plugin-item__desc {
 		font-size: 11px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 	}
 
 	/* Preview area */
@@ -577,7 +577,7 @@
 		justify-content: center;
 		gap: 8px;
 		height: 100%;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 	}
 
 	.loading-spinner {
@@ -601,7 +601,7 @@
 		gap: 12px;
 		padding: 8px 12px;
 		background: rgba(255, 255, 255, 0.03);
-		border-bottom: 1px solid var(--color-border, #333);
+		border-bottom: 1px solid var(--ide-border, #a8c5d9);
 		font-size: 12px;
 	}
 
@@ -633,7 +633,7 @@
 	}
 
 	.transform-time {
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 	}
 
 	.transform-error {
@@ -663,7 +663,7 @@
 		background: rgba(255, 255, 255, 0.1);
 		border: none;
 		border-radius: 4px;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		font-size: 12px;
 		cursor: pointer;
 		transition: all 0.15s ease;
@@ -685,13 +685,13 @@
 		align-items: center;
 		justify-content: center;
 		height: 100%;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		text-align: center;
 	}
 
 	.preview-hint {
 		font-size: 12px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		margin-top: 8px;
 	}
 
@@ -703,7 +703,7 @@
 		font-family: 'JetBrains Mono', 'Fira Code', monospace;
 		font-size: 13px;
 		line-height: 1.5;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 		overflow: auto;
 		white-space: pre;
 	}
@@ -728,7 +728,7 @@
 		border-radius: 6px 6px 0 0;
 		font-size: 11px;
 		font-weight: 600;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		text-transform: uppercase;
 	}
 
@@ -759,7 +759,7 @@
 
 	.diff-line__num {
 		width: 40px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		text-align: right;
 		padding-right: 8px;
 		user-select: none;
@@ -767,7 +767,7 @@
 
 	.diff-line__sign {
 		width: 16px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 	}
 
 	.diff-line--add .diff-line__sign {

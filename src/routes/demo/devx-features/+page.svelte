@@ -450,9 +450,9 @@ export function DataComponent({ userId }: { userId: string }) {
 		font-weight: 600;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: #c084fc;
-		background: rgba(168, 85, 247, 0.12);
-		border: 1px solid rgba(168, 85, 247, 0.3);
+		color: var(--color-nocturnium-aurora-purple);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 12%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
 		border-radius: 999px;
 	}
 
@@ -460,7 +460,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		margin: 0 0 0.4rem;
 		font-size: 2rem;
 		font-weight: 700;
-		background: linear-gradient(135deg, #e8e8f0 0%, #c084fc 100%);
+		background: linear-gradient(135deg, #e8e8f0 0%, var(--color-nocturnium-aurora-purple) 100%);
 		-webkit-background-clip: text;
 		background-clip: text;
 		-webkit-text-fill-color: transparent;
@@ -504,8 +504,8 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.tab.active {
-		color: #a855f7;
-		background: rgba(168, 85, 247, 0.1);
+		color: var(--color-nocturnium-aurora-purple);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
 	}
 
 	/* Section */
@@ -534,10 +534,10 @@ export function DataComponent({ userId }: { userId: string }) {
 	/* Controls */
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: rgba(168, 85, 247, 0.2);
-		border: 1px solid rgba(168, 85, 247, 0.3);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
 		border-radius: 6px;
-		color: #c084fc;
+		color: var(--color-nocturnium-aurora-purple);
 		font-size: 0.875rem;
 		font-weight: 500;
 		cursor: pointer;
@@ -545,18 +545,18 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.control-btn:hover {
-		background: rgba(168, 85, 247, 0.35);
-		border-color: rgba(168, 85, 247, 0.55);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 35%, transparent);
+		border-color: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 55%, transparent);
 		color: #f3e8ff;
 	}
 
 	.control-btn.active {
-		background: #a855f7;
+		background: var(--color-nocturnium-aurora-purple);
 		color: #fff;
 	}
 
 	.control-btn.primary {
-		background: #a855f7;
+		background: var(--color-nocturnium-aurora-purple);
 		color: #fff;
 	}
 
@@ -602,8 +602,8 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.mode-btn.active {
-		background: rgba(168, 85, 247, 0.3);
-		color: #a855f7;
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	.editor-preview {
@@ -644,7 +644,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.snippets-info,
 	.diff-info {
 		padding: 1rem;
-		background: rgba(168, 85, 247, 0.1);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
 		border-radius: 8px;
 	}
 
@@ -653,7 +653,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.diff-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	.blame-info ul,
@@ -720,9 +720,9 @@ export function DataComponent({ userId }: { userId: string }) {
 		font-family: monospace;
 		font-size: 12px;
 		padding: 2px 6px;
-		background: rgba(168, 85, 247, 0.2);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
 		border-radius: 4px;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	.snippet-name {
@@ -766,9 +766,9 @@ export function DataComponent({ userId }: { userId: string }) {
 		font-size: 0.9rem;
 		text-align: center;
 		padding: 2rem 1.5rem;
-		border: 1px dashed rgba(168, 85, 247, 0.35);
+		border: 1px dashed color-mix(in srgb, var(--color-nocturnium-aurora-purple) 35%, transparent);
 		border-radius: 8px;
-		background: rgba(168, 85, 247, 0.04);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 4%, transparent);
 	}
 
 	.no-snippet-text {
@@ -811,7 +811,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		background: rgba(255, 255, 255, 0.1);
 		padding: 1px 4px;
 		border-radius: 2px;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	/* Diff demo */

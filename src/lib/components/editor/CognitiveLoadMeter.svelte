@@ -27,12 +27,12 @@
 
 	let levelColor = $derived(
 		level === 'critical'
-			? 'var(--color-error, #ef4444)'
+			? 'var(--ide-error, #ef4444)'
 			: level === 'high'
-				? 'var(--color-warning, #f59e0b)'
+				? 'var(--ide-warning, #facc15)'
 				: level === 'medium'
-					? 'var(--color-info, #3b82f6)'
-					: 'var(--color-success, #22c55e)'
+					? 'var(--ide-info, #60a5fa)'
+					: 'var(--ide-success, #4ade80)'
 	);
 
 	let levelLabel = $derived(
@@ -174,7 +174,7 @@
 	}
 
 	.cognitive-meter:focus-visible {
-		outline: 2px solid var(--color-focus, #3b82f6);
+		outline: 2px solid var(--ide-interactive-focus, #60a5fa);
 		outline-offset: 2px;
 	}
 
@@ -230,8 +230,8 @@
 		transform: translateX(-50%);
 		margin-bottom: 8px;
 		padding: 12px;
-		background-color: var(--color-surface, #1e1e1e);
-		border: 1px solid var(--color-border, #333);
+		background-color: var(--ide-bg-secondary, #1a2744);
+		border: 1px solid var(--ide-border, #a8c5d9);
 		border-radius: 8px;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 		min-width: 280px;
@@ -247,7 +247,7 @@
 		left: 50%;
 		transform: translateX(-50%);
 		border: 6px solid transparent;
-		border-top-color: var(--color-border, #333);
+		border-top-color: var(--ide-border, #a8c5d9);
 	}
 
 	.cognitive-meter__tooltip-header {
@@ -256,12 +256,12 @@
 		align-items: center;
 		margin-bottom: 8px;
 		padding-bottom: 8px;
-		border-bottom: 1px solid var(--color-border, #333);
+		border-bottom: 1px solid var(--ide-border, #a8c5d9);
 	}
 
 	.cognitive-meter__tooltip-title {
 		font-weight: 600;
-		color: var(--color-text, #fff);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.cognitive-meter__tooltip-score {
@@ -275,7 +275,7 @@
 	.cognitive-meter__tooltip-label {
 		display: block;
 		font-size: 11px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		margin-bottom: 4px;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -296,7 +296,7 @@
 	}
 
 	.cognitive-meter__tooltip-region-name {
-		color: var(--color-text, #fff);
+		color: var(--ide-text-primary, #f4f1e0);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -304,13 +304,13 @@
 	}
 
 	.cognitive-meter__tooltip-region-score {
-		color: var(--color-warning, #f59e0b);
+		color: var(--ide-warning, #facc15);
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
 	}
 
 	.cognitive-meter__tooltip-more {
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		font-style: italic;
 	}
 
@@ -320,7 +320,7 @@
 		background-color: rgba(255, 255, 255, 0.05);
 		border-radius: 4px;
 		font-size: 11px;
-		color: var(--color-text-muted, #aaa);
+		color: var(--ide-text-muted, #a8c5d9);
 		line-height: 1.4;
 	}
 </style>

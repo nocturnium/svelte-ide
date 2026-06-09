@@ -62,8 +62,8 @@
 	}
 
 	.ide-badge--primary {
-		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
-		color: var(--ide-interactive);
+		background: color-mix(in srgb, var(--ide-primary) 20%, transparent);
+		color: var(--ide-primary);
 	}
 
 	.ide-badge--success {

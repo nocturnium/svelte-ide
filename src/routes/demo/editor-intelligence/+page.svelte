@@ -1091,7 +1091,8 @@ export const formatSession = (session: UserSession): string => {
 		   scrollable, not just technically reachable. Renders only when
 		   the strip overflows (i.e. on narrow/phone widths). */
 		scrollbar-width: thin;
-		scrollbar-color: rgba(168, 85, 247, 0.5) transparent;
+		scrollbar-color: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 50%, transparent)
+			transparent;
 	}
 
 	.demo-tabs::-webkit-scrollbar {
@@ -1099,7 +1100,7 @@ export const formatSession = (session: UserSession): string => {
 	}
 
 	.demo-tabs::-webkit-scrollbar-thumb {
-		background: rgba(168, 85, 247, 0.5);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 50%, transparent);
 		border-radius: 2px;
 	}
 
@@ -1121,8 +1122,8 @@ export const formatSession = (session: UserSession): string => {
 	}
 
 	.tab.active {
-		color: #c084fc;
-		background: rgba(168, 85, 247, 0.14);
+		color: var(--color-nocturnium-aurora-purple);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 14%, transparent);
 	}
 
 	/* Section */
@@ -1197,7 +1198,7 @@ export const formatSession = (session: UserSession): string => {
 	}
 
 	.code-line--current {
-		background: rgba(168, 85, 247, 0.15);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 15%, transparent);
 	}
 
 	.line-num {
@@ -1282,14 +1283,14 @@ export const formatSession = (session: UserSession): string => {
 
 	.breadcrumbs-controls {
 		padding: 1rem;
-		background: rgba(168, 85, 247, 0.1);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
 		border-radius: 8px;
 	}
 
 	.breadcrumbs-controls h4 {
 		margin: 0 0 0.5rem;
 		font-size: 0.9rem;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	.breadcrumbs-controls ul {
@@ -1322,21 +1323,21 @@ export const formatSession = (session: UserSession): string => {
 
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: rgba(168, 85, 247, 0.2);
-		border: 1px solid rgba(168, 85, 247, 0.3);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
 		border-radius: 6px;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 		font-size: 0.875rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.control-btn:hover {
-		background: rgba(168, 85, 247, 0.3);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
 	}
 
 	.control-btn.active {
-		background: #a855f7;
+		background: var(--color-nocturnium-aurora-purple);
 		color: #fff;
 	}
 
@@ -1404,7 +1405,7 @@ export const formatSession = (session: UserSession): string => {
 		content: '•';
 		position: absolute;
 		left: 0;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	/* Outline demo */
@@ -1457,8 +1458,8 @@ export const formatSession = (session: UserSession): string => {
 	}
 
 	.sort-btn.active {
-		background: rgba(168, 85, 247, 0.3);
-		color: #a855f7;
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	/* Overlay demos */
@@ -1497,7 +1498,7 @@ export const formatSession = (session: UserSession): string => {
 	/* Feature info */
 	.feature-info {
 		padding: 1rem;
-		background: rgba(168, 85, 247, 0.1);
+		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
 		border-radius: 8px;
 		margin-top: 1rem;
 	}
@@ -1505,7 +1506,7 @@ export const formatSession = (session: UserSession): string => {
 	.feature-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: #a855f7;
+		color: var(--color-nocturnium-aurora-purple);
 	}
 
 	.feature-info ul {

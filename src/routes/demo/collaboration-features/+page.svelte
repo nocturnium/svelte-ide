@@ -154,7 +154,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 		setTimeout(() => {
 			timelineManager.captureSnapshot(SAMPLE_CODE, {
 				author: 'ai-assistant',
-				authorColor: '#a855f7',
+				authorColor: 'var(--ide-ai-assistant)',
 				isAI: true,
 				description: 'Added error handling',
 				changeType: 'ai-suggestion'
@@ -252,7 +252,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 			{
 				id: `ai-${Date.now()}`,
 				name: 'AI Assistant',
-				color: '#a855f7',
+				color: 'var(--ide-ai-assistant)',
 				isAI: true,
 				cursorLine: 45,
 				cursorColumn: 0,
@@ -327,7 +327,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 						<span>Alice</span>
 					</div>
 					<div class="legend-item">
-						<span class="legend-dot" style="background: #a855f7"></span>
+						<span class="legend-dot" style="background: var(--ide-ai-assistant)"></span>
 						<span>AI</span>
 					</div>
 					<div class="legend-item">
@@ -575,7 +575,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 	}
 
 	.demo-btn--ai {
-		background: #a855f7;
+		background: var(--ide-ai-assistant);
 		color: #fff;
 	}
 
@@ -638,10 +638,10 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.ai-badge {
 		padding: 1px 4px;
-		background: rgba(168, 85, 247, 0.2);
+		background: color-mix(in srgb, var(--ide-ai-assistant) 20%, transparent);
 		border-radius: 3px;
 		font-size: 0.625rem;
-		color: #a855f7;
+		color: var(--ide-ai-assistant);
 	}
 
 	.user-avatar :global(.ai-icon) {
