@@ -57,14 +57,10 @@ export {
 	getTokenClass,
 	tokensToHTML,
 	PlaintextTokenizer,
-	SimpleTokenizer,
-	GrammarTokenizer,
 	createToken,
 	type Token,
 	type TokenizedLine,
 	type TokenizerState,
 	type TokenType,
-	type LanguageTokenizer,
-	type TokenRule,
-	type LanguageGrammar
+	type LanguageTokenizer
 } from './tokenizer';

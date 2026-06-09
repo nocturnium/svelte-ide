@@ -134,33 +134,3 @@ export interface LanguageTokenizer {
 	/** Get initial state */
 	getInitialState(): TokenizerState;
 }
-
-/**
- * Token rule for regex-based tokenization
- */
-export interface TokenRule {
-	/** Token type to assign */
-	type: TokenType;
-	/** Regex pattern to match */
-	pattern: RegExp;
-	/** Optional: next state after matching */
-	nextState?: string;
-	/** Optional: pop state after matching */
-	popState?: boolean;
-}
-
-/**
- * Grammar definition for a language
- */
-export interface LanguageGrammar {
-	/** Language identifier */
-	language: string;
-	/** File extensions */
-	extensions: string[];
-	/** Line comment prefix */
-	lineComment?: string;
-	/** Block comment start/end */
-	blockComment?: [string, string];
-	/** Token rules by state */
-	rules: Record<string, TokenRule[]>;
-}
