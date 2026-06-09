@@ -133,7 +133,17 @@ export class EditorHelper {
 	 * Get line count
 	 */
 	async getLineCount(): Promise<number> {
-		return await this.lines.count();
+		return await this.container.locator('.custom-editor__lines').evaluate((el) => {
+			const line = el.querySelector('.custom-editor__line');
+			const lineHeight = line ? line.getBoundingClientRect().height : 0;
+			const totalHeight = parseFloat((el as HTMLElement).style.height);
+
+			if (lineHeight > 0 && Number.isFinite(totalHeight)) {
+				return Math.round(totalHeight / lineHeight);
+			}
+
+			return el.querySelectorAll('.custom-editor__line').length;
+		});
 	}
 
 	/**
@@ -158,13 +168,25 @@ export class EditorHelper {
 	 */
 	async getActiveLineIndex(): Promise<number> {
 		const allLines = await this.lines.all();
-		for (let i = 0; i < allLines.length; i++) {
-			const hasActive = await allLines[i].evaluate((el) =>
-				el.classList.contains('custom-editor__line--active')
-			);
-			if (hasActive) return i;
+		for (const line of allLines) {
+			const activeLineIndex = await line.evaluate((el) => {
+				if (!el.classList.contains('custom-editor__line--active')) return null;
+				const rawIndex = el.getAttribute('data-line-index');
+				return rawIndex === null ? null : Number(rawIndex);
+			});
+			if (activeLineIndex !== null) return activeLineIndex;
 		}
 		return -1;
+	}
+
+	/**
+	 * Get the logical cursor position announced to assistive technology.
+	 */
+	async getAnnouncedCursorPosition(): Promise<{ line: number; column: number }> {
+		const status = await this.container.locator('.custom-editor__sr-status').first().textContent();
+		const match = status?.match(/Line\s+(\d+),\s+Column\s+(\d+)/);
+		if (!match) throw new Error(`Unexpected cursor status: ${status}`);
+		return { line: Number(match[1]), column: Number(match[2]) };
 	}
 
 	/**
@@ -320,6 +342,11 @@ export async function createEditorHelper(
 	page: Page,
 	containerSelector = '.editor-container'
 ): Promise<EditorHelper> {
+	if (!page.url().includes('/demo/editor-basic')) {
+		await page.goto('/demo/editor-basic');
+		await waitForNetworkIdle(page);
+	}
+
 	// Wait a moment for Svelte to hydrate
 	await page.waitForTimeout(200);
 

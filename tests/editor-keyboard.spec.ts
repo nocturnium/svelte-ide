@@ -3,7 +3,7 @@ import { createEditorHelper, waitForNetworkIdle } from './utils/editor-helpers';
 
 test.describe('Editor Keyboard Navigation', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 

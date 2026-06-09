@@ -3,7 +3,7 @@ import { createEditorHelper, waitForNetworkIdle } from './utils/editor-helpers';
 
 test.describe('Editor Basic Functionality', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 
@@ -50,14 +50,16 @@ test.describe('Editor Basic Functionality', () => {
 		const editor = await createEditorHelper(page);
 		await editor.focus();
 
-		const initialLineCount = await editor.getLineCount();
-
 		// Move to end of first line and press Enter
+		const originalSecondLine = await editor.getLineText(1);
+		await editor.press('Control+Home');
 		await editor.press('End');
 		await editor.press('Enter');
 
-		const newLineCount = await editor.getLineCount();
-		expect(newLineCount).toBe(initialLineCount + 1);
+		await expect
+			.poll(async () => (await editor.getLineText(1)).replace(/\u00a0/g, '').trim())
+			.toBe('');
+		expect(await editor.getLineText(2)).toBe(originalSecondLine);
 	});
 
 	test('should handle Backspace to delete characters', async ({ page }) => {
@@ -139,11 +141,11 @@ test.describe('Editor Basic Functionality', () => {
 	test('should show line numbers matching line count', async ({ page }) => {
 		const editor = await createEditorHelper(page);
 
-		const lineCount = await editor.getLineCount();
+		const renderedLineCount = await editor.lines.count();
 		const lineNumbers = editor.container.locator('.custom-editor__line-number');
 		const numberCount = await lineNumbers.count();
 
-		expect(numberCount).toBe(lineCount);
+		expect(numberCount).toBe(renderedLineCount);
 	});
 
 	test('should highlight active line', async ({ page }) => {

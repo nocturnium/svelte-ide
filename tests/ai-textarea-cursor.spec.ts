@@ -29,9 +29,6 @@ test.describe('AI Panel Textarea Cursor', () => {
 		expect(cursorPos.selectionStart).toBe(testText.length);
 		expect(cursorPos.selectionEnd).toBe(testText.length);
 		expect(cursorPos.value).toBe(testText);
-
-		// Take screenshot for visual inspection
-		await page.screenshot({ path: 'tests/screenshots/cursor-after-typing.png' });
 	});
 
 	test('cursor should stay in position when typing in middle of text', async ({ page }) => {
@@ -62,8 +59,6 @@ test.describe('AI Panel Textarea Cursor', () => {
 		// Cursor should be at position 9 (6 + 3 typed chars)
 		expect(result.value).toBe('Hello abcWorld');
 		expect(result.selectionStart).toBe(9);
-
-		await page.screenshot({ path: 'tests/screenshots/cursor-middle-typing.png' });
 	});
 
 	test('textarea should auto-resize without cursor jump', async ({ page }) => {
@@ -94,8 +89,6 @@ test.describe('AI Panel Textarea Cursor', () => {
 		}));
 
 		expect(cursorPos.selectionStart).toBe(multilineText.length);
-
-		await page.screenshot({ path: 'tests/screenshots/cursor-after-resize.png' });
 	});
 
 	test('visual cursor position matches logical cursor position', async ({ page }) => {
@@ -112,9 +105,6 @@ test.describe('AI Panel Textarea Cursor', () => {
 			el.focus();
 		});
 
-		// Take screenshot to visually verify cursor position
-		await page.screenshot({ path: 'tests/screenshots/cursor-visual-position.png' });
-
 		// Get the cursor position details
 		const details = await textarea.evaluate((el: HTMLTextAreaElement) => {
 			const style = window.getComputedStyle(el);
@@ -129,8 +119,6 @@ test.describe('AI Panel Textarea Cursor', () => {
 				lineHeight: style.lineHeight
 			};
 		});
-
-		console.log('Cursor details:', details);
 		expect(details.selectionStart).toBe(5);
 	});
 
@@ -149,7 +137,5 @@ test.describe('AI Panel Textarea Cursor', () => {
 
 		expect(result.value).toBe('Testing the demo textarea');
 		expect(result.selectionStart).toBe(result.value.length);
-
-		await page.screenshot({ path: 'tests/screenshots/demo-textarea.png' });
 	});
 });

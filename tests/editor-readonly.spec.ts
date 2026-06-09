@@ -3,7 +3,7 @@ import { createEditorHelper, waitForNetworkIdle } from './utils/editor-helpers';
 
 test.describe('Editor Syntax Highlighting', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 

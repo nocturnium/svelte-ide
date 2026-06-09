@@ -3,7 +3,7 @@ import { createEditorHelper, waitForNetworkIdle } from './utils/editor-helpers';
 
 test.describe('Editor Accessibility', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 
@@ -19,13 +19,12 @@ test.describe('Editor Accessibility', () => {
 
 		// Editor should eventually receive focus
 		const editorContainer = page.locator('.editor-container');
-		const activeElement = page.locator(':focus');
 
 		// There should be a focusable element within the editor
 		const containerHandle = await editorContainer.elementHandle();
 		expect(containerHandle).not.toBeNull();
-		const focusedInEditor = await activeElement.evaluate(
-			(el, container) => container.contains(el),
+		const focusedInEditor = await page.evaluate(
+			(container) => container.contains(document.activeElement),
 			containerHandle!
 		);
 

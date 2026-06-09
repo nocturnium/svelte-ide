@@ -72,11 +72,11 @@ There are no Svelte `createEventDispatcher` events on these components — all i
 | `folding`                | `boolean`                                      | `true`  | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md). |
 | `multiCursor`            | `boolean`                                      | `true`  | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md).                                               |
 | `maxCursors`             | `number`                                       | `100`   | Upper bound on simultaneous cursors.                                                                               |
-| `complexityHighlighting` | `boolean`                                      | `true`  | Highlights high-complexity regions inline.                                                                         |
+| `complexityHighlighting` | `boolean`                                      | `false` | Highlights high-complexity regions inline.                                                                         |
 | `complexityThreshold`    | `number`                                       | `50`    | Minimum complexity score before highlighting is drawn.                                                             |
 | `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize (Ghost Pair cursors / focus regions). See [AI and agents](./ai-and-agents.md).              |
 | `showAILabels`           | `boolean`                                      | `true`  | Show name labels next to AI cursors.                                                                               |
-| `showAIFocusRegions`     | `boolean`                                      | `true`  | Shade the region an AI agent is focused on.                                                                        |
+| `showAIFocusRegions`     | `boolean`                                      | `false` | Shade the region an AI agent is focused on.                                                                        |
 | `onCursorsChange`        | `(cursors: readonly Cursor[]) => void`         | —       | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`.  |
 | `onComplexityChange`     | `(metrics: ComplexityMetrics \| null) => void` | —       | Fired when computed complexity metrics change.                                                                     |
 

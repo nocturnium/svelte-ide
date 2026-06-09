@@ -14,7 +14,7 @@ async function collapseFoldAtRawLine(editorContainer: Locator, rawLine: number):
 
 test.describe('Editor folding cursor geometry', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/folding');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 
@@ -22,7 +22,7 @@ test.describe('Editor folding cursor geometry', () => {
 		const editor = await createEditorHelper(page);
 		const targetRawLine = 16;
 
-		await collapseFoldAtRawLine(editor.container, 3);
+		await collapseFoldAtRawLine(editor.container, 0);
 
 		const targetLine = editor.container.locator(
 			`.custom-editor__line[data-line-index="${targetRawLine}"]`
@@ -45,7 +45,7 @@ test.describe('Editor folding cursor geometry', () => {
 		const editor = await createEditorHelper(page);
 		const targetRawLine = 16;
 
-		await collapseFoldAtRawLine(editor.container, 3);
+		await collapseFoldAtRawLine(editor.container, 0);
 
 		const targetLine = editor.container.locator(
 			`.custom-editor__line[data-line-index="${targetRawLine}"]`
