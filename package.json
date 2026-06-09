@@ -1,6 +1,6 @@
 {
 	"name": "@nocturnium/svelte-ide",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Svelte 5 code editor and IDE building blocks — custom editor, syntax highlighting, code folding, multi-cursor, LSP client, and optional realtime collaboration.",
 	"author": "Nocturnium & Jordan Dziat <hello@nocturnium.ai> (https://nocturnium.ai)",
 	"license": "MIT",

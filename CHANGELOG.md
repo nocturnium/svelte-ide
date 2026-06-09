@@ -1,3 +1,18 @@
+## [1.0.3](https://github.com/nocturnium/svelte-ide/compare/v1.0.2...v1.0.3) (2026-06-09)
+
+
+### Bug Fixes
+
+* **backend:** stop send-on-closed-channel panic from tearing down the LSP bridge ([a094172](https://github.com/nocturnium/svelte-ide/commit/a094172de0eb39cacdef3797628897f1bf16fd14))
+* **crdt:** make yjs a truly optional peer and wire presence through the provider ([defe79d](https://github.com/nocturnium/svelte-ide/commit/defe79d1be0d5cdde2c7e8526c7507f7cb5c4af1))
+* **editor:** align caret, selection, scroll and clicks with folded text ([3a21216](https://github.com/nocturnium/svelte-ide/commit/3a2121652377f6d65847c73af5b36ab8b268f6a1))
+* **editor:** correct multi-cursor edits and undo grouping ([34a2fad](https://github.com/nocturnium/svelte-ide/commit/34a2fadf7ea791d6b0d0ee2946698c05c60aa634))
+* **editor:** expose folding/multi-cursor via Editor/EditorPane and make overlays opt-in ([995f481](https://github.com/nocturnium/svelte-ide/commit/995f4817270fbd15ae99a10a4784a54e10d109b9))
+* Overall hardening and improvements ([3a70628](https://github.com/nocturnium/svelte-ide/commit/3a706288b9f9ec2a7ccb8bfb90906fcdeb6b9f93))
+* **services:** harden LSP socket lifecycle and isolate optimistic queues ([ed20a51](https://github.com/nocturnium/svelte-ide/commit/ed20a515aa10a8753749304521ec157ed1fb139f))
+* **stores:** make collections reactive and fix the dirty-flag latch ([49c5a31](https://github.com/nocturnium/svelte-ide/commit/49c5a311951d99466b2035980bf19eddfc4af6fb))
+* **tokenizer:** re-tokenize stale lines and make language support truthful ([f99a827](https://github.com/nocturnium/svelte-ide/commit/f99a827501b73f1265fbb07bfe9172a08a1ab6be))
+
 ## [1.0.2](https://github.com/nocturnium/svelte-ide/compare/v1.0.1...v1.0.2) (2026-06-08)
 
 
