@@ -1,3 +1,17 @@
+## [1.0.5](https://github.com/nocturnium/svelte-ide/compare/v1.0.4...v1.0.5) (2026-06-09)
+
+
+### Bug Fixes
+
+* **avatar:** default AI avatars to the assistant hue, not the presence hue ([32bf449](https://github.com/nocturnium/svelte-ide/commit/32bf449eba40db09d9337ddf5c65d35b9a6d2df3))
+* **complexity:** detect functions with TS return types and multi-line signatures ([2cfae99](https://github.com/nocturnium/svelte-ide/commit/2cfae99f9aa9b2041fada90b6125ca9ff7a378b1))
+* **components:** style all plugin states, stop badge clipping, color config icons ([21bce41](https://github.com/nocturnium/svelte-ide/commit/21bce410a66e5ecdf1cd89e7e980bce8831e916c))
+* **core:** render a clean AI glyph in Avatar instead of a clipped badge ([c7ba1c7](https://github.com/nocturnium/svelte-ide/commit/c7ba1c784a7b83213834ae6c838b33a833020d71))
+* **demo:** align demo accents to brand tokens and fix code/copy issues ([69c49db](https://github.com/nocturnium/svelte-ide/commit/69c49db82cdcc05733978d1f28c52b7597f7723c)), closes [#a855f7](https://github.com/nocturnium/svelte-ide/issues/a855f7)
+* **editor:** point intelligence components at real --ide-* design tokens ([bdf17de](https://github.com/nocturnium/svelte-ide/commit/bdf17debad6c8b4d516648f05611ffb296514338))
+* **semantic:** detect exported expression-bodied arrow functions ([f4c416d](https://github.com/nocturnium/svelte-ide/commit/f4c416dd6c5d93ef2b321592325550303a3c7656))
+* **structure-map:** de-collide labels and drop duplicate export rows ([c8a236d](https://github.com/nocturnium/svelte-ide/commit/c8a236d4ec7854eee21f5833f5e079389f81f63b))
+
 ## [1.0.4](https://github.com/nocturnium/svelte-ide/compare/v1.0.3...v1.0.4) (2026-06-09)
 
 
