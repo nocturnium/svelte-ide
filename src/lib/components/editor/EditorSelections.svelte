@@ -159,11 +159,12 @@
 </div>
 
 <!-- Cursors (all cursors rendered with primary/secondary distinction) -->
-{#if cursorVisible && !isReadonly}
+{#if !isReadonly}
 	{#each cursors as cursor (cursor.id)}
 		<div
 			class="custom-editor__cursor"
 			class:custom-editor__cursor--secondary={!cursor.isPrimary}
+			class:custom-editor__cursor--hidden={!cursorVisible}
 			style={getCursorStyleForPosition(cursor.selection.head)}
 		></div>
 	{/each}
@@ -196,6 +197,7 @@
 		background: var(--color-nocturnium-aurora-blue);
 		z-index: 10;
 		pointer-events: none;
+		opacity: 1;
 		transition: opacity 80ms;
 	}
 
@@ -203,5 +205,16 @@
 	.custom-editor__cursor--secondary {
 		background: var(--ide-interactive-muted);
 		opacity: 0.85;
+	}
+
+	.custom-editor__cursor--hidden {
+		opacity: 0;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.custom-editor__cursor {
+			opacity: 1;
+			transition: none;
+		}
 	}
 </style>

@@ -1153,21 +1153,21 @@
 	:global(.token-comment-line),
 	:global(.token-comment-block),
 	:global(.token-comment-doc) {
-		color: var(--ide-text-muted);
+		color: var(--ide-syntax-comment);
 		font-style: italic;
 	}
 
 	:global(.token-string),
 	:global(.token-string-template) {
-		color: var(--color-nocturnium-aurora-green);
+		color: var(--ide-syntax-string);
 	}
 
 	:global(.token-string-regex) {
-		color: var(--color-nocturnium-aurora-pink);
+		color: var(--ide-syntax-tag);
 	}
 
 	:global(.token-string-escape) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-constant);
 	}
 
 	:global(.token-number),
@@ -1175,7 +1175,7 @@
 	:global(.token-number-float),
 	:global(.token-number-hex),
 	:global(.token-number-binary) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-number);
 	}
 
 	:global(.token-keyword),
@@ -1184,7 +1184,7 @@
 	:global(.token-keyword-definition),
 	:global(.token-keyword-module),
 	:global(.token-keyword-storage) {
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-syntax-keyword);
 	}
 
 	:global(.token-operator),
@@ -1192,30 +1192,30 @@
 	:global(.token-operator-comparison),
 	:global(.token-operator-logical),
 	:global(.token-operator-assignment) {
-		color: var(--ide-text-primary);
+		color: var(--ide-syntax-operator);
 	}
 
 	:global(.token-variable) {
-		color: var(--ide-text-primary);
+		color: var(--ide-syntax-variable);
 	}
 
 	:global(.token-variable-definition) {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-accent);
 	}
 
 	:global(.token-variable-parameter) {
-		color: color-mix(in srgb, var(--color-nocturnium-wave) 80%, var(--ide-text-muted));
+		color: color-mix(in srgb, var(--ide-accent) 80%, var(--ide-text-muted));
 	}
 
 	:global(.token-function),
 	:global(.token-function-definition),
 	:global(.token-function-call) {
-		color: var(--color-nocturnium-aurora-blue);
+		color: var(--ide-syntax-function);
 	}
 
 	:global(.token-property),
 	:global(.token-property-definition) {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-accent);
 	}
 
 	:global(.token-type),
@@ -1223,14 +1223,14 @@
 	:global(.token-type-interface),
 	:global(.token-type-namespace),
 	:global(.token-type-builtin) {
-		color: var(--color-nocturnium-teal);
+		color: var(--ide-syntax-type);
 	}
 
 	:global(.token-constant),
 	:global(.token-constant-boolean),
 	:global(.token-constant-null),
 	:global(.token-constant-builtin) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-constant);
 	}
 
 	:global(.token-punctuation),
@@ -1239,34 +1239,34 @@
 	:global(.token-punctuation-paren),
 	:global(.token-punctuation-separator),
 	:global(.token-punctuation-accessor) {
-		color: var(--ide-text-secondary);
+		color: var(--ide-syntax-punctuation);
 	}
 
 	/* Svelte template braces - make them stand out */
 	:global(.token-punctuation-brace) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-constant);
 		font-weight: 600;
 	}
 
 	:global(.token-tag),
 	:global(.token-tag-name) {
-		color: var(--color-nocturnium-aurora-pink);
+		color: var(--ide-syntax-tag);
 	}
 
 	:global(.token-tag-attribute) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-attribute);
 	}
 
 	:global(.token-tag-attribute-value) {
-		color: var(--color-nocturnium-aurora-green);
+		color: var(--ide-syntax-string);
 	}
 
 	:global(.token-tag-punctuation) {
-		color: var(--ide-text-secondary);
+		color: var(--ide-syntax-punctuation);
 	}
 
 	:global(.token-markup-heading) {
-		color: var(--color-nocturnium-aurora-blue);
+		color: var(--ide-syntax-function);
 		font-weight: bold;
 	}
 
@@ -1279,12 +1279,12 @@
 	}
 
 	:global(.token-markup-link) {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-accent);
 		text-decoration: underline;
 	}
 
 	:global(.token-markup-code) {
-		color: var(--color-nocturnium-aurora-green);
+		color: var(--ide-syntax-string);
 		background: var(--ide-bg-tertiary);
 	}
 
@@ -1294,7 +1294,7 @@
 	}
 
 	:global(.token-markup-list) {
-		color: var(--color-nocturnium-ember);
+		color: var(--ide-text-accent);
 	}
 
 	:global(.token-invalid) {
