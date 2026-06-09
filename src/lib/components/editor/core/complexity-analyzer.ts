@@ -73,7 +73,11 @@ const THRESHOLDS = {
  * Weights for different complexity factors
  */
 const WEIGHTS = {
-	nestingDepth: 15,
+	// Nesting is the dominant cognitive-load factor, but 15/level over-rated
+	// shallow code: a function with two nested `if`s landed at ~71 ("High").
+	// 12/level keeps deeply-nested code critical while letting genuinely medium
+	// code read as medium.
+	nestingDepth: 12,
 	branchingFactor: 8,
 	lineCount: 0.3,
 	identifierCount: 0.2,
@@ -140,12 +144,15 @@ export class ComplexityAnalyzer {
 	 * Get complexity for a specific line
 	 */
 	getLineComplexity(metrics: ComplexityMetrics, line: number): number {
+		// A line can sit inside several nested regions; report the highest score
+		// so an inner low-complexity region never masks the hot function around it.
+		let best = 0;
 		for (const region of metrics.regions) {
-			if (line >= region.startLine && line <= region.endLine) {
-				return region.score;
+			if (line >= region.startLine && line <= region.endLine && region.score > best) {
+				best = region.score;
 			}
 		}
-		return 0;
+		return best;
 	}
 
 	/**
@@ -344,6 +351,20 @@ export class ComplexityAnalyzer {
 		allowMethodStyle: boolean
 	): { type: 'function' | 'class'; name?: string } | undefined {
 		if (funcMatch) {
+			// The arrow-assignment branch (`name = (`) also matches a parenthesised
+			// expression like `const x = (a - b) / c`, which is NOT a function.
+			// Only treat it as one when the line actually starts an arrow: it
+			// contains `=>`, or it has an unclosed `(` that opens a multi-line arrow
+			// signature. Otherwise the stale candidate gets attached to the next
+			// `if (...) {` block and a phantom region is reported.
+			const isArrowAssignment = !!funcMatch[3] && !funcMatch[2] && !funcMatch[4] && !funcMatch[5];
+			if (isArrowAssignment) {
+				const opens = (text.match(/\(/g) || []).length;
+				const closes = (text.match(/\)/g) || []).length;
+				if (!text.includes('=>') && opens <= closes) {
+					return undefined;
+				}
+			}
 			return {
 				type: funcMatch[5] ? 'class' : 'function',
 				name: funcMatch[2] || funcMatch[3] || funcMatch[4] || funcMatch[5]

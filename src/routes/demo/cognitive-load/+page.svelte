@@ -282,12 +282,12 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 						<span
 							class="metric-value"
 							style="color: {complexityMetrics.level === 'critical'
-								? 'var(--color-error, #ef4444)'
+								? 'var(--ide-error)'
 								: complexityMetrics.level === 'high'
-									? 'var(--color-warning, #f59e0b)'
+									? 'var(--ide-warning)'
 									: complexityMetrics.level === 'medium'
-										? 'var(--color-info, #3b82f6)'
-										: 'var(--color-success, #22c55e)'}">{complexityMetrics.overall}</span
+										? 'var(--ide-info)'
+										: 'var(--ide-success)'}">{complexityMetrics.overall}</span
 						>
 						<span class="metric-label">Overall Score</span>
 					</div>
@@ -303,23 +303,23 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			{/if}
 		</div>
 
-		<!-- Legend -->
+		<!-- Legend (ranges match the analyzer's complexity levels) -->
 		<div class="complexity-legend">
 			<div class="legend-item">
-				<span class="legend-color" style="background: var(--color-success, #22c55e)"></span>
-				<span>Low (0-30)</span>
+				<span class="legend-color" style="background: var(--ide-success)"></span>
+				<span>Low (0-49)</span>
 			</div>
 			<div class="legend-item">
-				<span class="legend-color" style="background: var(--color-info, #3b82f6)"></span>
-				<span>Medium (30-50)</span>
+				<span class="legend-color" style="background: var(--ide-info)"></span>
+				<span>Medium (50-69)</span>
 			</div>
 			<div class="legend-item">
-				<span class="legend-color" style="background: var(--color-warning, #f59e0b)"></span>
-				<span>High (50-70)</span>
+				<span class="legend-color" style="background: var(--ide-warning)"></span>
+				<span>High (70-84)</span>
 			</div>
 			<div class="legend-item">
-				<span class="legend-color" style="background: var(--color-error, #ef4444)"></span>
-				<span>Critical (70+)</span>
+				<span class="legend-color" style="background: var(--ide-error)"></span>
+				<span>Critical (85+)</span>
 			</div>
 		</div>
 	</section>

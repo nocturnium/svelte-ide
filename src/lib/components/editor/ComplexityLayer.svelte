@@ -83,9 +83,11 @@
 	 * Get the color based on score level
 	 */
 	function getColor(score: number): string {
-		if (score >= 85) return '#ef4444'; // Critical - red
-		if (score >= 70) return '#f59e0b'; // High - orange
-		return '#3b82f6'; // Medium - blue
+		// Bands match the analyzer's levels: critical >= 85, high >= 70,
+		// medium otherwise (lines below the minScore threshold aren't shown).
+		if (score >= 85) return 'var(--ide-error)'; // Critical
+		if (score >= 70) return 'var(--ide-warning)'; // High
+		return 'var(--ide-info)'; // Medium
 	}
 
 	/**
