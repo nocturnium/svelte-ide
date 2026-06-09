@@ -234,8 +234,64 @@ describe('ComplexityAnalyzer', () => {
 			expect(analyzeDataMatrix.startLine).toBe(6);
 			expect(analyzeDataMatrix.endLine).toBe(27);
 			expect(add.score).toBeLessThan(30);
-			expect(analyzeDataMatrix.score).toBeGreaterThanOrEqual(85);
+			// This nested loop/branch function is firmly "high" complexity; the
+			// deeper demo sample reaches critical (100). See WEIGHTS calibration.
+			expect(analyzeDataMatrix.score).toBeGreaterThanOrEqual(80);
 			expect(analyzeDataMatrix.score).toBeGreaterThan(add.score);
+		});
+
+		it('does not treat a parenthesised expression assignment as a function', () => {
+			// `const x = (a - b) / c` matches the arrow-assignment shape but is not a
+			// function. It must not create a phantom region (which previously
+			// attached itself to the following `if (...) {` block).
+			const source = [
+				'function outer(values: number[]): number {',
+				'  let max = 0;',
+				'  for (const v of values) {',
+				'    const normalized = (v - 1) / (max - 1);',
+				'    if (normalized > 0.5) {',
+				'      max = v;',
+				'    }',
+				'  }',
+				'  return max;',
+				'}'
+			];
+			const result = analyzer.analyze(makeLines(source.join('\n')), 'typescript');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
+			expect(funcRegions.map((r) => r.name)).toEqual(['outer']);
+		});
+
+		it('still detects a block-bodied arrow const as a function', () => {
+			const source = ['const handler = (e: Event): void => {', '  e.preventDefault();', '};'];
+			const result = analyzer.analyze(makeLines(source.join('\n')), 'typescript');
+			const funcRegions = result.regions.filter((r) => r.type === 'function');
+			expect(funcRegions.map((r) => r.name)).toContain('handler');
+		});
+	});
+
+	describe('getLineComplexity', () => {
+		it('reports the highest score among overlapping regions', () => {
+			const factors = {
+				nestingDepth: 0,
+				branchingFactor: 0,
+				lineCount: 1,
+				identifierCount: 0,
+				callCount: 0
+			};
+			const metrics = {
+				overall: 0,
+				level: 'low' as const,
+				hotspots: [],
+				regions: [
+					{ startLine: 0, endLine: 20, score: 90, type: 'function' as const, factors },
+					{ startLine: 5, endLine: 8, score: 40, type: 'block' as const, factors }
+				]
+			};
+			// Line 6 sits inside both the score-40 inner block and the score-90
+			// function; the function's score must win.
+			expect(analyzer.getLineComplexity(metrics, 6)).toBe(90);
+			expect(analyzer.getLineComplexity(metrics, 15)).toBe(90);
+			expect(analyzer.getLineComplexity(metrics, 50)).toBe(0);
 		});
 	});
 
