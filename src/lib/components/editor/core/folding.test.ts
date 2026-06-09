@@ -378,6 +378,65 @@ describe('detectCommentFolds', () => {
 });
 
 // ============================================================
+// detectImportFolds (via detectFoldRegions with imports only)
+// ============================================================
+
+describe('detectImportFolds', () => {
+	/** Helper that isolates import detection */
+	function detectImports(code: string, language = 'javascript'): FoldRegion[] {
+		return detectFoldRegions(makeLines(code), language, {
+			brackets: false,
+			indentation: false,
+			regions: false,
+			comments: false,
+			imports: true
+		});
+	}
+
+	it('folds a run of consecutive ES import statements', () => {
+		const code = [
+			"import { a } from 'a';", // 0
+			"import { b } from 'b';", // 1
+			"import { c } from 'c';", // 2
+			'', // 3
+			'const x = 1;' // 4
+		].join('\n');
+
+		const regions = detectImports(code);
+		expect(regions.length).toBe(1);
+		expect(regions[0].startLine).toBe(0);
+		expect(regions[0].endLine).toBe(2);
+		expect(regions[0].type).toBe('import');
+	});
+
+	it('does not fold a single import line', () => {
+		expect(detectImports("import { a } from 'a';\nconst x = 1;").length).toBe(0);
+	});
+
+	it('folds Python from-import groups', () => {
+		const code = ['from os import path', 'from sys import argv', 'x = 1'].join('\n');
+		const regions = detectImports(code, 'python');
+		expect(regions.length).toBe(1);
+		expect(regions[0].startLine).toBe(0);
+		expect(regions[0].endLine).toBe(1);
+	});
+
+	it('treats blank-separated import groups as separate folds', () => {
+		const code = [
+			"import { a } from 'a';", // 0
+			"import { b } from 'b';", // 1
+			'', // 2
+			"import { c } from 'c';", // 3
+			"import { d } from 'd';" // 4
+		].join('\n');
+		const regions = detectImports(code);
+		expect(regions.length).toBe(2);
+		expect(regions[0].endLine).toBe(1);
+		expect(regions[1].startLine).toBe(3);
+	});
+});
+
+// ============================================================
 // detectFoldRegions — combined strategies
 // ============================================================
 
