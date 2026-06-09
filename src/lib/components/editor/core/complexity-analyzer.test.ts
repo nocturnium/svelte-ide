@@ -171,11 +171,7 @@ describe('ComplexityAnalyzer', () => {
 			expect(result.regions[0].type).not.toBe('file');
 
 			const funcRegions = result.regions.filter((r) => r.type === 'function');
-			expect(funcRegions.map((r) => r.name).sort()).toEqual([
-				'add',
-				'capitalize',
-				'processUser'
-			]);
+			expect(funcRegions.map((r) => r.name).sort()).toEqual(['add', 'capitalize', 'processUser']);
 
 			const add = funcRegions.find((r) => r.name === 'add')!;
 			const processUser = funcRegions.find((r) => r.name === 'processUser')!;
