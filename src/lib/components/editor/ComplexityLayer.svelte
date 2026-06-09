@@ -17,13 +17,27 @@
 		lineHeight: number;
 		/** Gutter width in pixels */
 		gutterWidth?: number;
+		/**
+		 * Full height of the scrollable content in pixels. The layer must span the
+		 * whole document (not just one viewport) or indicators below the first
+		 * screenful get clipped — which previously hid every high-complexity region
+		 * that sat past the initial view.
+		 */
+		totalHeight?: number;
 		/** Minimum score to show indicators (default: 50) */
 		minScore?: number;
 		/** Whether indicators are enabled */
 		enabled?: boolean;
 	}
 
-	let { metrics, lineHeight, gutterWidth = 50, minScore = 50, enabled = true }: Props = $props();
+	let {
+		metrics,
+		lineHeight,
+		gutterWidth = 50,
+		totalHeight = 0,
+		minScore = 50,
+		enabled = true
+	}: Props = $props();
 
 	// Filter regions that exceed the threshold
 	let highlightedRegions = $derived(
@@ -116,7 +130,11 @@
 </script>
 
 {#if enabled && lineScores.size > 0}
-	<div class="complexity-gutter" aria-hidden="true" style="width: {gutterWidth}px;">
+	<div
+		class="complexity-gutter"
+		aria-hidden="true"
+		style="width: {gutterWidth}px;{totalHeight ? ` height: ${totalHeight}px;` : ''}"
+	>
 		{#each [...lineScores.entries()] as [line, data] (line)}
 			<div
 				class="complexity-gutter__indicator"
@@ -176,10 +194,11 @@
 		position: absolute;
 		top: 0;
 		left: 0;
+		/* Height is set inline to the full content height so indicators below the
+		   first viewport are not clipped. Fall back to the viewport when unknown. */
 		bottom: 0;
 		pointer-events: none;
 		z-index: 5;
-		overflow: hidden;
 	}
 
 	.complexity-gutter__indicator {

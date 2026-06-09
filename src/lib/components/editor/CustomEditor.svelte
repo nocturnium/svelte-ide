@@ -1005,6 +1005,7 @@
 				metrics={complexityMetrics}
 				{lineHeight}
 				{gutterWidth}
+				totalHeight={totalContentHeight}
 				minScore={complexityThreshold}
 				enabled={complexityHighlighting}
 			/>

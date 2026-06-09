@@ -35,6 +35,48 @@ test.describe('cognitive-load complexity highlighting', () => {
 		await expect(legend).toContainText('Medium (50-69)');
 		await expect(legend).toContainText('Critical (85+)');
 	});
+
+	test('high-complexity indicators render past the first viewport (not clipped)', async ({
+		page
+	}) => {
+		await page.goto('/demo/cognitive-load');
+		await page.waitForLoadState('networkidle');
+		await page.waitForTimeout(1000);
+
+		await page.locator('.editor-container').scrollIntoViewIfNeeded();
+		// Scroll the editor down to the high-complexity function, well past the
+		// first screenful.
+		await page.evaluate(() => {
+			const content = document.querySelector('.editor-container .custom-editor__content');
+			if (content) (content as HTMLElement).scrollTop = 700;
+		});
+		await page.waitForTimeout(400);
+
+		const visibleRed = await page.evaluate(() => {
+			const content = document.querySelector(
+				'.editor-container .custom-editor__content'
+			) as HTMLElement;
+			const box = content.getBoundingClientRect();
+			const RED = 'rgb(239, 68, 68)'; // --ide-error / critical
+			const indicators = Array.from(
+				document.querySelectorAll('.complexity-gutter__indicator')
+			) as HTMLElement[];
+			let visible = 0;
+			for (const el of indicators) {
+				if (getComputedStyle(el).backgroundColor !== RED) continue;
+				const r = el.getBoundingClientRect();
+				if (r.top < box.top || r.bottom > box.bottom || r.width === 0) continue;
+				const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+				if (hit && hit.classList.contains('complexity-gutter__indicator')) visible++;
+			}
+			return visible;
+		});
+
+		// Regression: the gutter layer was sized to a single viewport, so the
+		// critical region (which starts below the first screenful) was clipped and
+		// never shown — only the medium region near the top was visible.
+		expect(visibleRed).toBeGreaterThan(3);
+	});
 });
 
 test.describe('semantic fold presets', () => {
