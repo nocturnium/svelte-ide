@@ -66,4 +66,61 @@ test.describe('semantic fold presets', () => {
 		);
 		expect(collapsedCleared).toBe(0);
 	});
+
+	test('every preset folds something (editor height shrinks)', async ({ page }) => {
+		await page.goto('/demo/semantic-features');
+		await page.waitForLoadState('networkidle');
+		await page.waitForTimeout(1000);
+
+		// The editor virtualizes, so count rendered "collapsed" nodes is unreliable;
+		// instead measure the rendered line column height, which shrinks as folds
+		// hide lines.
+		const linesHeight = () =>
+			page.evaluate(() => {
+				const lines = document.querySelector('.editor-pane .custom-editor__lines');
+				return lines ? (lines as HTMLElement).getBoundingClientRect().height : -1;
+			});
+
+		const baseline = await linesHeight();
+		expect(baseline).toBeGreaterThan(0);
+
+		const count = await page.locator('.preset-card__apply').count();
+		expect(count).toBe(6);
+
+		for (let i = 0; i < count; i++) {
+			await page.locator('.preset-card__apply').nth(i).click();
+			await page.waitForTimeout(350);
+			const h = await linesHeight();
+			expect(h, `preset #${i} should fold at least one region`).toBeLessThan(baseline);
+			const clear = page.locator('.preset-card--active .preset-card__clear');
+			if (await clear.count()) {
+				await clear.click();
+				await page.waitForTimeout(250);
+			}
+		}
+	});
+
+	test('an import-hiding preset folds the import group', async ({ page }) => {
+		await page.goto('/demo/semantic-features');
+		await page.waitForLoadState('networkidle');
+		await page.waitForTimeout(1000);
+
+		// "Code Review" hides imports; the consecutive import lines collapse into a
+		// single foldable header (import-group folding).
+		await page.locator('.preset-card__apply', { hasText: 'Code Review' }).click();
+		await page.waitForTimeout(500);
+
+		const importLineHidden = await page.evaluate(() => {
+			// Line index 2 (0-based) is the 3rd import; it should be hidden once the
+			// import group collapses onto its header line.
+			const lines = Array.from(
+				document.querySelectorAll('.editor-pane .custom-editor__line')
+			) as HTMLElement[];
+			const indices = lines.map((l) => l.dataset.lineIndex);
+			return { hasLine1: indices.includes('1'), hasLine3: indices.includes('3') };
+		});
+		// The header line (index 1) stays; a folded-away import line (index 3) is gone.
+		expect(importLineHidden.hasLine1).toBe(true);
+		expect(importLineHidden.hasLine3).toBe(false);
+	});
 });

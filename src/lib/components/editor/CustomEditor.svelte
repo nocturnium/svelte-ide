@@ -510,10 +510,22 @@
 		if (!folding || !editorState) return;
 		foldManager.expandAll();
 		const analyzer = getSemanticAnalyzer();
-		const regions = analyzer.analyze(editorState.lines, language);
-		for (const category of preset.hide) {
-			for (const region of analyzer.getByCategory(regions, category)) {
-				foldManager.collapse(region.startLine);
+		const semanticRegions = analyzer.analyze(editorState.lines, language);
+		const foldRegions = foldManager.getRegions();
+
+		// Semantic region boundaries don't always line up exactly with bracket-fold
+		// headers — a function's foldable `{` can sit a line below its doc-commented
+		// header, and a hidden category (e.g. `private`, `error-handling`) may cover
+		// several nested blocks. So collapse every foldable block whose header falls
+		// within a hidden semantic region's range, rather than requiring an exact
+		// header-line match (which silently folded almost nothing). collapse() is
+		// idempotent, so collapsing the same header twice is harmless.
+		for (const region of semanticRegions) {
+			if (!preset.hide.includes(region.category)) continue;
+			for (const fold of foldRegions) {
+				if (fold.startLine >= region.startLine && fold.startLine <= region.endLine) {
+					foldManager.collapse(fold.startLine);
+				}
 			}
 		}
 	}

@@ -20,7 +20,7 @@ export interface FoldRegion {
 	/** Indentation level (for nested folds) */
 	level: number;
 	/** Type of fold region */
-	type: 'bracket' | 'indentation' | 'region' | 'comment';
+	type: 'bracket' | 'indentation' | 'region' | 'comment' | 'import';
 	/** Whether this region is currently collapsed */
 	collapsed: boolean;
 }
@@ -37,6 +37,8 @@ export interface FoldingConfig {
 	regions: boolean;
 	/** Enable multi-line comment folding */
 	comments: boolean;
+	/** Enable folding a run of consecutive import statements */
+	imports: boolean;
 	/** Minimum lines for a foldable region */
 	minLines: number;
 }
@@ -46,6 +48,7 @@ const DEFAULT_CONFIG: FoldingConfig = {
 	indentation: true,
 	regions: true,
 	comments: true,
+	imports: true,
 	minLines: 2
 };
 
@@ -535,6 +538,39 @@ function detectCommentFolds(lines: readonly Line[], minLines: number = 2): FoldR
 /**
  * Detect all fold regions in a document
  */
+/**
+ * Detect a fold region for each run of consecutive import statements. Import
+ * groups have no braces of their own, so without this an editor (and the
+ * "fold imports" semantic preset) can't collapse them.
+ */
+function detectImportFolds(lines: readonly Line[], minLines: number = 2): FoldRegion[] {
+	const regions: FoldRegion[] = [];
+	// ES `import ... from`, side-effect `import '...'`, and Python `from x import`.
+	const isImportLine = (text: string) =>
+		/^\s*import\b/.test(text) || /^\s*from\s+\S+\s+import\b/.test(text);
+
+	let start = -1;
+	for (let i = 0; i <= lines.length; i++) {
+		const isImport = i < lines.length && isImportLine(lines[i].text);
+		if (isImport) {
+			if (start === -1) start = i;
+		} else if (start !== -1) {
+			const end = i - 1;
+			if (end - start + 1 >= minLines) {
+				regions.push({
+					startLine: start,
+					endLine: end,
+					level: 0,
+					type: 'import',
+					collapsed: false
+				});
+			}
+			start = -1;
+		}
+	}
+	return regions;
+}
+
 export function detectFoldRegions(
 	lines: readonly Line[],
 	language: string = 'plaintext',
@@ -576,6 +612,10 @@ export function detectFoldRegions(
 
 	if (cfg.comments) {
 		allRegions.push(...detectCommentFolds(lines, cfg.minLines));
+	}
+
+	if (cfg.imports) {
+		allRegions.push(...detectImportFolds(lines, cfg.minLines));
 	}
 
 	// Sort by start line, then by length (longer regions first for nesting)
