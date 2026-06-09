@@ -11,7 +11,7 @@
 		startedAt?: Date;
 	}
 
-	let { toolCall, status = 'completed', result, error, duration, startedAt }: Props = $props();
+	let { toolCall, status = 'pending', result, error, duration, startedAt }: Props = $props();
 
 	let expanded = $state(false);
 	let showResult = $state(false);

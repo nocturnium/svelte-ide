@@ -85,11 +85,14 @@
 
 	/* Plugin Status Colors */
 	--ide-plugin-draft: var(--ide-text-muted);
+	--ide-plugin-submitted: var(--ide-info);
 	--ide-plugin-reviewing: var(--color-nocturnium-aurora-yellow);
 	--ide-plugin-approved: var(--color-nocturnium-aurora-green);
+	--ide-plugin-testing: var(--color-nocturnium-teal);
 	--ide-plugin-rejected: var(--ide-error);
 	--ide-plugin-deploying: var(--color-nocturnium-aurora-blue);
 	--ide-plugin-deployed: var(--color-nocturnium-aurora-green);
+	--ide-plugin-rolled_back: var(--color-nocturnium-flame);
 
 	/* CRDT Collaboration Colors */
 	--ide-collab-cursor-1: var(--color-nocturnium-aurora-blue);
@@ -397,6 +400,11 @@
 	color: var(--ide-plugin-draft);
 }
 
+.ide-plugin-status--submitted {
+	background-color: color-mix(in srgb, var(--ide-plugin-submitted) 20%, transparent);
+	color: var(--ide-plugin-submitted);
+}
+
 .ide-plugin-status--reviewing {
 	background-color: color-mix(in srgb, var(--ide-plugin-reviewing) 20%, transparent);
 	color: var(--ide-plugin-reviewing);
@@ -405,6 +413,11 @@
 .ide-plugin-status--approved {
 	background-color: color-mix(in srgb, var(--ide-plugin-approved) 20%, transparent);
 	color: var(--ide-plugin-approved);
+}
+
+.ide-plugin-status--testing {
+	background-color: color-mix(in srgb, var(--ide-plugin-testing) 20%, transparent);
+	color: var(--ide-plugin-testing);
 }
 
 .ide-plugin-status--rejected {
@@ -420,6 +433,11 @@
 .ide-plugin-status--deployed {
 	background-color: color-mix(in srgb, var(--ide-plugin-deployed) 20%, transparent);
 	color: var(--ide-plugin-deployed);
+}
+
+.ide-plugin-status--rolled_back {
+	background-color: color-mix(in srgb, var(--ide-plugin-rolled_back) 20%, transparent);
+	color: var(--ide-plugin-rolled_back);
 }
 
 /* Agent Status Animations */

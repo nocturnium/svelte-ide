@@ -208,7 +208,9 @@
 					<Icon name="sparkles" size={16} />
 					<span>AI Assistant</span>
 				</div>
-				<span class="ai-panel__mock-badge">Demo mock - no real model</span>
+				<span class="ai-panel__mock-badge" title="Demo mock - no real model"
+					>Demo mock - no real model</span
+				>
 			</div>
 			<div class="ai-panel__actions">
 				<Button variant="ghost" size="xs" onclick={handleNewConversation} title="New conversation">
@@ -355,6 +357,8 @@
 		display: inline-flex;
 		align-items: center;
 		min-width: 0;
+		max-width: 100%;
+		overflow: hidden;
 		padding: 0.125rem var(--ide-spacing-sm);
 		border: 1px solid color-mix(in srgb, var(--ide-accent) 40%, var(--ide-border));
 		border-radius: var(--ide-radius-full);
@@ -363,6 +367,7 @@
 		font-size: var(--ide-font-size-xs);
 		font-weight: 500;
 		line-height: var(--ide-line-height-normal);
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
