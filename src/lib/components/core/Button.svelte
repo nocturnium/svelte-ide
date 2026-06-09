@@ -85,12 +85,12 @@
 
 	/* Variants */
 	.ide-button--primary {
-		background: var(--ide-interactive-active);
+		background: var(--ide-primary);
 		color: var(--ide-text-primary);
 	}
 
 	.ide-button--primary:hover:not(:disabled) {
-		background: var(--ide-interactive-hover);
+		background: var(--ide-primary-hover);
 	}
 
 	.ide-button--secondary {

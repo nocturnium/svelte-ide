@@ -65,6 +65,12 @@
 	--ide-interactive-muted: color-mix(in srgb, var(--ide-interactive) 70%, transparent);
 	--ide-interactive-rgb: 74, 141, 183;
 
+	/* Primary action — the signature warm ember accent, shared as a single
+	   source of truth by primary buttons and badges so "primary" reads the
+	   same everywhere. */
+	--ide-primary: var(--ide-interactive-active);
+	--ide-primary-hover: var(--ide-interactive-hover);
+
 	/* IDE Accent Colors */
 	--ide-accent: var(--color-nocturnium-wave);
 	--ide-accent-hover: var(--color-nocturnium-flame);
