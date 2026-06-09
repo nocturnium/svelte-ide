@@ -1,3 +1,12 @@
+## [1.0.6](https://github.com/nocturnium/svelte-ide/compare/v1.0.5...v1.0.6) (2026-06-09)
+
+
+### Bug Fixes
+
+* **complexity:** align gutter colors and demo legend with analyzer levels ([49843e9](https://github.com/nocturnium/svelte-ide/commit/49843e94c87ed18051b877b6ef7ba0e8e25ca92b))
+* **complexity:** drop phantom regions and stop over-rating shallow code ([3598108](https://github.com/nocturnium/svelte-ide/commit/3598108c3df9868aa896d57afe4e67e7d2da99e6))
+* **editor:** make semantic fold presets actually fold ([3a29e1f](https://github.com/nocturnium/svelte-ide/commit/3a29e1ff576937ae5b211bd392fa915061864009))
+
 ## [1.0.5](https://github.com/nocturnium/svelte-ide/compare/v1.0.4...v1.0.5) (2026-06-09)
 
 
