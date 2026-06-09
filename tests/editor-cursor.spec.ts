@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Editor Cursor Position', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await page.waitForLoadState('networkidle');
 	});
 
@@ -29,16 +29,12 @@ test.describe('Editor Cursor Position', () => {
 
 		if (cursorBox && lineBox) {
 			// Cursor should be within the active line vertically
-			console.log('Cursor:', cursorBox);
-			console.log('Line:', lineBox);
 
 			// Cursor top should be >= line top
 			expect(cursorBox.y).toBeGreaterThanOrEqual(lineBox.y - 1);
 			// Cursor bottom should be <= line bottom
 			expect(cursorBox.y + cursorBox.height).toBeLessThanOrEqual(lineBox.y + lineBox.height + 1);
 		}
-
-		await page.screenshot({ path: 'tests/screenshots/editor-cursor-position.png' });
 	});
 
 	test('cursor should move with arrow keys and stay aligned', async ({ page }) => {
@@ -61,15 +57,10 @@ test.describe('Editor Cursor Position', () => {
 		const lineBox = await activeLine.boundingBox();
 
 		if (cursorBox && lineBox) {
-			console.log('After moving down - Cursor:', cursorBox);
-			console.log('After moving down - Line:', lineBox);
-
 			// Cursor should still be within the active line
 			expect(cursorBox.y).toBeGreaterThanOrEqual(lineBox.y - 1);
 			expect(cursorBox.y + cursorBox.height).toBeLessThanOrEqual(lineBox.y + lineBox.height + 1);
 		}
-
-		await page.screenshot({ path: 'tests/screenshots/editor-cursor-after-move.png' });
 	});
 
 	test('cursor height should match line height', async ({ page }) => {
@@ -85,9 +76,6 @@ test.describe('Editor Cursor Position', () => {
 		const lineBox = await line.boundingBox();
 
 		if (cursorBox && lineBox) {
-			console.log('Cursor height:', cursorBox.height);
-			console.log('Line height:', lineBox.height);
-
 			// Cursor height should approximately match line height (within 2px tolerance)
 			expect(Math.abs(cursorBox.height - lineBox.height)).toBeLessThanOrEqual(2);
 		}

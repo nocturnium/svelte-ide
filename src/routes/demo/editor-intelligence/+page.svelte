@@ -2,7 +2,7 @@
 	/**
 	 * Phase 6: Editor Intelligence Features Demo
 	 *
-	 * Demonstrates Minimap, Breadcrumbs, Quick Actions, and Symbol Outline.
+	 * Demonstrates Minimap, Breadcrumbs, Quick Actions, Symbol Outline, and overlay intelligence.
 	 */
 
 	import { onMount } from 'svelte';
@@ -10,14 +10,28 @@
 	import Breadcrumbs, { type BreadcrumbSymbol } from '$lib/components/editor/Breadcrumbs.svelte';
 	import QuickActionsMenu from '$lib/components/editor/QuickActionsMenu.svelte';
 	import SymbolOutline, { type DocumentSymbol } from '$lib/components/editor/SymbolOutline.svelte';
+	import EchoCursorLayer from '$lib/components/editor/EchoCursorLayer.svelte';
+	import GhostBracketLayer from '$lib/components/editor/GhostBracketLayer.svelte';
+	import ContextLens from '$lib/components/editor/ContextLens.svelte';
 	import {
 		createQuickActionsManager,
 		type QuickActionsManager,
 		type CodeAction
 	} from '$lib/components/editor/core/quick-actions';
+	import {
+		createEchoCursorManager,
+		type EchoCursorManager
+	} from '$lib/components/editor/core/echo-cursor';
+	import {
+		createBracketHealer,
+		type BracketHealer
+	} from '$lib/components/editor/core/bracket-healer';
+	import type { Line } from '$lib/components/editor/core/state';
 
 	// Demo state
-	let activeDemo = $state<'minimap' | 'breadcrumbs' | 'quickactions' | 'outline'>('minimap');
+	let activeDemo = $state<
+		'minimap' | 'breadcrumbs' | 'quickactions' | 'outline' | 'echo' | 'ghost' | 'context'
+	>('minimap');
 
 	// Sample code for all demos
 	const sampleCode = `import { useState, useEffect, useCallback } from 'react';
@@ -132,7 +146,39 @@ export const DEFAULT_CONFIG = {
 
 	const sampleLines = sampleCode.split('\n');
 	const lineHeight = 20;
+	const charWidth = 7.8;
+	const gutterWidth = 50;
 	const editorHeight = 400;
+
+	const ghostBracketCode = `export function reconcileProfile(user: User) {
+  if (user.profile?.settings) {
+    return {
+      id: user.id,
+      notifications: user.profile.settings.notifications,
+      theme: user.profile.settings.theme
+  }
+
+  return null;
+}`;
+	const ghostBracketLines = ghostBracketCode.split('\n');
+
+	const contextLensCode = `interface UserSession {
+  userId: string;
+  expiresAt: Date;
+}
+
+export async function loadSession(userId: string): Promise<UserSession | null> {
+  const response = await fetchSession(userId);
+  return response.ok ? response.data : null;
+}
+
+export const formatSession = (session: UserSession): string => {
+  return session.expiresAt.toISOString();
+};`;
+	const contextLensLines: Line[] = contextLensCode
+		.split('\n')
+		.map((text, number) => ({ number, text }));
+	const contextLensCursorLine = 5;
 
 	// Minimap state
 	let minimapScrollTop = $state(0);
@@ -197,6 +243,10 @@ export const DEFAULT_CONFIG = {
 	let quickActionsManager = $state<QuickActionsManager>(null!);
 	let quickActionsEnabled = $state(true);
 	let lastAction = $state<string | null>(null);
+
+	// Overlay state
+	let echoCursorManager = $state<EchoCursorManager | null>(null);
+	let bracketHealer = $state<BracketHealer | null>(null);
 
 	// Symbol Outline state
 	let symbols = $state<DocumentSymbol[]>([
@@ -350,8 +400,28 @@ export const DEFAULT_CONFIG = {
 			content: sampleCode
 		});
 
+		const echoManager = createEchoCursorManager({ defaultDelay: 220 });
+		echoManager.enable();
+		echoManager.addEchoPoint({ line: 5, column: 22 }, { delay: 220, label: 'Mirror A' });
+		echoManager.addEchoPoint({ line: 10, column: 8 }, { delay: 420, label: 'Mirror B' });
+		echoCursorManager = echoManager;
+
+		const replayTexts = ['profile', '.', 'save', '()'];
+		let replayIndex = 0;
+		const replayTimer = setInterval(() => {
+			echoManager.recordInsert(replayTexts[replayIndex % replayTexts.length]);
+			replayIndex += 1;
+		}, 1400);
+
+		const healer = createBracketHealer({ debounceMs: 0, minConfidence: 0.5, maxGhosts: 4 });
+		healer.setLanguage('typescript');
+		healer.analyzeImmediate(ghostBracketCode);
+		bracketHealer = healer;
+
 		return () => {
+			clearInterval(replayTimer);
 			quickActionsManager?.destroy();
+			healer.destroy();
 		};
 	});
 
@@ -396,7 +466,7 @@ export const DEFAULT_CONFIG = {
 <div class="intelligence-demo">
 	<header class="demo-header">
 		<h1>Phase 6: Editor Intelligence</h1>
-		<p>Minimap, Breadcrumbs, Quick Actions, and Symbol Outline</p>
+		<p>Navigation aids, code actions, and rendered intelligence overlays</p>
 	</header>
 
 	<!-- Demo tabs -->
@@ -444,6 +514,39 @@ export const DEFAULT_CONFIG = {
 			onclick={() => (activeDemo = 'outline')}
 		>
 			Symbol Outline
+		</button>
+		<button
+			id="tab-echo"
+			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'echo'}
+			aria-controls="panel-echo"
+			class:active={activeDemo === 'echo'}
+			onclick={() => (activeDemo = 'echo')}
+		>
+			Echo Cursors
+		</button>
+		<button
+			id="tab-ghost"
+			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'ghost'}
+			aria-controls="panel-ghost"
+			class:active={activeDemo === 'ghost'}
+			onclick={() => (activeDemo = 'ghost')}
+		>
+			Ghost Brackets
+		</button>
+		<button
+			id="tab-context"
+			class="tab"
+			role="tab"
+			aria-selected={activeDemo === 'context'}
+			aria-controls="panel-context"
+			class:active={activeDemo === 'context'}
+			onclick={() => (activeDemo = 'context')}
+		>
+			Context Lens
 		</button>
 	</div>
 
@@ -800,6 +903,149 @@ export const DEFAULT_CONFIG = {
 						<li>Sort by position, name, or kind</li>
 						<li>Active symbol highlighting</li>
 					</ul>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Echo Cursor Demo -->
+	{#if activeDemo === 'echo'}
+		<div
+			class="demo-section"
+			id="panel-echo"
+			role="tabpanel"
+			tabindex="0"
+			aria-labelledby="tab-echo"
+		>
+			<div class="section-header">
+				<h2>Echo Cursors</h2>
+				<p>Delayed mirror cursors replay edits at prepared locations for repeated code changes.</p>
+			</div>
+
+			<div class="overlay-demo">
+				<div class="overlay-editor">
+					{#if echoCursorManager}
+						<EchoCursorLayer
+							manager={echoCursorManager}
+							{lineHeight}
+							{charWidth}
+							{gutterWidth}
+							enabled={true}
+						/>
+					{/if}
+
+					{#each contextLensLines as line (line.number)}
+						<div class="code-line" style="height: {lineHeight}px;">
+							<span class="line-num">{line.number + 1}</span>
+							<span class="line-content">{line.text || ' '}</span>
+						</div>
+					{/each}
+				</div>
+
+				<div class="feature-info">
+					<h4>What It Shows</h4>
+					<p>
+						Two echo cursors are armed in the editor. The animated replay badges show incoming text
+						propagating after separate delays.
+					</p>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Ghost Bracket Demo -->
+	{#if activeDemo === 'ghost'}
+		<div
+			class="demo-section"
+			id="panel-ghost"
+			role="tabpanel"
+			tabindex="0"
+			aria-labelledby="tab-ghost"
+		>
+			<div class="section-header">
+				<h2>Ghost Brackets</h2>
+				<p>
+					Structural healing suggestions show missing brackets before the document breaks further.
+				</p>
+			</div>
+
+			<div class="overlay-demo">
+				<div class="overlay-editor">
+					{#if bracketHealer}
+						<GhostBracketLayer
+							healer={bracketHealer}
+							{lineHeight}
+							{charWidth}
+							{gutterWidth}
+							enabled={true}
+						/>
+					{/if}
+
+					{#each ghostBracketLines as line, i (i)}
+						<div class="code-line" style="height: {lineHeight}px;">
+							<span class="line-num">{i + 1}</span>
+							<span class="line-content">{line || ' '}</span>
+						</div>
+					{/each}
+				</div>
+
+				<div class="feature-info">
+					<h4>What It Shows</h4>
+					<p>
+						The bracket healer marks the unclosed object block and places a translucent closing
+						brace where it expects the structure to recover.
+					</p>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Context Lens Demo -->
+	{#if activeDemo === 'context'}
+		<div
+			class="demo-section"
+			id="panel-context"
+			role="tabpanel"
+			tabindex="0"
+			aria-labelledby="tab-context"
+		>
+			<div class="section-header">
+				<h2>Context Lens</h2>
+				<p>
+					Inline context labels surface the active symbol signature without opening a side panel.
+				</p>
+			</div>
+
+			<div class="overlay-demo">
+				<div class="overlay-editor overlay-editor--context">
+					<ContextLens
+						lines={contextLensLines}
+						cursorLine={contextLensCursorLine}
+						{lineHeight}
+						{charWidth}
+						{gutterWidth}
+						enabled={true}
+						language="typescript"
+					/>
+
+					{#each contextLensLines as line (line.number)}
+						<div
+							class="code-line"
+							class:code-line--current={line.number === contextLensCursorLine}
+							style="height: {lineHeight}px;"
+						>
+							<span class="line-num">{line.number + 1}</span>
+							<span class="line-content">{line.text || ' '}</span>
+						</div>
+					{/each}
+				</div>
+
+				<div class="feature-info">
+					<h4>What It Shows</h4>
+					<p>
+						The cursor is inside an async TypeScript function, so the lens floats its signature
+						above the declaration line.
+					</p>
 				</div>
 			</div>
 		</div>
@@ -1215,6 +1461,39 @@ export const DEFAULT_CONFIG = {
 		color: #a855f7;
 	}
 
+	/* Overlay demos */
+	.overlay-demo {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.overlay-editor {
+		position: relative;
+		min-height: 260px;
+		overflow: hidden;
+		background: rgba(0, 0, 0, 0.3);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 8px;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 13px;
+		padding: 18px 0 14px;
+	}
+
+	.overlay-editor--context {
+		padding-top: 30px;
+	}
+
+	.overlay-editor :global(.context-lens),
+	.overlay-editor :global(.echo-cursor-layer),
+	.overlay-editor :global(.ghost-bracket-layer) {
+		top: 18px;
+		bottom: 14px;
+	}
+
+	.overlay-editor--context :global(.context-lens) {
+		top: 30px;
+	}
+
 	/* Feature info */
 	.feature-info {
 		padding: 1rem;
@@ -1233,6 +1512,13 @@ export const DEFAULT_CONFIG = {
 		margin: 0;
 		padding-left: 1.25rem;
 		font-size: 0.85rem;
+		color: var(--ide-text-secondary, #c4c4d4);
+	}
+
+	.feature-info p {
+		margin: 0;
+		font-size: 0.85rem;
+		line-height: 1.5;
 		color: var(--ide-text-secondary, #c4c4d4);
 	}
 

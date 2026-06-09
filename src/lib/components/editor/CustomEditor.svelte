@@ -53,7 +53,7 @@
 		multiCursor?: boolean;
 		/** Maximum number of cursors (default: 100) */
 		maxCursors?: number;
-		/** Enable complexity highlighting (default: true) */
+		/** Enable complexity highlighting (default: false) */
 		complexityHighlighting?: boolean;
 		/** Minimum complexity score to show highlighting (default: 50) */
 		complexityThreshold?: number;
@@ -61,7 +61,7 @@
 		aiAgents?: AIAwareness[];
 		/** Show AI cursor labels (default: true) */
 		showAILabels?: boolean;
-		/** Show AI focus regions (default: true) */
+		/** Show AI focus regions (default: false) */
 		showAIFocusRegions?: boolean;
 		onChange?: (content: string) => void;
 		onCursorChange?: (line: number, column: number) => void;
@@ -81,11 +81,11 @@
 		folding = true,
 		multiCursor = true,
 		maxCursors = 100,
-		complexityHighlighting = true,
+		complexityHighlighting = false,
 		complexityThreshold = 50,
 		aiAgents = [],
 		showAILabels = true,
-		showAIFocusRegions = true,
+		showAIFocusRegions = false,
 		onChange,
 		onCursorChange,
 		onCursorsChange,
@@ -171,10 +171,23 @@
 	// Input handler module (created in initEditor)
 	let inputHandlers = $state(null as unknown as ReturnType<typeof createEditorInput>);
 
+	function lineToVisualRow(line: number): number {
+		const lineCount = editorState?.lineCount ?? lines.length;
+		if (!folding || lineCount <= 0) return Math.max(0, Math.floor(line));
+		return foldManager.lineToVisualRow(line, lineCount);
+	}
+
+	function visualRowToLine(visualRow: number): number {
+		const lineCount = editorState?.lineCount ?? lines.length;
+		if (!folding || lineCount <= 0) return Math.max(0, Math.floor(visualRow));
+		return foldManager.visualRowToLine(visualRow, lineCount);
+	}
+
 	// Scroll management module
 	const editorScroll = createEditorScroll({
 		getEditorContent: () => editorContent,
 		getSelection: () => selection,
+		lineToVisualRow: (line) => lineToVisualRow(line),
 		getMeasurements: () => ({ lineHeight, charWidth, gutterWidth, contentPadding: CONTENT_PADDING })
 	});
 	const { scrollCursorIntoView } = editorScroll;
@@ -378,6 +391,7 @@
 			getCursors: () => cursors,
 			getScrollPosition: () => ({ scrollTop, scrollLeft }),
 			getMeasurements: () => ({ charWidth, lineHeight, gutterWidth }),
+			visualRowToLine: (visualRow) => visualRowToLine(visualRow),
 
 			onOpenFind: (withReplace) => openFind(withReplace),
 			onCloseFind: () => closeFind(),
@@ -507,10 +521,12 @@
 		if (!folding || visibleLineIndices.length === 0) {
 			return lines.map((line, index) => ({ line, index }));
 		}
-		return visibleLineIndices.map((index) => ({
-			line: lines[index],
-			index
-		}));
+		return visibleLineIndices
+			.filter((index) => index >= 0 && index < lines.length)
+			.map((index) => ({
+				line: lines[index],
+				index
+			}));
 	});
 
 	/** Extra rows rendered above/below the viewport to avoid blank edges while scrolling. */
@@ -540,6 +556,7 @@
 		}> = [];
 		for (let visualRow = firstRow; visualRow <= lastRow; visualRow++) {
 			const entry = visibleLines[visualRow];
+			if (!entry) continue;
 			slice.push({ line: entry.line, index: entry.index, visualRow });
 		}
 		return slice;
@@ -590,7 +607,8 @@
 			setContent: (content) => editorState.setContent(content),
 			scrollCursorIntoView: () => scrollCursorIntoView(),
 			focusEditor: () => hiddenInput?.focus(),
-			isReadonly: () => readonly
+			isReadonly: () => readonly,
+			lineToVisualRow: (line) => lineToVisualRow(line)
 		});
 	}
 
@@ -1006,6 +1024,7 @@
 			{viewportHeight}
 			getLine={(n) => editorState.getLine(n)}
 			lineCount={editorState?.lineCount ?? 0}
+			lineToVisualRow={(line) => lineToVisualRow(line)}
 		/>
 
 		<!-- Lines (virtualized: only the windowed slice is rendered) -->
@@ -1134,21 +1153,21 @@
 	:global(.token-comment-line),
 	:global(.token-comment-block),
 	:global(.token-comment-doc) {
-		color: var(--ide-text-muted);
+		color: var(--ide-syntax-comment);
 		font-style: italic;
 	}
 
 	:global(.token-string),
 	:global(.token-string-template) {
-		color: var(--color-nocturnium-aurora-green);
+		color: var(--ide-syntax-string);
 	}
 
 	:global(.token-string-regex) {
-		color: var(--color-nocturnium-aurora-pink);
+		color: var(--ide-syntax-tag);
 	}
 
 	:global(.token-string-escape) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-constant);
 	}
 
 	:global(.token-number),
@@ -1156,7 +1175,7 @@
 	:global(.token-number-float),
 	:global(.token-number-hex),
 	:global(.token-number-binary) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-number);
 	}
 
 	:global(.token-keyword),
@@ -1165,7 +1184,7 @@
 	:global(.token-keyword-definition),
 	:global(.token-keyword-module),
 	:global(.token-keyword-storage) {
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-syntax-keyword);
 	}
 
 	:global(.token-operator),
@@ -1173,30 +1192,30 @@
 	:global(.token-operator-comparison),
 	:global(.token-operator-logical),
 	:global(.token-operator-assignment) {
-		color: var(--ide-text-primary);
+		color: var(--ide-syntax-operator);
 	}
 
 	:global(.token-variable) {
-		color: var(--ide-text-primary);
+		color: var(--ide-syntax-variable);
 	}
 
 	:global(.token-variable-definition) {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-accent);
 	}
 
 	:global(.token-variable-parameter) {
-		color: color-mix(in srgb, var(--color-nocturnium-wave) 80%, var(--ide-text-muted));
+		color: color-mix(in srgb, var(--ide-accent) 80%, var(--ide-text-muted));
 	}
 
 	:global(.token-function),
 	:global(.token-function-definition),
 	:global(.token-function-call) {
-		color: var(--color-nocturnium-aurora-blue);
+		color: var(--ide-syntax-function);
 	}
 
 	:global(.token-property),
 	:global(.token-property-definition) {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-accent);
 	}
 
 	:global(.token-type),
@@ -1204,14 +1223,14 @@
 	:global(.token-type-interface),
 	:global(.token-type-namespace),
 	:global(.token-type-builtin) {
-		color: var(--color-nocturnium-teal);
+		color: var(--ide-syntax-type);
 	}
 
 	:global(.token-constant),
 	:global(.token-constant-boolean),
 	:global(.token-constant-null),
 	:global(.token-constant-builtin) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-constant);
 	}
 
 	:global(.token-punctuation),
@@ -1220,34 +1239,34 @@
 	:global(.token-punctuation-paren),
 	:global(.token-punctuation-separator),
 	:global(.token-punctuation-accessor) {
-		color: var(--ide-text-secondary);
+		color: var(--ide-syntax-punctuation);
 	}
 
 	/* Svelte template braces - make them stand out */
 	:global(.token-punctuation-brace) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-constant);
 		font-weight: 600;
 	}
 
 	:global(.token-tag),
 	:global(.token-tag-name) {
-		color: var(--color-nocturnium-aurora-pink);
+		color: var(--ide-syntax-tag);
 	}
 
 	:global(.token-tag-attribute) {
-		color: var(--color-nocturnium-aurora-yellow);
+		color: var(--ide-syntax-attribute);
 	}
 
 	:global(.token-tag-attribute-value) {
-		color: var(--color-nocturnium-aurora-green);
+		color: var(--ide-syntax-string);
 	}
 
 	:global(.token-tag-punctuation) {
-		color: var(--ide-text-secondary);
+		color: var(--ide-syntax-punctuation);
 	}
 
 	:global(.token-markup-heading) {
-		color: var(--color-nocturnium-aurora-blue);
+		color: var(--ide-syntax-function);
 		font-weight: bold;
 	}
 
@@ -1260,12 +1279,12 @@
 	}
 
 	:global(.token-markup-link) {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-accent);
 		text-decoration: underline;
 	}
 
 	:global(.token-markup-code) {
-		color: var(--color-nocturnium-aurora-green);
+		color: var(--ide-syntax-string);
 		background: var(--ide-bg-tertiary);
 	}
 
@@ -1275,7 +1294,7 @@
 	}
 
 	:global(.token-markup-list) {
-		color: var(--color-nocturnium-ember);
+		color: var(--ide-text-accent);
 	}
 
 	:global(.token-invalid) {

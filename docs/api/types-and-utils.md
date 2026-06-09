@@ -368,11 +368,11 @@ function getLanguageDisplayName(language: string): string;
 function getLanguageIcon(language: string): string;
 ```
 
-- **`detectLanguage(filename)`** — resolves a language id from a filename. Checks exact special-cased names first (`Dockerfile`, `Makefile`, `.gitignore`, `.env`, etc.), then the extension (`ts → typescript`, `py → python`, `rs → rust`, …), and falls back to `'plaintext'`.
+- **`detectLanguage(filename)`** — resolves a language id from a filename. Checks exact special-cased names first (`Dockerfile`, `Makefile`, `.gitignore`, `.env`, etc.), then the extension (`ts → typescript`, `py → python`, `svelte → svelte`, …), and falls back to `'plaintext'`.
 - **`getExtension(filename)`** — the lowercase extension without the dot (`''` if none).
 - **`getLanguageMimeType(language)`** — a MIME type for a language id (defaults to `'text/plain'`).
-- **`isLanguageSupported(language)`** — `true` for languages with first-class tokenizer support (javascript, typescript, html, css, json, markdown, python, go, rust, java, cpp, sql, xml, yaml, php).
-- **`getLanguageDisplayName(language)`** — a human-friendly label (`'typescript' → 'TypeScript'`, `'cpp' → 'C++'`); unknown ids are title-cased.
+- **`isLanguageSupported(language)`** — `true` for languages with first-class tokenizer support (javascript, typescript, jsx, tsx, html, xml, css, json, python, go, markdown, svelte, plaintext).
+- **`getLanguageDisplayName(language)`** — a human-friendly label (`'typescript' → 'TypeScript'`, `'svelte' → 'Svelte'`); unknown ids are title-cased.
 - **`getLanguageIcon(language)`** — an icon identifier (e.g. `'file-ts'`) for mapping to your own icon set; defaults to `'file'`.
 
 ```ts
@@ -385,7 +385,7 @@ import {
 detectLanguage('src/App.svelte'); // "svelte"
 detectLanguage('Dockerfile'); // "dockerfile"
 detectLanguage('notes.txt'); // "plaintext"
-getLanguageDisplayName('cpp'); // "C++"
+getLanguageDisplayName('svelte'); // "Svelte"
 isLanguageSupported('python'); // true
 ```
 

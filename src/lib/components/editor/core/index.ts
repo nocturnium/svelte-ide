@@ -5,18 +5,17 @@
 export * from './state';
 export * from './navigation';
 export * from './keybindings';
-export * from './crdt-binding';
+// NOTE: './crdt-binding' is intentionally NOT re-exported here. It imports yjs
+// (an optional peer dependency), so leaking it through this barrel would force
+// yjs onto every consumer of the non-collaborative editor. The CRDT binding is
+// available through the dedicated `@nocturnium/svelte-ide/crdt` entry instead.
 export * from './search';
 export * from './folding';
 export * from './multi-cursor';
 export * from './complexity-analyzer';
 export * from './ai-awareness';
-export * from './ghost-pair';
 export * from './semantic-analyzer';
 export * from './commands';
-export * from './timeline';
-export * from './conflict-predictor';
-export * from './echo-cursor';
 export * from './bracket-healer';
 export * from './git-blame';
 export * from './snippet-manager';

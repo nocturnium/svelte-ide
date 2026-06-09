@@ -208,6 +208,7 @@
 					<Icon name="sparkles" size={16} />
 					<span>AI Assistant</span>
 				</div>
+				<span class="ai-panel__mock-badge">Demo mock - no real model</span>
 			</div>
 			<div class="ai-panel__actions">
 				<Button variant="ghost" size="xs" onclick={handleNewConversation} title="New conversation">
@@ -337,6 +338,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--ide-spacing-sm);
+		min-width: 0;
 	}
 
 	.ai-panel__title {
@@ -346,6 +348,22 @@
 		font-size: var(--ide-font-size-sm);
 		font-weight: 600;
 		color: var(--ide-text-primary);
+		flex-shrink: 0;
+	}
+
+	.ai-panel__mock-badge {
+		display: inline-flex;
+		align-items: center;
+		min-width: 0;
+		padding: 0.125rem var(--ide-spacing-sm);
+		border: 1px solid color-mix(in srgb, var(--ide-accent) 40%, var(--ide-border));
+		border-radius: var(--ide-radius-full);
+		background: color-mix(in srgb, var(--ide-accent) 10%, var(--ide-bg-secondary));
+		color: var(--ide-text-secondary);
+		font-size: var(--ide-font-size-xs);
+		font-weight: 500;
+		line-height: var(--ide-line-height-normal);
+		white-space: nowrap;
 	}
 
 	.ai-panel__actions {
@@ -540,6 +558,10 @@
 
 		.ai-panel__input {
 			padding: var(--ide-spacing-sm);
+		}
+
+		.ai-panel__mock-badge {
+			white-space: normal;
 		}
 	}
 

@@ -6,6 +6,7 @@
  * We use getter functions to expose reactive derived state.
  */
 
+import { SvelteMap } from 'svelte/reactivity';
 import type {
 	Agent,
 	AgentStatus,
@@ -46,12 +47,12 @@ interface AgentsState {
 }
 
 const state = $state<AgentsState>({
-	agents: new Map(),
+	agents: new SvelteMap(),
 	events: [],
 	maxEvents: 200,
 	activities: [],
 	maxActivities: 500,
-	cursors: new Map(),
+	cursors: new SvelteMap(),
 	selectedAgentId: null,
 	filter: 'all',
 	connected: false,

@@ -1,3 +1,8 @@
+import {
+	getSupportedLanguages as getTokenizerSupportedLanguages,
+	resolveLanguage
+} from '../components/editor/tokenizer';
+
 /**
  * Language detection and utilities
  */
@@ -164,24 +169,14 @@ export function getLanguageMimeType(language: string): string {
  * Check if a language is supported for syntax highlighting
  */
 export function isLanguageSupported(language: string): boolean {
-	const supported = [
-		'javascript',
-		'typescript',
-		'html',
-		'css',
-		'json',
-		'markdown',
-		'python',
-		'go',
-		'rust',
-		'java',
-		'cpp',
-		'sql',
-		'xml',
-		'yaml',
-		'php'
-	];
-	return supported.includes(language);
+	return getTokenizerSupportedLanguages().includes(resolveLanguage(language));
+}
+
+/**
+ * Get languages with real syntax tokenizers.
+ */
+export function getSupportedLanguages(): string[] {
+	return getTokenizerSupportedLanguages();
 }
 
 /**

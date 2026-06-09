@@ -26,6 +26,12 @@ beforeEach(() => {
 	uuidCounter = 0;
 });
 
+afterEach(async () => {
+	await cancelAllOperations();
+	vi.restoreAllMocks();
+	vi.useRealTimers();
+});
+
 // ============================================================================
 // Tests: optimisticUpdate
 // ============================================================================
@@ -180,6 +186,46 @@ describe('optimisticUpdate', () => {
 		});
 
 		expect(getOperation(result.operation.id)).toBeUndefined();
+	});
+
+	it('should retry with exponential backoff and jitter', async () => {
+		vi.useFakeTimers();
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+		const commit = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('first'))
+			.mockRejectedValueOnce(new Error('second'))
+			.mockResolvedValueOnce('ok');
+		const onRetry = vi.fn();
+
+		const updatePromise = optimisticUpdate({
+			type: 'retrying',
+			payload: {},
+			apply: () => {},
+			rollback: () => {},
+			commit,
+			config: { maxRetries: 2, retryDelay: 100, onRetry }
+		});
+
+		await Promise.resolve();
+		expect(commit).toHaveBeenCalledTimes(1);
+		expect(onRetry).toHaveBeenCalledWith(expect.any(Object), 1);
+
+		await vi.advanceTimersByTimeAsync(99);
+		expect(commit).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(commit).toHaveBeenCalledTimes(2);
+		expect(onRetry).toHaveBeenCalledWith(expect.any(Object), 2);
+
+		await vi.advanceTimersByTimeAsync(199);
+		expect(commit).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(1);
+
+		const result = await updatePromise;
+		expect(result.success).toBe(true);
+		expect(result.data).toBe('ok');
+		vi.useRealTimers();
 	});
 });
 
@@ -408,6 +454,44 @@ describe('Queue Management', () => {
 
 		// Resolve all to prevent hanging
 		resolves.forEach((r) => r('done'));
+	});
+
+	it('should list and cancel operations only within the requested scope', async () => {
+		const resolves: Array<(value: unknown) => void> = [];
+		const rollbackA = vi.fn();
+		const rollbackB = vi.fn();
+
+		const updateA = optimisticUpdate({
+			scopeKey: 'doc:A',
+			type: 'save',
+			payload: { path: '/a.ts' },
+			apply: () => {},
+			rollback: rollbackA,
+			commit: () => new Promise((resolve) => resolves.push(resolve))
+		});
+
+		const updateB = optimisticUpdate({
+			scopeKey: 'doc:B',
+			type: 'save',
+			payload: { path: '/b.ts' },
+			apply: () => {},
+			rollback: rollbackB,
+			commit: () => new Promise((resolve) => resolves.push(resolve))
+		});
+
+		expect(getPendingOperations('doc:A')).toHaveLength(1);
+		expect(getPendingOperations('doc:B')).toHaveLength(1);
+		expect(getPendingOperations()).toHaveLength(2);
+
+		await cancelAllOperations('doc:A');
+
+		expect(rollbackA).toHaveBeenCalledOnce();
+		expect(rollbackB).not.toHaveBeenCalled();
+		expect(getPendingOperations('doc:A')).toHaveLength(0);
+		expect(getPendingOperations('doc:B')).toHaveLength(1);
+
+		resolves.forEach((resolve) => resolve('done'));
+		await Promise.all([updateA, updateB]);
 	});
 });
 

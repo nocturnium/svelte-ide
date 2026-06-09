@@ -1,6 +1,6 @@
 # @nocturnium/svelte-ide — Documentation
 
-`@nocturnium/svelte-ide` is a zero-dependency, Svelte 5-native code editor component library. It ships a custom editor (no CodeMirror) with syntax highlighting for 8+ languages, code folding, multi-cursor editing, and find & replace, plus optional layers for LSP, real-time CRDT collaboration, AI panels, a virtual filesystem, and a proposal-based plugin system. This page is the navigational hub for the docs — start with **Getting started**, then dig into the guides and API reference below.
+`@nocturnium/svelte-ide` is a zero-dependency, Svelte 5-native code editor component library. It ships a custom editor (no CodeMirror) with syntax highlighting for 12 languages, code folding, multi-cursor editing, and find & replace, plus optional layers for LSP, real-time CRDT collaboration, AI panels, a virtual filesystem, and a proposal-based plugin system. This page is the navigational hub for the docs — start with **Getting started**, then dig into the guides and API reference below.
 
 ```bash
 npm install @nocturnium/svelte-ide

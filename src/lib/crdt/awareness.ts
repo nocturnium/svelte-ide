@@ -27,11 +27,23 @@ export interface AwarenessProtocol {
 	destroy(): void;
 }
 
+export interface CreateAwarenessProtocolOptions {
+	destroyAwareness?: boolean;
+}
+
 /**
- * Create an awareness protocol instance
+ * Create an awareness protocol instance.
+ *
+ * Pass a provider-owned Awareness instance to broadcast presence through that
+ * provider. Passing a Y.Doc creates a standalone Awareness instance.
  */
-export function createAwarenessProtocol(doc: YDoc): AwarenessProtocol {
-	const awareness = new Awareness(doc);
+export function createAwarenessProtocol(
+	source: YDoc | Awareness,
+	options: CreateAwarenessProtocolOptions = {}
+): AwarenessProtocol {
+	const ownsAwareness = source instanceof Awareness;
+	const awareness = ownsAwareness ? source : new Awareness(source);
+	const shouldDestroyAwareness = options.destroyAwareness ?? !ownsAwareness;
 	const userChangeCallbacks = new Set<(users: AwarenessUser[]) => void>();
 
 	// Track awareness changes
@@ -125,7 +137,9 @@ export function createAwarenessProtocol(doc: YDoc): AwarenessProtocol {
 		},
 
 		destroy(): void {
-			awareness.destroy();
+			if (shouldDestroyAwareness) {
+				awareness.destroy();
+			}
 			userChangeCallbacks.clear();
 		}
 	};

@@ -4,6 +4,7 @@ import {
 	getExtension,
 	getLanguageMimeType,
 	isLanguageSupported,
+	getSupportedLanguages,
 	getLanguageDisplayName,
 	getLanguageIcon
 } from './language';
@@ -215,23 +216,49 @@ describe('isLanguageSupported', () => {
 		'markdown',
 		'python',
 		'go',
-		'rust',
-		'java',
-		'cpp',
-		'sql',
 		'xml',
-		'yaml',
-		'php'
+		'svelte',
+		'plaintext',
+		'vue'
 	])('should return true for supported language: %s', (language) => {
 		expect(isLanguageSupported(language)).toBe(true);
 	});
 
-	it.each(['svelte', 'vue', 'kotlin', 'ruby', 'unknown'])(
+	it.each(['rust', 'java', 'cpp', 'sql', 'yaml', 'php', 'kotlin', 'ruby', 'unknown'])(
 		'should return false for unsupported language: %s',
 		(language) => {
 			expect(isLanguageSupported(language)).toBe(false);
 		}
 	);
+
+	it('should agree with getSupportedLanguages for the full candidate set', () => {
+		const supported = getSupportedLanguages();
+		const candidates = [
+			'javascript',
+			'typescript',
+			'jsx',
+			'tsx',
+			'html',
+			'css',
+			'json',
+			'markdown',
+			'python',
+			'go',
+			'xml',
+			'svelte',
+			'plaintext',
+			'rust',
+			'java',
+			'cpp',
+			'sql',
+			'yaml',
+			'php'
+		];
+
+		for (const language of candidates) {
+			expect(isLanguageSupported(language)).toBe(supported.includes(language));
+		}
+	});
 });
 
 // ============================================================

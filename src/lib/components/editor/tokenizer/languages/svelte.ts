@@ -93,9 +93,14 @@ export class SvelteTokenizer implements LanguageTokenizer {
 		};
 	}
 
-	tokenizeLine(line: string, lineNumber: number, state: SvelteTokenizerState): TokenizedLine {
+	tokenizeLine(line: string, lineNumber: number, prevState?: SvelteTokenizerState): TokenizedLine {
 		const tokens: RawToken[] = [];
 		let pos = 0;
+		const state: SvelteTokenizerState = {
+			...this.getInitialState(),
+			...prevState,
+			innerState: prevState?.innerState ? { ...prevState.innerState } : undefined
+		};
 
 		// Handle script context
 		if (state.context === 'script') {

@@ -36,6 +36,8 @@ coverage/
 test-results/
 playwright-report/
 playwright/.cache/
+# Ad-hoc debug screenshots written during manual test runs (not baselines).
+tests/screenshots/
 
 # OS
 Thumbs.db
@@ -51,3 +53,6 @@ backend/dist/
 # Misc
 *.local
 .cache/
+
+# Codex dispatch run artifacts (local tooling output)
+.codex-dispatch/

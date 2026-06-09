@@ -2,14 +2,14 @@
 
 ## Supported versions
 
-The library is pre-1.0 and follows a "latest patch" support model: security
-fixes land on the most recent `0.x` release. Please upgrade to the latest
-version before reporting an issue.
+The library follows a "latest patch" support model for the current 1.x release
+line. Security fixes land on the most recent `1.x` release. Please upgrade to
+the latest version before reporting an issue.
 
 | Version | Supported |
 | ------- | --------- |
-| 0.2.x   | ✅        |
-| < 0.2   | ❌        |
+| 1.0.x   | ✅        |
+| < 1.0   | ❌        |
 
 ## Reporting a vulnerability
 

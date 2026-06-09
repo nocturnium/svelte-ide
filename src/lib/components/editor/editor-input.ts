@@ -36,6 +36,7 @@ export interface EditorInputDeps {
 	getCursors: () => readonly Cursor[];
 	getScrollPosition: () => { scrollTop: number; scrollLeft: number };
 	getMeasurements: () => { charWidth: number; lineHeight: number; gutterWidth: number };
+	visualRowToLine?: (visualRow: number) => number;
 	/**
 	 * Editor tab size (columns per tab stop). Optional for backwards
 	 * compatibility; when omitted, DEFAULT_TAB_SIZE is used. Needed so that
@@ -157,10 +158,13 @@ export function createEditorInput(deps: EditorInputDeps) {
 		const y = e.clientY - rect.top;
 
 		const editorState = deps.getEditorState();
-		const line = Math.max(
+		const visualRow = Math.max(
 			0,
 			Math.min(Math.floor((y + scrollTop) / lineHeight), editorState.lineCount - 1)
 		);
+		const line = deps.visualRowToLine
+			? deps.visualRowToLine(visualRow)
+			: Math.max(0, Math.min(visualRow, editorState.lineCount - 1));
 		const lineContent = editorState.getLine(line);
 		const lineText = lineContent?.text ?? '';
 		const tabSize = deps.getTabSize?.() ?? DEFAULT_TAB_SIZE;

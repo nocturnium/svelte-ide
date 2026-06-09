@@ -6,6 +6,12 @@
 import * as Y from 'yjs';
 import type { DocumentOptions } from './types';
 
+export interface CollaborativeUndoManagerOptions {
+	captureTimeout?: number;
+	trackedOrigins?: Set<unknown>;
+	deleteFilter?: (item: Y.Item) => boolean;
+}
+
 export class CollaborativeDocument {
 	readonly doc: Y.Doc;
 	readonly id: string;
@@ -24,7 +30,7 @@ export class CollaborativeDocument {
 
 		// Setup undo manager if enabled
 		if (options.enableUndo !== false) {
-			this.setupUndoManager(options.undoCaptureTimeout);
+			this.getUndoManager({ captureTimeout: options.undoCaptureTimeout });
 		}
 	}
 
@@ -120,21 +126,34 @@ export class CollaborativeDocument {
 	/**
 	 * Setup undo manager
 	 */
-	private setupUndoManager(captureTimeout: number = 500): void {
-		const trackedOrigins = new Set([null, 'local']);
+	getUndoManager(options: CollaborativeUndoManagerOptions = {}): Y.UndoManager {
+		if (this.undoManager) return this.undoManager;
+
+		const {
+			captureTimeout = 500,
+			trackedOrigins = new Set([null, 'local']),
+			deleteFilter
+		} = options;
 		this.undoManager = new Y.UndoManager(this.getText(), {
 			trackedOrigins,
-			captureTimeout
+			captureTimeout,
+			deleteFilter
 		});
+		return this.undoManager;
+	}
+
+	/**
+	 * Check whether this document currently owns an undo manager.
+	 */
+	hasUndoManager(): boolean {
+		return this.undoManager !== null;
 	}
 
 	/**
 	 * Track additional origins for undo
 	 */
 	trackOrigin(origin: string): void {
-		if (this.undoManager) {
-			this.undoManager.trackedOrigins.add(origin);
-		}
+		this.getUndoManager().trackedOrigins.add(origin);
 	}
 
 	/**

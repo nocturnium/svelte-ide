@@ -26,6 +26,7 @@
 		viewportHeight: number;
 		getLine: (n: number) => { text: string } | undefined;
 		lineCount: number;
+		lineToVisualRow?: (line: number) => number;
 	}
 
 	let {
@@ -39,7 +40,8 @@
 		scrollTop,
 		viewportHeight,
 		getLine,
-		lineCount
+		lineCount,
+		lineToVisualRow = (line) => line
 	}: Props = $props();
 
 	// Selection rects memoization
@@ -70,17 +72,17 @@
 
 		// Calculate visible line range (with 1-line buffer for smooth scrolling)
 		const vh = viewportHeight || FALLBACK_VIEWPORT_HEIGHT;
-		const firstVisibleLine = Math.max(0, Math.floor(scrollTop / lineHeight) - 1);
-		const lastVisibleLine = Math.min(lineCount - 1, Math.ceil((scrollTop + vh) / lineHeight) + 1);
+		const firstVisibleRow = Math.max(0, Math.floor(scrollTop / lineHeight) - 1);
+		const lastVisibleRow = Math.max(0, Math.ceil((scrollTop + vh) / lineHeight) + 1);
 
 		// Create cache key from all cursors, scroll position, and measurement values
 		const cursorKeys = cursors
 			.map(
 				(c) =>
-					`${c.id}:${c.selection.anchor.line}:${c.selection.anchor.column}-${c.selection.head.line}:${c.selection.head.column}`
+					`${c.id}:${c.selection.anchor.line}/${lineToVisualRow(c.selection.anchor.line)}:${c.selection.anchor.column}-${c.selection.head.line}/${lineToVisualRow(c.selection.head.line)}:${c.selection.head.column}`
 			)
 			.join('|');
-		const key = `${cursorKeys}@${firstVisibleLine}-${lastVisibleLine}:${charWidth}:${lineHeight}:${gutterWidth}`;
+		const key = `${cursorKeys}@${firstVisibleRow}-${lastVisibleRow}:${charWidth}:${lineHeight}:${gutterWidth}`;
 		if (key === cachedSelectionKey) {
 			return cachedSelectionRects;
 		}
@@ -100,13 +102,14 @@
 			const start = getSelectionStart(cursor.selection);
 			const end = getSelectionEnd(cursor.selection);
 
-			// Only iterate over lines that are both selected AND visible
-			const renderStart = Math.max(start.line, firstVisibleLine);
-			const renderEnd = Math.min(end.line, lastVisibleLine);
+			const renderStart = Math.max(start.line, 0);
+			const renderEnd = Math.min(end.line, lineCount - 1);
 
 			for (let line = renderStart; line <= renderEnd; line++) {
 				const lineContent = getLine(line);
 				if (!lineContent) continue;
+				const visualRow = lineToVisualRow(line);
+				if (visualRow < firstVisibleRow || visualRow > lastVisibleRow) continue;
 
 				let startCol = 0;
 				let endCol = lineContent.text.length;
@@ -122,7 +125,7 @@
 				const width = Math.max((endCol - startCol) * charWidth, 4);
 
 				rects.push({
-					top: line * lineHeight,
+					top: visualRow * lineHeight,
 					left: gutterWidth + contentPadding + startCol * charWidth,
 					width,
 					height: lineHeight,
@@ -139,7 +142,7 @@
 	// Get cursor style for a specific cursor position
 	function getCursorStyleForPosition(pos: Position): string {
 		const left = gutterWidth + contentPadding + pos.column * charWidth;
-		const top = pos.line * lineHeight;
+		const top = lineToVisualRow(pos.line) * lineHeight;
 		return `left: ${left}px; top: ${top}px; height: ${lineHeight}px;`;
 	}
 </script>
@@ -156,11 +159,12 @@
 </div>
 
 <!-- Cursors (all cursors rendered with primary/secondary distinction) -->
-{#if cursorVisible && !isReadonly}
+{#if !isReadonly}
 	{#each cursors as cursor (cursor.id)}
 		<div
 			class="custom-editor__cursor"
 			class:custom-editor__cursor--secondary={!cursor.isPrimary}
+			class:custom-editor__cursor--hidden={!cursorVisible}
 			style={getCursorStyleForPosition(cursor.selection.head)}
 		></div>
 	{/each}
@@ -193,6 +197,7 @@
 		background: var(--color-nocturnium-aurora-blue);
 		z-index: 10;
 		pointer-events: none;
+		opacity: 1;
 		transition: opacity 80ms;
 	}
 
@@ -200,5 +205,16 @@
 	.custom-editor__cursor--secondary {
 		background: var(--ide-interactive-muted);
 		opacity: 0.85;
+	}
+
+	.custom-editor__cursor--hidden {
+		opacity: 0;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.custom-editor__cursor {
+			opacity: 1;
+			transition: none;
+		}
 	}
 </style>

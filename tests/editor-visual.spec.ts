@@ -6,7 +6,7 @@ test.describe('Editor Visual Regression', () => {
 		// Visual regression tests should run on a single browser for consistency
 		// Different browsers render fonts/elements differently
 		test.skip(browserName !== 'chromium', 'Visual regression tests only run on Chromium');
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 

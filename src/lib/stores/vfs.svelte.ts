@@ -20,7 +20,8 @@ import type {
 	VFSLockReleasedEvent
 } from '$lib/types';
 import * as vfsClient from '$lib/services/vfs-client';
-import { SvelteMap } from 'svelte/reactivity';
+import { browser } from '$app/environment';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { parseError, isConflictError, logError, type VFSError } from '$lib/services/error-handling';
 import { optimisticUpdate, type OptimisticResult } from '$lib/services/optimistic';
 
@@ -66,12 +67,12 @@ const state = $state<VFSState>({
 	workspace: null,
 	workspaceLoading: false,
 	files: [],
-	fileMap: new Map(),
-	dirtyFiles: new Set(),
-	locks: new Map(),
-	lockStatuses: new Map(),
-	pendingLocks: new Set(),
-	activeTransactions: new Map(),
+	fileMap: new SvelteMap(),
+	dirtyFiles: new SvelteSet(),
+	locks: new SvelteMap(),
+	lockStatuses: new SvelteMap(),
+	pendingLocks: new SvelteSet(),
+	activeTransactions: new SvelteMap(),
 	transactionHistory: [],
 	eventSource: null,
 	connected: false,
@@ -82,7 +83,7 @@ const state = $state<VFSState>({
 	errorCode: null,
 	structuredError: null,
 	version: 0,
-	pendingRetries: new Map(),
+	pendingRetries: new SvelteMap(),
 	conflictQueue: []
 });
 
@@ -93,6 +94,8 @@ const eventHandlers = new Map<VFSEvent['type'] | '*', Set<(event: VFSEvent) => v
 // Lock TTL refresh intervals
 // eslint-disable-next-line svelte/prefer-svelte-reactivity -- non-reactive internal timer registry, not UI state
 const lockRefreshIntervals = new Map<string, number>(); // path -> intervalId
+
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Current user ID (set during initialization)
 let currentUserId: string | null = null;
@@ -630,6 +633,8 @@ export function setLocks(locks: VFSFileLock[]): void {
 }
 
 function startLockRefresh(lock: VFSFileLock): void {
+	if (!browser || typeof window === 'undefined') return;
+
 	// Refresh at 80% of TTL to ensure we don't lose the lock
 	const refreshInterval = lock.ttl * 0.8;
 
@@ -734,8 +739,18 @@ const BASE_RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 
 export function connect(workspaceId: string): void {
+	if (reconnectTimer) {
+		clearTimeout(reconnectTimer);
+		reconnectTimer = null;
+	}
+
 	if (state.eventSource) {
 		state.eventSource.close();
+	}
+
+	if (!browser || typeof EventSource === 'undefined') {
+		state.connected = false;
+		return;
 	}
 
 	const endpoint = `/api/vfs/workspaces/${workspaceId}/stream`;
@@ -755,7 +770,8 @@ export function connect(workspaceId: string): void {
 			const delay = BASE_RECONNECT_DELAY * Math.pow(2, state.reconnectAttempts);
 			state.reconnectAttempts++;
 
-			setTimeout(() => {
+			reconnectTimer = setTimeout(() => {
+				reconnectTimer = null;
 				if (!state.connected) {
 					connect(workspaceId);
 				}
@@ -778,6 +794,11 @@ export function connect(workspaceId: string): void {
 }
 
 export function disconnect(): void {
+	if (reconnectTimer) {
+		clearTimeout(reconnectTimer);
+		reconnectTimer = null;
+	}
+
 	if (state.eventSource) {
 		state.eventSource.close();
 		state.eventSource = null;

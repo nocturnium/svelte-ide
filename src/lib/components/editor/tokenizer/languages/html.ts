@@ -4,17 +4,20 @@
 
 import type { Token, TokenizedLine, TokenizerState } from '../types';
 import { createToken } from '../base';
+import { createCSSTokenizer } from './css';
+import { createJavaScriptTokenizer } from './javascript';
 
 interface HTMLTokenizerState extends TokenizerState {
-	inTag?: boolean;
 	inScript?: boolean;
 	inStyle?: boolean;
-	tagName?: string;
+	innerState?: TokenizerState;
 }
 
 export class HTMLTokenizer {
 	language: string;
 	private isXML: boolean;
+	private jsTokenizer = createJavaScriptTokenizer();
+	private cssTokenizer = createCSSTokenizer();
 
 	constructor(options: { xml?: boolean } = {}) {
 		this.isXML = options.xml ?? false;
@@ -40,6 +43,70 @@ export class HTMLTokenizer {
 			} else {
 				tokens.push(createToken('comment.block', line, 0));
 				return { lineNumber, tokens, text: line, state };
+			}
+		}
+
+		if (!this.isXML && state.inScript) {
+			const closeScriptMatch = line.match(/<\/script>/i);
+			if (closeScriptMatch) {
+				const scriptPart = line.slice(0, closeScriptMatch.index);
+				if (scriptPart) {
+					const result = this.jsTokenizer.tokenizeLine(
+						scriptPart,
+						lineNumber,
+						state.innerState ?? this.jsTokenizer.getInitialState()
+					);
+					tokens.push(...result.tokens);
+					state.innerState = result.state;
+				}
+				state.inScript = false;
+				state.innerState = undefined;
+				pos = closeScriptMatch.index!;
+			} else {
+				const result = this.jsTokenizer.tokenizeLine(
+					line,
+					lineNumber,
+					state.innerState ?? this.jsTokenizer.getInitialState()
+				);
+				state.innerState = result.state;
+				return {
+					lineNumber,
+					tokens: result.tokens,
+					text: line,
+					state
+				};
+			}
+		}
+
+		if (!this.isXML && state.inStyle) {
+			const closeStyleMatch = line.match(/<\/style>/i);
+			if (closeStyleMatch) {
+				const stylePart = line.slice(0, closeStyleMatch.index);
+				if (stylePart) {
+					const result = this.cssTokenizer.tokenizeLine(
+						stylePart,
+						lineNumber,
+						state.innerState ?? this.cssTokenizer.getInitialState()
+					);
+					tokens.push(...result.tokens);
+					state.innerState = result.state;
+				}
+				state.inStyle = false;
+				state.innerState = undefined;
+				pos = closeStyleMatch.index!;
+			} else {
+				const result = this.cssTokenizer.tokenizeLine(
+					line,
+					lineNumber,
+					state.innerState ?? this.cssTokenizer.getInitialState()
+				);
+				state.innerState = result.state;
+				return {
+					lineNumber,
+					tokens: result.tokens,
+					text: line,
+					state
+				};
 			}
 		}
 
@@ -115,8 +182,14 @@ export class HTMLTokenizer {
 		const closingTagMatch = text.match(/^<\/([a-zA-Z][a-zA-Z0-9:-]*)>/);
 		if (closingTagMatch) {
 			const tagName = closingTagMatch[1].toLowerCase();
-			if (tagName === 'script') state.inScript = false;
-			if (tagName === 'style') state.inStyle = false;
+			if (tagName === 'script') {
+				state.inScript = false;
+				state.innerState = undefined;
+			}
+			if (tagName === 'style') {
+				state.inStyle = false;
+				state.innerState = undefined;
+			}
 			return createToken('tag', closingTagMatch[0], pos);
 		}
 
@@ -152,16 +225,20 @@ export class HTMLTokenizer {
 
 		if (openingMatch) {
 			const tagName = openingMatch[1].toLowerCase();
-			if (tagName === 'script') state.inScript = true;
-			if (tagName === 'style') state.inStyle = true;
+			if (!this.isXML && tagName === 'script') {
+				state.inScript = true;
+				state.innerState = this.jsTokenizer.getInitialState();
+			}
+			if (!this.isXML && tagName === 'style') {
+				state.inStyle = true;
+				state.innerState = this.cssTokenizer.getInitialState();
+			}
 			return createToken('tag', openingMatch[0], pos);
 		}
 
 		// Partial tag - just match the tag name part
 		const partialMatch = text.match(/^<([a-zA-Z][a-zA-Z0-9:-]*)/);
 		if (partialMatch) {
-			state.inTag = true;
-			state.tagName = partialMatch[1];
 			return createToken('tag.name', partialMatch[0], pos);
 		}
 

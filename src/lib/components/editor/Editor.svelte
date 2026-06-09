@@ -8,6 +8,7 @@
 
 	import CustomEditor from './CustomEditor.svelte';
 	import type { EditorPreferences } from '$types';
+	import type { AIAwareness } from './core/ai-awareness';
 
 	interface Props {
 		/** Document content */
@@ -20,6 +21,14 @@
 		preferences?: Partial<EditorPreferences>;
 		/** Additional CSS class */
 		class?: string;
+		/** Enable code folding */
+		folding?: boolean;
+		/** Enable multi-cursor editing */
+		multiCursor?: boolean;
+		/** Maximum number of cursors */
+		maxCursors?: number;
+		/** AI agents for Ghost Pair visualization */
+		aiAgents?: AIAwareness[];
 		/** Called when content changes */
 		onChange?: (content: string) => void;
 		/** Called when cursor position changes */
@@ -34,6 +43,10 @@
 		readonly = false,
 		preferences = {},
 		class: className = '',
+		folding = true,
+		multiCursor = true,
+		maxCursors = 100,
+		aiAgents = [],
 		onChange,
 		onCursorChange,
 		onSave
@@ -46,6 +59,10 @@
 		{language}
 		{readonly}
 		{preferences}
+		{folding}
+		{multiCursor}
+		{maxCursors}
+		{aiAgents}
 		{onChange}
 		{onCursorChange}
 		{onSave}

@@ -8,7 +8,7 @@
  * - All UI components built from scratch (no UI libraries)
  * - Native Svelte 5 runes for state management
  * - Custom code editor (no CodeMirror dependency)
- * - Yjs for CRDT collaboration (optional, tree-shakeable)
+ * - Yjs for CRDT collaboration (optional via the ./crdt entry)
  *
  * ============================================================================
  * PUBLIC API SURFACE — what belongs in this root barrel
@@ -136,12 +136,6 @@ export { default as Editor } from './components/editor/Editor.svelte';
 export { default as CustomEditor } from './components/editor/CustomEditor.svelte';
 
 /**
- * Collaborative editor with CRDT support
- * @experimental - requires the optional yjs peers; API may change in future versions
- */
-export { default as CollaborativeEditor } from './components/editor/CollaborativeEditor.svelte';
-
-/**
  * Editor tab bar component
  * @public - Stable API
  */
@@ -175,32 +169,36 @@ export {
  *
  * Functions and types marked below:
  *   createEditorState, createNavigation, createKeyboardHandler,
- *   createDefaultKeybindings, createCRDTBinding,
+ *   createDefaultKeybindings,
  *   EditorState, Position, Selection, Line, ChangeEvent,
- *   Navigation, KeyboardHandler, Keybinding, CRDTBinding,
+ *   Navigation, KeyboardHandler, Keybinding,
  *   Cursor, CursorManager, CursorManagerConfig
  *
  * @public - Stable API
  */
 export {
 	createEditorState,
-	createNavigation,
-	createKeyboardHandler,
-	createDefaultKeybindings,
-	createCRDTBinding,
 	type EditorState,
 	type Position,
 	type Selection,
 	type Line,
-	type ChangeEvent,
-	type Navigation,
+	type ChangeEvent
+} from './components/editor/core/state';
+
+export { createNavigation, type Navigation } from './components/editor/core/navigation';
+
+export {
+	createKeyboardHandler,
+	createDefaultKeybindings,
 	type KeyboardHandler,
-	type Keybinding,
-	type CRDTBinding,
+	type Keybinding
+} from './components/editor/core/keybindings';
+
+export {
 	type Cursor,
 	type CursorManager,
 	type CursorManagerConfig
-} from './components/editor/core';
+} from './components/editor/core/multi-cursor';
 
 /**
  * Editor theme utilities and types

@@ -3,7 +3,7 @@ import { createEditorHelper, waitForNetworkIdle } from './utils/editor-helpers';
 
 test.describe('Editor Selection and Clipboard', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 
@@ -275,16 +275,18 @@ test.describe('Editor Selection and Clipboard', () => {
 		const editor = await createEditorHelper(page);
 		await editor.focus();
 
-		const beforeCount = await editor.getLineCount();
-
-		// Go to end and add new lines
+		// Go to end, add a marker, create blank lines, then type a second marker.
 		await editor.press('Control+End');
+		const startPosition = await editor.getAnnouncedCursorPosition();
+		await editor.type('TAIL_MARKER');
 		await editor.press('Enter');
 		await editor.press('Enter');
 		await editor.press('Enter');
+		await editor.type('END_MARKER');
 		await page.waitForTimeout(100);
 
-		const afterCount = await editor.getLineCount();
-		expect(afterCount).toBe(beforeCount + 3); // 3 new lines from 3 Enter presses
+		const finalPosition = await editor.getAnnouncedCursorPosition();
+		expect(finalPosition.line).toBe(startPosition.line + 3);
+		expect(finalPosition.column).toBe('END_MARKER'.length + 1);
 	});
 });

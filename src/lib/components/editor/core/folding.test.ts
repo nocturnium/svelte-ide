@@ -619,6 +619,47 @@ describe('FoldManager', () => {
 		}
 	});
 
+	// ----- visual/raw line bijection -----
+
+	it('should map visible raw lines and visual rows as exact inverses', () => {
+		manager.collapse(1);
+		const visible = manager.getVisibleLines(8);
+
+		for (const line of visible) {
+			expect(manager.visualRowToLine(manager.lineToVisualRow(line, 8), 8)).toBe(line);
+		}
+
+		for (let visualRow = 0; visualRow < visible.length; visualRow++) {
+			const line = manager.visualRowToLine(visualRow, 8);
+			expect(manager.lineToVisualRow(line, 8)).toBe(visualRow);
+		}
+	});
+
+	it('should subtract hidden lines above a visible target line', () => {
+		manager.collapse(1);
+
+		// Collapsing raw lines 2, 3, and 4 above raw line 5 compacts line 5 to row 2.
+		expect(manager.getVisibleLines(8)).toEqual([0, 1, 5, 6, 7]);
+		expect(manager.lineToVisualRow(5, 8)).toBe(5 - 3);
+	});
+
+	it('should map hidden lines to their visible fold-header row', () => {
+		manager.collapse(1);
+
+		expect(manager.lineToVisualRow(1, 8)).toBe(1);
+		expect(manager.lineToVisualRow(2, 8)).toBe(1);
+		expect(manager.lineToVisualRow(3, 8)).toBe(1);
+		expect(manager.lineToVisualRow(4, 8)).toBe(1);
+	});
+
+	it('should clamp visual row to raw line mapping sensibly', () => {
+		manager.collapse(1);
+
+		expect(manager.visualRowToLine(-10, 8)).toBe(0);
+		expect(manager.visualRowToLine(999, 8)).toBe(7);
+		expect(manager.visualRowToLine(0, 0)).toBe(0);
+	});
+
 	// ----- collapseAll / expandAll -----
 
 	it('should collapse all regions with collapseAll', () => {

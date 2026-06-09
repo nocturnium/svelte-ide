@@ -48,16 +48,16 @@ Both are exported from the package root and from the `./components/editor` subpa
 
 These are the exact props from the `Editor` component's `Props` interface:
 
-| Prop             | Type                                     | Default       | Description                                                                                                                                                          |
-| ---------------- | ---------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`        | `string`                                 | — (required)  | Document text to display.                                                                                                                                            |
-| `language`       | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"rust"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set.  |
-| `readonly`       | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                       |
-| `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                  |
-| `class`          | `string`                                 | `""`          | Extra CSS class applied to the editor container.                                                                                                                     |
-| `onChange`       | `(content: string) => void`              | —             | Fired (debounced) whenever the document text changes.                                                                                                                |
-| `onCursorChange` | `(line: number, column: number) => void` | —             | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                        |
-| `onSave`         | `() => void`                             | —             | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs. |
+| Prop             | Type                                     | Default       | Description                                                                                                                                                           |
+| ---------------- | ---------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`        | `string`                                 | — (required)  | Document text to display.                                                                                                                                             |
+| `language`       | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"svelte"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set. |
+| `readonly`       | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                        |
+| `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                   |
+| `class`          | `string`                                 | `""`          | Extra CSS class applied to the editor container.                                                                                                                      |
+| `onChange`       | `(content: string) => void`              | —             | Fired (debounced) whenever the document text changes.                                                                                                                 |
+| `onCursorChange` | `(line: number, column: number) => void` | —             | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                         |
+| `onSave`         | `() => void`                             | —             | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs.  |
 
 There are no Svelte `createEventDispatcher` events on these components — all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
 
@@ -72,11 +72,11 @@ There are no Svelte `createEventDispatcher` events on these components — all i
 | `folding`                | `boolean`                                      | `true`  | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md). |
 | `multiCursor`            | `boolean`                                      | `true`  | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md).                                               |
 | `maxCursors`             | `number`                                       | `100`   | Upper bound on simultaneous cursors.                                                                               |
-| `complexityHighlighting` | `boolean`                                      | `true`  | Highlights high-complexity regions inline.                                                                         |
+| `complexityHighlighting` | `boolean`                                      | `false` | Highlights high-complexity regions inline.                                                                         |
 | `complexityThreshold`    | `number`                                       | `50`    | Minimum complexity score before highlighting is drawn.                                                             |
 | `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize (Ghost Pair cursors / focus regions). See [AI and agents](./ai-and-agents.md).              |
 | `showAILabels`           | `boolean`                                      | `true`  | Show name labels next to AI cursors.                                                                               |
-| `showAIFocusRegions`     | `boolean`                                      | `true`  | Shade the region an AI agent is focused on.                                                                        |
+| `showAIFocusRegions`     | `boolean`                                      | `false` | Shade the region an AI agent is focused on.                                                                        |
 | `onCursorsChange`        | `(cursors: readonly Cursor[]) => void`         | —       | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`.  |
 | `onComplexityChange`     | `(metrics: ComplexityMetrics \| null) => void` | —       | Fired when computed complexity metrics change.                                                                     |
 
@@ -224,7 +224,7 @@ If you only need the final value at specific moments (on save, on submit), let t
 	import { Editor } from '@nocturnium/svelte-ide';
 
 	// `initial` seeds the editor once; latestValue is updated but not fed back to `content`.
-	const initial = 'SELECT * FROM users;\n';
+	const initial = 'const users = await db.query("users");\n';
 	let latestValue = initial;
 
 	function handleSave() {
@@ -235,7 +235,7 @@ If you only need the final value at specific moments (on save, on submit), let t
 <div style="height: 320px;">
 	<Editor
 		content={initial}
-		language="sql"
+		language="typescript"
 		onChange={(value) => (latestValue = value)}
 		onSave={handleSave}
 	/>

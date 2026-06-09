@@ -785,6 +785,50 @@ export class FoldManager {
 	}
 
 	/**
+	 * Map a raw document line to its compacted visual row.
+	 *
+	 * Visible lines map to their exact row in getVisibleLines(totalLines). Hidden
+	 * lines map to the row of the nearest visible fold header at or above them.
+	 */
+	lineToVisualRow(line: number, totalLines: number): number {
+		if (totalLines <= 0) return 0;
+
+		const clampedLine = Math.max(0, Math.min(Math.floor(line), totalLines - 1));
+		const visible = this.getVisibleLines(totalLines);
+		if (visible.length === 0) return 0;
+
+		let low = 0;
+		let high = visible.length;
+		while (low < high) {
+			const mid = Math.floor((low + high) / 2);
+			if (visible[mid] < clampedLine) {
+				low = mid + 1;
+			} else {
+				high = mid;
+			}
+		}
+
+		if (visible[low] === clampedLine) {
+			return low;
+		}
+
+		return Math.max(0, low - 1);
+	}
+
+	/**
+	 * Map a compacted visual row back to the raw document line rendered there.
+	 */
+	visualRowToLine(visualRow: number, totalLines: number): number {
+		if (totalLines <= 0) return 0;
+
+		const visible = this.getVisibleLines(totalLines);
+		if (visible.length === 0) return 0;
+
+		const clampedRow = Math.max(0, Math.min(Math.floor(visualRow), visible.length - 1));
+		return visible[clampedRow];
+	}
+
+	/**
 	 * Get the number of hidden lines after a fold start
 	 */
 	getHiddenLineCount(startLine: number): number {

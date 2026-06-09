@@ -43,6 +43,7 @@
 	--ide-bg-elevated: color-mix(in srgb, var(--ide-bg-secondary) 90%, white 10%);
 	--ide-bg-hover: color-mix(in srgb, var(--ide-bg-tertiary) 50%, transparent);
 	--ide-bg-active: var(--ide-bg-tertiary);
+	--ide-bg-overlay: color-mix(in srgb, black 75%, transparent);
 	--ide-bg-selection-secondary: color-mix(
 		in srgb,
 		var(--color-nocturnium-aurora-purple) 22%,
@@ -62,9 +63,11 @@
 	--ide-interactive-active: var(--color-nocturnium-ember);
 	--ide-interactive-focus: var(--color-nocturnium-aurora-blue);
 	--ide-interactive-muted: color-mix(in srgb, var(--ide-interactive) 70%, transparent);
+	--ide-interactive-rgb: 74, 141, 183;
 
 	/* IDE Accent Colors */
 	--ide-accent: var(--color-nocturnium-wave);
+	--ide-accent-hover: var(--color-nocturnium-flame);
 	--ide-accent-strong: var(--color-nocturnium-flame);
 
 	/* IDE Semantic Colors */
@@ -98,8 +101,10 @@
 
 	/* IDE Borders */
 	--ide-border: color-mix(in srgb, var(--ide-text-secondary) 20%, transparent);
+	--ide-border-light: color-mix(in srgb, var(--ide-text-secondary) 12%, transparent);
 	--ide-border-focus: var(--ide-interactive);
 	--ide-border-error: var(--ide-error);
+	--ide-focus-ring: var(--ide-interactive-focus);
 
 	/* IDE Shadows */
 	--ide-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -113,6 +118,7 @@
 		'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
 	--ide-font-size-xs: 0.75rem;
 	--ide-font-size-sm: 0.875rem;
+	--ide-font-size-md: 1rem;
 	--ide-font-size-base: 1rem;
 	--ide-font-size-lg: 1.125rem;
 	--ide-font-size-xl: 1.25rem;
@@ -130,8 +136,10 @@
 	--ide-spacing-lg: 1.5rem;
 	--ide-spacing-xl: 2rem;
 	--ide-spacing-2xl: 3rem;
+	--ide-spacing-3xl: 4rem;
 
 	/* IDE Radii */
+	--ide-radius-xs: 0.125rem;
 	--ide-radius-sm: 0.25rem;
 	--ide-radius-md: 0.375rem;
 	--ide-radius-lg: 0.5rem;
@@ -165,6 +173,21 @@
 	--ide-status-bar-height: 24px;
 	--ide-tab-height: 36px;
 	--ide-header-height: 40px;
+	--ide-scrollbar-thumb: var(--ide-bg-tertiary);
+
+	/* IDE Syntax Colors */
+	--ide-syntax-keyword: var(--color-nocturnium-aurora-purple);
+	--ide-syntax-string: var(--color-nocturnium-aurora-green);
+	--ide-syntax-function: var(--color-nocturnium-aurora-blue);
+	--ide-syntax-number: var(--color-nocturnium-aurora-yellow);
+	--ide-syntax-comment: var(--ide-text-muted);
+	--ide-syntax-type: var(--color-nocturnium-teal);
+	--ide-syntax-variable: var(--ide-text-primary);
+	--ide-syntax-operator: var(--ide-text-primary);
+	--ide-syntax-punctuation: var(--ide-text-secondary);
+	--ide-syntax-constant: var(--color-nocturnium-aurora-yellow);
+	--ide-syntax-tag: var(--color-nocturnium-aurora-pink);
+	--ide-syntax-attribute: var(--color-nocturnium-aurora-yellow);
 
 	/* Agent Status Colors */
 	--ide-agent-online: var(--color-nocturnium-aurora-green);
@@ -175,6 +198,7 @@
 
 	/* Agent Type Colors */
 	--ide-agent-human: var(--color-nocturnium-aurora-blue);
+	--ide-agent-ai: var(--color-nocturnium-ember);
 	--ide-agent-ai-primary: var(--color-nocturnium-ember);
 	--ide-agent-ai-secondary: var(--color-nocturnium-aurora-purple);
 	--ide-agent-system: var(--color-nocturnium-ocean);
@@ -191,6 +215,12 @@
 	--ide-transaction-pending: var(--color-nocturnium-aurora-yellow);
 	--ide-transaction-committed: var(--color-nocturnium-aurora-green);
 	--ide-transaction-failed: var(--ide-error);
+
+	/* File Status Colors */
+	--ide-status-created: var(--color-nocturnium-aurora-green);
+	--ide-status-modified: var(--color-nocturnium-aurora-yellow);
+	--ide-status-deleted: var(--ide-error);
+	--ide-status-renamed: var(--color-nocturnium-aurora-purple);
 
 	/* Progress Indicators */
 	--ide-progress-track: var(--ide-bg-tertiary);
@@ -621,6 +651,19 @@
 
 .ide-agent-selection--ai {
 	background: var(--ide-agent-ai-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ide-agent-status-ring,
+	.ide-agent-status-ring--busy,
+	.ide-agent-status-ring--stalled,
+	.ide-lock-badge--pending,
+	.ide-lock-badge--conflict,
+	.ide-transaction-indicator--pending,
+	.ide-agent-cursor,
+	.ide-agent-cursor--typing::after {
+		animation: none;
+	}
 }
 
 /* Force default cursor on editor gutter/line numbers */

@@ -6,6 +6,7 @@
  * We use getter functions to expose reactive derived state.
  */
 
+import { SvelteMap } from 'svelte/reactivity';
 import type {
 	CollaborationConfig,
 	CollaborationState,
@@ -40,8 +41,8 @@ const state = $state<CollabState>({
 	error: null,
 	synced: false,
 	users: [],
-	cursors: new Map(),
-	awareness: new Map(),
+	cursors: new SvelteMap(),
+	awareness: new SvelteMap(),
 	aiSessions: [],
 	pendingChanges: [],
 	snapshots: [],

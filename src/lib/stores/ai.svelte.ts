@@ -6,6 +6,7 @@
  * We use getter functions to expose reactive derived state.
  */
 
+import { SvelteMap } from 'svelte/reactivity';
 import type {
 	AIMessage,
 	AIConversation,
@@ -43,7 +44,7 @@ const defaultConfig: AIPanelConfig = {
 const state = $state<AIState>({
 	conversations: [],
 	activeConversationId: null,
-	tools: new Map(),
+	tools: new SvelteMap(),
 	config: { ...defaultConfig },
 	editSessions: [],
 	suggestions: [],

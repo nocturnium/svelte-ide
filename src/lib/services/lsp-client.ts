@@ -156,6 +156,7 @@ export class LSPClient {
 	private _capabilities: ServerCapabilities | null = null;
 	private reconnectAttempts = 0;
 	private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+	private intentionalDisconnect = false;
 
 	// Document tracking
 	private openDocuments = new Map<string, { version: number; languageId: string }>();
@@ -238,13 +239,25 @@ export class LSPClient {
 			return;
 		}
 
+		this.intentionalDisconnect = false;
+		if (this.reconnectTimeout) {
+			clearTimeout(this.reconnectTimeout);
+			this.reconnectTimeout = null;
+		}
+		this.cleanupSocket();
 		this.setState('connecting');
 
 		return new Promise((resolve, reject) => {
 			try {
-				this.ws = new WebSocket(this.config.serverUrl);
+				const socket = new WebSocket(this.config.serverUrl);
+				this.ws = socket;
 
-				this.ws.onopen = async () => {
+				socket.onopen = async () => {
+					if (socket !== this.ws) return;
+					if (this.reconnectTimeout) {
+						clearTimeout(this.reconnectTimeout);
+						this.reconnectTimeout = null;
+					}
 					this.reconnectAttempts = 0;
 					this.setState('connected');
 
@@ -256,11 +269,12 @@ export class LSPClient {
 					}
 				};
 
-				this.ws.onclose = () => {
-					this.handleDisconnect();
+				socket.onclose = () => {
+					this.handleDisconnect(socket);
 				};
 
-				this.ws.onerror = (_event) => {
+				socket.onerror = (_event) => {
+					if (socket !== this.ws) return;
 					const error = new Error('WebSocket error');
 					this.emitEvent('onError', error);
 					if (this._state === 'connecting') {
@@ -268,7 +282,8 @@ export class LSPClient {
 					}
 				};
 
-				this.ws.onmessage = (event) => {
+				socket.onmessage = (event) => {
+					if (socket !== this.ws) return;
 					this.handleMessage(event.data);
 				};
 			} catch (err) {
@@ -278,7 +293,30 @@ export class LSPClient {
 		});
 	}
 
-	private handleDisconnect(): void {
+	private cleanupSocket(socket: WebSocket | null = this.ws): void {
+		if (!socket) return;
+		socket.onopen = null;
+		socket.onclose = null;
+		socket.onerror = null;
+		socket.onmessage = null;
+		if (socket.readyState !== WebSocket.CLOSING) {
+			socket.close();
+		}
+		if (socket === this.ws) {
+			this.ws = null;
+		}
+	}
+
+	private getReconnectDelay(attempt: number): number {
+		const baseDelay = this.config.reconnectDelay ?? 1000;
+		const exponentialDelay = baseDelay * 2 ** (attempt - 1);
+		const jitter = 0.75 + Math.random() * 0.5;
+		return Math.round(exponentialDelay * jitter);
+	}
+
+	private handleDisconnect(socket: WebSocket | null = this.ws): void {
+		const wasIntentional = this.intentionalDisconnect;
+		this.cleanupSocket(socket);
 		this.setState('disconnected');
 
 		// Cancel pending requests
@@ -288,13 +326,18 @@ export class LSPClient {
 		}
 		this.pendingRequests.clear();
 
+		if (wasIntentional) {
+			this.intentionalDisconnect = false;
+			return;
+		}
+
 		// Auto-reconnect
 		if (
 			this.config.autoReconnect &&
 			this.reconnectAttempts < (this.config.maxReconnectAttempts ?? 5)
 		) {
 			this.reconnectAttempts++;
-			const delay = (this.config.reconnectDelay ?? 1000) * this.reconnectAttempts;
+			const delay = this.getReconnectDelay(this.reconnectAttempts);
 
 			if (this.config.debug) {
 				console.log(`[LSP] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
@@ -309,6 +352,7 @@ export class LSPClient {
 	}
 
 	async disconnect(): Promise<void> {
+		this.intentionalDisconnect = true;
 		if (this.reconnectTimeout) {
 			clearTimeout(this.reconnectTimeout);
 			this.reconnectTimeout = null;
@@ -325,11 +369,11 @@ export class LSPClient {
 				}
 			}
 
-			this.ws.close();
-			this.ws = null;
+			this.cleanupSocket();
 		}
 
 		this.setState('disconnected');
+		this.intentionalDisconnect = false;
 	}
 
 	// ============================================================================

@@ -14,10 +14,10 @@
 import '@nocturnium/svelte-ide/theme.css';
 
 // A real editor — folding, multi-cursor, find/replace,
-// syntax highlighting for 10+ languages. Zero CodeMirror.
+// syntax highlighting for 12 languages. Zero CodeMirror.
 interface Snippet {
   id: string;
-  language: 'ts' | 'rust' | 'go' | 'python';
+  language: 'ts' | 'go' | 'python' | 'svelte';
   source: string;
 }
 
@@ -123,9 +123,9 @@ const editor = mount(CustomEditor, {
 		},
 		{
 			icon: '◈',
-			title: 'AI-native surface',
+			title: 'AI panel surface',
 			description:
-				'A built-in assistant panel with streaming, tool calls, and inline edit previews — plus ghost-cursor visualization for AI pairing.'
+				'A built-in demo assistant panel for wiring your own model backend, plus inline edit previews and ghost-cursor visualization for AI pairing.'
 		},
 		{
 			icon: '⚇',
@@ -135,9 +135,9 @@ const editor = mount(CustomEditor, {
 		},
 		{
 			icon: '◐',
-			title: 'Syntax for 10+ languages',
+			title: 'Syntax for 12 languages',
 			description:
-				'TypeScript, JavaScript, Python, Go, Rust, HTML, CSS, JSON, Markdown and more — tokenized with a Nocturnium-tuned palette.'
+				'JavaScript, TypeScript, JSX, TSX, HTML, XML, CSS, JSON, Python, Go, Markdown, and Svelte — tokenized with a Nocturnium-tuned palette.'
 		},
 		{
 			icon: '⌘',

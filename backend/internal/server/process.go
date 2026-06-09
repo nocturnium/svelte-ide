@@ -26,6 +26,10 @@ type Process struct {
 	errors   chan error
 	ctx      context.Context
 	cancel   context.CancelFunc
+	done     chan struct{}
+	doneOnce sync.Once
+	readers  sync.WaitGroup
+	waiter   sync.WaitGroup
 }
 
 // NewProcess creates a new language server process (but doesn't start it).
@@ -37,6 +41,7 @@ func NewProcess(cfg Config) *Process {
 		errors:   make(chan error, 10),
 		ctx:      ctx,
 		cancel:   cancel,
+		done:     make(chan struct{}),
 	}
 }
 
@@ -75,13 +80,28 @@ func (p *Process) Start() error {
 	log.Printf("[LSP] Started %s (PID: %d)", p.config.Command, p.cmd.Process.Pid)
 
 	// Start reading stdout (LSP messages)
-	go p.readMessages()
+	p.readers.Add(1)
+	go func() {
+		defer p.recoverGoroutine("readMessages")
+		defer p.readers.Done()
+		p.readMessages()
+	}()
 
 	// Start reading stderr (for debugging)
-	go p.readStderr()
+	p.readers.Add(1)
+	go func() {
+		defer p.recoverGoroutine("readStderr")
+		defer p.readers.Done()
+		p.readStderr()
+	}()
 
 	// Wait for process to exit
-	go p.waitForExit()
+	p.waiter.Add(1)
+	go func() {
+		defer p.recoverGoroutine("waitForExit")
+		defer p.waiter.Done()
+		p.waitForExit()
+	}()
 
 	return nil
 }
@@ -89,9 +109,13 @@ func (p *Process) Start() error {
 // Stop gracefully shuts down the language server.
 func (p *Process) Stop() error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if !p.running {
+	running := p.running
+	started := p.cmd != nil
+	if !running {
+		p.mu.Unlock()
+		if started {
+			p.waiter.Wait()
+		}
 		return nil
 	}
 
@@ -106,6 +130,9 @@ func (p *Process) Stop() error {
 	}
 
 	p.running = false
+	p.mu.Unlock()
+
+	p.waiter.Wait()
 	return nil
 }
 
@@ -163,7 +190,7 @@ func (p *Process) readMessages() {
 			line, err := reader.ReadString('\n')
 			if err != nil {
 				if err != io.EOF {
-					p.errors <- fmt.Errorf("failed to read header: %w", err)
+					p.sendError(fmt.Errorf("failed to read header: %w", err))
 				}
 				return
 			}
@@ -188,18 +215,13 @@ func (p *Process) readMessages() {
 		_, err := io.ReadFull(reader, content)
 		if err != nil {
 			if err != io.EOF {
-				p.errors <- fmt.Errorf("failed to read content: %w", err)
+				p.sendError(fmt.Errorf("failed to read content: %w", err))
 			}
 			return
 		}
 
-		// Send to channel
-		select {
-		case p.messages <- json.RawMessage(content):
-		case <-p.ctx.Done():
+		if !p.sendMessage(json.RawMessage(content)) {
 			return
-		default:
-			log.Println("[LSP] Warning: message channel full, dropping message")
 		}
 	}
 }
@@ -209,6 +231,9 @@ func (p *Process) readStderr() {
 	scanner := bufio.NewScanner(p.stderr)
 	for scanner.Scan() {
 		log.Printf("[LSP stderr] %s", scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		p.sendError(fmt.Errorf("failed to read stderr: %w", err))
 	}
 }
 
@@ -222,11 +247,53 @@ func (p *Process) waitForExit() {
 
 	if err != nil {
 		log.Printf("[LSP] Process exited with error: %v", err)
-		p.errors <- err
+		p.sendError(err)
 	} else {
 		log.Printf("[LSP] Process exited normally")
 	}
 
+	p.signalDone()
+	p.readers.Wait()
 	close(p.messages)
 	close(p.errors)
+}
+
+func (p *Process) signalDone() {
+	p.doneOnce.Do(func() {
+		close(p.done)
+	})
+}
+
+func (p *Process) sendMessage(msg json.RawMessage) bool {
+	select {
+	case p.messages <- msg:
+		return true
+	case <-p.done:
+		return false
+	case <-p.ctx.Done():
+		return false
+	default:
+		log.Println("[LSP] Warning: message channel full, dropping message")
+		return true
+	}
+}
+
+func (p *Process) sendError(err error) bool {
+	select {
+	case p.errors <- err:
+		return true
+	case <-p.done:
+		return false
+	case <-p.ctx.Done():
+		return false
+	default:
+		log.Printf("[LSP] Warning: error channel full, dropping error: %v", err)
+		return true
+	}
+}
+
+func (p *Process) recoverGoroutine(name string) {
+	if r := recover(); r != nil {
+		log.Printf("[LSP] Recovered panic in %s: %v", name, r)
+	}
 }

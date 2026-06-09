@@ -27,6 +27,7 @@ export interface EditorFindDeps {
 	scrollCursorIntoView: () => void;
 	focusEditor: () => void;
 	isReadonly: () => boolean;
+	lineToVisualRow?: (line: number) => number;
 }
 
 export interface MatchRect {
@@ -152,26 +153,24 @@ export function createEditorFind(deps: EditorFindDeps) {
 
 		const { scrollTop, viewportHeight } = viewport;
 		const { lineHeight, charWidth, gutterWidth, contentPadding } = measurements;
+		const lineToVisualRow = deps.lineToVisualRow ?? ((line: number) => line);
 
-		const firstVisibleLine = Math.max(0, Math.floor(scrollTop / lineHeight) - 1);
-		const lineCount = deps.getLineCount();
-		const lastVisibleLine = Math.min(
-			lineCount - 1,
-			Math.ceil((scrollTop + viewportHeight) / lineHeight) + 1
-		);
+		const firstVisibleRow = Math.max(0, Math.floor(scrollTop / lineHeight) - 1);
+		const lastVisibleRow = Math.max(0, Math.ceil((scrollTop + viewportHeight) / lineHeight) + 1);
 
 		const rects: MatchRect[] = [];
 
 		for (let i = 0; i < matches.length; i++) {
 			const match = matches[i];
+			const visualRow = lineToVisualRow(match.line);
 
-			if (match.line < firstVisibleLine || match.line > lastVisibleLine) continue;
+			if (visualRow < firstVisibleRow || visualRow > lastVisibleRow) continue;
 
 			const width = (match.endColumn - match.startColumn) * charWidth;
 			if (width <= 0) continue;
 
 			rects.push({
-				top: match.line * lineHeight,
+				top: visualRow * lineHeight,
 				left: gutterWidth + contentPadding + match.startColumn * charWidth,
 				width,
 				height: lineHeight,

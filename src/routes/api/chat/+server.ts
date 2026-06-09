@@ -1,6 +1,6 @@
 /**
- * Mock Chat API for AI Panel
- * POST - Send message and get AI response (streaming or non-streaming)
+ * Demo mock Chat API for AI Panel.
+ * POST - Returns canned responses for the demo UI; no model inference is wired.
  */
 
 import { json } from '@sveltejs/kit';
@@ -159,7 +159,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({
 			content: fullResponse,
 			metadata: {
-				model: 'claude-3-5-sonnet-mock',
+				model: 'nocturnium-demo-mock',
 				tokensUsed: Math.floor(fullResponse.length / 4),
 				latencyMs: 500
 			}

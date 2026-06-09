@@ -13,6 +13,7 @@ import {
 	CursorManager,
 	createCursorManager,
 	type Cursor,
+	comparePositions,
 	getSelectionStart,
 	getSelectionEnd,
 	isSelectionEmpty
@@ -526,11 +527,13 @@ export class EditorState {
 				const start = getSelectionStart(cursor.selection);
 				const end = getSelectionEnd(cursor.selection);
 				this.deleteRangeInternal(start, end);
+				this.transformCursorUpdatesForDelete(updates, start, end);
 				currentPos = start;
 			}
 
 			// Insert text
 			const newPos = this.insertAtInternal(currentPos, text);
+			this.transformCursorUpdatesForInsert(updates, currentPos, text);
 			updates.push({ id: cursor.id, position: newPos });
 		}
 
@@ -636,6 +639,7 @@ export class EditorState {
 				const start = getSelectionStart(cursor.selection);
 				const end = getSelectionEnd(cursor.selection);
 				this.deleteRangeInternal(start, end);
+				this.transformCursorUpdatesForDelete(updates, start, end);
 
 				updates.push({ id: cursor.id, position: start });
 			}
@@ -717,19 +721,26 @@ export class EditorState {
 			const { line, column } = cursor.selection.head;
 
 			if (column > 0) {
+				const from = { line, column: column - 1 };
+				const to = { line, column };
+
 				// Delete within line
 				const currentLine = this._lines[line];
-				currentLine.text = currentLine.text.slice(0, column - 1) + currentLine.text.slice(column);
+				currentLine.text =
+					currentLine.text.slice(0, from.column) + currentLine.text.slice(to.column);
 				// Re-tokenize to end of document so deleting a multi-line construct
 				// delimiter re-propagates state to lines below.
 				this.retokenize(line, this._lines.length);
 
-				updates.push({ id: cursor.id, position: { line, column: column - 1 } });
+				this.transformCursorUpdatesForDelete(updates, from, to);
+				updates.push({ id: cursor.id, position: from });
 			} else if (line > 0) {
 				// Join with previous line
 				const prevLine = this._lines[line - 1];
 				const currentLine = this._lines[line];
 				const newColumn = prevLine.text.length;
+				const from = { line: line - 1, column: newColumn };
+				const to = { line, column: 0 };
 
 				prevLine.text += currentLine.text;
 				this._lines.splice(line, 1);
@@ -737,7 +748,8 @@ export class EditorState {
 				this.renumberLines(line);
 				this.retokenize(line - 1, this._lines.length);
 
-				updates.push({ id: cursor.id, position: { line: line - 1, column: newColumn } });
+				this.transformCursorUpdatesForDelete(updates, from, to);
+				updates.push({ id: cursor.id, position: from });
 			}
 		}
 
@@ -771,29 +783,48 @@ export class EditorState {
 
 		this.saveHistory('delete');
 
+		const updates: Array<{ id: string; position: Position }> = [];
+
 		for (const cursor of cursors) {
 			const { line, column } = cursor.selection.head;
 			const currentLine = this._lines[line];
 
 			if (column < currentLine.text.length) {
+				const from = { line, column };
+				const to = { line, column: column + 1 };
+
 				// Delete within line
-				currentLine.text = currentLine.text.slice(0, column) + currentLine.text.slice(column + 1);
+				currentLine.text =
+					currentLine.text.slice(0, from.column) + currentLine.text.slice(to.column);
 				// Re-tokenize to end of document so deleting a multi-line construct
 				// delimiter re-propagates state to lines below.
 				this.retokenize(line, this._lines.length);
+
+				this.transformCursorUpdatesForDelete(updates, from, to);
+				updates.push({ id: cursor.id, position: from });
 			} else if (line < this._lines.length - 1) {
 				// Join with next line
 				const nextLine = this._lines[line + 1];
+				const from = { line, column };
+				const to = { line: line + 1, column: 0 };
+
 				currentLine.text += nextLine.text;
 				this._lines.splice(line + 1, 1);
 				this._tokenizerStates.splice(line + 1, 1);
 				this.renumberLines(line + 1);
 				this.retokenize(line, this._lines.length);
+
+				this.transformCursorUpdatesForDelete(updates, from, to);
+				updates.push({ id: cursor.id, position: from });
 			}
 		}
 
+		// Apply all cursor updates using batch update
+		this._cursorManager.batchUpdateCursors(updates);
+
 		this.emitChange({ type: 'delete', from: this.cursor, to: this.cursor });
 		this.emitSelectionChange();
+		this.emitCursorChange();
 	}
 
 	/**
@@ -841,8 +872,8 @@ export class EditorState {
 		};
 
 		if (shouldMerge) {
-			// Update the last entry instead of creating a new one
-			this._undoStack[this._undoStack.length - 1] = entry;
+			// Keep the original restore snapshot; only extend the group's recency.
+			this._undoStack[this._undoStack.length - 1].timestamp = now;
 		} else {
 			this._undoStack.push(entry);
 
@@ -947,6 +978,79 @@ export class EditorState {
 		};
 	}
 
+	private transformCursorUpdatesForInsert(
+		updates: Array<{ id: string; position: Position }>,
+		at: Position,
+		text: string
+	): void {
+		for (const update of updates) {
+			update.position = this.transformPositionForInsert(update.position, at, text);
+		}
+	}
+
+	private transformPositionForInsert(position: Position, at: Position, text: string): Position {
+		if (comparePositions(position, at) < 0) {
+			return position;
+		}
+
+		const textLines = text.split('\n');
+		const insertedLineCount = textLines.length - 1;
+
+		if (insertedLineCount === 0) {
+			if (position.line !== at.line) {
+				return position;
+			}
+
+			return { line: position.line, column: position.column + text.length };
+		}
+
+		if (position.line === at.line) {
+			return {
+				line: position.line + insertedLineCount,
+				column: textLines[textLines.length - 1].length + position.column - at.column
+			};
+		}
+
+		return { line: position.line + insertedLineCount, column: position.column };
+	}
+
+	private transformCursorUpdatesForDelete(
+		updates: Array<{ id: string; position: Position }>,
+		from: Position,
+		to: Position
+	): void {
+		for (const update of updates) {
+			update.position = this.transformPositionForDelete(update.position, from, to);
+		}
+	}
+
+	private transformPositionForDelete(position: Position, from: Position, to: Position): Position {
+		if (comparePositions(position, from) <= 0) {
+			return position;
+		}
+
+		if (comparePositions(position, to) <= 0) {
+			return from;
+		}
+
+		if (from.line === to.line) {
+			if (position.line !== from.line) {
+				return position;
+			}
+
+			return { line: position.line, column: position.column - (to.column - from.column) };
+		}
+
+		if (position.line === to.line) {
+			return {
+				line: from.line,
+				column: from.column + position.column - to.column
+			};
+		}
+
+		return { line: position.line - (to.line - from.line), column: position.column };
+	}
+
 	/**
 	 * Check if undo is available
 	 */
@@ -971,13 +1075,58 @@ export class EditorState {
 	private tokenizerStatesEqual(a?: TokenizerState, b?: TokenizerState): boolean {
 		if (a === b) return true;
 		if (!a || !b) return a === b;
-		return (
-			a.inBlockComment === b.inBlockComment &&
-			a.inTemplateLiteral === b.inTemplateLiteral &&
-			a.inMultilineString === b.inMultilineString &&
-			a.stringDelimiter === b.stringDelimiter &&
-			a.templateDepth === b.templateDepth
-		);
+
+		const aKeys = Object.keys(a)
+			.filter((key) => a[key as keyof TokenizerState] !== undefined)
+			.sort();
+		const bKeys = Object.keys(b)
+			.filter((key) => b[key as keyof TokenizerState] !== undefined)
+			.sort();
+		if (aKeys.length !== bKeys.length) return false;
+
+		for (let i = 0; i < aKeys.length; i++) {
+			const key = aKeys[i];
+			if (key !== bKeys[i]) return false;
+			if (
+				!this.tokenizerStateValuesEqual(
+					a[key as keyof TokenizerState],
+					b[key as keyof TokenizerState]
+				)
+			) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private tokenizerStateValuesEqual(a: unknown, b: unknown): boolean {
+		if (a === b) return true;
+		if (typeof a !== typeof b) return false;
+		if (a === null || b === null) return a === b;
+		if (typeof a !== 'object' || typeof b !== 'object') return false;
+		if (Array.isArray(a) || Array.isArray(b)) {
+			if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+			return a.every((value, index) => this.tokenizerStateValuesEqual(value, b[index]));
+		}
+
+		const aRecord = a as Record<string, unknown>;
+		const bRecord = b as Record<string, unknown>;
+		const aKeys = Object.keys(aRecord)
+			.filter((key) => aRecord[key] !== undefined)
+			.sort();
+		const bKeys = Object.keys(bRecord)
+			.filter((key) => bRecord[key] !== undefined)
+			.sort();
+		if (aKeys.length !== bKeys.length) return false;
+
+		for (let i = 0; i < aKeys.length; i++) {
+			const key = aKeys[i];
+			if (key !== bKeys[i]) return false;
+			if (!this.tokenizerStateValuesEqual(aRecord[key], bRecord[key])) return false;
+		}
+
+		return true;
 	}
 
 	/**

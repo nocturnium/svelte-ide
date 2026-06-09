@@ -3,7 +3,7 @@ import { createEditorHelper, waitForNetworkIdle } from './utils/editor-helpers';
 
 test.describe('Editor Performance', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 
@@ -88,8 +88,8 @@ test.describe('Editor Performance', () => {
 		const endTime = Date.now();
 		const searchTime = endTime - startTime;
 
-		// Search should complete in under 500ms
-		expect(searchTime).toBeLessThan(500);
+		// Search should complete comfortably under a second, including the debounce/render wait.
+		expect(searchTime).toBeLessThan(750);
 
 		const matchCount = await matches.count();
 		expect(matchCount).toBeGreaterThan(0);

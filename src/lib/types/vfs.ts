@@ -120,6 +120,21 @@ export interface VFSLockAcquisitionOptions {
 // ============================================================================
 
 export class VFSError extends Error {
+	statusCode?: number;
+	path?: string;
+	workspaceId?: string;
+	retryable = false;
+	userMessage: string;
+	technicalDetails?: string;
+	recoveryOptions: {
+		id: string;
+		label: string;
+		description: string;
+		action: 'retry' | 'force' | 'merge' | 'discard' | 'refresh' | 'wait' | 'cancel';
+		recommended?: boolean;
+		dangerous?: boolean;
+	}[] = [];
+
 	constructor(
 		message: string,
 		public code: VFSErrorCode,
@@ -127,18 +142,28 @@ export class VFSError extends Error {
 	) {
 		super(message);
 		this.name = 'VFSError';
+		this.userMessage = message;
+		this.technicalDetails = message;
 	}
 }
 
 export type VFSErrorCode =
+	| 'NETWORK_ERROR'
+	| 'CONNECTION_LOST'
+	| 'TIMEOUT'
 	| 'FILE_LOCKED'
+	| 'LOCK_EXPIRED'
+	| 'LOCK_CONFLICT'
 	| 'VERSION_CONFLICT'
 	| 'FILE_NOT_FOUND'
 	| 'PERMISSION_DENIED'
-	| 'TRANSACTION_FAILED'
 	| 'WORKSPACE_NOT_FOUND'
+	| 'INVALID_OPERATION'
+	| 'SERVER_ERROR'
+	| 'RATE_LIMITED'
+	| 'TRANSACTION_FAILED'
 	| 'INVALID_PATH'
-	| 'NETWORK_ERROR';
+	| 'UNKNOWN';
 
 // ============================================================================
 // SSE Event Types

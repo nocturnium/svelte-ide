@@ -3,7 +3,7 @@ import { createEditorHelper, waitForNetworkIdle } from './utils/editor-helpers';
 
 test.describe('Editor Undo and Redo', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/demo/editor');
+		await page.goto('/demo/editor-basic');
 		await waitForNetworkIdle(page);
 	});
 
@@ -105,21 +105,22 @@ test.describe('Editor Undo and Redo', () => {
 		await editor.focus();
 
 		await editor.press('Control+Home');
-		const beforeLineCount = await editor.getLineCount();
+		const originalSecondLine = await editor.getLineText(1);
 
 		await editor.press('End');
 		await editor.press('Enter');
 		await page.waitForTimeout(50);
 
-		const afterLineCount = await editor.getLineCount();
-		expect(afterLineCount).toBe(beforeLineCount + 1);
+		await expect
+			.poll(async () => (await editor.getLineText(1)).replace(/\u00a0/g, '').trim())
+			.toBe('');
+		expect(await editor.getLineText(2)).toBe(originalSecondLine);
 
 		// Undo
 		await editor.undo();
 		await page.waitForTimeout(50);
 
-		const finalLineCount = await editor.getLineCount();
-		expect(finalLineCount).toBe(beforeLineCount);
+		expect(await editor.getLineText(1)).toBe(originalSecondLine);
 	});
 
 	test('undo after delete restores content', async ({ page }) => {

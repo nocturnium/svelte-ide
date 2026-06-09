@@ -13,6 +13,10 @@ function makeState(content = ''): EditorState {
 	return createEditorState({ content, language: 'plaintext' });
 }
 
+function sortedCursorPositions(state: EditorState): Array<{ line: number; column: number }> {
+	return state.cursorManager.getSortedCursors().map((cursor) => cursor.selection.head);
+}
+
 // ============================================================
 // Content Access
 // ============================================================
@@ -139,6 +143,72 @@ describe('EditorState — setContent', () => {
 	});
 });
 
+describe('EditorState — tokenizer state propagation', () => {
+	function tokenTypes(state: EditorState, lineNumber: number): string[] {
+		return state.getLine(lineNumber)?.tokens?.tokens.map((token) => token.type) ?? [];
+	}
+
+	it('retokenizes following Go lines after closing a raw string with a single-line edit', () => {
+		const state = createEditorState({
+			language: 'go',
+			content: 's := `raw\nmiddle\nfmt.Println("done")'
+		});
+
+		expect(tokenTypes(state, 1)).toEqual(['string']);
+		expect(tokenTypes(state, 2)).toEqual(['string']);
+
+		state.insertAt({ line: 0, column: 's := `raw'.length }, '`');
+
+		expect(tokenTypes(state, 1)).not.toEqual(['string']);
+		expect(tokenTypes(state, 2)).toContain('function.call');
+	});
+
+	it('retokenizes following Markdown lines after removing a fenced code opener', () => {
+		const state = createEditorState({
+			language: 'markdown',
+			content: '```js\nconst x = 1\n# heading'
+		});
+
+		expect(tokenTypes(state, 1)).toEqual(['markup.code']);
+		expect(tokenTypes(state, 2)).toEqual(['markup.code']);
+
+		state.deleteRange({ line: 0, column: 0 }, { line: 0, column: 3 });
+
+		expect(tokenTypes(state, 1)).not.toEqual(['markup.code']);
+		expect(tokenTypes(state, 2)).toContain('markup.heading');
+	});
+
+	it('retokenizes following Python lines after closing a triple-quoted string with a single-line edit', () => {
+		const state = createEditorState({
+			language: 'python',
+			content: 'x = """hello\nmiddle\nprint("done")'
+		});
+
+		expect(tokenTypes(state, 1)).toEqual(['string']);
+		expect(tokenTypes(state, 2)).toEqual(['string']);
+
+		state.insertAt({ line: 0, column: 'x = """hello'.length }, '"""');
+
+		expect(tokenTypes(state, 1)).not.toEqual(['string']);
+		expect(tokenTypes(state, 2)).toContain('function.call');
+	});
+
+	it('retokenizes following Svelte lines after removing a script region opener', () => {
+		const state = createEditorState({
+			language: 'svelte',
+			content: '<script>\nconst value = 1\nlet other = 2\n</script>'
+		});
+
+		expect(tokenTypes(state, 1)).toContain('keyword.definition');
+		expect(tokenTypes(state, 2)).toContain('keyword.definition');
+
+		state.deleteRange({ line: 0, column: 0 }, { line: 0, column: '<script>'.length });
+
+		expect(tokenTypes(state, 1)).not.toContain('keyword.definition');
+		expect(tokenTypes(state, 2)).not.toContain('keyword.definition');
+	});
+});
+
 // ============================================================
 // insert
 // ============================================================
@@ -203,6 +273,20 @@ describe('EditorState — insert', () => {
 		state.insert('!');
 
 		expect(state.getContent()).toBe('hello!');
+	});
+
+	it('should place same-line multi-cursor insert carets after cumulative inserts', () => {
+		const state = makeState('abcd');
+		state.setCursor({ line: 0, column: 1 });
+		state.addCursor({ line: 0, column: 3 });
+
+		state.insert('X');
+
+		expect(state.getContent()).toBe('aXbcXd');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 2 },
+			{ line: 0, column: 5 }
+		]);
 	});
 });
 
@@ -281,6 +365,20 @@ describe('EditorState — deleteBackward', () => {
 		expect(state.getContent()).toBe('');
 		expect(state.cursor.column).toBe(0);
 	});
+
+	it('should place same-line multi-cursor backspace carets after cumulative deletes', () => {
+		const state = makeState('abcdef');
+		state.setCursor({ line: 0, column: 2 });
+		state.addCursor({ line: 0, column: 5 });
+
+		state.deleteBackward();
+
+		expect(state.getContent()).toBe('acdf');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 1 },
+			{ line: 0, column: 3 }
+		]);
+	});
 });
 
 describe('EditorState — deleteForward', () => {
@@ -314,6 +412,34 @@ describe('EditorState — deleteForward', () => {
 		state.deleteForward();
 
 		expect(state.getContent()).toBe('hello');
+	});
+
+	it('should place same-line multi-cursor deleteForward carets after cumulative deletes', () => {
+		const state = makeState('abcdef');
+		state.setCursor({ line: 0, column: 1 });
+		state.addCursor({ line: 0, column: 3 });
+
+		state.deleteForward();
+
+		expect(state.getContent()).toBe('acef');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 1 },
+			{ line: 0, column: 2 }
+		]);
+	});
+
+	it('should update every cursor after multi-cursor deleteForward', () => {
+		const state = makeState('abc\ndef');
+		state.setCursor({ line: 0, column: 1 });
+		state.addCursor({ line: 1, column: 1 });
+
+		state.deleteForward();
+
+		expect(state.getContent()).toBe('ac\ndf');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 1 },
+			{ line: 1, column: 1 }
+		]);
 	});
 });
 
@@ -630,6 +756,28 @@ describe('EditorState — Undo and Redo', () => {
 		state.insert('?');
 
 		expect(state.canRedo).toBe(false);
+	});
+
+	it('should undo a merged typing run to the full pre-run content and cursor state', () => {
+		const state = makeState('hello');
+		state.setCursor({ line: 0, column: 5 });
+
+		state.insert('a');
+		state.insert('b');
+		state.insert('c');
+
+		expect(state.getContent()).toBe('helloabc');
+		expect(state.cursor).toEqual({ line: 0, column: 8 });
+
+		expect(state.undo()).toBe(true);
+
+		expect(state.getContent()).toBe('hello');
+		expect(state.cursor).toEqual({ line: 0, column: 5 });
+
+		expect(state.redo()).toBe(true);
+
+		expect(state.getContent()).toBe('helloabc');
+		expect(state.cursor).toEqual({ line: 0, column: 8 });
 	});
 });
 

@@ -97,6 +97,12 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("Recovered panic in HTTP server goroutine: %v", r)
+			}
+		}()
+
 		log.Printf("🚀 LSP Bridge server starting on %s", *addr)
 		log.Printf("   WebSocket endpoint: ws://localhost%s/lsp", *addr)
 		log.Printf("   Health check: http://localhost%s/health", *addr)

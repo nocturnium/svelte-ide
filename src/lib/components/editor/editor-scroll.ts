@@ -5,6 +5,7 @@ import { CONTENT_PADDING } from './constants';
 export interface ScrollConfig {
 	getEditorContent: () => HTMLDivElement | null;
 	getSelection: () => Selection;
+	lineToVisualRow?: (line: number) => number;
 	getMeasurements: () => {
 		lineHeight: number;
 		charWidth: number;
@@ -21,8 +22,9 @@ export function createEditorScroll(config: ScrollConfig) {
 
 		const selection = config.getSelection();
 		const { lineHeight, charWidth, gutterWidth } = config.getMeasurements();
+		const lineToVisualRow = config.lineToVisualRow ?? ((line: number) => line);
 
-		const cursorTop = selection.head.line * lineHeight;
+		const cursorTop = lineToVisualRow(selection.head.line) * lineHeight;
 		const cursorLeft = gutterWidth + CONTENT_PADDING + selection.head.column * charWidth;
 		const viewportHeight = editorContent.clientHeight;
 		const viewportWidth = editorContent.clientWidth;

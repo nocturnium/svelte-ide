@@ -286,56 +286,60 @@
 
 	/* Syntax highlighting tokens */
 	.code-content :global(.token-keyword) {
-		color: var(--syntax-keyword, #c792ea);
+		color: var(--ide-syntax-keyword);
 	}
 
 	.code-content :global(.token-string) {
-		color: var(--syntax-string, #c3e88d);
+		color: var(--ide-syntax-string);
 	}
 
 	.code-content :global(.token-number) {
-		color: var(--syntax-number, #f78c6c);
+		color: var(--ide-syntax-number);
 	}
 
 	.code-content :global(.token-comment) {
-		color: var(--syntax-comment, #546e7a);
+		color: var(--ide-syntax-comment);
 		font-style: italic;
 	}
 
 	.code-content :global(.token-function) {
-		color: var(--syntax-function, #82aaff);
+		color: var(--ide-syntax-function);
 	}
 
 	.code-content :global(.token-class) {
-		color: var(--syntax-class, #ffcb6b);
+		color: var(--ide-syntax-type);
 	}
 
 	.code-content :global(.token-operator) {
-		color: var(--syntax-operator, #89ddff);
+		color: var(--ide-syntax-operator);
 	}
 
 	.code-content :global(.token-punctuation) {
-		color: var(--syntax-punctuation, #89ddff);
+		color: var(--ide-syntax-punctuation);
 	}
 
 	.code-content :global(.token-variable) {
-		color: var(--syntax-variable, #f07178);
+		color: var(--ide-syntax-variable);
 	}
 
 	.code-content :global(.token-property) {
-		color: var(--syntax-property, #f07178);
+		color: var(--ide-accent);
 	}
 
 	.code-content :global(.token-type) {
-		color: var(--syntax-type, #ffcb6b);
+		color: var(--ide-syntax-type);
 	}
 
 	.code-content :global(.token-tag) {
-		color: var(--syntax-tag, #f07178);
+		color: var(--ide-syntax-tag);
 	}
 
 	.code-content :global(.token-attribute) {
-		color: var(--syntax-attribute, #c792ea);
+		color: var(--ide-syntax-attribute);
+	}
+
+	.code-content :global(.token-constant) {
+		color: var(--ide-syntax-constant);
 	}
 
 	.code-content :global(.token-text),
@@ -346,12 +350,18 @@
 	/* Streaming cursor */
 	.cursor {
 		animation: blink 1s step-end infinite;
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-accent);
 	}
 
 	@keyframes blink {
 		50% {
 			opacity: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cursor {
+			animation: none;
 		}
 	}
 </style>

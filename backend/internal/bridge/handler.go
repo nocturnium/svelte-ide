@@ -170,8 +170,14 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	session.process = process
 
 	// Handle bidirectional message routing
-	go h.routeClientToServer(session)
-	go h.routeServerToClient(session)
+	go func() {
+		defer h.recoverGoroutine(session.id, "routeClientToServer")
+		h.routeClientToServer(session)
+	}()
+	go func() {
+		defer h.recoverGoroutine(session.id, "routeServerToClient")
+		h.routeServerToClient(session)
+	}()
 }
 
 // routeClientToServer forwards messages from WebSocket client to language server.
@@ -299,4 +305,10 @@ func (h *Handler) Shutdown() {
 		}
 		return true
 	})
+}
+
+func (h *Handler) recoverGoroutine(sessionID, name string) {
+	if r := recover(); r != nil {
+		log.Printf("[Session %s] Recovered panic in %s: %v", sessionID, name, r)
+	}
 }
