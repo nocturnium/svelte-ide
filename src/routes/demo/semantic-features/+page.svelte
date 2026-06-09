@@ -202,13 +202,18 @@ export const capitalize = (str: string): string =>
 	// Active preset
 	let activePreset = $state<FoldPreset | null>(null);
 
+	// Editor instance — exposes applyFoldPreset()/unfoldAll() via bind:this so the
+	// preset cards drive real folding in the live editor.
+	let editor = $state<CustomEditor | null>(null);
+
 	function applyPreset(preset: FoldPreset) {
 		activePreset = preset;
-		// In a real implementation, this would control folding
+		editor?.applyFoldPreset(preset);
 	}
 
 	function clearPreset() {
 		activePreset = null;
+		editor?.unfoldAll();
 	}
 
 	// Get category color
@@ -353,10 +358,12 @@ export const capitalize = (str: string): string =>
 		<div class="editor-with-map">
 			<div class="editor-pane" onscroll={handleScroll}>
 				<CustomEditor
+					bind:this={editor}
 					{content}
 					onChange={(value) => (content = value)}
 					language="typescript"
 					readonly={false}
+					folding={true}
 					complexityHighlighting={true}
 					onCursorChange={(line, col) => {
 						cursorLine = line;

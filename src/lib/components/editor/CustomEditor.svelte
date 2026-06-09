@@ -26,7 +26,7 @@
 	import CommandPalette from './CommandPalette.svelte';
 	import { getComplexityAnalyzer, type ComplexityMetrics } from './core/complexity-analyzer';
 	import { registerSemanticFoldCommands } from './core/commands';
-	import { getSemanticAnalyzer } from './core/semantic-analyzer';
+	import { getSemanticAnalyzer, type FoldPreset } from './core/semantic-analyzer';
 	import type { AIAwareness } from './core/ai-awareness';
 	import {
 		CURSOR_BLINK_MS,
@@ -501,6 +501,38 @@
 		}
 	}
 
+	/**
+	 * Collapse every semantic region whose category is listed in `preset.hide`,
+	 * after first expanding everything so presets compose predictably. Shared by
+	 * the command-palette preset commands and the exported imperative API.
+	 */
+	function applyFoldPresetInternal(preset: FoldPreset) {
+		if (!folding || !editorState) return;
+		foldManager.expandAll();
+		const analyzer = getSemanticAnalyzer();
+		const regions = analyzer.analyze(editorState.lines, language);
+		for (const category of preset.hide) {
+			for (const region of analyzer.getByCategory(regions, category)) {
+				foldManager.collapse(region.startLine);
+			}
+		}
+	}
+
+	/**
+	 * Imperative API (accessible via `bind:this`): apply a semantic fold preset.
+	 */
+	export function applyFoldPreset(preset: FoldPreset) {
+		applyFoldPresetInternal(preset);
+	}
+
+	/**
+	 * Imperative API (accessible via `bind:this`): expand all folded regions.
+	 */
+	export function unfoldAll() {
+		if (!folding || !editorState) return;
+		foldManager.expandAll();
+	}
+
 	function handleFoldIndicatorClick(lineNumber: number, e: MouseEvent) {
 		e.preventDefault();
 		e.stopPropagation();
@@ -787,17 +819,7 @@
 				foldManager?.expandAll();
 			},
 			onApplyPreset: (preset) => {
-				// First expand all
-				foldManager?.expandAll();
-				// Then collapse categories that should be hidden
-				const analyzer = getSemanticAnalyzer();
-				const regions = analyzer.analyze(editorState.lines, language);
-				for (const category of preset.hide) {
-					const categoryRegions = analyzer.getByCategory(regions, category);
-					for (const region of categoryRegions) {
-						foldManager?.collapse(region.startLine);
-					}
-				}
+				applyFoldPresetInternal(preset);
 			},
 			getLanguage: () => language
 		});
