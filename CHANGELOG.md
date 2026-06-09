@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/nocturnium/svelte-ide/compare/v1.0.3...v1.0.4) (2026-06-09)
+
+
+### Bug Fixes
+
+* **ai,editor:** de-Claudify the mock model id and theme the intelligence overlays ([9f75c7d](https://github.com/nocturnium/svelte-ide/commit/9f75c7d03924ee4146ba3bcfd910119efbb6ce34))
+
 ## [1.0.3](https://github.com/nocturnium/svelte-ide/compare/v1.0.2...v1.0.3) (2026-06-09)
 
 
