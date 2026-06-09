@@ -733,12 +733,17 @@ export const capitalize = (str: string): string =>
 		color: var(--ide-text-muted);
 	}
 
+	/* Keep room for the clear button so the name/description never slide under it. */
+	.preset-card--active .preset-card__apply {
+		padding-right: 40px;
+	}
+
 	.preset-card__clear {
-		flex-shrink: 0;
-		align-self: flex-start;
-		margin: 8px 8px 0 0;
-		min-width: 28px;
-		min-height: 28px;
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		width: 24px;
+		height: 24px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
