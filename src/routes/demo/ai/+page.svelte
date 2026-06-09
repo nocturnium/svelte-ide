@@ -569,7 +569,7 @@ import { updateConfig } from '$lib/stores/ai.svelte';
 
 updateConfig({
   endpoint: '/api/chat',
-  model: 'claude-3-5-sonnet',
+  model: 'your-model-id',
   systemPrompt: 'You are a helpful coding assistant...',
   maxTokens: 4096,
   temperature: 0.7,

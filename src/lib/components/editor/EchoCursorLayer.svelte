@@ -96,6 +96,23 @@
 		return `top: ${top}px; left: ${left}px;`;
 	}
 
+	function getEchoColorToken(cursor: EchoCursor): string {
+		const tokens = [
+			'--ide-success',
+			'--ide-warning',
+			'--ide-syntax-tag',
+			'--ide-syntax-type',
+			'--ide-ai-assistant',
+			'--ide-error',
+			'--ide-accent',
+			'--ide-accent-strong',
+			'--ide-syntax-function',
+			'--ide-syntax-string'
+		];
+		const index = echoCursors.findIndex((echo) => echo.id === cursor.id);
+		return tokens[Math.max(index, 0) % tokens.length];
+	}
+
 	/**
 	 * Handle remove echo click
 	 */
@@ -116,7 +133,7 @@
 				class="echo-cursor"
 				class:echo-cursor--replaying={isReplaying}
 				class:echo-cursor--active={cursor.active}
-				style="{getCursorStyle(cursor)} --echo-color: {cursor.color};"
+				style="{getCursorStyle(cursor)} --echo-color: var({getEchoColorToken(cursor)});"
 			>
 				<!-- Cursor line -->
 				<div class="echo-cursor__caret" style="height: {lineHeight}px;"></div>
@@ -228,7 +245,7 @@
 		left: 0;
 		padding: 2px 6px;
 		background: var(--echo-color);
-		color: #fff;
+		color: var(--ide-text-inverse);
 		font-size: 10px;
 		font-weight: 600;
 		border-radius: 4px;
@@ -241,7 +258,7 @@
 		left: 0;
 		margin-top: 2px;
 		padding: 1px 4px;
-		background: rgba(0, 0, 0, 0.7);
+		background: var(--ide-bg-overlay);
 		color: var(--echo-color);
 		font-size: 9px;
 		font-family: monospace;
@@ -262,10 +279,10 @@
 		width: 14px;
 		height: 14px;
 		padding: 0;
-		background: rgba(239, 68, 68, 0.9);
+		background: color-mix(in srgb, var(--ide-error) 90%, transparent);
 		border: none;
 		border-radius: 50%;
-		color: #fff;
+		color: var(--ide-text-inverse);
 		font-size: 10px;
 		line-height: 14px;
 		text-align: center;
@@ -279,7 +296,7 @@
 	}
 
 	.echo-cursor__remove:hover {
-		background: #ef4444;
+		background: var(--ide-error);
 	}
 
 	.echo-cursor__replay {
@@ -288,13 +305,13 @@
 		left: 4px;
 		padding: 2px 6px;
 		background: var(--echo-color);
-		color: #fff;
+		color: var(--ide-text-inverse);
 		font-size: 12px;
 		font-family: monospace;
 		border-radius: 4px;
 		white-space: pre;
 		transition: opacity 0.2s ease;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--ide-shadow-md);
 	}
 
 	.echo-cursor__ripple {
@@ -330,11 +347,11 @@
 		align-items: center;
 		gap: 6px;
 		padding: 6px 12px;
-		background: rgba(34, 197, 94, 0.15);
-		border: 1px solid rgba(34, 197, 94, 0.3);
+		background: color-mix(in srgb, var(--ide-success) 15%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-success) 30%, transparent);
 		border-radius: 6px;
 		font-size: 12px;
-		color: #22c55e;
+		color: var(--ide-success);
 		pointer-events: auto;
 	}
 
@@ -359,5 +376,20 @@
 
 	.echo-mode-indicator__count {
 		font-weight: 500;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.echo-cursor__caret,
+		.echo-cursor--replaying .echo-cursor__caret,
+		.echo-cursor__ripple,
+		.echo-mode-indicator__icon {
+			animation: none;
+		}
+
+		.echo-cursor__delay,
+		.echo-cursor__remove,
+		.echo-cursor__replay {
+			transition: none;
+		}
 	}
 </style>

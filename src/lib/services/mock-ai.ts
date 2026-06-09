@@ -332,7 +332,7 @@ export function createMockMessage(
 		metadata:
 			role === 'assistant'
 				? {
-						model: 'claude-3-5-sonnet-mock',
+						model: 'nocturnium-demo-mock',
 						tokensUsed: Math.floor(content.length / 4),
 						latencyMs: Math.floor(500 + Math.random() * 1500),
 						...options.metadata
