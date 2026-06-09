@@ -205,13 +205,13 @@
 		align-items: center;
 		gap: 6px;
 		padding: 2px 8px;
-		background: rgba(30, 30, 30, 0.95);
-		border: 1px solid var(--color-border, #444);
+		background: color-mix(in srgb, var(--ide-bg-elevated) 95%, transparent);
+		border: 1px solid var(--ide-border);
 		border-radius: 4px;
 		font-size: 11px;
-		font-family: var(--font-mono, 'JetBrains Mono', monospace);
+		font-family: var(--ide-font-mono);
 		white-space: nowrap;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--ide-shadow-md);
 		animation: lens-fade-in 0.15s ease-out;
 	}
 
@@ -227,19 +227,19 @@
 	}
 
 	.context-lens__item--function-header {
-		border-left: 3px solid #3b82f6;
+		border-left: 3px solid var(--ide-syntax-function);
 	}
 
 	.context-lens__item--variable-type {
-		border-left: 3px solid #8b5cf6;
+		border-left: 3px solid var(--ide-syntax-keyword);
 	}
 
 	.context-lens__item--parameter-info {
-		border-left: 3px solid #22c55e;
+		border-left: 3px solid var(--ide-syntax-string);
 	}
 
 	.context-lens__item--return-type {
-		border-left: 3px solid #f59e0b;
+		border-left: 3px solid var(--ide-syntax-number);
 	}
 
 	.context-lens__icon {
@@ -248,12 +248,18 @@
 	}
 
 	.context-lens__label {
-		color: #e8e8f0;
+		color: var(--ide-text-primary);
 		font-weight: 600;
 	}
 
 	.context-lens__detail {
-		color: #888;
+		color: var(--ide-text-muted);
 		font-weight: 400;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.context-lens__item {
+			animation: none;
+		}
 	}
 </style>

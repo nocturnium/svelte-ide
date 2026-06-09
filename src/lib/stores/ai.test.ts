@@ -225,7 +225,7 @@ describe('ai store — config', () => {
 	it('default config has expected values', () => {
 		const cfg = ai.getConfig();
 		expect(cfg.endpoint).toBe('/api/chat');
-		expect(cfg.model).toBe('claude-3-5-sonnet');
+		expect(cfg.model).toBe('nocturnium-demo-mock');
 		expect(cfg.streaming).toBe(true);
 	});
 

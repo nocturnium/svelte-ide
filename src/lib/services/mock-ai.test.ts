@@ -280,7 +280,7 @@ describe('createMockMessage', () => {
 
 		expect(msg.role).toBe('assistant');
 		expect(msg.metadata).toBeDefined();
-		expect(msg.metadata!.model).toBe('claude-3-5-sonnet-mock');
+		expect(msg.metadata!.model).toBe('nocturnium-demo-mock');
 		expect(typeof msg.metadata!.tokensUsed).toBe('number');
 		expect(typeof msg.metadata!.latencyMs).toBe('number');
 	});

@@ -32,7 +32,7 @@ interface AIState {
 // Default configuration
 const defaultConfig: AIPanelConfig = {
 	endpoint: '/api/chat',
-	model: 'claude-3-5-sonnet',
+	model: 'nocturnium-demo-mock',
 	systemPrompt: 'You are a helpful coding assistant integrated into an IDE.',
 	tools: [],
 	maxTokens: 4096,

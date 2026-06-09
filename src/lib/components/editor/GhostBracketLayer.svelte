@@ -107,23 +107,23 @@
 	/**
 	 * Get color for confidence level
 	 */
-	function getConfidenceColor(confidence: number): string {
-		if (confidence >= 0.85) return '#22c55e'; // green
-		if (confidence >= 0.7) return '#eab308'; // yellow
-		return '#f59e0b'; // amber
+	function getConfidenceToken(confidence: number): string {
+		if (confidence >= 0.85) return '--ide-status-created';
+		if (confidence >= 0.7) return '--ide-status-modified';
+		return '--ide-accent-strong';
 	}
 
 	/**
 	 * Get severity color
 	 */
-	function getSeverityColor(severity: BracketMismatch['severity']): string {
+	function getSeverityToken(severity: BracketMismatch['severity']): string {
 		switch (severity) {
 			case 'error':
-				return '#ef4444';
+				return '--ide-status-deleted';
 			case 'warning':
-				return '#f59e0b';
+				return '--ide-status-modified';
 			default:
-				return '#6b7280';
+				return '--ide-text-muted';
 		}
 	}
 </script>
@@ -132,12 +132,12 @@
 	<div class="ghost-bracket-layer" aria-hidden="true">
 		<!-- Ghost bracket suggestions -->
 		{#each ghosts as ghost (ghost.id)}
-			{@const color = getConfidenceColor(ghost.confidence)}
+			{@const color = getConfidenceToken(ghost.confidence)}
 			{@const connectorStyle = getConnectorStyle(ghost)}
 
 			<!-- Connector line to matching bracket -->
 			{#if connectorStyle && hoveredGhost?.id === ghost.id}
-				<div class="ghost-connector" style="{connectorStyle} --ghost-color: {color};">
+				<div class="ghost-connector" style="{connectorStyle} --ghost-color: var({color});">
 					<div class="ghost-connector__line"></div>
 				</div>
 			{/if}
@@ -146,7 +146,7 @@
 			<div
 				class="ghost-bracket"
 				role="tooltip"
-				style="{getGhostStyle(ghost)} --ghost-color: {color};"
+				style="{getGhostStyle(ghost)} --ghost-color: var({color});"
 				onmouseenter={() => (hoveredGhost = ghost)}
 				onmouseleave={() => (hoveredGhost = null)}
 			>
@@ -187,10 +187,10 @@
 
 		<!-- Bracket mismatch markers -->
 		{#each mismatches as mismatch (`${mismatch.position.line}:${mismatch.position.column}:${mismatch.issue}`)}
-			{@const color = getSeverityColor(mismatch.severity)}
+			{@const color = getSeverityToken(mismatch.severity)}
 			<div
 				class="bracket-mismatch bracket-mismatch--{mismatch.issue}"
-				style="{getMismatchStyle(mismatch)} --mismatch-color: {color};"
+				style="{getMismatchStyle(mismatch)} --mismatch-color: var({color});"
 				title={mismatch.issue === 'unclosed'
 					? `Unclosed '${mismatch.character}'`
 					: mismatch.issue === 'unexpected'
@@ -253,7 +253,7 @@
 		top: -16px;
 		left: 0;
 		padding: 1px 4px;
-		background: rgba(0, 0, 0, 0.7);
+		background: var(--ide-bg-overlay);
 		color: var(--ghost-color);
 		font-size: 9px;
 		font-family: monospace;
@@ -272,17 +272,17 @@
 		left: 0;
 		margin-top: 4px;
 		padding: 8px;
-		background: var(--color-surface, #1e1e2e);
-		border: 1px solid var(--color-border, #333);
+		background: var(--ide-bg-elevated);
+		border: 1px solid var(--ide-border);
 		border-radius: 6px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+		box-shadow: var(--ide-shadow-lg);
 		min-width: 140px;
 		z-index: 100;
 	}
 
 	.ghost-bracket__reason {
 		font-size: 11px;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		margin-bottom: 8px;
 		line-height: 1.3;
 	}
@@ -304,21 +304,21 @@
 	}
 
 	.ghost-bracket__btn--accept {
-		background: rgba(34, 197, 94, 0.2);
-		color: #22c55e;
+		background: color-mix(in srgb, var(--ide-status-created) 20%, transparent);
+		color: var(--ide-status-created);
 	}
 
 	.ghost-bracket__btn--accept:hover {
-		background: rgba(34, 197, 94, 0.3);
+		background: color-mix(in srgb, var(--ide-status-created) 30%, transparent);
 	}
 
 	.ghost-bracket__btn--dismiss {
-		background: rgba(239, 68, 68, 0.2);
-		color: #ef4444;
+		background: color-mix(in srgb, var(--ide-status-deleted) 20%, transparent);
+		color: var(--ide-status-deleted);
 	}
 
 	.ghost-bracket__btn--dismiss:hover {
-		background: rgba(239, 68, 68, 0.3);
+		background: color-mix(in srgb, var(--ide-status-deleted) 30%, transparent);
 	}
 
 	/* Connector line */
@@ -376,7 +376,7 @@
 		left: 0;
 		padding: 1px 3px;
 		background: var(--mismatch-color);
-		color: #fff;
+		color: var(--ide-text-inverse);
 		font-size: 9px;
 		font-family: monospace;
 		border-radius: 2px;
@@ -386,5 +386,18 @@
 
 	.bracket-mismatch:hover .bracket-mismatch__expected {
 		opacity: 1;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ghost-bracket__char,
+		.bracket-mismatch--unclosed .bracket-mismatch__underline {
+			animation: none;
+		}
+
+		.ghost-bracket__confidence,
+		.ghost-bracket__btn,
+		.bracket-mismatch__expected {
+			transition: none;
+		}
 	}
 </style>
