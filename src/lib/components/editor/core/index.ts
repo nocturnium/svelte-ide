@@ -5,7 +5,10 @@
 export * from './state';
 export * from './navigation';
 export * from './keybindings';
-export * from './crdt-binding';
+// NOTE: './crdt-binding' is intentionally NOT re-exported here. It imports yjs
+// (an optional peer dependency), so leaking it through this barrel would force
+// yjs onto every consumer of the non-collaborative editor. The CRDT binding is
+// available through the dedicated `@nocturnium/svelte-ide/crdt` entry instead.
 export * from './search';
 export * from './folding';
 export * from './multi-cursor';

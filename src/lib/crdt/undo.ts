@@ -2,14 +2,9 @@
  * Undo manager for CRDT documents
  */
 
-import * as Y from 'yjs';
-import type { CollaborativeDocument } from './document';
+import type { CollaborativeDocument, CollaborativeUndoManagerOptions } from './document';
 
-export interface UndoManagerOptions {
-	captureTimeout?: number;
-	trackedOrigins?: Set<unknown>;
-	deleteFilter?: (item: Y.Item) => boolean;
-}
+export type UndoManagerOptions = CollaborativeUndoManagerOptions;
 
 export interface UndoManagerState {
 	canUndo: boolean;
@@ -35,14 +30,7 @@ export function createUndoManager(
 	document: CollaborativeDocument,
 	options: UndoManagerOptions = {}
 ): UndoManagerInstance {
-	const { captureTimeout = 500, trackedOrigins = new Set([null, 'local']), deleteFilter } = options;
-
-	const text = document.getText();
-	const manager = new Y.UndoManager(text, {
-		captureTimeout,
-		trackedOrigins,
-		deleteFilter
-	});
+	const manager = document.getUndoManager(options);
 
 	const stateCallbacks = new Set<(state: UndoManagerState) => void>();
 

@@ -8,14 +8,30 @@
 
 	import { onMount, onDestroy } from 'svelte';
 	import * as Y from 'yjs';
+	import type { Awareness } from 'y-protocols/awareness';
 	import CustomEditor from './CustomEditor.svelte';
-	import { createEditorState, createCRDTBinding, type CRDTBinding } from './core';
+	import { createEditorState } from './core/state';
+	import { createCRDTBinding, type CRDTBinding } from './core/crdt-binding';
+	import { createAwarenessProtocol, type AwarenessProtocol } from '$lib/crdt/awareness';
+	import {
+		CollaborativeProvider,
+		createProvider,
+		type CollaborativeProvider as CollaborativeProviderType
+	} from '$lib/crdt/provider';
 	import type { EditorPreferences } from '$types';
 	import type { CollaborationUser } from '$lib/types/crdt';
 
 	interface Props {
 		/** Yjs document for collaboration (optional - will create one if not provided) */
 		doc?: Y.Doc;
+		/** Existing provider; its awareness is used for transmitted presence */
+		provider?: CollaborativeProviderType;
+		/** Existing provider-attached awareness for transmitted presence */
+		awareness?: Awareness;
+		/** WebSocket server URL when the component should create a provider */
+		serverUrl?: string;
+		/** WebSocket room ID when the component should create a provider */
+		roomId?: string;
 		/** Document ID for standalone mode */
 		documentId?: string;
 		/** Initial content when creating a new document */
@@ -32,6 +48,10 @@
 		class?: string;
 		/** Current user info for cursor display */
 		currentUser?: CollaborationUser;
+		/** File path this user is viewing */
+		viewingFile?: string;
+		/** File path this user is editing */
+		editingFile?: string;
 		/** Called when content changes */
 		onChange?: (content: string) => void;
 		/** Called when cursor position changes */
@@ -42,14 +62,20 @@
 
 	let {
 		doc: externalDoc,
-		documentId: _documentId,
+		provider: externalProvider,
+		awareness: externalAwareness,
+		serverUrl,
+		roomId,
+		documentId = 'document',
 		initialContent = '',
 		textName = 'content',
 		language = 'plaintext',
 		readonly = false,
 		preferences = {},
 		class: className = '',
-		currentUser: _currentUser,
+		currentUser,
+		viewingFile,
+		editingFile,
 		onChange,
 		onCursorChange,
 		onSave
@@ -57,6 +83,8 @@
 
 	// Create internal doc if none provided
 	let internalDoc: Y.Doc | null = null;
+	let ownedProvider: CollaborativeProvider | null = null;
+	let awarenessProtocol: AwarenessProtocol | null = null;
 
 	// Editor state and CRDT binding
 	let editorState = $state<ReturnType<typeof createEditorState> | null>(null);
@@ -80,6 +108,27 @@
 				const text = doc.getText(textName);
 				text.insert(0, initialContent);
 			}
+		}
+
+		const provider =
+			externalProvider ??
+			(serverUrl && roomId
+				? createProvider(doc, serverUrl, roomId, currentUser ?? createAnonymousUser(documentId))
+				: null);
+		if (provider && !externalProvider) {
+			ownedProvider = provider;
+		}
+
+		const awareness = provider?.awareness ?? externalAwareness;
+		awarenessProtocol = createAwarenessProtocol(awareness ?? doc);
+		if (currentUser) {
+			awarenessProtocol.setUser(currentUser);
+		}
+		if (viewingFile !== undefined) {
+			awarenessProtocol.setViewingFile(viewingFile);
+		}
+		if (editingFile !== undefined) {
+			awarenessProtocol.setEditingFile(editingFile);
 		}
 
 		// Create editor state
@@ -131,8 +180,20 @@
 		yTextObserver?.();
 		yTextObserver = null;
 		crdtBinding?.destroy();
+		awarenessProtocol?.destroy();
+		awarenessProtocol = null;
+		ownedProvider?.destroy();
+		ownedProvider = null;
 		internalDoc?.destroy();
 	});
+
+	function createAnonymousUser(id: string): CollaborationUser {
+		return {
+			id,
+			name: 'Anonymous',
+			color: '#60a5fa'
+		};
+	}
 
 	// Handle content changes from the inner editor (local typing).
 	//
@@ -157,8 +218,10 @@
 	function handleCursorChange(line: number, column: number) {
 		onCursorChange?.(line, column);
 
-		// Could broadcast cursor position to other collaborators here
-		// using Yjs awareness protocol
+		if (!crdtBinding || !awarenessProtocol) return;
+		const index = crdtBinding.positionToIndex({ line, column });
+		awarenessProtocol.setCursor(index, index);
+		awarenessProtocol.setSelection(index, index);
 	}
 </script>
 

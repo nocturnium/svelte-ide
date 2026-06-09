@@ -5,14 +5,32 @@
 // Components
 export { default as Editor } from './Editor.svelte';
 export { default as CustomEditor } from './CustomEditor.svelte';
-export { default as CollaborativeEditor } from './CollaborativeEditor.svelte';
 export { default as EditorTabs } from './EditorTabs.svelte';
 export { default as EditorPane } from './EditorPane.svelte';
 export { default as FileIcon } from './FileIcon.svelte';
 export { default as FileExplorer } from './FileExplorer.svelte';
 
-// Core utilities
-export * from './core';
+// Core utilities (explicitly excluding CRDT binding; use @nocturnium/svelte-ide/crdt)
+export * from './core/state';
+export * from './core/navigation';
+export * from './core/keybindings';
+export * from './core/search';
+export * from './core/folding';
+export * from './core/multi-cursor';
+export * from './core/complexity-analyzer';
+export * from './core/ai-awareness';
+export * from './core/semantic-analyzer';
+export * from './core/commands';
+export * from './core/bracket-healer';
+export * from './core/git-blame';
+export * from './core/snippet-manager';
+export * from './core/quick-actions';
+export * from './core/diagnostics';
+export * from './core/breakpoints';
+
+// Explicit re-exports to disambiguate names declared in multiple core modules.
+export type { Position } from './core/state';
+export type { Diagnostic, Range } from './core/quick-actions';
 
 // Theme
 export * from './theme';
