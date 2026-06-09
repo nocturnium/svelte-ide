@@ -59,6 +59,13 @@ interface PatternConfig {
 	linePattern?: RegExp;
 	/** Whether region is block-based (uses braces) */
 	blockBased?: boolean;
+	/**
+	 * For block-based patterns: also emit a single-line region when the start
+	 * pattern matches a brace-less expression body (e.g. an arrow function whose
+	 * body is an expression: `export const f = () => expr`). Without this such a
+	 * definition is invisible because there is no `{` to open a block.
+	 */
+	expressionBody?: boolean;
 	/** Whether pattern spans multiple lines */
 	multiline?: boolean;
 	/** Label generator */
@@ -132,8 +139,9 @@ const JAVASCRIPT_PATTERNS: LanguagePatterns = new Map([
 		'function',
 		{
 			startPattern:
-				/^(export\s+)?(async\s+)?function\s+(\w+)|^const\s+(\w+)\s*=\s*(async\s*)?\([^)]*\)\s*=>/,
+				/^(export\s+)?(async\s+)?function\s+(\w+)|^(?:export\s+)?const\s+(\w+)\s*=\s*(async\s*)?\([^)]*\)\s*(?::[^=]+)?=>/,
 			blockBased: true,
+			expressionBody: true,
 			getLabel: (m: RegExpMatchArray) => `Function: ${m[3] || m[4] || 'anonymous'}`
 		}
 	],
@@ -378,6 +386,16 @@ export class SemanticAnalyzer {
 							category,
 							startLine: i,
 							depth: currentDepth + opens,
+							label: config.getLabel?.(match)
+						});
+					} else if (match && config.expressionBody && text.includes('=>')) {
+						// Brace-less expression-bodied arrow (e.g. `export const f = () => x`):
+						// no block to track, so record it as a single-line region.
+						regions.push({
+							category,
+							startLine: i,
+							endLine: i,
+							confidence: 0.85,
 							label: config.getLabel?.(match)
 						});
 					}

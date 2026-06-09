@@ -306,6 +306,19 @@ function foo() {}`;
 				const exports = regions.filter((r) => r.category === 'exports');
 				expect(exports.length).toBeGreaterThanOrEqual(1);
 			});
+
+			it('detects an exported expression-bodied arrow const', () => {
+				// `export const x = (...) => expr` has no brace block, so it was
+				// previously invisible to the analyzer (and the Structure Map).
+				const code = `export const capitalize = (str: string): string =>
+  str.charAt(0).toUpperCase() + str.slice(1);`;
+				const regions = analyzer.analyze(makeLines(code), 'typescript');
+				const fns = regions.filter((r) => r.category === 'function');
+				expect(fns.length).toBeGreaterThanOrEqual(1);
+				expect(fns[0].label).toBe('Function: capitalize');
+				expect(fns[0].startLine).toBe(0);
+				expect(fns[0].endLine).toBe(0);
+			});
 		});
 
 		describe('class', () => {
