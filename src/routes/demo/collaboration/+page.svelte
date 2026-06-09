@@ -6,12 +6,19 @@
 	import Icon from '$lib/components/core/Icon.svelte';
 	import type { CollaborationUser, CollaboratorCursor } from '$lib/types/crdt';
 
+	const collaborationColors = {
+		alice: 'var(--ide-collab-cursor-1)',
+		bob: 'var(--ide-collab-cursor-3)',
+		charlie: 'var(--ide-collab-cursor-5)',
+		claude: 'var(--ide-collab-ai)'
+	};
+
 	// Sample collaborators
 	const collaborators: CollaborationUser[] = [
-		{ id: '1', name: 'Alice', color: '#4a9eff', isAI: false },
-		{ id: '2', name: 'Bob', color: '#22c55e', isAI: false },
-		{ id: '3', name: 'Charlie', color: '#f59e0b', isAI: false },
-		{ id: '4', name: 'Claude', color: '#a855f7', isAI: true }
+		{ id: '1', name: 'Alice', color: collaborationColors.alice, isAI: false },
+		{ id: '2', name: 'Bob', color: collaborationColors.bob, isAI: false },
+		{ id: '3', name: 'Charlie', color: collaborationColors.charlie, isAI: false },
+		{ id: '4', name: 'Claude', color: collaborationColors.claude, isAI: true }
 	];
 
 	// Sample cursors
@@ -168,7 +175,7 @@ class CollaborationSession {
 
 		<div class="ai-session">
 			<div class="session-header">
-				<Avatar name="Claude" isAI color="#a855f7" />
+				<Avatar name="Claude" isAI color={collaborationColors.claude} />
 				<div class="session-info">
 					<strong>Claude is editing</strong>
 					<span>Refactoring fetchUserData function</span>
@@ -604,7 +611,7 @@ proposeAIChange(session.id, {
 	}
 
 	.config-demo {
-		background: var(--ide-bg-tertiary);
+		background: var(--ide-bg-primary);
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
 		padding: 1.25rem;

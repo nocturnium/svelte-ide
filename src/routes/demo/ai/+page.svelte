@@ -893,7 +893,7 @@ registerTool({
 	}
 
 	.config-demo {
-		background: var(--ide-bg-tertiary);
+		background: var(--ide-bg-primary);
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
 		padding: 1.25rem;

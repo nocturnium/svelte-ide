@@ -714,7 +714,8 @@ function privateHelper(value) {
 	/* Console hints */
 	.console-hints {
 		padding: 1rem;
-		background: rgba(55, 148, 255, 0.1);
+		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 9%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-accent, #4a8db7) 18%, transparent);
 		border-radius: 8px;
 		margin-bottom: 1rem;
 	}
@@ -722,7 +723,7 @@ function privateHelper(value) {
 	.console-hints h4 {
 		margin: 0 0 0.5rem;
 		font-size: 0.9rem;
-		color: #3794ff;
+		color: var(--ide-accent, #4a8db7);
 	}
 
 	.hint-list {
@@ -738,7 +739,7 @@ function privateHelper(value) {
 		background: rgba(255, 255, 255, 0.1);
 		padding: 2px 6px;
 		border-radius: 3px;
-		color: #3794ff;
+		color: var(--ide-accent, #4a8db7);
 	}
 
 	/* Feature info */

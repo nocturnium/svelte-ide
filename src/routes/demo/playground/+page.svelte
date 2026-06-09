@@ -942,7 +942,7 @@ MIT License - see LICENSE file for details
 		justify-content: space-between;
 		align-items: center;
 		padding: 0 0.75rem;
-		background: var(--color-nocturnium-ocean);
+		background: var(--ide-bg-secondary);
 		border-top: 1px solid var(--ide-border);
 		flex-shrink: 0;
 	}
@@ -956,7 +956,7 @@ MIT License - see LICENSE file for details
 
 	.status-item {
 		font-size: 0.75rem;
-		color: var(--ide-text-secondary);
+		color: var(--ide-text-primary);
 	}
 
 	/* Mobile scrim behind drawers */
