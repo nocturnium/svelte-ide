@@ -51,3 +51,6 @@ backend/dist/
 # Misc
 *.local
 .cache/
+
+# Codex dispatch run artifacts (local tooling output)
+.codex-dispatch/

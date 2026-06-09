@@ -1,11 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type {
-	Token,
-	TokenType,
-	TokenizedLine,
-	TokenizerState,
-	LanguageTokenizer
-} from './types';
+import type { Token, TokenType, TokenizedLine, TokenizerState, LanguageTokenizer } from './types';
 import { createToken, PlaintextTokenizer } from './base';
 import {
 	getTokenizer,
@@ -66,7 +60,6 @@ describe('types.ts - Type usability', () => {
 		expect(state.templateDepth).toBe(2);
 		expect(state.custom?.extra).toBe('data');
 	});
-
 });
 
 // ============================================================

@@ -964,7 +964,9 @@ export const formatSession = (session: UserSession): string => {
 		>
 			<div class="section-header">
 				<h2>Ghost Brackets</h2>
-				<p>Structural healing suggestions show missing brackets before the document breaks further.</p>
+				<p>
+					Structural healing suggestions show missing brackets before the document breaks further.
+				</p>
 			</div>
 
 			<div class="overlay-demo">
@@ -990,8 +992,8 @@ export const formatSession = (session: UserSession): string => {
 				<div class="feature-info">
 					<h4>What It Shows</h4>
 					<p>
-						The bracket healer marks the unclosed object block and places a translucent closing brace
-						where it expects the structure to recover.
+						The bracket healer marks the unclosed object block and places a translucent closing
+						brace where it expects the structure to recover.
 					</p>
 				</div>
 			</div>
@@ -1009,7 +1011,9 @@ export const formatSession = (session: UserSession): string => {
 		>
 			<div class="section-header">
 				<h2>Context Lens</h2>
-				<p>Inline context labels surface the active symbol signature without opening a side panel.</p>
+				<p>
+					Inline context labels surface the active symbol signature without opening a side panel.
+				</p>
 			</div>
 
 			<div class="overlay-demo">
@@ -1039,8 +1043,8 @@ export const formatSession = (session: UserSession): string => {
 				<div class="feature-info">
 					<h4>What It Shows</h4>
 					<p>
-						The cursor is inside an async TypeScript function, so the lens floats its signature above
-						the declaration line.
+						The cursor is inside an async TypeScript function, so the lens floats its signature
+						above the declaration line.
 					</p>
 				</div>
 			</div>

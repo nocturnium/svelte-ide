@@ -16,16 +16,8 @@ export {
 	resolveRelativePosition
 } from '../components/editor/core/crdt-binding';
 export type * from './types';
-export type {
-	AwarenessProtocol,
-	AwarenessUser,
-	CreateAwarenessProtocolOptions
-} from './awareness';
-export type {
-	UndoManagerInstance,
-	UndoManagerOptions,
-	UndoManagerState
-} from './undo';
+export type { AwarenessProtocol, AwarenessUser, CreateAwarenessProtocolOptions } from './awareness';
+export type { UndoManagerInstance, UndoManagerOptions, UndoManagerState } from './undo';
 export type {
 	CRDTBindingConfig,
 	CRDTPosition,

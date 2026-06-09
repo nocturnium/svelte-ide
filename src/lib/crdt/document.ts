@@ -129,7 +129,11 @@ export class CollaborativeDocument {
 	getUndoManager(options: CollaborativeUndoManagerOptions = {}): Y.UndoManager {
 		if (this.undoManager) return this.undoManager;
 
-		const { captureTimeout = 500, trackedOrigins = new Set([null, 'local']), deleteFilter } = options;
+		const {
+			captureTimeout = 500,
+			trackedOrigins = new Set([null, 'local']),
+			deleteFilter
+		} = options;
 		this.undoManager = new Y.UndoManager(this.getText(), {
 			trackedOrigins,
 			captureTimeout,

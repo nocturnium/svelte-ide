@@ -2,13 +2,7 @@
  * Base tokenizer with common functionality
  */
 
-import type {
-	Token,
-	TokenizedLine,
-	TokenizerState,
-	TokenType,
-	LanguageTokenizer
-} from './types';
+import type { Token, TokenizedLine, TokenizerState, TokenType, LanguageTokenizer } from './types';
 
 /**
  * Create a token

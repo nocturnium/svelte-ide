@@ -726,7 +726,8 @@ export class EditorState {
 
 				// Delete within line
 				const currentLine = this._lines[line];
-				currentLine.text = currentLine.text.slice(0, from.column) + currentLine.text.slice(to.column);
+				currentLine.text =
+					currentLine.text.slice(0, from.column) + currentLine.text.slice(to.column);
 				// Re-tokenize to end of document so deleting a multi-line construct
 				// delimiter re-propagates state to lines below.
 				this.retokenize(line, this._lines.length);
@@ -793,7 +794,8 @@ export class EditorState {
 				const to = { line, column: column + 1 };
 
 				// Delete within line
-				currentLine.text = currentLine.text.slice(0, from.column) + currentLine.text.slice(to.column);
+				currentLine.text =
+					currentLine.text.slice(0, from.column) + currentLine.text.slice(to.column);
 				// Re-tokenize to end of document so deleting a multi-line construct
 				// delimiter re-propagates state to lines below.
 				this.retokenize(line, this._lines.length);
@@ -1074,14 +1076,23 @@ export class EditorState {
 		if (a === b) return true;
 		if (!a || !b) return a === b;
 
-		const aKeys = Object.keys(a).filter((key) => a[key as keyof TokenizerState] !== undefined).sort();
-		const bKeys = Object.keys(b).filter((key) => b[key as keyof TokenizerState] !== undefined).sort();
+		const aKeys = Object.keys(a)
+			.filter((key) => a[key as keyof TokenizerState] !== undefined)
+			.sort();
+		const bKeys = Object.keys(b)
+			.filter((key) => b[key as keyof TokenizerState] !== undefined)
+			.sort();
 		if (aKeys.length !== bKeys.length) return false;
 
 		for (let i = 0; i < aKeys.length; i++) {
 			const key = aKeys[i];
 			if (key !== bKeys[i]) return false;
-			if (!this.tokenizerStateValuesEqual(a[key as keyof TokenizerState], b[key as keyof TokenizerState])) {
+			if (
+				!this.tokenizerStateValuesEqual(
+					a[key as keyof TokenizerState],
+					b[key as keyof TokenizerState]
+				)
+			) {
 				return false;
 			}
 		}
@@ -1101,8 +1112,12 @@ export class EditorState {
 
 		const aRecord = a as Record<string, unknown>;
 		const bRecord = b as Record<string, unknown>;
-		const aKeys = Object.keys(aRecord).filter((key) => aRecord[key] !== undefined).sort();
-		const bKeys = Object.keys(bRecord).filter((key) => bRecord[key] !== undefined).sort();
+		const aKeys = Object.keys(aRecord)
+			.filter((key) => aRecord[key] !== undefined)
+			.sort();
+		const bKeys = Object.keys(bRecord)
+			.filter((key) => bRecord[key] !== undefined)
+			.sort();
 		if (aKeys.length !== bKeys.length) return false;
 
 		for (let i = 0; i < aKeys.length; i++) {

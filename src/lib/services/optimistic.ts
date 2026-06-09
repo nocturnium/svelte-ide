@@ -333,7 +333,11 @@ export function getOperation(id: string): OptimisticOperation<unknown> | undefin
  */
 export async function cancelOperation(id: string, scopeKey?: string): Promise<boolean> {
 	const operation = operationQueue.get(id);
-	if (!operation || operation.status !== 'pending' || (scopeKey && operation.scopeKey !== scopeKey)) {
+	if (
+		!operation ||
+		operation.status !== 'pending' ||
+		(scopeKey && operation.scopeKey !== scopeKey)
+	) {
 		return false;
 	}
 
@@ -436,7 +440,12 @@ function delay(ms: number): Promise<void> {
 
 function getScopeKeyFromPayload(payload: unknown): string {
 	if (payload && typeof payload === 'object') {
-		const candidate = payload as { scopeKey?: unknown; workspaceId?: unknown; workspace?: unknown; path?: unknown };
+		const candidate = payload as {
+			scopeKey?: unknown;
+			workspaceId?: unknown;
+			workspace?: unknown;
+			path?: unknown;
+		};
 		if (typeof candidate.scopeKey === 'string') return candidate.scopeKey;
 		if (typeof candidate.workspaceId === 'string' && typeof candidate.path === 'string') {
 			return `${candidate.workspaceId}:${candidate.path}`;

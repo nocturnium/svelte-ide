@@ -48,16 +48,16 @@ Both are exported from the package root and from the `./components/editor` subpa
 
 These are the exact props from the `Editor` component's `Props` interface:
 
-| Prop             | Type                                     | Default       | Description                                                                                                                                                          |
-| ---------------- | ---------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`        | `string`                                 | — (required)  | Document text to display.                                                                                                                                            |
+| Prop             | Type                                     | Default       | Description                                                                                                                                                           |
+| ---------------- | ---------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`        | `string`                                 | — (required)  | Document text to display.                                                                                                                                             |
 | `language`       | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"svelte"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set. |
-| `readonly`       | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                       |
-| `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                  |
-| `class`          | `string`                                 | `""`          | Extra CSS class applied to the editor container.                                                                                                                     |
-| `onChange`       | `(content: string) => void`              | —             | Fired (debounced) whenever the document text changes.                                                                                                                |
-| `onCursorChange` | `(line: number, column: number) => void` | —             | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                        |
-| `onSave`         | `() => void`                             | —             | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs. |
+| `readonly`       | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                        |
+| `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                   |
+| `class`          | `string`                                 | `""`          | Extra CSS class applied to the editor container.                                                                                                                      |
+| `onChange`       | `(content: string) => void`              | —             | Fired (debounced) whenever the document text changes.                                                                                                                 |
+| `onCursorChange` | `(line: number, column: number) => void` | —             | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                         |
+| `onSave`         | `() => void`                             | —             | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs.  |
 
 There are no Svelte `createEventDispatcher` events on these components — all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
 
