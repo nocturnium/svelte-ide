@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/nocturnium/svelte-ide/compare/v1.1.0...v1.1.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* **editor:** stop clipping complexity indicators below the first viewport ([54f3e2c](https://github.com/nocturnium/svelte-ide/commit/54f3e2cac77d4d3811359b3157469df3d77f6403)), closes [hi#complexity](https://github.com/hi/issues/complexity)
+
 # [1.1.0](https://github.com/nocturnium/svelte-ide/compare/v1.0.6...v1.1.0) (2026-06-09)
 
 
