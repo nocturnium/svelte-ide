@@ -1,3 +1,16 @@
+# [1.1.0](https://github.com/nocturnium/svelte-ide/compare/v1.0.6...v1.1.0) (2026-06-09)
+
+
+### Bug Fixes
+
+* **demo:** align the active fold-preset clear button to the card corner ([88ec36e](https://github.com/nocturnium/svelte-ide/commit/88ec36eb8211b766b80dc07252d8a1aaf28b297b))
+* **editor:** make fold presets collapse by range, not exact header line ([f8b6643](https://github.com/nocturnium/svelte-ide/commit/f8b6643c434a920e660890bb62344811753fcfdf))
+
+
+### Features
+
+* **editor:** fold consecutive import statements ([a4b7f43](https://github.com/nocturnium/svelte-ide/commit/a4b7f43a60396339cbcd60fd4af2c1ed5ededbf2))
+
 ## [1.0.6](https://github.com/nocturnium/svelte-ide/compare/v1.0.5...v1.0.6) (2026-06-09)
 
 
