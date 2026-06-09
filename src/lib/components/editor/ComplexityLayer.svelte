@@ -234,8 +234,8 @@
 		min-width: 200px;
 		max-width: 300px;
 		padding: 12px;
-		background: var(--color-surface, #1e1e1e);
-		border: 1px solid var(--color-border, #333);
+		background: var(--ide-bg-secondary, #1a2744);
+		border: 1px solid var(--ide-border, #a8c5d9);
 		border-radius: 8px;
 		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 		font-size: 12px;
@@ -263,11 +263,11 @@
 
 	.complexity-tooltip__title {
 		font-weight: 600;
-		color: var(--color-text, #e8e8f0);
+		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.complexity-tooltip__lines {
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		font-size: 11px;
 		margin-bottom: 8px;
 	}
@@ -276,7 +276,7 @@
 		padding: 8px;
 		background: rgba(255, 255, 255, 0.05);
 		border-radius: 4px;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		line-height: 1.4;
 		margin-bottom: 8px;
 	}
@@ -285,7 +285,7 @@
 		display: flex;
 		gap: 12px;
 		font-size: 10px;
-		color: var(--color-text-muted, #666);
+		color: var(--ide-text-muted, #a8c5d9);
 	}
 
 	.complexity-tooltip__factors span {

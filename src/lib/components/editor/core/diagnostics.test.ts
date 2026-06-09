@@ -552,10 +552,10 @@ describe('getSeverityIcon', () => {
 
 describe('getSeverityColor', () => {
 	it('should return correct colors', () => {
-		expect(getSeverityColor('error')).toBe('#f44747');
-		expect(getSeverityColor('warning')).toBe('#ff8c00');
-		expect(getSeverityColor('info')).toBe('#3794ff');
-		expect(getSeverityColor('hint')).toBe('#6c6c6c');
+		expect(getSeverityColor('error')).toBe('var(--ide-error)');
+		expect(getSeverityColor('warning')).toBe('var(--ide-warning)');
+		expect(getSeverityColor('info')).toBe('var(--ide-info)');
+		expect(getSeverityColor('hint')).toBe('var(--ide-text-muted)');
 	});
 });
 

@@ -48,13 +48,13 @@
 	function getColor(type: DiffLine['type']): string {
 		switch (type) {
 			case 'added':
-				return '#22c55e'; // green
+				return 'var(--ide-status-created)';
 			case 'modified':
-				return '#3b82f6'; // blue
+				return 'var(--ide-status-modified)';
 			case 'removed':
-				return '#ef4444'; // red
+				return 'var(--ide-status-deleted)';
 			default:
-				return '#6b7280';
+				return 'var(--ide-text-muted)';
 		}
 	}
 
@@ -283,7 +283,7 @@
 		left: 0;
 		width: 0;
 		height: 0;
-		border-left: 8px solid #ef4444;
+		border-left: 8px solid var(--ide-status-deleted, #ef4444);
 		border-top: 4px solid transparent;
 		border-bottom: 4px solid transparent;
 		pointer-events: auto;
@@ -291,7 +291,7 @@
 	}
 
 	.diff-removed-marker:hover {
-		border-left-color: #f87171;
+		border-left-color: var(--ide-error, #ef4444);
 	}
 
 	/* Tooltip */
@@ -301,8 +301,8 @@
 		min-width: 200px;
 		max-width: 400px;
 		padding: 10px;
-		background: var(--color-surface, #1e1e2e);
-		border: 1px solid var(--color-border, #333);
+		background: var(--ide-bg-secondary, #1a2744);
+		border: 1px solid var(--ide-border, #a8c5d9);
 		border-radius: 6px;
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 		font-size: 12px;
@@ -324,7 +324,7 @@
 	.tooltip-label {
 		display: block;
 		font-size: 10px;
-		color: var(--color-text-muted, #888);
+		color: var(--ide-text-muted, #a8c5d9);
 		margin-bottom: 4px;
 	}
 
@@ -332,15 +332,15 @@
 		margin: 0;
 		font-family: 'JetBrains Mono', monospace;
 		font-size: 11px;
-		color: var(--color-text-secondary, #aaa);
+		color: var(--ide-text-secondary, #a8c5d9);
 		white-space: pre-wrap;
 		word-break: break-all;
 	}
 
 	.tooltip-hint {
 		font-size: 10px;
-		color: var(--color-text-muted, #888);
-		border-top: 1px solid var(--color-border, #333);
+		color: var(--ide-text-muted, #a8c5d9);
+		border-top: 1px solid var(--ide-border, #a8c5d9);
 		padding-top: 8px;
 	}
 </style>
