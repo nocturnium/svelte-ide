@@ -47,7 +47,9 @@
 	}
 
 	const initials = $derived(getInitials(name));
-	const bgColor = $derived(color ?? (isAI ? 'var(--ide-collab-ai)' : 'var(--ide-interactive)'));
+	// Default AI tint is the conversational "assistant" hue. Collaboration/presence
+	// call sites (cursors, locks) pass an explicit `--ide-collab-ai` color instead.
+	const bgColor = $derived(color ?? (isAI ? 'var(--ide-ai-assistant)' : 'var(--ide-interactive)'));
 	const aiGlyphSize = $derived(Math.round(parseInt(sizeMap[size], 10) * 0.58));
 </script>
 
