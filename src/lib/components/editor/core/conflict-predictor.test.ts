@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
 	ConflictPredictor,
+	awarenessToUserAwareness,
 	createConflictPredictor,
 	getConflictPredictor,
+	markAwarenessActivity,
 	type UserAwareness
 } from './conflict-predictor';
 import type { SemanticRegion } from './semantic-analyzer';
@@ -35,6 +37,76 @@ function makeRegion(overrides: Partial<SemanticRegion> = {}): SemanticRegion {
 		...overrides
 	};
 }
+
+// ---------------------------------------------------------------------------
+// Awareness adapter
+// ---------------------------------------------------------------------------
+
+describe('awarenessToUserAwareness', () => {
+	it('maps real awareness cursors to users and feeds predict', () => {
+		const now = Date.now();
+		const awareness = {
+			getCursors: () =>
+				new Map([
+					[
+						1,
+						{
+							user: { id: 'u1', name: 'Alice', color: '#ff0000' },
+							cursor: { anchor: 5, head: 5 }
+						}
+					],
+					[
+						2,
+						{
+							user: { id: 'u2', name: 'Bob', color: '#00ff00' },
+							cursor: { anchor: 8, head: 8 }
+						}
+					]
+				])
+		};
+		const binding = {
+			indexToPosition: (index: number) => ({ line: index, column: index + 1 })
+		};
+
+		const users = awarenessToUserAwareness(awareness, binding, now);
+
+		expect(users).toEqual([
+			{
+				id: 'u1',
+				name: 'Alice',
+				color: '#ff0000',
+				isAI: false,
+				cursorLine: 5,
+				cursorColumn: 6,
+				lastEditTime: now,
+				recentlyEditedLines: [5]
+			},
+			{
+				id: 'u2',
+				name: 'Bob',
+				color: '#00ff00',
+				isAI: false,
+				cursorLine: 8,
+				cursorColumn: 9,
+				lastEditTime: now,
+				recentlyEditedLines: [8]
+			}
+		]);
+
+		const idleUsers = awarenessToUserAwareness(awareness, binding, now + 5000);
+		expect(idleUsers.map((user) => user.lastEditTime)).toEqual([now, now]);
+
+		markAwarenessActivity(awareness, 'u1', now + 7000, [5]);
+		const editedUsers = awarenessToUserAwareness(awareness, binding, now + 8000);
+		expect(editedUsers[0].lastEditTime).toBe(now + 7000);
+		expect(editedUsers[1].lastEditTime).toBe(now);
+
+		const predictor = new ConflictPredictor({ warningThreshold: 0.1 });
+		const zones = predictor.predict(users, [makeRegion({ startLine: 0, endLine: 10 })]);
+		expect(zones.length).toBeGreaterThanOrEqual(1);
+		expect(zones[0].participants.map((participant) => participant.cursorLine)).toEqual([5, 8]);
+	});
+});
 
 // ---------------------------------------------------------------------------
 // ConflictPredictor
