@@ -125,7 +125,7 @@ export function triageLoad(
 				'Multi-cursor, column selection, find & replace with regex, code folding, and virtualized rendering that stays smooth at 10k+ lines.'
 		},
 		{
-			icon: '◈',
+			icon: '✦',
 			title: 'AI panel surface',
 			description:
 				'A built-in demo assistant panel for wiring your own model backend, plus inline edit previews and ghost-cursor visualization for AI pairing.'
@@ -977,6 +977,12 @@ export function triageLoad(
 		.code-block {
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
 			mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+		}
+		/* Same scroll affordance for the live hero editor: fade the right edge so a
+		   long line reads as scrollable rather than hard-clipped mid-token. */
+		.window-body {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
 		}
 	}
 </style>

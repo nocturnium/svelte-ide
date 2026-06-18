@@ -773,8 +773,15 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	.paste-panel select {
-		padding: 0.45rem 0.65rem;
+		padding: 0.45rem 2rem 0.45rem 0.65rem;
 		color: var(--ide-text-secondary);
+		/* Replace the native OS dropdown chrome with a themed chevron. */
+		appearance: none;
+		-webkit-appearance: none;
+		cursor: pointer;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' stroke='%23a8c5d9' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 0.65rem center;
 	}
 
 	.paste-panel textarea {
