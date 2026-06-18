@@ -23,6 +23,7 @@ export * from './quick-actions';
 export * from './diagnostics';
 export * from './breakpoints';
 export * from './extract-function';
+export * from './apply-extract-plan';
 
 // Explicit re-exports to disambiguate names declared in multiple modules.
 // Explicit named exports take precedence over `export *`, resolving ambiguity.
