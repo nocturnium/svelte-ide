@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/nocturnium/svelte-ide/compare/v1.2.0...v1.2.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* **demos:** center every demo page's content column, not just some ([49fd5e9](https://github.com/nocturnium/svelte-ide/commit/49fd5e93a934e1dba01f2dbb25e27adec567b989))
+
 # [1.2.0](https://github.com/nocturnium/svelte-ide/compare/v1.1.1...v1.2.0) (2026-06-18)
 
 
