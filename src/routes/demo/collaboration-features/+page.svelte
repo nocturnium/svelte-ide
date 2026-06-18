@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Phase 3: Collaboration Features Demo
+	 * Collaboration Features Demo
 	 *
 	 * Demonstrates:
 	 * - Time Machine Scrubbing
@@ -275,7 +275,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 <div class="demo-page">
 	<header class="demo-header">
-		<h1>Phase 3: Collaboration Features</h1>
+		<h1>Collaboration Features</h1>
 		<p>Time Machine Scrubbing and Collaborative Conflict Theater</p>
 	</header>
 

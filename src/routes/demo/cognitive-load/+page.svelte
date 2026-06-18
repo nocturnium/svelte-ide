@@ -2,7 +2,7 @@
 	/**
 	 * Cognitive Load & Ghost Pair Demo
 	 *
-	 * Demonstrates the Phase 1 killer features:
+	 * Demonstrates cognitive load and AI presence features:
 	 * - Cognitive Load Meter: Real-time code complexity visualization
 	 * - Ghost Pair: AI cursor and focus visualization
 	 */
@@ -258,7 +258,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 <div class="demo-page">
 	<header class="page-header">
 		<h1>Cognitive Load & Ghost Pair</h1>
-		<p>Phase 1 killer features: real-time complexity visualization and AI presence</p>
+		<p>Real-time complexity visualization and AI presence</p>
 	</header>
 
 	<!-- Cognitive Load Meter Demo -->

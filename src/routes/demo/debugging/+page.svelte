@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Phase 7: Debugging & Diagnostics Demo
+	 * Debugging & Diagnostics Demo
 	 *
 	 * Demonstrates inline diagnostics, problems panel, breakpoints, and debug console.
 	 */
@@ -240,7 +240,7 @@ function privateHelper(value) {
 
 <div class="debugging-demo">
 	<header class="demo-header">
-		<h1>Phase 7: Debugging & Diagnostics</h1>
+		<h1>Debugging & Diagnostics</h1>
 		<p>Inline errors, problems panel, breakpoints, and debug console</p>
 	</header>
 

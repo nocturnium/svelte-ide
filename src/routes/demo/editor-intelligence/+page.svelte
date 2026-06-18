@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Phase 6: Editor Intelligence Features Demo
+	 * Editor Intelligence Features Demo
 	 *
 	 * Demonstrates Minimap, Breadcrumbs, Quick Actions, Symbol Outline, and overlay intelligence.
 	 */
@@ -465,7 +465,7 @@ export const formatSession = (session: UserSession): string => {
 
 <div class="intelligence-demo">
 	<header class="demo-header">
-		<h1>Phase 6: Editor Intelligence</h1>
+		<h1>Editor Intelligence</h1>
 		<p>Navigation aids, code actions, and rendered intelligence overlays</p>
 	</header>
 

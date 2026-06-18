@@ -1,11 +1,12 @@
 <script lang="ts">
 	/**
-	 * Phase 4: Power Features Demo
+	 * Power Features Demo
 	 *
 	 * Demonstrates Echo Cursors, Bracket Healing, and Plugin Preview Sandbox.
 	 */
 
 	import { onMount } from 'svelte';
+	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import {
 		createEchoCursorManager,
 		type EchoCursor,
@@ -18,6 +19,7 @@
 		type GhostBracket
 	} from '$lib/components/editor/core/bracket-healer';
 	import PluginPreviewSandbox from '$lib/components/editor/PluginPreviewSandbox.svelte';
+	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
 
 	// Demo state
 	let activeDemo = $state<'echo' | 'bracket' | 'plugin'>('echo');
@@ -66,6 +68,21 @@ export { formatPrice, summarize };`);
 
 	// Line height for visualizations
 	const lineHeight = 20;
+	const codeEditorPreferences = {
+		fontSize: 13,
+		fontFamily: 'monospace',
+		lineNumbers: 'off',
+		minimap: false,
+		wordWrap: 'off'
+	} as const;
+
+	function highlightCode(source: string, language: string): string {
+		return tokenize(source, language)
+			.map((line) => tokensToHTML(line.tokens))
+			.join('\n');
+	}
+
+	let sandboxCodeHTML = $derived(highlightCode(sandboxCode, 'javascript'));
 
 	onMount(() => {
 		// Initialize echo manager
@@ -150,9 +167,9 @@ export { formatPrice, summarize };`);
 		echoCursors = [];
 	}
 
-	function updateBracketCode(e: Event) {
-		bracketCode = (e.target as HTMLTextAreaElement).value;
-		bracketHealer.analyzeImmediate(bracketCode);
+	function updateBracketCode(value: string) {
+		bracketCode = value;
+		bracketHealer?.analyzeImmediate(bracketCode);
 	}
 
 	function acceptGhost(ghost: GhostBracket) {
@@ -174,7 +191,7 @@ export { formatPrice, summarize };`);
 
 <div class="power-features-demo">
 	<header class="demo-header">
-		<h1>Phase 4: Power Features</h1>
+		<h1>Power Features</h1>
 		<p>Echo Cursors, Bracket Healing, and Plugin Preview Sandbox</p>
 	</header>
 
@@ -312,7 +329,17 @@ export { formatPrice, summarize };`);
 							{mismatches.length} issue{mismatches.length !== 1 ? 's' : ''} detected
 						</span>
 					</div>
-					<textarea class="code-input" value={bracketCode} oninput={updateBracketCode}></textarea>
+					<div class="code-input">
+						<CustomEditor
+							content={bracketCode}
+							language="javascript"
+							readonly={false}
+							folding={false}
+							multiCursor={false}
+							preferences={codeEditorPreferences}
+							onChange={updateBracketCode}
+						/>
+					</div>
 				</div>
 
 				<div class="bracket-analysis">
@@ -386,7 +413,8 @@ export { formatPrice, summarize };`);
 							Open Plugin Sandbox
 						</button>
 					</div>
-					<pre class="code-preview">{sandboxCode}</pre>
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+					<pre class="code-preview"><code>{@html sandboxCodeHTML}</code></pre>
 				</div>
 
 				<div class="plugin-info">
@@ -746,19 +774,27 @@ export { formatPrice, summarize };`);
 		min-height: 300px;
 		max-width: 100%;
 		box-sizing: border-box;
-		padding: 1rem;
 		background: rgba(0, 0, 0, 0.3);
 		border: none;
 		border-radius: 0 0 8px 8px;
-		font-family: monospace;
-		font-size: 13px;
-		line-height: 1.5;
 		color: var(--ide-text-primary, #e8e8f0);
-		resize: none;
+		overflow: hidden;
 	}
 
-	.code-input:focus {
-		outline: none;
+	.code-input :global(.custom-editor) {
+		height: 100%;
+		min-height: 300px;
+		background: transparent;
+		--editor-font-size: 13px !important;
+	}
+
+	.code-input :global(.custom-editor__content) {
+		background: transparent;
+		border-radius: 0 0 8px 8px;
+	}
+
+	.code-input :global(.custom-editor__line-content) {
+		padding-right: 1rem;
 	}
 
 	.bracket-analysis {
@@ -930,6 +966,11 @@ export { formatPrice, summarize };`);
 		white-space: pre;
 	}
 
+	.code-preview code {
+		font-family: inherit;
+		font-size: inherit;
+	}
+
 	.plugin-info {
 		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
 		border-radius: 8px;
@@ -1003,6 +1044,10 @@ export { formatPrice, summarize };`);
 		.code-preview {
 			min-height: 220px;
 		}
+
+		.code-input :global(.custom-editor) {
+			min-height: 220px;
+		}
 	}
 
 	/* ===== Responsive: phones ===== */
@@ -1049,6 +1094,14 @@ export { formatPrice, summarize };`);
 		.code-preview,
 		.editor-mock {
 			font-size: var(--ide-font-size-xs, 11px);
+		}
+
+		.code-input {
+			--power-code-font-size: var(--ide-font-size-xs, 11px);
+		}
+
+		.code-input :global(.custom-editor) {
+			--editor-font-size: var(--power-code-font-size) !important;
 		}
 
 		/* Right-edge scroll affordance for the horizontally scrollable code preview. */

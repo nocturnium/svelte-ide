@@ -2,7 +2,7 @@
 	/**
 	 * Semantic Features Demo
 	 *
-	 * Demonstrates Phase 2 features:
+	 * Demonstrates semantic code understanding features:
 	 * - Semantic Fold Zones
 	 * - Context Lens
 	 * - Live Structure Map
@@ -262,9 +262,7 @@ export const capitalize = (str: string): string =>
 <div class="demo-page">
 	<header class="page-header">
 		<h1>Semantic Features</h1>
-		<p>
-			Phase 2: Intelligent code understanding with semantic folding, context lens, and structure map
-		</p>
+		<p>Intelligent code understanding with semantic folding, context lens, and structure map</p>
 	</header>
 
 	<!-- Semantic Regions Overview -->
