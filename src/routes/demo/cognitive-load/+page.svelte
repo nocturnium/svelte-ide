@@ -29,14 +29,14 @@ function add(a: number, b: number): number {
 /**
  * Medium complexity - nested conditionals
  */
-function processUser(user: User | null): string {
+function processUser(user: User | null, request: RequestContext): string {
 	if (!user) {
 		return 'No user';
 	}
 
 	if (user.role === 'admin') {
 		if (user.permissions.includes('write')) {
-			return 'Admin with write access';
+			return request.channel === 'api' ? 'Admin API write access' : 'Admin with write access';
 		} else {
 			return 'Admin readonly';
 		}
@@ -46,7 +46,39 @@ function processUser(user: User | null): string {
 }
 
 /**
- * HIGH COMPLEXITY - Multiple nested loops and conditionals
+ * High complexity - validation rules with branching
+ */
+function validateCheckout(cart: Cart, customer: Customer, flags: FeatureFlags): ValidationResult {
+	const errors: string[] = [];
+
+	for (const item of cart.items) {
+		if (item.quantity <= 0) {
+			errors.push('Invalid quantity');
+		} else if (item.quantity > item.stock) {
+			errors.push('Insufficient stock');
+		}
+
+		if (item.requiresApproval && !customer.isVerified) {
+			errors.push('Verification required');
+		}
+	}
+
+	if (flags.strictApprovals && customer.balance < cart.total) {
+		errors.push('Payment review required');
+	}
+
+	if (cart.coupon?.expired) {
+		errors.push('Coupon expired');
+	}
+
+	return {
+		ok: errors.length === 0,
+		errors
+	};
+}
+
+/**
+ * Critical complexity - Multiple nested loops and conditionals
  * This function would benefit from refactoring!
  */
 function analyzeDataMatrix(
@@ -104,6 +136,24 @@ function analyzeDataMatrix(
 					if (config.threshold && normalized > config.threshold) {
 						if (config.callback) {
 							config.callback(cell, { row: i, col: j });
+						}
+					}
+				}
+
+				if (config.audit) {
+					for (const rule of config.audit.rules) {
+						if (rule.enabled) {
+							if (rule.mode === 'strict') {
+								if (cell > rule.limit) {
+									if (config.audit.onViolation) {
+										config.audit.onViolation(rule, cell, i, j);
+									}
+								}
+							} else if (rule.mode === 'sampled') {
+								if ((i + j) % rule.sampleRate === 0 && cell > rule.limit) {
+									results.push(rule.limit);
+								}
+							}
 						}
 					}
 				}
@@ -314,8 +364,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<div class="metrics-summary">
 					<div class="metric">
 						<span
-							class="metric-value"
-							style="color: {complexityMetrics.level === 'critical'
+							class="metric-value metric-value--heat"
+							style="--metric-color: {complexityMetrics.level === 'critical'
 								? 'var(--ide-error)'
 								: complexityMetrics.level === 'high'
 									? 'var(--ide-warning)'
@@ -432,7 +482,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				language={selectedLanguage}
 				readonly={false}
 				complexityHighlighting={true}
-				complexityThreshold={50}
+				complexityThreshold={30}
 				{aiAgents}
 				showAILabels={true}
 				showAIFocusRegions={true}
@@ -658,6 +708,27 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		font-size: 1.5rem;
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.metric-value--heat {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 44px;
+		height: 30px;
+		padding: 0 10px;
+		border: 1px solid color-mix(in srgb, var(--metric-color) 65%, transparent);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--metric-color) 18%, var(--ide-bg-primary));
+		box-shadow:
+			0 0 18px color-mix(in srgb, var(--metric-color) 32%, transparent),
+			inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+		color: var(--metric-color);
+		font-size: 22px;
+		font-weight: 800;
+		line-height: 1;
+		text-shadow: 0 0 12px color-mix(in srgb, var(--metric-color) 48%, transparent);
+		box-sizing: border-box;
 	}
 
 	.metric-label {

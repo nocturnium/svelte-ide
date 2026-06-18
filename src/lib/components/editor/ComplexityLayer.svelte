@@ -23,6 +23,8 @@
 		 * that sat past the initial view.
 		 */
 		totalHeight?: number;
+		/** Estimated full scrollable content width in pixels */
+		contentWidth?: number;
 		/** Minimum score to show indicators (default: 50) */
 		minScore?: number;
 		/** Whether indicators are enabled */
@@ -38,6 +40,7 @@
 		lineHeight,
 		gutterWidth = 50,
 		totalHeight = 0,
+		contentWidth = 0,
 		minScore = 50,
 		enabled = true,
 		flashRegionKey = '',
@@ -111,7 +114,7 @@
 		hoveredRegion = region;
 		const rect = (event.target as HTMLElement).getBoundingClientRect();
 		tooltipPosition = {
-			top: rect.top + window.scrollY,
+			top: rect.top,
 			left: rect.right + 8
 		};
 	}
@@ -125,7 +128,9 @@
 	<div
 		class="complexity-gutter"
 		aria-hidden="true"
-		style="width: {gutterWidth}px;{totalHeight ? ` height: ${totalHeight}px;` : ''}"
+		style="width: {contentWidth ? `${contentWidth}px` : '100%'};{totalHeight
+			? ` height: ${totalHeight}px;`
+			: ''} --editor-gutter-width: {gutterWidth}px;"
 	>
 		{#each highlightedRegions as region (getRegionKey(region))}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -142,8 +147,19 @@
 				"
 				onmouseenter={(e) => handleMouseEnter(region, e)}
 				onmouseleave={handleMouseLeave}
+			></div>
+			<div
+				class="complexity-gutter__score"
+				class:complexity-gutter__score--critical={region.score >= 85}
+				class:complexity-gutter__score--flash={flashRegionKey === getRegionKey(region)}
+				style="
+					top: {getRegionTop(region) + 3}px;
+					right: 18px;
+					--indicator-color: {getColor(region.score)};
+					--indicator-opacity: {getOpacity(region.score)};
+				"
 			>
-				<span class="complexity-gutter__score">{region.score}</span>
+				{region.score}
 			</div>
 		{/each}
 	</div>
@@ -208,84 +224,186 @@
 		bottom: 0;
 		pointer-events: none;
 		z-index: 5;
+		overflow: visible;
 	}
 
 	.complexity-gutter__spine {
 		position: absolute;
-		right: -2px;
-		width: 5px;
+		left: calc(var(--editor-gutter-width, 50px) - 3px);
+		width: 4px;
 		pointer-events: auto;
 		cursor: help;
 		background: var(--indicator-color);
 		opacity: var(--indicator-opacity);
 		border-radius: 999px;
-		box-shadow:
-			0 0 var(--indicator-glow) color-mix(in srgb, var(--indicator-color) 72%, transparent),
-			-2px 0 10px color-mix(in srgb, var(--indicator-color) 36%, transparent);
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--indicator-color) 35%, transparent);
+		isolation: isolate;
 		transition:
 			opacity 0.15s ease,
 			width 0.15s ease,
-			box-shadow 0.15s ease;
+			box-shadow 0.15s ease,
+			transform 0.15s ease;
+	}
+
+	.complexity-gutter__spine::before {
+		content: '';
+		position: absolute;
+		inset: -2px -1px;
+		border-radius: inherit;
+		background: var(--indicator-color);
+		filter: blur(6px);
+		opacity: 0.55;
+		transform: scaleX(1);
+		transform-origin: center;
+		z-index: -1;
 	}
 
 	.complexity-gutter__spine:hover {
 		opacity: 1;
-		width: 7px;
+		width: 6px;
+		transform: translateX(-1px);
 	}
 
 	.complexity-gutter__spine--critical {
-		animation: complexity-spine-pulse 1.5s ease-in-out infinite;
+		animation: complexity-spine-pulse 2.4s ease-in-out infinite;
+	}
+
+	.complexity-gutter__spine--critical::before {
+		animation: complexity-spine-bloom-pulse 2.4s ease-in-out infinite;
 	}
 
 	.complexity-gutter__spine--flash {
 		animation: complexity-spine-flash 0.9s ease-out 1;
 	}
 
-	.complexity-gutter__score {
-		position: absolute;
-		right: 8px;
-		top: 50%;
-		transform: translateY(-50%);
-		font-size: 9px;
-		font-weight: 700;
-		color: var(--indicator-color);
-		opacity: 0;
-		transition: opacity 0.15s ease;
-		pointer-events: none;
+	.complexity-gutter__spine--flash::before {
+		animation: complexity-spine-bloom-flash 0.9s ease-out 1;
 	}
 
-	.complexity-gutter__spine:hover .complexity-gutter__score {
-		opacity: 1;
+	.complexity-gutter__score {
+		position: absolute;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 44px;
+		height: 30px;
+		padding: 0 10px;
+		border: 1px solid color-mix(in srgb, var(--indicator-color) 65%, transparent);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--indicator-color) 18%, var(--ide-bg-primary));
+		box-shadow:
+			0 0 18px color-mix(in srgb, var(--indicator-color) 32%, transparent),
+			inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+		color: var(--indicator-color);
+		font-size: 22px;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
+		text-shadow: 0 0 12px color-mix(in srgb, var(--indicator-color) 48%, transparent);
+		opacity: calc(0.76 + (var(--indicator-opacity) - 0.65) * 0.7);
+		transform: scale(1);
+		transform-origin: center;
+		pointer-events: none;
+		box-sizing: border-box;
+	}
+
+	.complexity-gutter__score--critical {
+		animation: complexity-score-glow-pulse 2.4s ease-in-out infinite;
+	}
+
+	.complexity-gutter__score--flash {
+		animation: complexity-score-arrival-pop 0.35s ease-out 1;
 	}
 
 	@keyframes complexity-spine-pulse {
 		0%,
 		100% {
-			opacity: var(--indicator-opacity);
-			box-shadow:
-				0 0 var(--indicator-glow) color-mix(in srgb, var(--indicator-color) 72%, transparent),
-				-2px 0 10px color-mix(in srgb, var(--indicator-color) 36%, transparent);
+			transform: scaleX(1);
 		}
 		50% {
-			opacity: 1;
+			transform: scaleX(1.12);
+		}
+	}
+
+	@keyframes complexity-spine-bloom-pulse {
+		0%,
+		100% {
+			filter: blur(6px);
+			opacity: 0.55;
+			transform: scaleX(1);
+		}
+		50% {
+			filter: blur(10px);
+			opacity: 0.78;
+			transform: scaleX(1.35);
+		}
+	}
+
+	@keyframes complexity-score-glow-pulse {
+		0%,
+		100% {
 			box-shadow:
-				0 0 calc(var(--indicator-glow) + 6px)
-					color-mix(in srgb, var(--indicator-color) 88%, transparent),
-				-3px 0 14px color-mix(in srgb, var(--indicator-color) 48%, transparent);
+				0 0 18px color-mix(in srgb, var(--indicator-color) 32%, transparent),
+				inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+			transform: scale(1);
+		}
+		50% {
+			box-shadow:
+				0 0 28px color-mix(in srgb, var(--indicator-color) 52%, transparent),
+				0 0 44px color-mix(in srgb, var(--indicator-color) 28%, transparent),
+				inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
+			transform: scale(1.04);
+		}
+	}
+
+	@keyframes complexity-score-arrival-pop {
+		0% {
+			transform: scale(1.15);
+			box-shadow:
+				0 0 30px color-mix(in srgb, var(--indicator-color) 62%, transparent),
+				0 0 58px color-mix(in srgb, var(--indicator-color) 36%, transparent),
+				inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
+		}
+		100% {
+			transform: scale(1);
 		}
 	}
 
 	@keyframes complexity-spine-flash {
 		0% {
 			opacity: 1;
-			width: 9px;
-			box-shadow:
-				0 0 24px color-mix(in srgb, var(--indicator-color) 90%, transparent),
-				-4px 0 18px color-mix(in srgb, var(--indicator-color) 58%, transparent);
+			width: 8px;
+			box-shadow: 0 0 0 1px color-mix(in srgb, var(--indicator-color) 70%, transparent);
+			transform: translateX(-2px);
 		}
 		100% {
 			opacity: var(--indicator-opacity);
-			width: 5px;
+			width: 4px;
+			transform: translateX(0);
+		}
+	}
+
+	@keyframes complexity-spine-bloom-flash {
+		0% {
+			filter: blur(12px);
+			opacity: 0.9;
+			transform: scaleX(1.45);
+		}
+		100% {
+			filter: blur(6px);
+			opacity: 0.55;
+			transform: scaleX(1);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.complexity-gutter__spine--critical,
+		.complexity-gutter__spine--critical::before,
+		.complexity-gutter__spine--flash,
+		.complexity-gutter__spine--flash::before,
+		.complexity-gutter__score--critical,
+		.complexity-gutter__score--flash {
+			animation: none;
 		}
 	}
 
@@ -319,6 +437,7 @@
 		height: 38px;
 		font-size: 24px;
 		font-weight: 700;
+		color: var(--indicator-color);
 		font-variant-numeric: tabular-nums;
 	}
 
@@ -392,12 +511,5 @@
 		padding: 2px 6px;
 		background: rgba(255, 255, 255, 0.05);
 		border-radius: 3px;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.complexity-gutter__spine--critical,
-		.complexity-gutter__spine--flash {
-			animation: none;
-		}
 	}
 </style>

@@ -51,7 +51,7 @@
 
 	function getWashOpacity(score: number): number {
 		const normalized = Math.min(1, Math.max(0, score / 100));
-		return Number((0.06 + normalized * 0.16).toFixed(3));
+		return Number((0.14 + normalized * 0.34).toFixed(3));
 	}
 
 	function getRegionTop(region: ComplexityRegion): number {
@@ -107,33 +107,40 @@
 	.complexity-heat__region {
 		position: absolute;
 		min-width: calc(100% - var(--editor-gutter-width, 50px));
-		background: var(--heat-color);
+		background: linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--heat-color) 90%, transparent) 0%,
+			color-mix(in srgb, var(--heat-color) 38%, transparent) 18%,
+			color-mix(in srgb, var(--heat-color) 14%, transparent) 60%,
+			transparent 100%
+		);
 		opacity: var(--heat-opacity);
+		mix-blend-mode: screen;
 		border-left: 1px solid color-mix(in srgb, var(--heat-color) 35%, transparent);
 		box-sizing: border-box;
-	}
-
-	.complexity-heat__region--critical {
-		animation: complexity-heat-pulse 1.5s ease-in-out infinite;
+		-webkit-mask-image: linear-gradient(
+			to bottom,
+			transparent 0,
+			#000 8px,
+			#000 calc(100% - 8px),
+			transparent 100%
+		);
+		mask-image: linear-gradient(
+			to bottom,
+			transparent 0,
+			#000 8px,
+			#000 calc(100% - 8px),
+			transparent 100%
+		);
 	}
 
 	.complexity-heat__region--flash {
 		animation: complexity-heat-flash 0.9s ease-out 1;
 	}
 
-	@keyframes complexity-heat-pulse {
-		0%,
-		100% {
-			opacity: var(--heat-opacity);
-		}
-		50% {
-			opacity: calc(var(--heat-opacity) + 0.04);
-		}
-	}
-
 	@keyframes complexity-heat-flash {
 		0% {
-			opacity: min(0.34, calc(var(--heat-opacity) + 0.14));
+			opacity: min(0.58, calc(var(--heat-opacity) + 0.1));
 			box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heat-color) 65%, transparent);
 		}
 		100% {
@@ -143,7 +150,6 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.complexity-heat__region--critical,
 		.complexity-heat__region--flash {
 			animation: none;
 		}

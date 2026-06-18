@@ -1082,6 +1082,7 @@
 				{lineHeight}
 				{gutterWidth}
 				totalHeight={totalContentHeight}
+				contentWidth={estimatedContentWidth}
 				minScore={complexityThreshold}
 				enabled={complexityHighlighting}
 				flashRegionKey={complexityFlashRegionKey}
