@@ -157,6 +157,7 @@ export class LSPClient {
 	private reconnectAttempts = 0;
 	private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 	private intentionalDisconnect = false;
+	private incomingBuffer = '';
 
 	// Document tracking
 	private openDocuments = new Map<string, { version: number; languageId: string }>();
@@ -304,6 +305,7 @@ export class LSPClient {
 		}
 		if (socket === this.ws) {
 			this.ws = null;
+			this.incomingBuffer = '';
 		}
 	}
 
@@ -414,47 +416,135 @@ export class LSPClient {
 	// ============================================================================
 
 	private handleMessage(data: string): void {
-		try {
-			const message = JSON.parse(data);
+		this.incomingBuffer += data;
 
-			if (this.config.debug) {
-				console.log('[LSP] Received:', message);
+		for (const rawMessage of this.extractCompleteMessages()) {
+			try {
+				const message = JSON.parse(rawMessage);
+				this.dispatchMessage(message);
+			} catch (err) {
+				if (this.config.debug) {
+					console.error('[LSP] Failed to parse message:', err);
+				}
+			}
+		}
+	}
+
+	private extractCompleteMessages(): string[] {
+		const messages: string[] = [];
+		let start = -1;
+		let depth = 0;
+		let inString = false;
+		let escaped = false;
+		let consumedUntil = 0;
+
+		for (let i = 0; i < this.incomingBuffer.length; i++) {
+			const char = this.incomingBuffer[i];
+
+			if (start === -1) {
+				if (/\s/.test(char)) {
+					consumedUntil = i + 1;
+					continue;
+				}
+				if (char !== '{') {
+					consumedUntil = i + 1;
+					continue;
+				}
+				start = i;
+				depth = 1;
+				continue;
 			}
 
-			if ('id' in message && message.id !== null) {
+			if (escaped) {
+				escaped = false;
+				continue;
+			}
+
+			if (char === '\\' && inString) {
+				escaped = true;
+				continue;
+			}
+
+			if (char === '"') {
+				inString = !inString;
+				continue;
+			}
+
+			if (inString) {
+				continue;
+			}
+
+			if (char === '{') {
+				depth++;
+			} else if (char === '}') {
+				depth--;
+				if (depth === 0) {
+					messages.push(this.incomingBuffer.slice(start, i + 1));
+					start = -1;
+					consumedUntil = i + 1;
+				}
+			}
+		}
+
+		this.incomingBuffer =
+			start === -1 ? this.incomingBuffer.slice(consumedUntil) : this.incomingBuffer.slice(start);
+
+		return messages;
+	}
+
+	private dispatchMessage(message: unknown): void {
+		try {
+			if (!message || typeof message !== 'object') {
+				return;
+			}
+
+			const rpcMessage = message as {
+				id?: number | string | null;
+				method?: string;
+				params?: unknown;
+				result?: unknown;
+				error?: { message: string };
+			};
+
+			if (this.config.debug) {
+				console.log('[LSP] Received:', rpcMessage);
+			}
+
+			if ('id' in rpcMessage && rpcMessage.id !== null) {
 				// Response to a request
-				const pending = this.pendingRequests.get(message.id);
+				const pending =
+					typeof rpcMessage.id === 'number' ? this.pendingRequests.get(rpcMessage.id) : undefined;
 				if (pending) {
 					clearTimeout(pending.timeout);
-					this.pendingRequests.delete(message.id);
+					this.pendingRequests.delete(rpcMessage.id as number);
 
-					if ('error' in message) {
-						pending.reject(new Error(message.error.message));
+					if (rpcMessage.error) {
+						pending.reject(new Error(rpcMessage.error.message));
 					} else {
-						pending.resolve(message.result);
+						pending.resolve(rpcMessage.result);
 					}
 				}
-			} else if ('method' in message) {
+			} else if (rpcMessage.method) {
 				// Server notification or request — dispatch to every subscriber.
-				const handlers = this.notificationHandlers.get(message.method);
+				const handlers = this.notificationHandlers.get(rpcMessage.method);
 				if (handlers && handlers.size > 0) {
 					// Iterate a copy so a handler can unsubscribe during dispatch.
 					for (const handler of [...handlers]) {
 						try {
-							handler(message.params);
+							handler(rpcMessage.params);
 						} catch (err) {
 							if (this.config.debug) {
-								console.error(`[LSP] Notification handler for "${message.method}" threw:`, err);
+								console.error(`[LSP] Notification handler for "${rpcMessage.method}" threw:`, err);
 							}
 						}
 					}
 				} else if (this.config.debug) {
-					console.log(`[LSP] Unhandled notification: ${message.method}`);
+					console.log(`[LSP] Unhandled notification: ${rpcMessage.method}`);
 				}
 			}
 		} catch (err) {
 			if (this.config.debug) {
-				console.error('[LSP] Failed to parse message:', err);
+				console.error('[LSP] Failed to handle message:', err);
 			}
 		}
 	}

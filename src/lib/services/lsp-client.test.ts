@@ -52,6 +52,11 @@ class MockWebSocket {
 		this.onmessage?.(new MessageEvent('message', { data: JSON.stringify(data) }));
 	}
 
+	/** Test helper: simulate a raw WebSocket frame from the server */
+	simulateRawMessage(data: string): void {
+		this.onmessage?.(new MessageEvent('message', { data }));
+	}
+
 	/** Test helper: simulate an error */
 	simulateError(): void {
 		this.onerror?.(new Event('error'));
@@ -584,6 +589,44 @@ describe('LSPClient — Message Handling', () => {
 		});
 
 		expect(handler).toHaveBeenCalledWith({ data: 42 });
+	});
+
+	it('should dispatch split and coalesced JSON-RPC messages', async () => {
+		vi.useRealTimers();
+		const { client, ws } = await createConnectedClient();
+
+		const splitHandler = vi.fn();
+		const firstHandler = vi.fn();
+		const secondHandler = vi.fn();
+		client.onNotification('custom/split', splitHandler);
+		client.onNotification('custom/first', firstHandler);
+		client.onNotification('custom/second', secondHandler);
+
+		const splitMessage = JSON.stringify({
+			jsonrpc: '2.0',
+			method: 'custom/split',
+			params: { part: true }
+		});
+		const splitAt = Math.floor(splitMessage.length / 2);
+		ws.simulateRawMessage(splitMessage.slice(0, splitAt));
+		expect(splitHandler).not.toHaveBeenCalled();
+		ws.simulateRawMessage(splitMessage.slice(splitAt));
+		expect(splitHandler).toHaveBeenCalledWith({ part: true });
+
+		const first = JSON.stringify({
+			jsonrpc: '2.0',
+			method: 'custom/first',
+			params: { n: 1 }
+		});
+		const second = JSON.stringify({
+			jsonrpc: '2.0',
+			method: 'custom/second',
+			params: { n: 2 }
+		});
+		ws.simulateRawMessage(`${first}${second}`);
+
+		expect(firstHandler).toHaveBeenCalledWith({ n: 1 });
+		expect(secondHandler).toHaveBeenCalledWith({ n: 2 });
 	});
 
 	it('should allow unsubscribing from notifications', async () => {
