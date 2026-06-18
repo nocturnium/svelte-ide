@@ -74,6 +74,7 @@
 
 	let hoveredRegion = $state<ComplexityRegion | null>(null);
 	let tooltipPosition = $state({ top: 0, left: 0 });
+	let tooltipAnchor = $state<'left' | 'right'>('right');
 	let visibleContributions = $derived(
 		hoveredRegion
 			? [...hoveredRegion.contributions].sort((a, b) => a.line - b.line).slice(0, 8)
@@ -110,13 +111,20 @@
 		return contribution.kind || contribution.reason;
 	}
 
-	function handleMouseEnter(region: ComplexityRegion, event: MouseEvent) {
+	function handleMouseEnter(
+		region: ComplexityRegion,
+		event: MouseEvent,
+		anchor: 'left' | 'right' = 'right'
+	) {
 		hoveredRegion = region;
-		const rect = (event.target as HTMLElement).getBoundingClientRect();
-		tooltipPosition = {
-			top: rect.top,
-			left: rect.right + 8
-		};
+		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		tooltipAnchor = anchor;
+		// The gutter spine opens the tooltip to its right (over the code); the score
+		// badge sits at the right edge, so it opens to its left to stay on-screen.
+		tooltipPosition =
+			anchor === 'right'
+				? { top: rect.top, left: rect.right + 8 }
+				: { top: rect.top, left: rect.left - 8 };
 	}
 
 	function handleMouseLeave() {
@@ -148,6 +156,7 @@
 				onmouseenter={(e) => handleMouseEnter(region, e)}
 				onmouseleave={handleMouseLeave}
 			></div>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="complexity-gutter__score"
 				class:complexity-gutter__score--critical={region.score >= 85}
@@ -158,6 +167,8 @@
 					--indicator-color: {getColor(region.score)};
 					--indicator-opacity: {getOpacity(region.score)};
 				"
+				onmouseenter={(e) => handleMouseEnter(region, e, 'left')}
+				onmouseleave={handleMouseLeave}
 			>
 				{region.score}
 			</div>
@@ -168,6 +179,7 @@
 	{#if hoveredRegion}
 		<div
 			class="complexity-tooltip"
+			class:complexity-tooltip--left={tooltipAnchor === 'left'}
 			style="top: {tooltipPosition.top}px; left: {tooltipPosition.left}px;"
 		>
 			<div class="complexity-tooltip__header">
@@ -303,7 +315,10 @@
 		opacity: calc(0.76 + (var(--indicator-opacity) - 0.65) * 0.7);
 		transform: scale(1);
 		transform-origin: center;
-		pointer-events: none;
+		/* The badge is a primary hover target for the explain-on-hover tooltip,
+		   not only the 4px spine. */
+		pointer-events: auto;
+		cursor: help;
 		box-sizing: border-box;
 	}
 
@@ -420,6 +435,11 @@
 		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 		font-size: 12px;
 		pointer-events: none;
+	}
+
+	/* Badge-anchored tooltips open leftward; shift by their own width. */
+	.complexity-tooltip--left {
+		transform: translateX(-100%);
 	}
 
 	.complexity-tooltip__header {
