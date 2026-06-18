@@ -216,8 +216,13 @@ export class CRDTBinding {
 						if (currentLength > 0) {
 							this.text.delete(0, currentLength);
 						}
-						if (event.text) {
-							this.text.insert(0, event.text);
+						// Source the full content from the editor itself, not from
+						// event.text: undo/redo emit a `replace` with no `text`, so
+						// trusting event.text here would empty the shared doc. getContent()
+						// is the authoritative post-change content for any replace emitter.
+						const fullContent = this.editorState.getContent();
+						if (fullContent) {
+							this.text.insert(0, fullContent);
 						}
 						break;
 					}
