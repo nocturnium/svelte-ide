@@ -7,6 +7,7 @@ import {
 	type EchoCursorEvent,
 	type EchoCursor
 } from './echo-cursor';
+import { createEditorState } from './state';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -342,6 +343,50 @@ describe('replay scheduling', () => {
 
 		vi.advanceTimersByTime(200);
 		expect(events.filter((e) => e.type === 'replay-started')).toHaveLength(0);
+	});
+
+	it('should apply real primary inserts into the echo mirror buffer after delay', () => {
+		const primary = createEditorState({ content: '' });
+		const manager = makeManager({ defaultDelay: 100 });
+		manager.attach(primary);
+		manager.enable();
+		const cursor = manager.addEchoPoint({ line: 0, column: 0 })!;
+
+		primary.insertAt({ line: 0, column: 0 }, 'echo');
+		expect(manager.getEchoContent(cursor.id)).toBe('');
+
+		vi.advanceTimersByTime(100);
+
+		expect(manager.getEchoContent(cursor.id)).toBe('echo');
+		expect(manager.getEchoCursor(cursor.id)?.position).toEqual({ line: 0, column: 4 });
+	});
+
+	it('should apply real delete content into the echo mirror buffer after delay', () => {
+		const primary = createEditorState({ content: 'abc' });
+		const manager = makeManager({ defaultDelay: 100 });
+		manager.attach(primary);
+		manager.enable();
+		const cursor = manager.addEchoPoint({ line: 0, column: 3 })!;
+
+		primary.setContent('ab');
+		vi.advanceTimersByTime(100);
+
+		expect(manager.getEchoContent(cursor.id)).toBe('ab');
+		expect(manager.getEchoCursor(cursor.id)?.position).toEqual({ line: 0, column: 2 });
+	});
+
+	it('should advance echo position across multi-character newline inserts', () => {
+		const primary = createEditorState({ content: '' });
+		const manager = makeManager({ defaultDelay: 100 });
+		manager.attach(primary);
+		manager.enable();
+		const cursor = manager.addEchoPoint({ line: 0, column: 0 })!;
+
+		primary.insertAt({ line: 0, column: 0 }, 'foo\nbar');
+		vi.advanceTimersByTime(100);
+
+		expect(manager.getEchoContent(cursor.id)).toBe('foo\nbar');
+		expect(manager.getEchoCursor(cursor.id)?.position).toEqual({ line: 1, column: 3 });
 	});
 });
 

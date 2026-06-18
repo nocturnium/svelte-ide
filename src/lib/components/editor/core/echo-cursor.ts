@@ -6,7 +6,7 @@
  * propagate to echo locations with visible animation.
  */
 
-import type { Position } from './state';
+import { EditorState, type ChangeEvent, type Position } from './state';
 
 /**
  * Keystroke event for replay
@@ -26,6 +26,8 @@ export interface KeystrokeEvent {
 		direction?: 'forward' | 'backward';
 		/** Count for delete */
 		count?: number;
+		/** Removed text for delete replay */
+		removed?: string;
 		/** New position for move */
 		position?: Position;
 	};
@@ -118,7 +120,10 @@ export class EchoCursorManager {
 	private echoCursors: Map<string, EchoCursor> = new Map();
 	private keystrokeBuffer: KeystrokeEvent[] = [];
 	private replayTimers: Map<string, ReturnType<typeof setTimeout>[]> = new Map();
+	private echoMirrors: Map<string, EditorState> = new Map();
 	private listeners: Set<(event: EchoCursorEvent) => void> = new Set();
+	private detachEditorState: (() => void) | null = null;
+	private attachedEditorState: EditorState | null = null;
 	private enabled = false;
 	private colorIndex = 0;
 
@@ -163,6 +168,23 @@ export class EchoCursorManager {
 	}
 
 	/**
+	 * Attach echo recording to a real editor state.
+	 */
+	attach(editorState: EditorState): () => void {
+		this.detachEditorState?.();
+		this.attachedEditorState = editorState;
+		this.detachEditorState = editorState.onContentChange((event) => this.recordChangeEvent(event));
+
+		return () => {
+			if (this.attachedEditorState === editorState) {
+				this.detachEditorState?.();
+				this.detachEditorState = null;
+				this.attachedEditorState = null;
+			}
+		};
+	}
+
+	/**
 	 * Add an echo cursor at a position
 	 */
 	addEchoPoint(
@@ -189,6 +211,12 @@ export class EchoCursorManager {
 
 		this.echoCursors.set(id, cursor);
 		this.replayTimers.set(id, []);
+		this.echoMirrors.set(
+			id,
+			new EditorState({
+				content: this.attachedEditorState?.getContent() ?? ''
+			})
+		);
 		this.emit({ type: 'echo-added', cursor });
 
 		return cursor;
@@ -207,6 +235,7 @@ export class EchoCursorManager {
 			clearTimeout(timer);
 		}
 		this.replayTimers.delete(id);
+		this.echoMirrors.delete(id);
 
 		this.echoCursors.delete(id);
 		this.emit({ type: 'echo-removed', cursorId: id });
@@ -308,6 +337,13 @@ export class EchoCursorManager {
 	}
 
 	/**
+	 * Get the real mirrored buffer content for an echo cursor.
+	 */
+	getEchoContent(id: string): string {
+		return this.echoMirrors.get(id)?.getContent() ?? '';
+	}
+
+	/**
 	 * Get keystroke buffer
 	 */
 	getKeystrokeBuffer(): readonly KeystrokeEvent[] {
@@ -339,20 +375,109 @@ export class EchoCursorManager {
 		if (!cursor.active) return;
 
 		const timer = setTimeout(() => {
+			const mirror = this.echoMirrors.get(cursor.id);
+			if (!mirror) return;
+
 			cursor.isReplaying = true;
 			this.emit({ type: 'replay-started', cursorId: cursor.id, keystroke });
 
-			// Simulate replay completion after a short animation time
-			setTimeout(() => {
-				cursor.isReplaying = false;
-				cursor.replayIndex++;
-				this.emit({ type: 'replay-completed', cursorId: cursor.id, keystroke });
-			}, 50);
+			if (keystroke.type === 'insert' || keystroke.type === 'newline' || keystroke.type === 'tab') {
+				const text = this.getReplayText(keystroke);
+				if (text) {
+					mirror.insertAt(cursor.position, text);
+					this.updateEchoPosition(cursor.id, mirror.cursor);
+				}
+			} else if (keystroke.type === 'delete') {
+				const removed = keystroke.data.removed ?? ''.padStart(keystroke.data.count ?? 1, ' ');
+				const from =
+					keystroke.data.direction === 'forward'
+						? cursor.position
+						: this.positionBeforeText(mirror, cursor.position, removed);
+				const to =
+					keystroke.data.direction === 'forward'
+						? this.positionAfterText(mirror, cursor.position, removed)
+						: cursor.position;
+
+				mirror.deleteRange(from, to);
+				this.updateEchoPosition(cursor.id, mirror.cursor);
+			}
+			cursor.isReplaying = false;
+			cursor.replayIndex++;
+			this.emit({ type: 'replay-completed', cursorId: cursor.id, keystroke });
 		}, cursor.delayMs);
 
 		const timers = this.replayTimers.get(cursor.id) || [];
 		timers.push(timer);
 		this.replayTimers.set(cursor.id, timers);
+	}
+
+	private recordChangeEvent(event: ChangeEvent): void {
+		if (event.type === 'insert' && event.text) {
+			this.recordInsert(event.text);
+			return;
+		}
+
+		if (event.type === 'delete' && event.removed) {
+			this.recordKeystroke({
+				type: 'delete',
+				data: {
+					direction: 'backward',
+					count: event.removed.length,
+					removed: event.removed
+				}
+			});
+			return;
+		}
+
+		if (event.type === 'replace') {
+			if (event.removed) {
+				this.recordKeystroke({
+					type: 'delete',
+					data: {
+						direction: 'backward',
+						count: event.removed.length,
+						removed: event.removed
+					}
+				});
+			}
+			if (event.text) {
+				this.recordInsert(event.text);
+			}
+		}
+	}
+
+	private getReplayText(keystroke: KeystrokeEvent): string {
+		if (keystroke.type === 'newline') return '\n';
+		if (keystroke.type === 'tab') return '\t';
+		return keystroke.data.text ?? '';
+	}
+
+	private positionAfterText(mirror: EditorState, position: Position, text: string): Position {
+		const lines = text.split('\n');
+		if (lines.length === 1) {
+			return { line: position.line, column: position.column + text.length };
+		}
+		return {
+			line: Math.min(position.line + lines.length - 1, mirror.lineCount - 1),
+			column: lines[lines.length - 1].length
+		};
+	}
+
+	private positionBeforeText(mirror: EditorState, position: Position, text: string): Position {
+		const lines = text.split('\n');
+		if (lines.length === 1) {
+			return {
+				line: position.line,
+				column: Math.max(0, position.column - text.length)
+			};
+		}
+
+		const line = Math.max(0, position.line - lines.length + 1);
+		const lineText = mirror.getLine(line)?.text ?? '';
+		return {
+			line,
+			column: Math.max(0, lineText.length - lines[0].length)
+		};
 	}
 
 	/**

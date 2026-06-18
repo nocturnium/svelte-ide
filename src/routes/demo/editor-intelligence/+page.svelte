@@ -26,7 +26,12 @@
 		createBracketHealer,
 		type BracketHealer
 	} from '$lib/components/editor/core/bracket-healer';
-	import type { Line } from '$lib/components/editor/core/state';
+	import {
+		createEditorState,
+		type EditorState,
+		type Line,
+		type Position
+	} from '$lib/components/editor/core/state';
 
 	// Demo state
 	let activeDemo = $state<
@@ -246,6 +251,8 @@ export const formatSession = (session: UserSession): string => {
 
 	// Overlay state
 	let echoCursorManager = $state<EchoCursorManager | null>(null);
+	let echoEditorState = $state<EditorState | null>(null);
+	let echoSourceContent = $state(contextLensCode);
 	let bracketHealer = $state<BracketHealer | null>(null);
 
 	// Symbol Outline state
@@ -401,17 +408,16 @@ export const formatSession = (session: UserSession): string => {
 		});
 
 		const echoManager = createEchoCursorManager({ defaultDelay: 220 });
+		const realEchoEditor = createEditorState({
+			content: echoSourceContent,
+			language: 'typescript'
+		});
+		const detachEchoEditor = echoManager.attach(realEchoEditor);
 		echoManager.enable();
 		echoManager.addEchoPoint({ line: 5, column: 22 }, { delay: 220, label: 'Mirror A' });
 		echoManager.addEchoPoint({ line: 10, column: 8 }, { delay: 420, label: 'Mirror B' });
+		echoEditorState = realEchoEditor;
 		echoCursorManager = echoManager;
-
-		const replayTexts = ['profile', '.', 'save', '()'];
-		let replayIndex = 0;
-		const replayTimer = setInterval(() => {
-			echoManager.recordInsert(replayTexts[replayIndex % replayTexts.length]);
-			replayIndex += 1;
-		}, 1400);
 
 		const healer = createBracketHealer({ debounceMs: 0, minConfidence: 0.5, maxGhosts: 4 });
 		healer.setLanguage('typescript');
@@ -419,7 +425,7 @@ export const formatSession = (session: UserSession): string => {
 		bracketHealer = healer;
 
 		return () => {
-			clearInterval(replayTimer);
+			detachEchoEditor();
 			quickActionsManager?.destroy();
 			healer.destroy();
 		};
@@ -460,6 +466,51 @@ export const formatSession = (session: UserSession): string => {
 				breadcrumbPath = [{ ...symbol, type: symbol.kind }];
 			}
 		}
+	}
+
+	function positionFromIndex(content: string, index: number): Position {
+		const lines = content.slice(0, index).split('\n');
+		return {
+			line: lines.length - 1,
+			column: lines[lines.length - 1].length
+		};
+	}
+
+	function applyEchoSourceContent(nextContent: string) {
+		const state = echoEditorState;
+		if (!state || nextContent === echoSourceContent) return;
+
+		const previous = echoSourceContent;
+		let prefix = 0;
+		while (
+			prefix < previous.length &&
+			prefix < nextContent.length &&
+			previous[prefix] === nextContent[prefix]
+		) {
+			prefix++;
+		}
+
+		let suffix = 0;
+		while (
+			suffix < previous.length - prefix &&
+			suffix < nextContent.length - prefix &&
+			previous[previous.length - 1 - suffix] === nextContent[nextContent.length - 1 - suffix]
+		) {
+			suffix++;
+		}
+
+		const from = positionFromIndex(previous, prefix);
+		const removedEndIndex = previous.length - suffix;
+		const insertedText = nextContent.slice(prefix, nextContent.length - suffix);
+
+		if (removedEndIndex > prefix) {
+			state.deleteRange(from, positionFromIndex(previous, removedEndIndex));
+		}
+		if (insertedText) {
+			state.insertAt(from, insertedText);
+		}
+
+		echoSourceContent = state.getContent();
 	}
 </script>
 
@@ -945,10 +996,20 @@ export const formatSession = (session: UserSession): string => {
 				<div class="feature-info">
 					<h4>What It Shows</h4>
 					<p>
-						Two echo cursors are armed in the editor. The animated replay badges show incoming text
-						propagating after separate delays.
+						Two echo cursors are armed in the editor. Type in the source buffer and the same real
+						editor edits propagate after separate delays.
 					</p>
 				</div>
+
+				<label class="echo-source">
+					<span>Source buffer</span>
+					<textarea
+						value={echoSourceContent}
+						oninput={(event) =>
+							applyEchoSourceContent((event.currentTarget as HTMLTextAreaElement).value)}
+						spellcheck="false"
+					></textarea>
+				</label>
 			</div>
 		</div>
 	{/if}
@@ -1482,6 +1543,29 @@ export const formatSession = (session: UserSession): string => {
 
 	.overlay-editor--context {
 		padding-top: 30px;
+	}
+
+	.echo-source {
+		display: grid;
+		gap: 0.5rem;
+	}
+
+	.echo-source span {
+		font-size: 0.8rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.echo-source textarea {
+		min-height: 160px;
+		padding: 0.75rem;
+		background: rgba(0, 0, 0, 0.3);
+		border: 1px solid var(--ide-border, #333);
+		border-radius: 6px;
+		color: var(--ide-text-primary, #e8e8f0);
+		font:
+			13px/1.5 'JetBrains Mono',
+			monospace;
+		resize: vertical;
 	}
 
 	.overlay-editor :global(.context-lens),

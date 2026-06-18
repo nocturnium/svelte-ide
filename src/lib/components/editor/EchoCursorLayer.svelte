@@ -37,19 +37,23 @@
 	let echoCursors = $state<EchoCursor[]>([]);
 	let replayingCursors = $state<Set<string>>(new Set());
 	let recentReplay = new SvelteMap<string, { text: string; opacity: number }>();
+	let echoContents = $state<Record<string, string>>({});
 
 	// Subscribe to echo cursor events
 	onMount(() => {
 		// Initialize with current cursors
 		echoCursors = manager.getEchoCursors();
+		echoContents = getEchoContents();
 
 		const unsubscribe = manager.subscribe((event: EchoCursorEvent) => {
 			switch (event.type) {
 				case 'echo-added':
 					echoCursors = manager.getEchoCursors();
+					echoContents = getEchoContents();
 					break;
 				case 'echo-removed':
 					echoCursors = manager.getEchoCursors();
+					echoContents = getEchoContents();
 					break;
 				case 'replay-started':
 					replayingCursors = new Set([...replayingCursors, event.cursorId]);
@@ -63,6 +67,8 @@
 					break;
 				case 'replay-completed':
 					replayingCursors = new Set([...replayingCursors].filter((id) => id !== event.cursorId));
+					echoCursors = manager.getEchoCursors();
+					echoContents = getEchoContents();
 					// Fade out replay text
 					setTimeout(() => {
 						const entry = recentReplay.get(event.cursorId);
@@ -78,6 +84,7 @@
 					if (!event.enabled) {
 						echoCursors = [];
 						replayingCursors = new Set();
+						echoContents = {};
 						recentReplay.clear();
 					}
 					break;
@@ -113,6 +120,12 @@
 		return tokens[Math.max(index, 0) % tokens.length];
 	}
 
+	function getEchoContents(): Record<string, string> {
+		return Object.fromEntries(
+			manager.getEchoCursors().map((cursor) => [cursor.id, manager.getEchoContent(cursor.id)])
+		);
+	}
+
 	/**
 	 * Handle remove echo click
 	 */
@@ -127,6 +140,7 @@
 		{#each echoCursors as cursor (cursor.id)}
 			{@const isReplaying = replayingCursors.has(cursor.id)}
 			{@const replayText = recentReplay.get(cursor.id)}
+			{@const echoContent = echoContents[cursor.id] ?? ''}
 
 			<!-- Echo cursor marker -->
 			<div
@@ -170,6 +184,17 @@
 				{#if isReplaying}
 					<div class="echo-cursor__ripple"></div>
 				{/if}
+			</div>
+
+			<div
+				class="echo-cursor-buffer"
+				style="left: {gutterWidth}px; --echo-color: var({getEchoColorToken(cursor)});"
+			>
+				{#each echoContent.split('\n') as line, lineIndex (lineIndex)}
+					<div class="echo-cursor-buffer__line" style="height: {lineHeight}px;">
+						<span class="echo-cursor-buffer__text">{line || ' '}</span>
+					</div>
+				{/each}
 			</div>
 		{/each}
 
@@ -325,6 +350,27 @@
 		border: 2px solid var(--echo-color);
 		border-radius: 50%;
 		animation: echo-ripple 0.4s ease-out forwards;
+	}
+
+	.echo-cursor-buffer {
+		position: absolute;
+		top: 0;
+		left: var(--echo-buffer-left, 50px);
+		right: 0;
+		color: color-mix(in srgb, var(--echo-color) 82%, var(--ide-text-primary));
+		font-family: monospace;
+		font-size: 13px;
+		line-height: 20px;
+		pointer-events: none;
+		opacity: 0.8;
+	}
+
+	.echo-cursor-buffer__line {
+		white-space: pre;
+	}
+
+	.echo-cursor-buffer__text {
+		background: color-mix(in srgb, var(--echo-color) 12%, transparent);
 	}
 
 	@keyframes echo-ripple {

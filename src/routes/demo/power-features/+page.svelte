@@ -18,6 +18,11 @@
 		type BracketMismatch,
 		type GhostBracket
 	} from '$lib/components/editor/core/bracket-healer';
+	import {
+		createEditorState,
+		type EditorState,
+		type Position
+	} from '$lib/components/editor/core/state';
 	import PluginPreviewSandbox from '$lib/components/editor/PluginPreviewSandbox.svelte';
 	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
 
@@ -26,8 +31,16 @@
 
 	// Echo cursor demo
 	let echoManager: EchoCursorManager;
+	let echoEditorState = $state<EditorState | null>(null);
 	let echoEnabled = $state(false);
 	let echoCursors = $state<EchoCursor[]>([]);
+	let echoSourceContent = $state(`const user = getUser();
+const profile = user.profile;
+const status = profile.status;
+
+renderUser(user);
+renderProfile(profile);
+renderStatus(status);`);
 	let keystrokeLog = $state<string[]>([]);
 
 	// Bracket healer demo
@@ -87,6 +100,12 @@ export { formatPrice, summarize };`);
 	onMount(() => {
 		// Initialize echo manager
 		echoManager = createEchoCursorManager({ defaultDelay: 200 });
+		const realEchoEditor = createEditorState({
+			content: echoSourceContent,
+			language: 'javascript'
+		});
+		const detachEchoEditor = echoManager.attach(realEchoEditor);
+		echoEditorState = realEchoEditor;
 		echoManager.subscribe((event) => {
 			echoCursors = echoManager.getEchoCursors();
 
@@ -120,6 +139,7 @@ export { formatPrice, summarize };`);
 		bracketHealer.analyzeImmediate(bracketCode);
 
 		return () => {
+			detachEchoEditor();
 			echoManager?.disable();
 			bracketHealer?.destroy();
 		};
@@ -146,25 +166,54 @@ export { formatPrice, summarize };`);
 		echoCursors = echoManager.getEchoCursors();
 	}
 
-	function simulateKeystroke(type: 'insert' | 'delete' | 'newline') {
-		if (!echoEnabled) return;
-
-		switch (type) {
-			case 'insert':
-				echoManager.recordInsert('a');
-				break;
-			case 'delete':
-				echoManager.recordDelete('backward');
-				break;
-			case 'newline':
-				echoManager.recordNewline();
-				break;
-		}
-	}
-
 	function clearEchoes() {
 		echoManager.clearAllEchoes();
 		echoCursors = [];
+	}
+
+	function positionFromIndex(content: string, index: number): Position {
+		const lines = content.slice(0, index).split('\n');
+		return {
+			line: lines.length - 1,
+			column: lines[lines.length - 1].length
+		};
+	}
+
+	function applyEchoSourceContent(nextContent: string) {
+		const state = echoEditorState;
+		if (!state || nextContent === echoSourceContent) return;
+
+		const previous = echoSourceContent;
+		let prefix = 0;
+		while (
+			prefix < previous.length &&
+			prefix < nextContent.length &&
+			previous[prefix] === nextContent[prefix]
+		) {
+			prefix++;
+		}
+
+		let suffix = 0;
+		while (
+			suffix < previous.length - prefix &&
+			suffix < nextContent.length - prefix &&
+			previous[previous.length - 1 - suffix] === nextContent[nextContent.length - 1 - suffix]
+		) {
+			suffix++;
+		}
+
+		const from = positionFromIndex(previous, prefix);
+		const removedEndIndex = previous.length - suffix;
+		const insertedText = nextContent.slice(prefix, nextContent.length - suffix);
+
+		if (removedEndIndex > prefix) {
+			state.deleteRange(from, positionFromIndex(previous, removedEndIndex));
+		}
+		if (insertedText) {
+			state.insertAt(from, insertedText);
+		}
+
+		echoSourceContent = state.getContent();
 	}
 
 	function updateBracketCode(value: string) {
@@ -241,17 +290,6 @@ export { formatPrice, summarize };`);
 							<button class="small-btn" onclick={() => addEchoPoint(8, 300)}>9 (300ms)</button>
 						</div>
 
-						<div class="keystroke-actions">
-							<span class="action-label">Simulate Keystroke:</span>
-							<button class="small-btn" onclick={() => simulateKeystroke('insert')}
-								>Insert 'a'</button
-							>
-							<button class="small-btn" onclick={() => simulateKeystroke('delete')}
-								>Backspace</button
-							>
-							<button class="small-btn" onclick={() => simulateKeystroke('newline')}>Enter</button>
-						</div>
-
 						<button class="control-btn control-btn--danger" onclick={clearEchoes}>
 							Clear All Echoes
 						</button>
@@ -261,10 +299,10 @@ export { formatPrice, summarize };`);
 				<div class="echo-visualization">
 					<div class="editor-mock-wrap">
 						<div class="editor-mock">
-							{#each Array(12) as _, i (i)}
+							{#each echoSourceContent.split('\n') as line, i (i)}
 								<div class="mock-line">
 									<span class="line-num">{i + 1}</span>
-									<span class="line-content">// Line {i + 1} content...</span>
+									<span class="line-content">{line || ' '}</span>
 								</div>
 							{/each}
 
@@ -280,7 +318,7 @@ export { formatPrice, summarize };`);
 							{/each}
 						</div>
 						<p class="mock-caption" role="note">
-							Illustrative preview — use the buttons above to drive echoes.
+							Visible mirror buffers are backed by real EditorState instances.
 						</p>
 					</div>
 
@@ -295,6 +333,16 @@ export { formatPrice, summarize };`);
 						{/if}
 					</div>
 				</div>
+
+				<label class="echo-source">
+					<span>Source buffer</span>
+					<textarea
+						value={echoSourceContent}
+						oninput={(event) =>
+							applyEchoSourceContent((event.currentTarget as HTMLTextAreaElement).value)}
+						spellcheck="false"
+					></textarea>
+				</label>
 
 				<div class="echo-info">
 					<h4>How It Works</h4>
@@ -572,10 +620,34 @@ export { formatPrice, summarize };`);
 	}
 
 	.echo-actions,
-	.keystroke-actions {
+	.echo-source {
 		display: flex;
+	}
+
+	.echo-actions {
 		align-items: center;
 		gap: 0.5rem;
+	}
+
+	.echo-source {
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.echo-source span {
+		font-size: 0.8rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.echo-source textarea {
+		min-height: 150px;
+		padding: 0.75rem;
+		background: rgba(0, 0, 0, 0.3);
+		border: 1px solid var(--ide-border, #333);
+		border-radius: 6px;
+		color: var(--ide-text-primary, #e8e8f0);
+		font: 13px/1.5 monospace;
+		resize: vertical;
 	}
 
 	.action-label {
@@ -1077,8 +1149,7 @@ export { formatPrice, summarize };`);
 		}
 
 		/* Stack control rows so they don't wrap awkwardly mid-label. */
-		.echo-actions,
-		.keystroke-actions {
+		.echo-actions {
 			flex-wrap: wrap;
 		}
 
