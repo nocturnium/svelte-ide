@@ -1,3 +1,38 @@
+# [1.2.0](https://github.com/nocturnium/svelte-ide/compare/v1.1.1...v1.2.0) (2026-06-18)
+
+
+### Bug Fixes
+
+* **collab:** give the second editor a distinct presence id (feature-truth) ([5b6b11a](https://github.com/nocturnium/svelte-ide/commit/5b6b11a90b8a2fd17db09c64b6204d9a53aabdbf))
+* **crdt:** make replace self-consistent from editor content (10x-review) ([7b20702](https://github.com/nocturnium/svelte-ide/commit/7b2070290cbce914b91c0ab926404d260ec2e5aa))
+* **demos:** close re-gate consistency gaps ([f0f32f0](https://github.com/nocturnium/svelte-ide/commit/f0f32f029d421de410f994b6edb425762a578fd3))
+* **echo:** render echo readout on an opaque lane, not ghost text over glyphs ([3505140](https://github.com/nocturnium/svelte-ide/commit/35051402e0859b8bbd169fc94fc8833c5a48313f))
+* **editor:** close surviving extract-function false-accepts (spaced ++, param scope) ([888d44b](https://github.com/nocturnium/svelte-ide/commit/888d44b12da339e7f3ec4f73424f3827cfb92d7a))
+* **editor:** incremental CRDT apply (C1) + honest plugin-preview trust model (C2) ([d617144](https://github.com/nocturnium/svelte-ide/commit/d617144f4916f0d71e4ffee424abb73e49c1277c))
+* **editor:** restore extract-function safe-or-refuse on ++/compound/catch (Track H) ([2ff8d1f](https://github.com/nocturnium/svelte-ide/commit/2ff8d1f3ec713745fb8da518e04a3e40be76b0de))
+* **landing+demos:** distinct AI icon, themed select, unified headers, mobile hero affordance ([ddd2926](https://github.com/nocturnium/svelte-ide/commit/ddd29265ab8394253e628f07493473888e8d1c2f))
+* **landing:** unclip the hero score chip and intensify the thermal glow ([4c441b3](https://github.com/nocturnium/svelte-ide/commit/4c441b3025bdb90fda7f33ed6983070aa9bb5c4f))
+* **theme:** make error red AA-safe and route conflict severity through band tokens ([52367b4](https://github.com/nocturnium/svelte-ide/commit/52367b460fb3b05b259de19ad7a10ea1c9c0baf3)), closes [#ef4444](https://github.com/nocturnium/svelte-ide/issues/ef4444) [#1a2744](https://github.com/nocturnium/svelte-ide/issues/1a2744)
+* **theme:** make the rich syntax palette the default for every editor surface ([600c76e](https://github.com/nocturnium/svelte-ide/commit/600c76eb674bc8d802736e49b796df01d7a635b2))
+
+
+### Features
+
+* **collab:** real timeline capture + awareness-driven conflict prediction ([53353e3](https://github.com/nocturnium/svelte-ide/commit/53353e342a4b075f7adf1f9b9d78830f298851bc))
+* **complexity:** expose per-region cognitive load to screen readers ([1b774f0](https://github.com/nocturnium/svelte-ide/commit/1b774f09c4872ecce350d463bfcae3df9b0974a2)), closes [hi#complexity](https://github.com/hi/issues/complexity)
+* **complexity:** implement SonarSource Cognitive Complexity, language-aware ([210c9d1](https://github.com/nocturnium/svelte-ide/commit/210c9d1190613c53cff4afa6e41d7854df03b8cf))
+* **complexity:** make the score badge open the explain-on-hover tooltip ([bcbbf70](https://github.com/nocturnium/svelte-ide/commit/bcbbf700f9f4bf6459d2a20c6fb4c53e5bbf2c06))
+* **complexity:** thermal-camera aesthetic for the heatmap ([41d74d0](https://github.com/nocturnium/svelte-ide/commit/41d74d01fc0d248379be8247f655d441800555c1))
+* **complexity:** thermal-map heatmap, explain-on-hover, paste-your-code ([1629339](https://github.com/nocturnium/svelte-ide/commit/1629339b07546948eea65bc7c8f3d899060ac669))
+* **echo-cursor:** make echo cursors apply real edits, not animation ([10d5805](https://github.com/nocturnium/svelte-ide/commit/10d58055af019750fa1efaf0957ea9d2a36e738f))
+* **editor:** pure extract-function planner — safe-or-refuse (Track H ph1) ([5caa03e](https://github.com/nocturnium/svelte-ide/commit/5caa03e216ed051dea26f9676b9a00330e35b640))
+* **landing:** lead the hero with the live cognitive-load thermal map ([f8b55e3](https://github.com/nocturnium/svelte-ide/commit/f8b55e3b57be20a59e0b9043e60856b840c36c25))
+
+
+### Performance Improvements
+
+* **editor:** delta-based undo history, find cull, buffered LSP framing ([d5a965a](https://github.com/nocturnium/svelte-ide/commit/d5a965afeac3d6682d4b5969b5bc953ea3a65a1c))
+
 ## [1.1.1](https://github.com/nocturnium/svelte-ide/compare/v1.1.0...v1.1.1) (2026-06-09)
 
 
