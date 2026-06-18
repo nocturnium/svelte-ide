@@ -1263,7 +1263,10 @@ export const formatSession = (session: UserSession): string => {
 	}
 
 	.line-num {
-		width: 40px;
+		/* width == gutterWidth (50). box-sizing is border-box, so line-content
+		   starts exactly where the editor overlays (echo lane, complexity layer)
+		   are anchored — otherwise the lane leaves a leading-glyph seam. */
+		width: 50px;
 		padding-right: 8px;
 		text-align: right;
 		color: var(--ide-text-muted, #666);

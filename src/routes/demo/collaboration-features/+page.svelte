@@ -662,16 +662,16 @@ export function applyDiscount(order: Order, percent: number): Order {
 	}
 
 	.conflict-card--low {
-		border-left-color: #22c55e;
+		border-left-color: var(--ide-success);
 	}
 	.conflict-card--medium {
-		border-left-color: #eab308;
+		border-left-color: var(--ide-info);
 	}
 	.conflict-card--high {
-		border-left-color: #f59e0b;
+		border-left-color: var(--ide-warning);
 	}
 	.conflict-card--critical {
-		border-left-color: #ef4444;
+		border-left-color: var(--ide-error);
 	}
 
 	.conflict-probability {
@@ -697,7 +697,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.conflict-suggestion {
 		font-size: 0.75rem;
-		color: #eab308;
+		color: var(--ide-warning);
 		font-style: italic;
 	}
 

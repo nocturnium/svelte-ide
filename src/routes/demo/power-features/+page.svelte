@@ -720,6 +720,7 @@ export { formatPrice, summarize };`);
 	.echo-marker {
 		position: absolute;
 		left: 40px;
+		right: 0.75rem;
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -746,6 +747,8 @@ export { formatPrice, summarize };`);
 	}
 
 	.echo-label {
+		/* Sit in the right margin instead of over the line's leading code. */
+		margin-left: auto;
 		padding: 2px 6px;
 		background: var(--color);
 		border-radius: 4px;

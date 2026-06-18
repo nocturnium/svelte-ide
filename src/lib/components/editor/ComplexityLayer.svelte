@@ -73,7 +73,7 @@
 	}
 
 	let hoveredRegion = $state<ComplexityRegion | null>(null);
-	let tooltipPosition = $state({ top: 0, left: 0 });
+	let tooltipPosition = $state({ top: 0, left: 0, right: 0 });
 	let tooltipAnchor = $state<'left' | 'right'>('right');
 	let visibleContributions = $derived(
 		hoveredRegion
@@ -120,11 +120,13 @@
 		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
 		tooltipAnchor = anchor;
 		// The gutter spine opens the tooltip to its right (over the code); the score
-		// badge sits at the right edge, so it opens to its left to stay on-screen.
+		// badge sits at the right edge, so it opens to its left. Anchor the left case
+		// by `right` (not a translateX) so the box grows leftward cleanly — translateX
+		// could subpixel-clip the first glyph of the region name.
 		tooltipPosition =
 			anchor === 'right'
-				? { top: rect.top, left: rect.right + 8 }
-				: { top: rect.top, left: rect.left - 8 };
+				? { top: rect.top, left: rect.right + 8, right: 0 }
+				: { top: rect.top, left: 0, right: window.innerWidth - rect.left + 8 };
 	}
 
 	function handleMouseLeave() {
@@ -179,8 +181,9 @@
 	{#if hoveredRegion}
 		<div
 			class="complexity-tooltip"
-			class:complexity-tooltip--left={tooltipAnchor === 'left'}
-			style="top: {tooltipPosition.top}px; left: {tooltipPosition.left}px;"
+			style={tooltipAnchor === 'left'
+				? `top: ${tooltipPosition.top}px; right: ${tooltipPosition.right}px;`
+				: `top: ${tooltipPosition.top}px; left: ${tooltipPosition.left}px;`}
 		>
 			<div class="complexity-tooltip__header">
 				<span class="complexity-tooltip__badge" style="color: {getColor(hoveredRegion.score)}">
@@ -435,11 +438,6 @@
 		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 		font-size: 12px;
 		pointer-events: none;
-	}
-
-	/* Badge-anchored tooltips open leftward; shift by their own width. */
-	.complexity-tooltip--left {
-		transform: translateX(-100%);
 	}
 
 	.complexity-tooltip__header {
