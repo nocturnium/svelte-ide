@@ -461,6 +461,61 @@ describe('planExtractFunction', () => {
 		expectPostEditValid(lines, plan, 1, 1);
 	});
 
+	it('keeps a block-body closure param local without leaking an outer shadowed var', () => {
+		// The forEach callback param `d` shadows the outer `d` (used after the
+		// block). The block-body brace-range scope must keep the callback's `d`
+		// local — so `d` is neither a param nor confused with the outer one.
+		const lines = makeLines(
+			[
+				'function f(d, rows) {',
+				'\trows.forEach((d) => {',
+				'\t\trecord(d);',
+				'\t});',
+				'\tsink(d);',
+				'}'
+			].join('\n')
+		);
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 5, type: 'function' },
+				blockStart: 1,
+				blockEnd: 3
+			})
+		);
+
+		expect(plan.params).toEqual(['rows']);
+		expect(plan.params).not.toContain('d');
+		expect(plan.returns).toEqual([]);
+		expectPostEditValid(lines, plan, 1, 3);
+	});
+
+	it.each(['x+++y', 'x---y'])(
+		'does not over-model the trailing operand of %s as a mutation',
+		(expr) => {
+			// `x+++y` is `x++ + y`: x is incremented (a real mutation), y is only
+			// read. Without the run guard, the trailing `y` was spuriously modeled
+			// as assigned, forcing a multi-return-with-outer refusal.
+			const lines = makeLines(
+				['function f(y) {', '\tlet x = 0;', `\t${expr};`, '\tuse(x);', '\tsink(y);', '}'].join('\n')
+			);
+			const plan = expectPlan(
+				planExtractFunction({
+					lines,
+					language: 'javascript',
+					region: { startLine: 0, endLine: 5, type: 'function' },
+					blockStart: 2,
+					blockEnd: 2
+				})
+			);
+
+			expect(plan.returns).toContain('x');
+			expect(plan.returns).not.toContain('y');
+			expectPostEditValid(lines, plan, 2, 2);
+		}
+	);
+
 	it.each(['obj.x += 1;', 'arr[i]++;'])(
 		'keeps member and computed mutation targets out of returns for %s',
 		(statement) => {

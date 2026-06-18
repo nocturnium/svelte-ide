@@ -176,7 +176,11 @@ function planExtractFunctionUnsafe(input: ExtractInput): ExtractPlan | ExtractRe
 	}
 
 	for (const decl of insideDeclarations) {
-		if (usedAfterB.has(decl.name) && decl.depth > 0) {
+		// Only refuse when the after-block use can ONLY refer to this conditionally
+		// defined binding. If the same name is also bound before the block — e.g. a
+		// nested arrow/catch param shadows an outer var — the after-use refers to
+		// that outer binding (always defined), which is safe.
+		if (usedAfterB.has(decl.name) && decl.depth > 0 && !declaredBeforeB.has(decl.name)) {
 			return {
 				ok: false,
 				reason: 'A variable used after the block is only conditionally defined inside it.'
@@ -700,13 +704,19 @@ function isIdentifierUse(tokens: FlatToken[], index: number): boolean {
 }
 
 function getAssignments(tokens: FlatToken[], declarations: ScopedDeclaration[]): NamePosition[] {
-	const assigned: NamePosition[] = declarations.map((decl) => ({
-		name: decl.name,
-		line: decl.line,
-		col: decl.col,
-		index: decl.index,
-		depth: decl.depth
-	}));
+	// Seed with the block's own let/const/var/function declarations (a declared
+	// value used after the block is a return). Nested fn/arrow/catch params are
+	// NOT outputs — they're bindings scoped to their construct; a real assignment
+	// to one is still picked up by the operator scan below.
+	const assigned: NamePosition[] = declarations
+		.filter((decl) => decl.kind !== 'param')
+		.map((decl) => ({
+			name: decl.name,
+			line: decl.line,
+			col: decl.col,
+			index: decl.index,
+			depth: decl.depth
+		}));
 	for (let i = 0; i < tokens.length; i++) {
 		if (isAssignmentOperatorToken(tokens, i)) {
 			const target = previousIdentifierInAssignment(tokens, i);
@@ -737,8 +747,13 @@ function identifierInIncrement(tokens: FlatToken[], index: number): NamePosition
 	if (!first || !second) return undefined;
 	if ((first.text !== '+' && first.text !== '-') || second.text !== first.text) return undefined;
 	if (!areAdjacent(first, second)) return undefined;
-
 	const previous = tokens[index - 1];
+	// A run of 3+ identical operators (e.g. `a+++b` is `a++ + b`) yields overlapping
+	// pairs; only the run's leading pair is a real increment. Skip a pair whose
+	// previous token is the same operator adjacent to it, so the trailing operand
+	// (`b`) is never spuriously modeled as a mutation target.
+	if (previous && previous.text === first.text && areAdjacent(previous, first)) return undefined;
+
 	const next = tokens[index + 2];
 	const target = isIdentifierToken(previous)
 		? previous
