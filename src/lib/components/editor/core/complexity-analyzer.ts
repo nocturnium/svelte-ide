@@ -8,6 +8,8 @@
  */
 
 import type { Line } from './state';
+import { resolveLanguage, tokenize } from '../tokenizer';
+import type { Token, TokenizedLine } from '../tokenizer';
 
 /**
  * Complexity factors for a code region
@@ -23,6 +25,14 @@ export interface ComplexityFactors {
 	identifierCount: number;
 	/** Number of function calls */
 	callCount: number;
+}
+
+export interface ComplexityContribution {
+	line: number;
+	kind: string;
+	reason: string;
+	increment: number;
+	nesting: number;
 }
 
 /**
@@ -43,6 +53,10 @@ export interface ComplexityRegion {
 	type: 'function' | 'class' | 'block' | 'file';
 	/** Region name if identifiable */
 	name?: string;
+	/** Exact SonarSource Cognitive Complexity score */
+	cognitiveComplexity: number;
+	/** Per-increment Cognitive Complexity contribution breakdown */
+	contributions: ComplexityContribution[];
 }
 
 /**
@@ -57,6 +71,8 @@ export interface ComplexityMetrics {
 	regions: ComplexityRegion[];
 	/** Lines that exceed threshold */
 	hotspots: number[];
+	/** Sum of exact Cognitive Complexity across all regions */
+	totalCognitiveComplexity: number;
 }
 
 /**
@@ -69,19 +85,15 @@ const THRESHOLDS = {
 	critical: 85
 };
 
-/**
- * Weights for different complexity factors
- */
-const WEIGHTS = {
-	// Nesting is the dominant cognitive-load factor, but 15/level over-rated
-	// shallow code: a function with two nested `if`s landed at ~71 ("High").
-	// 12/level keeps deeply-nested code critical while letting genuinely medium
-	// code read as medium.
-	nestingDepth: 12,
-	branchingFactor: 8,
-	lineCount: 0.3,
-	identifierCount: 0.2,
-	callCount: 0.5
+const COGNITIVE_SCORE_MULTIPLIER = 7;
+
+type SupportedComplexityLanguage = 'javascript' | 'typescript' | 'python' | 'go';
+
+type RawRegion = {
+	startLine: number;
+	endLine: number;
+	type: ComplexityRegion['type'];
+	name?: string;
 };
 
 /**
@@ -116,22 +128,31 @@ export class ComplexityAnalyzer {
 	 * Analyze complexity of the given lines
 	 */
 	analyze(lines: readonly Line[], language: string = 'javascript'): ComplexityMetrics {
+		const complexityLanguage = this.getComplexityLanguage(language);
 		// Simple cache check based on content hash
-		const key = this.computeCacheKey(lines);
+		const key = `${complexityLanguage}:${this.computeCacheKey(lines)}`;
 		if (key === this.cacheKey && this.cache.has(key)) {
 			return this.cache.get(key)!;
 		}
 
-		const regions = this.identifyRegions(lines, language);
-		const analyzedRegions = regions.map((region) => this.analyzeRegion(lines, region));
+		const tokenized = tokenize(lines.map((line) => line.text).join('\n'), complexityLanguage);
+		const regions = this.identifyRegions(lines, complexityLanguage, tokenized);
+		const analyzedRegions = regions.map((region) =>
+			this.analyzeRegion(lines, region, complexityLanguage, tokenized)
+		);
 		const hotspots = this.findHotspots(analyzedRegions);
 		const overall = this.calculateOverall(analyzedRegions, lines.length);
+		const totalCognitiveComplexity = analyzedRegions.reduce(
+			(total, region) => total + region.cognitiveComplexity,
+			0
+		);
 
 		const metrics: ComplexityMetrics = {
 			overall,
 			level: this.getLevel(overall),
 			regions: analyzedRegions,
-			hotspots
+			hotspots,
+			totalCognitiveComplexity
 		};
 
 		this.cacheKey = key;
@@ -179,6 +200,19 @@ export class ComplexityAnalyzer {
 		return `${lines.length}:${hash}`;
 	}
 
+	private getComplexityLanguage(language: string): SupportedComplexityLanguage {
+		const resolved = resolveLanguage(language);
+		if (
+			resolved === 'javascript' ||
+			resolved === 'typescript' ||
+			resolved === 'python' ||
+			resolved === 'go'
+		) {
+			return resolved;
+		}
+		return 'javascript';
+	}
+
 	/**
 	 * Identify code regions (functions, classes, blocks)
 	 *
@@ -187,8 +221,16 @@ export class ComplexityAnalyzer {
 	 */
 	private identifyRegions(
 		lines: readonly Line[],
-		_language: string
-	): Array<{ startLine: number; endLine: number; type: ComplexityRegion['type']; name?: string }> {
+		language: SupportedComplexityLanguage,
+		tokenized: TokenizedLine[]
+	): RawRegion[] {
+		if (language === 'python') {
+			return this.identifyPythonRegions(lines, tokenized);
+		}
+		if (language === 'go') {
+			return this.identifyGoRegions(lines, tokenized);
+		}
+
 		const regions: Array<{
 			startLine: number;
 			endLine: number;
@@ -328,6 +370,159 @@ export class ComplexityAnalyzer {
 		return regions;
 	}
 
+	private identifyPythonRegions(lines: readonly Line[], tokenized: TokenizedLine[]): RawRegion[] {
+		const regions: RawRegion[] = [];
+		const stack: Array<{
+			startLine: number;
+			indent: number;
+			type: ComplexityRegion['type'];
+			name?: string;
+		}> = [];
+
+		for (let i = 0; i < lines.length; i++) {
+			const tokens = this.getCodeTokens(tokenized[i]?.tokens ?? []);
+			if (tokens.length === 0) continue;
+
+			const indent = this.getIndent(lines[i].text);
+			while (stack.length > 0 && indent <= stack[stack.length - 1].indent) {
+				const region = stack.pop()!;
+				regions.push({
+					startLine: region.startLine,
+					endLine: Math.max(region.startLine, i - 1),
+					type: region.type,
+					name: region.name
+				});
+			}
+
+			const first = tokens[0]?.text;
+			const second = tokens[1]?.text;
+			const isAsyncDef = first === 'async' && second === 'def';
+			const isDef = first === 'def' || isAsyncDef;
+			const isClass = first === 'class';
+
+			if (isDef || isClass) {
+				const keywordIndex = isAsyncDef ? 1 : 0;
+				const name = tokens[keywordIndex + 1]?.text;
+				stack.push({
+					startLine: i,
+					indent,
+					type: isClass ? 'class' : 'function',
+					name
+				});
+			}
+		}
+
+		while (stack.length > 0) {
+			const region = stack.pop()!;
+			regions.push({
+				startLine: region.startLine,
+				endLine: lines.length - 1,
+				type: region.type,
+				name: region.name
+			});
+		}
+
+		if (regions.length === 0 && lines.length > 0) {
+			regions.push({ startLine: 0, endLine: lines.length - 1, type: 'file' });
+		}
+
+		return regions.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine);
+	}
+
+	private identifyGoRegions(lines: readonly Line[], tokenized: TokenizedLine[]): RawRegion[] {
+		const regions: RawRegion[] = [];
+		const stack: Array<{
+			startLine: number;
+			depth: number;
+			type: ComplexityRegion['type'];
+			name?: string;
+		}> = [];
+		let braceDepth = 0;
+		let pending:
+			| { line: number; type: ComplexityRegion['type']; name?: string; depth: number }
+			| undefined;
+
+		for (let i = 0; i < lines.length; i++) {
+			const tokens = this.getCodeTokens(tokenized[i]?.tokens ?? []);
+			const declaration = this.getGoDeclaration(tokens);
+			if (declaration) {
+				pending = { line: i, type: declaration.type, name: declaration.name, depth: braceDepth };
+			}
+
+			for (const token of tokens) {
+				if (token.type === 'punctuation.brace' && token.text === '{') {
+					braceDepth++;
+					if (pending && braceDepth === pending.depth + 1) {
+						stack.push({
+							startLine: pending.line,
+							depth: braceDepth,
+							type: pending.type,
+							name: pending.name
+						});
+						pending = undefined;
+					}
+				} else if (token.type === 'punctuation.brace' && token.text === '}') {
+					if (stack.length > 0 && braceDepth === stack[stack.length - 1].depth) {
+						const region = stack.pop()!;
+						regions.push({
+							startLine: region.startLine,
+							endLine: i,
+							type: region.type,
+							name: region.name
+						});
+					}
+					braceDepth = Math.max(0, braceDepth - 1);
+					if (pending && braceDepth < pending.depth) {
+						pending = undefined;
+					}
+				}
+			}
+		}
+
+		if (regions.length === 0 && lines.length > 0) {
+			regions.push({ startLine: 0, endLine: lines.length - 1, type: 'file' });
+		}
+
+		return regions.sort((a, b) => a.startLine - b.startLine || a.endLine - b.endLine);
+	}
+
+	private getGoDeclaration(
+		tokens: Token[]
+	): { type: ComplexityRegion['type']; name?: string } | undefined {
+		const funcIndex = tokens.findIndex((token) => token.text === 'func');
+		if (funcIndex !== -1) {
+			let nameIndex = funcIndex + 1;
+			if (tokens[nameIndex]?.text === '(') {
+				let depth = 0;
+				for (let i = nameIndex; i < tokens.length; i++) {
+					if (tokens[i].text === '(') depth++;
+					else if (tokens[i].text === ')') {
+						depth--;
+						if (depth === 0) {
+							nameIndex = i + 1;
+							break;
+						}
+					}
+				}
+			}
+			const name = tokens[nameIndex]?.text;
+			if (name && /^[A-Za-z_]\w*$/.test(name) && tokens[nameIndex + 1]?.text === '(') {
+				return { type: 'function', name };
+			}
+		}
+
+		const typeIndex = tokens.findIndex((token) => token.text === 'type');
+		if (typeIndex !== -1) {
+			const name = tokens[typeIndex + 1]?.text;
+			const kind = tokens[typeIndex + 2]?.text;
+			if (name && (kind === 'struct' || kind === 'interface')) {
+				return { type: 'class', name };
+			}
+		}
+
+		return undefined;
+	}
+
 	/**
 	 * Check if a `{` at position `ch` is the opening brace of a function/class definition
 	 */
@@ -391,17 +586,26 @@ export class ComplexityAnalyzer {
 	 */
 	private analyzeRegion(
 		lines: readonly Line[],
-		region: { startLine: number; endLine: number; type: ComplexityRegion['type']; name?: string }
+		region: RawRegion,
+		language: SupportedComplexityLanguage,
+		tokenized: TokenizedLine[]
 	): ComplexityRegion {
 		const factors = this.calculateFactors(lines, region.startLine, region.endLine);
-		const score = this.calculateScore(factors);
+		const contributions = this.calculateCognitiveContributions(region, language, tokenized);
+		const cognitiveComplexity = contributions.reduce(
+			(total, contribution) => total + contribution.increment,
+			0
+		);
+		const score = this.calculateScore(cognitiveComplexity);
 		const suggestion = this.getSuggestion(factors, score);
 
 		return {
 			...region,
 			score,
 			factors,
-			suggestion
+			suggestion,
+			cognitiveComplexity,
+			contributions
 		};
 	}
 
@@ -496,18 +700,477 @@ export class ComplexityAnalyzer {
 		};
 	}
 
+	private calculateCognitiveContributions(
+		region: RawRegion,
+		language: SupportedComplexityLanguage,
+		tokenized: TokenizedLine[]
+	): ComplexityContribution[] {
+		if (language === 'python') {
+			return this.calculatePythonCognitiveContributions(region, tokenized);
+		}
+		return this.calculateBraceCognitiveContributions(region, language, tokenized);
+	}
+
+	private calculateBraceCognitiveContributions(
+		region: RawRegion,
+		language: SupportedComplexityLanguage,
+		tokenized: TokenizedLine[]
+	): ComplexityContribution[] {
+		const contributions: ComplexityContribution[] = [];
+		const nestingStack: Array<{ depth: number; kind: string }> = [];
+		let braceDepth = 0;
+		let pendingB2: { kind: ComplexityContribution['kind']; line: number } | undefined;
+		let skipIfAfterElse = false;
+		const doWhileDepths: number[] = [];
+		const isGo = language === 'go';
+
+		for (let lineIndex = region.startLine; lineIndex <= region.endLine; lineIndex++) {
+			const tokens = this.getCodeTokens(tokenized[lineIndex]?.tokens ?? []);
+			const boolContributions = this.getBooleanSequenceContributions(
+				tokens,
+				lineIndex,
+				nestingStack.length
+			);
+			contributions.push(...boolContributions);
+
+			for (let i = 0; i < tokens.length; i++) {
+				const token = tokens[i];
+
+				if (token.type === 'punctuation.brace' && token.text === '}') {
+					while (
+						nestingStack.length > 0 &&
+						nestingStack[nestingStack.length - 1].depth === braceDepth
+					) {
+						nestingStack.pop();
+					}
+					braceDepth = Math.max(0, braceDepth - 1);
+					continue;
+				}
+
+				if (token.type === 'punctuation.brace' && token.text === '{') {
+					braceDepth++;
+					if (pendingB2) {
+						nestingStack.push({ depth: braceDepth, kind: pendingB2.kind });
+						pendingB2 = undefined;
+					}
+					continue;
+				}
+
+				if (token.text === 'else') {
+					const next = this.nextNonTextToken(tokens, i + 1);
+					if (next?.text === 'if') {
+						this.addContribution(contributions, lineIndex, 'else if', 1, nestingStack.length);
+						pendingB2 = { kind: 'else if', line: lineIndex };
+						skipIfAfterElse = true;
+					} else {
+						this.addContribution(contributions, lineIndex, 'else', 1, nestingStack.length);
+						pendingB2 = { kind: 'else', line: lineIndex };
+					}
+					continue;
+				}
+
+				if (token.text === 'if') {
+					if (skipIfAfterElse) {
+						skipIfAfterElse = false;
+						continue;
+					}
+					this.addContribution(
+						contributions,
+						lineIndex,
+						'if',
+						1 + nestingStack.length,
+						nestingStack.length
+					);
+					pendingB2 = { kind: 'if', line: lineIndex };
+					continue;
+				}
+
+				if (token.text === 'for') {
+					this.addContribution(
+						contributions,
+						lineIndex,
+						'for',
+						1 + nestingStack.length,
+						nestingStack.length
+					);
+					pendingB2 = { kind: 'for', line: lineIndex };
+					continue;
+				}
+
+				if (!isGo && token.text === 'do') {
+					this.addContribution(
+						contributions,
+						lineIndex,
+						'while',
+						1 + nestingStack.length,
+						nestingStack.length
+					);
+					pendingB2 = { kind: 'while', line: lineIndex };
+					doWhileDepths.push(braceDepth);
+					continue;
+				}
+
+				if (!isGo && token.text === 'while') {
+					// The `while` that closes a do…while loop belongs to the same loop,
+					// already counted at `do` (SonarSource: one increment per loop) — skip
+					// it rather than double-count.
+					if (doWhileDepths.length > 0 && doWhileDepths[doWhileDepths.length - 1] === braceDepth) {
+						doWhileDepths.pop();
+						continue;
+					}
+					this.addContribution(
+						contributions,
+						lineIndex,
+						'while',
+						1 + nestingStack.length,
+						nestingStack.length
+					);
+					pendingB2 = { kind: 'while', line: lineIndex };
+					continue;
+				}
+
+				if (
+					token.text === 'switch' ||
+					(isGo && (token.text === 'select' || this.isGoTypeSwitch(tokens, i)))
+				) {
+					this.addContribution(
+						contributions,
+						lineIndex,
+						'switch',
+						1 + nestingStack.length,
+						nestingStack.length
+					);
+					pendingB2 = { kind: 'switch', line: lineIndex };
+					continue;
+				}
+
+				if (!isGo && token.text === 'catch') {
+					this.addContribution(
+						contributions,
+						lineIndex,
+						'catch',
+						1 + nestingStack.length,
+						nestingStack.length
+					);
+					pendingB2 = { kind: 'catch', line: lineIndex };
+					continue;
+				}
+
+				if (!isGo && token.text === '?') {
+					this.addContribution(
+						contributions,
+						lineIndex,
+						'ternary',
+						1 + nestingStack.length,
+						nestingStack.length
+					);
+					pendingB2 = { kind: 'ternary', line: lineIndex };
+					continue;
+				}
+
+				if (this.isLabelledJump(tokens, i, isGo)) {
+					this.addContribution(contributions, lineIndex, 'labelled-jump', 1, nestingStack.length);
+					continue;
+				}
+
+				if (this.isDirectRecursiveCall(tokens, i, lineIndex, region)) {
+					this.addContribution(contributions, lineIndex, 'recursion', 1, nestingStack.length);
+					continue;
+				}
+
+				if (this.isNestedFunctionToken(tokens, i, lineIndex, region, language)) {
+					this.addContribution(contributions, lineIndex, 'nested-function', 0, nestingStack.length);
+					pendingB2 = { kind: 'nested-function', line: lineIndex };
+				}
+			}
+		}
+
+		return contributions;
+	}
+
+	private calculatePythonCognitiveContributions(
+		region: RawRegion,
+		tokenized: TokenizedLine[]
+	): ComplexityContribution[] {
+		const contributions: ComplexityContribution[] = [];
+		const nestingStack: Array<{ indent: number; kind: string }> = [];
+
+		for (let lineIndex = region.startLine; lineIndex <= region.endLine; lineIndex++) {
+			const line = tokenized[lineIndex];
+			const tokens = this.getCodeTokens(line?.tokens ?? []);
+			if (tokens.length === 0) continue;
+
+			const indent = this.getIndent(line.text);
+			while (nestingStack.length > 0 && indent <= nestingStack[nestingStack.length - 1].indent) {
+				nestingStack.pop();
+			}
+
+			contributions.push(
+				...this.getBooleanSequenceContributions(tokens, lineIndex, nestingStack.length)
+			);
+
+			for (let i = 0; i < tokens.length; i++) {
+				if (this.isDirectRecursiveCall(tokens, i, lineIndex, region)) {
+					this.addContribution(contributions, lineIndex, 'recursion', 1, nestingStack.length);
+				}
+			}
+
+			const first = tokens[0]?.text;
+			const second = tokens[1]?.text;
+			const isAsyncDef = first === 'async' && second === 'def';
+			const isNestedDef = (first === 'def' || isAsyncDef) && lineIndex !== region.startLine;
+			const isNestedClass = first === 'class' && lineIndex !== region.startLine;
+
+			if (isNestedDef || isNestedClass) {
+				this.addContribution(contributions, lineIndex, 'nested-function', 0, nestingStack.length);
+				nestingStack.push({ indent, kind: 'nested-function' });
+				continue;
+			}
+
+			if (first === 'if') {
+				this.addContribution(
+					contributions,
+					lineIndex,
+					'if',
+					1 + nestingStack.length,
+					nestingStack.length
+				);
+				nestingStack.push({ indent, kind: 'if' });
+			} else if (first === 'elif') {
+				this.addContribution(contributions, lineIndex, 'else if', 1, nestingStack.length);
+				nestingStack.push({ indent, kind: 'else if' });
+			} else if (first === 'else') {
+				this.addContribution(contributions, lineIndex, 'else', 1, nestingStack.length);
+				nestingStack.push({ indent, kind: 'else' });
+			} else if (first === 'for') {
+				this.addContribution(
+					contributions,
+					lineIndex,
+					'for',
+					1 + nestingStack.length,
+					nestingStack.length
+				);
+				nestingStack.push({ indent, kind: 'for' });
+			} else if (first === 'while') {
+				this.addContribution(
+					contributions,
+					lineIndex,
+					'while',
+					1 + nestingStack.length,
+					nestingStack.length
+				);
+				nestingStack.push({ indent, kind: 'while' });
+			} else if (first === 'except') {
+				this.addContribution(
+					contributions,
+					lineIndex,
+					'catch',
+					1 + nestingStack.length,
+					nestingStack.length
+				);
+				nestingStack.push({ indent, kind: 'catch' });
+			} else if (this.isPythonTernary(tokens)) {
+				this.addContribution(
+					contributions,
+					lineIndex,
+					'ternary',
+					1 + nestingStack.length,
+					nestingStack.length
+				);
+			}
+		}
+
+		return contributions;
+	}
+
+	private getCodeTokens(tokens: Token[]): Token[] {
+		return tokens.filter((token) => {
+			if (token.type === 'text') return token.text.trim().length > 0;
+			if (token.type === 'comment' || token.type.startsWith('comment.')) return false;
+			if (token.type === 'string' || token.type.startsWith('string.')) return false;
+			return true;
+		});
+	}
+
+	private getIndent(text: string): number {
+		return text.match(/^[ \t]*/)?.[0].replace(/\t/g, '    ').length ?? 0;
+	}
+
+	private addContribution(
+		contributions: ComplexityContribution[],
+		line: number,
+		kind: ComplexityContribution['kind'],
+		increment: number,
+		nesting: number
+	): void {
+		contributions.push({
+			line,
+			kind,
+			increment,
+			nesting,
+			reason: `${this.describeContributionKind(kind)} (+${increment}, nesting ${nesting})`
+		});
+	}
+
+	private describeContributionKind(kind: string): string {
+		switch (kind) {
+			case 'else if':
+				return 'else if branch';
+			case 'else':
+				return 'else branch';
+			case 'for':
+				return 'for loop';
+			case 'while':
+				return 'while loop';
+			case 'switch':
+				return 'switch';
+			case 'catch':
+				return 'catch clause';
+			case 'ternary':
+				return 'ternary expression';
+			case 'boolean-sequence':
+				return 'boolean operator sequence';
+			case 'labelled-jump':
+				return 'labelled jump';
+			case 'recursion':
+				return 'recursive call';
+			case 'nested-function':
+				return 'nested function';
+			default:
+				return 'if branch';
+		}
+	}
+
+	private getBooleanSequenceContributions(
+		tokens: Token[],
+		line: number,
+		nesting: number
+	): ComplexityContribution[] {
+		const contributions: ComplexityContribution[] = [];
+		const lastByParenDepth = new Map<number, string>();
+		let parenDepth = 0;
+
+		for (const token of tokens) {
+			if (token.text === '(') {
+				parenDepth++;
+				continue;
+			}
+			if (token.text === ')') {
+				lastByParenDepth.delete(parenDepth);
+				parenDepth = Math.max(0, parenDepth - 1);
+				continue;
+			}
+			if (token.text === ';' || token.text === '{' || token.text === '}' || token.text === ':') {
+				lastByParenDepth.clear();
+				continue;
+			}
+			if (
+				token.text !== '&&' &&
+				token.text !== '||' &&
+				token.text !== 'and' &&
+				token.text !== 'or'
+			) {
+				continue;
+			}
+
+			const normalized = token.text === 'and' ? '&&' : token.text === 'or' ? '||' : token.text;
+			const previous = lastByParenDepth.get(parenDepth);
+			if (previous !== normalized) {
+				this.addContribution(contributions, line, 'boolean-sequence', 1, nesting);
+			}
+			lastByParenDepth.set(parenDepth, normalized);
+		}
+
+		return contributions;
+	}
+
+	private nextNonTextToken(tokens: Token[], start: number): Token | undefined {
+		return tokens.slice(start).find((token) => token.text.trim().length > 0);
+	}
+
+	private isGoTypeSwitch(tokens: Token[], index: number): boolean {
+		return (
+			tokens[index].text === 'switch' &&
+			tokens.slice(index + 1).some((token) => token.text === 'type')
+		);
+	}
+
+	private isLabelledJump(tokens: Token[], index: number, isGo: boolean): boolean {
+		const token = tokens[index];
+		if (token.text === 'goto') {
+			return !!tokens[index + 1] && /^[A-Za-z_]\w*$/.test(tokens[index + 1].text);
+		}
+		if (token.text !== 'break' && token.text !== 'continue') {
+			return false;
+		}
+		const next = tokens[index + 1];
+		if (!next) return false;
+		if (isGo) {
+			return /^[A-Za-z_]\w*$/.test(next.text);
+		}
+		return /^[A-Za-z_$][\w$]*$/.test(next.text);
+	}
+
+	private isNestedFunctionToken(
+		tokens: Token[],
+		index: number,
+		line: number,
+		region: RawRegion,
+		language: SupportedComplexityLanguage
+	): boolean {
+		const token = tokens[index];
+		if (token.text === '=>') {
+			return line !== region.startLine;
+		}
+		if (token.text !== 'function' && token.text !== 'func') {
+			return false;
+		}
+		if (line === region.startLine) {
+			return false;
+		}
+		if (language === 'go') {
+			return true;
+		}
+		return token.text === 'function';
+	}
+
+	private isDirectRecursiveCall(
+		tokens: Token[],
+		index: number,
+		line: number,
+		region: RawRegion
+	): boolean {
+		if (!region.name || tokens[index].text !== region.name || tokens[index + 1]?.text !== '(') {
+			return false;
+		}
+
+		const previous = tokens[index - 1]?.text;
+		if (previous === 'function' || previous === 'func' || previous === 'def') {
+			return false;
+		}
+		if (
+			line === region.startLine &&
+			previous === ')' &&
+			tokens.slice(0, index).some((t) => t.text === 'func')
+		) {
+			return false;
+		}
+
+		return true;
+	}
+
+	private isPythonTernary(tokens: Token[]): boolean {
+		if (tokens[0]?.text === 'if') return false;
+		const ifIndex = tokens.findIndex((token) => token.text === 'if');
+		if (ifIndex <= 0) return false;
+		return tokens.slice(ifIndex + 1).some((token) => token.text === 'else');
+	}
+
 	/**
 	 * Calculate complexity score from factors
 	 */
-	private calculateScore(factors: ComplexityFactors): number {
-		const score =
-			factors.nestingDepth * WEIGHTS.nestingDepth +
-			factors.branchingFactor * WEIGHTS.branchingFactor +
-			factors.lineCount * WEIGHTS.lineCount +
-			factors.identifierCount * WEIGHTS.identifierCount +
-			factors.callCount * WEIGHTS.callCount;
-
-		return Math.min(100, Math.round(score));
+	private calculateScore(cognitiveComplexity: number): number {
+		return Math.min(100, Math.round(cognitiveComplexity * COGNITIVE_SCORE_MULTIPLIER));
 	}
 
 	/**
