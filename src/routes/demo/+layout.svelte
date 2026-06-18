@@ -20,6 +20,7 @@
 			items: [
 				{ href: '/demo/editor', label: 'Editor', icon: '✎' },
 				{ href: '/demo/folding', label: 'Code Folding', icon: '⊟' },
+				{ href: '/demo/stress', label: 'Stress Test', icon: '▥' },
 				{ href: '/demo/components', label: 'Components', icon: '▢' },
 				{ href: '/demo/resize', label: 'Resizable Panes', icon: '⇔' },
 				{ href: '/demo/playground', label: 'Playground', icon: '▶' }

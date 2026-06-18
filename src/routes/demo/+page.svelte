@@ -38,6 +38,14 @@
 					tag: 'Editor'
 				},
 				{
+					title: 'Stress Test',
+					description:
+						'A real CustomEditor running a generated 50,000-line file with live DOM and FPS proof.',
+					href: '/demo/stress',
+					icon: '▥',
+					tag: 'Scale'
+				},
+				{
 					title: 'Components',
 					description: 'Buttons, inputs, badges, tooltips and the rest of the UI kit.',
 					href: '/demo/components',
