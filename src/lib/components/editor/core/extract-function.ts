@@ -180,6 +180,15 @@ function planExtractFunctionUnsafe(input: ExtractInput): ExtractPlan | ExtractRe
 		usedInsideB.filter((use) => declaredBeforeB.has(use.name) && !declaredInsideB.has(use.name))
 	);
 	const assignedInsideB = getAssignments(blockTokens, insideDeclarations);
+	const unmodelledAssignedOutput = assignedInsideB.find(
+		(name) =>
+			usedAfterB.has(name.name) &&
+			!declaredBeforeB.has(name.name) &&
+			!declaredInsideB.has(name.name)
+	);
+	if (unmodelledAssignedOutput) {
+		return { ok: false, reason: 'Could not safely determine the block inputs and outputs.' };
+	}
 	const returns = uniqueByFirstPosition(
 		assignedInsideB.filter((name) => usedAfterB.has(name.name))
 	);
@@ -357,6 +366,7 @@ function hasLabelledStatement(tokens: FlatToken[]): boolean {
 		if (
 			IDENTIFIER_TYPES.has(token.type) &&
 			tokens[i + 1].text === ':' &&
+			!isObjectLiteralKey(tokens, i) &&
 			(!previous || previous.text === ';' || previous.text === '{' || previous.text === '}')
 		) {
 			return true;
@@ -407,6 +417,52 @@ function getDeclarations(tokens: FlatToken[]): Array<NamePosition & { kind: stri
 					kind: 'function'
 				});
 			}
+			const paramStart = tokens.findIndex((item, index) => index > i && item.text === '(');
+			if (paramStart !== -1) {
+				const paramEnd = findMatching(tokens, paramStart, '(', ')');
+				if (paramEnd !== -1) {
+					for (const name of collectBindingNamePositions(tokens.slice(paramStart + 1, paramEnd))) {
+						declarations.push({
+							...name,
+							depth: getBraceDepthAt(tokens, name.line, name.col) + 1,
+							kind: 'param'
+						});
+					}
+				}
+			}
+		} else if (token.text === 'catch' && tokens[i + 1]?.text === '(') {
+			const paramEnd = findMatching(tokens, i + 1, '(', ')');
+			if (paramEnd !== -1) {
+				for (const name of collectBindingNamePositions(tokens.slice(i + 2, paramEnd))) {
+					declarations.push({
+						...name,
+						depth: getBraceDepthAt(tokens, name.line, name.col) + 1,
+						kind: 'param'
+					});
+				}
+			}
+		} else if (token.text === '=>') {
+			const previous = tokens[i - 1];
+			if (previous?.text === ')') {
+				const paramStart = findMatchingBackward(tokens, i - 1, '(', ')');
+				if (paramStart !== -1) {
+					for (const name of collectBindingNamePositions(tokens.slice(paramStart + 1, i - 1))) {
+						declarations.push({
+							...name,
+							depth: getBraceDepthAt(tokens, name.line, name.col) + 1,
+							kind: 'param'
+						});
+					}
+				}
+			} else if (isIdentifierToken(previous)) {
+				declarations.push({
+					name: previous.text,
+					line: previous.line,
+					col: previous.start,
+					depth: getBraceDepthAt(tokens, previous.line, previous.start) + 1,
+					kind: 'param'
+				});
+			}
 		}
 	}
 	return uniqueByFirstPosition(declarations);
@@ -443,7 +499,11 @@ function collectDeclarationNames(tokens: FlatToken[]): NamePosition[] {
 }
 
 function collectBindingNames(tokens: FlatToken[]): string[] {
-	const names: string[] = [];
+	return collectBindingNamePositions(tokens).map((name) => name.name);
+}
+
+function collectBindingNamePositions(tokens: FlatToken[]): NamePosition[] {
+	const positions: NamePosition[] = [];
 	let paren = 0;
 	let bracket = 0;
 	let brace = 0;
@@ -469,11 +529,16 @@ function collectBindingNames(tokens: FlatToken[]): string[] {
 		else if (token.text === '{') brace++;
 		else if (token.text === '}') brace--;
 		if (expectingName && paren === 0 && bracket === 0 && brace === 0 && isIdentifierToken(token)) {
-			names.push(token.text);
+			positions.push({ name: token.text, line: token.line, col: token.start, depth: 0 });
 			expectingName = false;
 		}
 	}
-	return Array.from(new Set(names));
+	const seen = new Set<string>();
+	return positions.filter((position) => {
+		if (seen.has(position.name)) return false;
+		seen.add(position.name);
+		return true;
+	});
 }
 
 function getIdentifierUses(tokens: FlatToken[]): NamePosition[] {
@@ -496,9 +561,8 @@ function isIdentifierUse(tokens: FlatToken[], index: number): boolean {
 	if (!isIdentifierToken(token)) return false;
 	if (GLOBALS.has(token.text)) return false;
 	const previous = tokens[index - 1];
-	const next = tokens[index + 1];
 	if (previous?.text === '.') return false;
-	if ((previous?.text === '{' || previous?.text === ',') && next?.text === ':') return false;
+	if (isObjectLiteralKey(tokens, index)) return false;
 	if (previous?.text === 'function') return false;
 	if (previous && DECLARATION_KEYWORDS.has(previous.text)) return false;
 	if (
@@ -521,34 +585,54 @@ function getAssignments(
 		depth: decl.depth
 	}));
 	for (let i = 0; i < tokens.length; i++) {
-		const token = tokens[i];
-		if (ASSIGNMENT_OPERATORS.has(token.text)) {
+		if (isAssignmentOperatorToken(tokens, i)) {
 			const target = previousIdentifierInAssignment(tokens, i);
 			if (target) assigned.push(target);
-		} else if (
-			(token.text === '++' || token.text === '--') &&
-			i > 0 &&
-			isIdentifierToken(tokens[i - 1])
-		) {
-			const previous = tokens[i - 2];
-			if (previous?.text !== '.') {
-				assigned.push({
-					name: tokens[i - 1].text,
-					line: tokens[i - 1].line,
-					col: tokens[i - 1].start,
-					depth: getBraceDepthAt(tokens, tokens[i - 1].line, tokens[i - 1].start)
-				});
-			}
-		} else if ((token.text === '++' || token.text === '--') && isIdentifierToken(tokens[i + 1])) {
-			assigned.push({
-				name: tokens[i + 1].text,
-				line: tokens[i + 1].line,
-				col: tokens[i + 1].start,
-				depth: getBraceDepthAt(tokens, tokens[i + 1].line, tokens[i + 1].start)
-			});
+		}
+		const incrementTarget = identifierInIncrement(tokens, i);
+		if (incrementTarget) {
+			assigned.push(incrementTarget);
 		}
 	}
 	return uniqueByFirstPosition(assigned);
+}
+
+function isAssignmentOperatorToken(tokens: FlatToken[], index: number): boolean {
+	const token = tokens[index];
+	if (!ASSIGNMENT_OPERATORS.has(token.text)) return false;
+	if (token.text !== '=') return true;
+	const previous = tokens[index - 1];
+	const next = tokens[index + 1];
+	if (previous && ['=', '!', '<', '>', '=>'].includes(previous.text)) return false;
+	if (next && (next.text === '=' || next.text === '>')) return false;
+	return token.type === 'operator';
+}
+
+function identifierInIncrement(tokens: FlatToken[], index: number): NamePosition | undefined {
+	const first = tokens[index];
+	const second = tokens[index + 1];
+	if (!first || !second) return undefined;
+	if ((first.text !== '+' && first.text !== '-') || second.text !== first.text) return undefined;
+	if (!areAdjacent(first, second)) return undefined;
+
+	const previous = tokens[index - 1];
+	const next = tokens[index + 2];
+	const target = isIdentifierToken(previous)
+		? previous
+		: isIdentifierToken(next)
+			? next
+			: undefined;
+	if (!target) return undefined;
+	if (target === previous && tokens[index - 2]?.text === '.') return undefined;
+	if (target === next && tokens[index + 3]?.text === '.') return undefined;
+	if (target === previous && !areAdjacent(target, first)) return undefined;
+	if (target === next && !areAdjacent(second, target)) return undefined;
+	return {
+		name: target.text,
+		line: target.line,
+		col: target.start,
+		depth: getBraceDepthAt(tokens, target.line, target.start)
+	};
 }
 
 function previousIdentifierInAssignment(
@@ -556,7 +640,10 @@ function previousIdentifierInAssignment(
 	assignmentIndex: number
 ): NamePosition | undefined {
 	let i = assignmentIndex - 1;
+	let crossedMemberOrComputed = false;
+	while (i >= 0 && tokens[i].type === 'operator') i--;
 	while (i >= 0 && (tokens[i].text === ')' || tokens[i].text === ']')) {
+		crossedMemberOrComputed = true;
 		const opener = tokens[i].text === ')' ? '(' : '[';
 		const closer = tokens[i].text;
 		let depth = 1;
@@ -566,8 +653,14 @@ function previousIdentifierInAssignment(
 			else if (tokens[i].text === opener) depth--;
 			i--;
 		}
+		while (i >= 0 && tokens[i].type === 'operator') i--;
 	}
-	if (i >= 0 && isIdentifierToken(tokens[i]) && tokens[i - 1]?.text !== '.') {
+	if (
+		i >= 0 &&
+		isIdentifierToken(tokens[i]) &&
+		tokens[i - 1]?.text !== '.' &&
+		!crossedMemberOrComputed
+	) {
 		return {
 			name: tokens[i].text,
 			line: tokens[i].line,
@@ -576,6 +669,16 @@ function previousIdentifierInAssignment(
 		};
 	}
 	return undefined;
+}
+
+function isObjectLiteralKey(tokens: FlatToken[], index: number): boolean {
+	const previous = tokens[index - 1];
+	const next = tokens[index + 1];
+	return (
+		isIdentifierToken(tokens[index]) &&
+		(previous?.text === '{' || previous?.text === ',') &&
+		next?.text === ':'
+	);
 }
 
 function uniqueByFirstPosition<T extends NamePosition>(items: T[]): T[] {
@@ -682,10 +785,31 @@ function findMatching(tokens: FlatToken[], start: number, open: string, close: s
 	return -1;
 }
 
+function findMatchingBackward(
+	tokens: FlatToken[],
+	start: number,
+	open: string,
+	close: string
+): number {
+	let depth = 0;
+	for (let i = start; i >= 0; i--) {
+		if (tokens[i].text === close) depth++;
+		else if (tokens[i].text === open) {
+			depth--;
+			if (depth === 0) return i;
+		}
+	}
+	return -1;
+}
+
 function nextSignificant(tokens: FlatToken[], index: number): FlatToken | undefined {
 	return tokens.find((token) => token.index > index);
 }
 
 function isIdentifierToken(token: FlatToken | undefined): token is FlatToken {
 	return !!token && IDENTIFIER_TYPES.has(token.type);
+}
+
+function areAdjacent(left: FlatToken, right: FlatToken): boolean {
+	return left.line === right.line && left.end === right.start;
 }

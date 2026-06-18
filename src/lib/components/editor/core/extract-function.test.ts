@@ -288,6 +288,136 @@ describe('planExtractFunction', () => {
 		expectPostEditValid(lines, plan, 1, 1, 'typescript');
 	});
 
+	it('returns an outer variable mutated by postfix increment', () => {
+		const lines = makeLines(
+			['function f(a) {', '\tlet x = a;', '\tx++;', '\tuse(x);', '}'].join('\n')
+		);
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 4, type: 'function' },
+				blockStart: 2,
+				blockEnd: 2
+			})
+		);
+
+		expect(plan.params).toEqual(['x']);
+		expect(plan.returns).toEqual(['x']);
+		expect(plan.functionText).toBe('function extracted(x) {\n\tx++;\n\treturn x;\n}');
+		expect(plan.callText).toBe('x = extracted(x);');
+		expectPostEditValid(lines, plan, 2, 2);
+	});
+
+	it.each(['x++;', '++x;', 'x--;', '--x;'])(
+		'never drops outer mutation for increment/decrement %s',
+		(statement) => {
+			const lines = makeLines(
+				['function f(a) {', '\tlet x = a;', `\t${statement}`, '\tuse(x);', '}'].join('\n')
+			);
+			const plan = expectPlan(
+				planExtractFunction({
+					lines,
+					language: 'javascript',
+					region: { startLine: 0, endLine: 4, type: 'function' },
+					blockStart: 2,
+					blockEnd: 2
+				})
+			);
+
+			expect(plan.returns).toContain('x');
+			expect(plan.returns).not.toEqual([]);
+			expectPostEditValid(lines, plan, 2, 2);
+		}
+	);
+
+	it.each(['x &&= 7;', 'x ||= 0;', 'x ??= 7;', 'x **= 2;', 'x >>>= 1;'])(
+		'never drops outer mutation for fragmented compound assignment %s',
+		(statement) => {
+			const lines = makeLines(
+				['function f(a) {', '\tlet x = a;', `\t${statement}`, '\tuse(x);', '}'].join('\n')
+			);
+			const plan = expectPlan(
+				planExtractFunction({
+					lines,
+					language: 'javascript',
+					region: { startLine: 0, endLine: 4, type: 'function' },
+					blockStart: 2,
+					blockEnd: 2
+				})
+			);
+
+			expect(plan.returns).toContain('x');
+			expect(plan.returns).not.toEqual([]);
+			expectPostEditValid(lines, plan, 2, 2);
+		}
+	);
+
+	it('refuses a catch binding used after the extracted block', () => {
+		const lines = makeLines(
+			['function f() {', '\ttry { risky(); } catch (out) { out = 1; }', '\tsink(out);', '}'].join(
+				'\n'
+			)
+		);
+		expectRefusal(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 3, type: 'function' },
+				blockStart: 1,
+				blockEnd: 1
+			}),
+			'conditionally defined'
+		);
+	});
+
+	it('extracts object literal keys without treating them as labels', () => {
+		const lines = makeLines(
+			['function f(x) {', '\tconst o = { key: x };', '\tuse(o);', '}'].join('\n')
+		);
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 3, type: 'function' },
+				blockStart: 1,
+				blockEnd: 1
+			})
+		);
+
+		expect(plan.params).toEqual(['x']);
+		expect(plan.returns).toEqual(['o']);
+		expect(plan.callText).toBe('const o = extracted(x);');
+		expectPostEditValid(lines, plan, 1, 1);
+	});
+
+	it('keeps a for-header increment variable local when it is not used after the block', () => {
+		const lines = makeLines(
+			[
+				'function f(arr, n) {',
+				'\tlet sum = 0;',
+				'\tfor (let i = 0; i < n; i++) {',
+				'\t\tsum += arr[i];',
+				'\t}',
+				'\tuse(sum);',
+				'}'
+			].join('\n')
+		);
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 6, type: 'function' },
+				blockStart: 2,
+				blockEnd: 4
+			})
+		);
+
+		expect(plan.returns).toContain('sum');
+		expect(plan.returns).not.toContain('i');
+		expectPostEditValid(lines, plan, 2, 4);
+	});
+
 	it('R1 refuses return escaping the extracted function', () => {
 		const lines = makeLines(
 			['function f(result) {', '\treturn result;', '\tconsole.log(result);', '}'].join('\n')
