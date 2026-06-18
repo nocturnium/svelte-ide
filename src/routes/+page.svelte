@@ -10,29 +10,29 @@
 
 	// Live editor showcased in the hero, lazy-mounted and read-only (edits are
 	// discarded so the sample always reads cleanly).
-	const heroSample = `import { CustomEditor } from '@nocturnium/svelte-ide';
-import '@nocturnium/svelte-ide/theme.css';
+	const heroSample = `type Signal = {
+  kind: 'error' | 'latency' | 'memory';
+  count: number;
+  owner?: string;
+};
 
-// A real editor — folding, multi-cursor, find/replace,
-// syntax highlighting for 12 languages. Zero CodeMirror.
-interface Snippet {
-  id: string;
-  language: 'ts' | 'go' | 'python' | 'svelte';
-  source: string;
+export function triageLoad(signals: Signal[], queueDepth: number): string {
+  let score = 0;
+  for (const signal of signals) {
+    if (signal.kind === 'error') {
+      if (signal.count > 3 && queueDepth > 20) {
+        if (signal.owner) score += signal.count * 6;
+        else if (queueDepth > 80) score += 24;
+        else score += 12;
+      } else {
+        score += 3;
+      }
+    } else if (signal.kind === 'latency' || signal.kind === 'memory') {
+      score += signal.count > 5 ? 10 : 2;
+    }
+  }
+  return score > 80 ? 'critical' : score > 45 ? 'watch' : 'clear';
 }
-
-export function highlight(snippet: Snippet): Token[] {
-  const lexer = createLexer(snippet.language);
-  return lexer.tokenize(snippet.source).map((tok) => ({
-    ...tok,
-    className: \`token-\${tok.scope}\`
-  }));
-}
-
-const editor = mount(CustomEditor, {
-  target: document.querySelector('#app')!,
-  props: { content: snippet.source, language: 'typescript' }
-});
 `;
 	let heroContent = $state(heroSample);
 
@@ -260,14 +260,15 @@ const editor = mount(CustomEditor, {
 			<div class="hero-copy">
 				<div class="eyebrow">
 					<Badge variant="info">v{__APP_VERSION__}</Badge>
-					<span class="eyebrow-text">Zero-dependency editor core</span>
+					<span class="eyebrow-text">Live cognitive-load thermal map</span>
 				</div>
 				<h1 id="hero-title">
-					The IDE toolkit for <span class="grad">Svelte 5</span>.
+					See your code's <span class="grad">cognitive load</span> as a live visual layer.
 				</h1>
 				<p class="lede">
-					Build code editors, AI assistants, and collaborative tools with one runes-native component
-					library. No CodeMirror. No Monaco. Just Svelte — fast, themeable, and production-ready.
+					A from-scratch, Svelte 5-native editor for code editors, AI assistants, and collaborative
+					tools. No CodeMirror, no Monaco, zero runtime editor deps — just Svelte, fast, themeable,
+					and production-ready.
 				</p>
 				<div class="hero-actions">
 					<Button variant="primary" size="lg" onclick={() => goto(resolve('/demo/editor'))}>
@@ -294,7 +295,7 @@ const editor = mount(CustomEditor, {
 						<span class="dot dot--red" aria-hidden="true"></span>
 						<span class="dot dot--amber" aria-hidden="true"></span>
 						<span class="dot dot--green" aria-hidden="true"></span>
-						<span class="window-title">highlight.ts</span>
+						<span class="window-title">cognitive-load.ts</span>
 						<Badge variant="primary">live</Badge>
 					</div>
 					<div class="window-body" bind:this={heroEditorHost}>
@@ -305,7 +306,7 @@ const editor = mount(CustomEditor, {
 								readonly
 								folding
 								multiCursor
-								complexityHighlighting={false}
+								complexityHighlighting={true}
 							/>
 						{:else}
 							<!-- Lightweight syntax-highlighted paint shown until the live
