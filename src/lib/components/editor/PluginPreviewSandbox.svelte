@@ -1,10 +1,10 @@
 <script lang="ts">
 	/**
-	 * Plugin Preview Sandbox
+	 * Plugin Preview
 	 *
-	 * A sandboxed environment for previewing plugin effects
-	 * before applying them to the main editor. Supports live
-	 * code transformation preview with rollback capability.
+	 * Preview plugin effects before applying them to the main editor.
+	 * Plugin transform functions are trusted caller-provided code and run
+	 * in the host realm, not in an isolated sandbox.
 	 */
 
 	interface PluginTransform {
@@ -71,6 +71,9 @@
 	let isProcessing = $state(false);
 	let previewMode = $state<'split' | 'unified' | 'diff'>('split');
 	let sandboxContainer = $state<HTMLDivElement>(null!);
+	let transformRunId = 0;
+
+	const TRANSFORM_TIMEOUT_MS = 2_000;
 
 	// Demo plugins for showcase
 	const demoPlugins: PluginDefinition[] = [
@@ -164,18 +167,20 @@
 	const activePlugins = $derived(plugins.length > 0 ? plugins : demoPlugins);
 
 	/**
-	 * Run plugin transform
+	 * Run trusted plugin transform with an async watchdog.
 	 */
 	async function runTransform(plugin: PluginDefinition) {
+		const runId = ++transformRunId;
 		selectedPlugin = plugin;
 		isProcessing = true;
 
 		const startTime = performance.now();
 
 		try {
-			const result = await Promise.resolve(plugin.transform(code));
+			const result = await runTrustedTransform(plugin, code);
 			const executionTime = performance.now() - startTime;
 
+			if (runId !== transformRunId) return;
 			currentTransform = {
 				id: `${plugin.id}-${Date.now()}`,
 				pluginName: plugin.name,
@@ -187,6 +192,7 @@
 				executionTime
 			};
 		} catch (error) {
+			if (runId !== transformRunId) return;
 			currentTransform = {
 				id: `${plugin.id}-${Date.now()}`,
 				pluginName: plugin.name,
@@ -198,9 +204,35 @@
 				error: error instanceof Error ? error.message : 'Unknown error',
 				executionTime: performance.now() - startTime
 			};
+		} finally {
+			if (runId === transformRunId) {
+				isProcessing = false;
+			}
 		}
+	}
 
-		isProcessing = false;
+	function runTrustedTransform(plugin: PluginDefinition, input: string): Promise<string> {
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		const timeout = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(() => {
+				reject(new Error(`Transform timed out after ${TRANSFORM_TIMEOUT_MS}ms`));
+			}, TRANSFORM_TIMEOUT_MS);
+		});
+
+		const transform = Promise.resolve()
+			.then(() => plugin.transform(input))
+			.then((result) => {
+				if (typeof result !== 'string') {
+					throw new Error('Transform returned a non-string result');
+				}
+				return result;
+			});
+
+		return Promise.race([transform, timeout]).finally(() => {
+			if (timeoutId !== undefined) {
+				clearTimeout(timeoutId);
+			}
+		});
 	}
 
 	/**
@@ -246,8 +278,10 @@
 	 * Reset to original
 	 */
 	function resetTransform() {
+		transformRunId++;
 		currentTransform = null;
 		selectedPlugin = null;
+		isProcessing = false;
 	}
 
 	/**
@@ -273,7 +307,7 @@
 {#if visible}
 	<div class="plugin-sandbox" bind:this={sandboxContainer}>
 		<div class="plugin-sandbox__header">
-			<h3 class="plugin-sandbox__title">Plugin Preview Sandbox</h3>
+			<h3 class="plugin-sandbox__title">Plugin Preview</h3>
 			<div class="plugin-sandbox__actions">
 				<div class="preview-mode-toggle">
 					<button
@@ -387,7 +421,7 @@
 					<div class="preview-empty">
 						<p>Select a plugin to preview its transformation</p>
 						<p class="preview-hint">
-							Your code will be transformed in this sandbox before applying
+							Trusted plugin code runs in this editor before applying changes
 						</p>
 					</div>
 				{/if}
