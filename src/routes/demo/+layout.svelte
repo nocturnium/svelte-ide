@@ -513,14 +513,16 @@
 		}
 	}
 
-	/* Normalize the routed page's own root box so the layout is the single
-	   source of horizontal rhythm. Individual pages historically re-implemented
-	   their own (and conflicting) max-width / centering / side gutters — we
-	   neutralize those here without editing each page. Vertical spacing is left
-	   to each page so headers and section rhythm are preserved. */
+	/* Center each routed page's content column. The layout owns horizontal
+	   rhythm (consistent gutters), but a page's own scoped max-width wins over
+	   this reset on specificity — so instead of fighting it we just force the
+	   column to center (!important beats the page's own margin) rather than
+	   letting it sit left-shifted, which most pages did. Bleed pages have
+	   full-width children, so the auto margin is a no-op there. Vertical spacing
+	   stays with each page. */
 	.demo-content__inner > :global(*) {
 		max-width: none;
-		margin-inline: 0;
+		margin-inline: auto !important;
 		padding-inline: 0;
 	}
 
