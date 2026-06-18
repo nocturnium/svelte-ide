@@ -114,6 +114,13 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	const primaryAwareness = new Awareness(sharedDoc);
 	const secondaryAwareness = new Awareness(sharedDoc);
+	// Both Awareness instances default to sharedDoc.clientID, so without a distinct
+	// id the second editor's presence overwrites the first's slot in the relayed
+	// states map and the predictor only ever sees one user (no conflict zone can
+	// form). Give the second editor its own presence id so two real cursors show.
+	secondaryAwareness.setLocalState(null);
+	secondaryAwareness.clientID = sharedDoc.clientID + 1;
+	secondaryAwareness.setLocalState({});
 	const predictorAwareness = createAwarenessProtocol(primaryAwareness, { destroyAwareness: false });
 
 	// Timeline state
