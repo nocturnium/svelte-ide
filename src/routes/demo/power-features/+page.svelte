@@ -1,11 +1,12 @@
 <script lang="ts">
 	/**
-	 * Phase 4: Power Features Demo
+	 * Power Features Demo
 	 *
 	 * Demonstrates Echo Cursors, Bracket Healing, and Plugin Preview Sandbox.
 	 */
 
 	import { onMount } from 'svelte';
+	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import {
 		createEchoCursorManager,
 		type EchoCursor,
@@ -17,15 +18,29 @@
 		type BracketMismatch,
 		type GhostBracket
 	} from '$lib/components/editor/core/bracket-healer';
+	import {
+		createEditorState,
+		type EditorState,
+		type Position
+	} from '$lib/components/editor/core/state';
 	import PluginPreviewSandbox from '$lib/components/editor/PluginPreviewSandbox.svelte';
+	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
 
 	// Demo state
 	let activeDemo = $state<'echo' | 'bracket' | 'plugin'>('echo');
 
 	// Echo cursor demo
 	let echoManager: EchoCursorManager;
+	let echoEditorState = $state<EditorState | null>(null);
 	let echoEnabled = $state(false);
 	let echoCursors = $state<EchoCursor[]>([]);
+	let echoSourceContent = $state(`const user = getUser();
+const profile = user.profile;
+const status = profile.status;
+
+renderUser(user);
+renderProfile(profile);
+renderStatus(status);`);
 	let keystrokeLog = $state<string[]>([]);
 
 	// Bracket healer demo
@@ -66,10 +81,31 @@ export { formatPrice, summarize };`);
 
 	// Line height for visualizations
 	const lineHeight = 20;
+	const codeEditorPreferences = {
+		fontSize: 13,
+		fontFamily: 'monospace',
+		lineNumbers: 'off',
+		minimap: false,
+		wordWrap: 'off'
+	} as const;
+
+	function highlightCode(source: string, language: string): string {
+		return tokenize(source, language)
+			.map((line) => tokensToHTML(line.tokens))
+			.join('\n');
+	}
+
+	let sandboxCodeHTML = $derived(highlightCode(sandboxCode, 'javascript'));
 
 	onMount(() => {
 		// Initialize echo manager
 		echoManager = createEchoCursorManager({ defaultDelay: 200 });
+		const realEchoEditor = createEditorState({
+			content: echoSourceContent,
+			language: 'javascript'
+		});
+		const detachEchoEditor = echoManager.attach(realEchoEditor);
+		echoEditorState = realEchoEditor;
 		echoManager.subscribe((event) => {
 			echoCursors = echoManager.getEchoCursors();
 
@@ -103,6 +139,7 @@ export { formatPrice, summarize };`);
 		bracketHealer.analyzeImmediate(bracketCode);
 
 		return () => {
+			detachEchoEditor();
 			echoManager?.disable();
 			bracketHealer?.destroy();
 		};
@@ -129,30 +166,59 @@ export { formatPrice, summarize };`);
 		echoCursors = echoManager.getEchoCursors();
 	}
 
-	function simulateKeystroke(type: 'insert' | 'delete' | 'newline') {
-		if (!echoEnabled) return;
-
-		switch (type) {
-			case 'insert':
-				echoManager.recordInsert('a');
-				break;
-			case 'delete':
-				echoManager.recordDelete('backward');
-				break;
-			case 'newline':
-				echoManager.recordNewline();
-				break;
-		}
-	}
-
 	function clearEchoes() {
 		echoManager.clearAllEchoes();
 		echoCursors = [];
 	}
 
-	function updateBracketCode(e: Event) {
-		bracketCode = (e.target as HTMLTextAreaElement).value;
-		bracketHealer.analyzeImmediate(bracketCode);
+	function positionFromIndex(content: string, index: number): Position {
+		const lines = content.slice(0, index).split('\n');
+		return {
+			line: lines.length - 1,
+			column: lines[lines.length - 1].length
+		};
+	}
+
+	function applyEchoSourceContent(nextContent: string) {
+		const state = echoEditorState;
+		if (!state || nextContent === echoSourceContent) return;
+
+		const previous = echoSourceContent;
+		let prefix = 0;
+		while (
+			prefix < previous.length &&
+			prefix < nextContent.length &&
+			previous[prefix] === nextContent[prefix]
+		) {
+			prefix++;
+		}
+
+		let suffix = 0;
+		while (
+			suffix < previous.length - prefix &&
+			suffix < nextContent.length - prefix &&
+			previous[previous.length - 1 - suffix] === nextContent[nextContent.length - 1 - suffix]
+		) {
+			suffix++;
+		}
+
+		const from = positionFromIndex(previous, prefix);
+		const removedEndIndex = previous.length - suffix;
+		const insertedText = nextContent.slice(prefix, nextContent.length - suffix);
+
+		if (removedEndIndex > prefix) {
+			state.deleteRange(from, positionFromIndex(previous, removedEndIndex));
+		}
+		if (insertedText) {
+			state.insertAt(from, insertedText);
+		}
+
+		echoSourceContent = state.getContent();
+	}
+
+	function updateBracketCode(value: string) {
+		bracketCode = value;
+		bracketHealer?.analyzeImmediate(bracketCode);
 	}
 
 	function acceptGhost(ghost: GhostBracket) {
@@ -174,7 +240,7 @@ export { formatPrice, summarize };`);
 
 <div class="power-features-demo">
 	<header class="demo-header">
-		<h1>Phase 4: Power Features</h1>
+		<h1>Power Features</h1>
 		<p>Echo Cursors, Bracket Healing, and Plugin Preview Sandbox</p>
 	</header>
 
@@ -224,17 +290,6 @@ export { formatPrice, summarize };`);
 							<button class="small-btn" onclick={() => addEchoPoint(8, 300)}>9 (300ms)</button>
 						</div>
 
-						<div class="keystroke-actions">
-							<span class="action-label">Simulate Keystroke:</span>
-							<button class="small-btn" onclick={() => simulateKeystroke('insert')}
-								>Insert 'a'</button
-							>
-							<button class="small-btn" onclick={() => simulateKeystroke('delete')}
-								>Backspace</button
-							>
-							<button class="small-btn" onclick={() => simulateKeystroke('newline')}>Enter</button>
-						</div>
-
 						<button class="control-btn control-btn--danger" onclick={clearEchoes}>
 							Clear All Echoes
 						</button>
@@ -244,10 +299,10 @@ export { formatPrice, summarize };`);
 				<div class="echo-visualization">
 					<div class="editor-mock-wrap">
 						<div class="editor-mock">
-							{#each Array(12) as _, i (i)}
+							{#each echoSourceContent.split('\n') as line, i (i)}
 								<div class="mock-line">
 									<span class="line-num">{i + 1}</span>
-									<span class="line-content">// Line {i + 1} content...</span>
+									<span class="line-content">{line || ' '}</span>
 								</div>
 							{/each}
 
@@ -263,7 +318,7 @@ export { formatPrice, summarize };`);
 							{/each}
 						</div>
 						<p class="mock-caption" role="note">
-							Illustrative preview — use the buttons above to drive echoes.
+							Visible mirror buffers are backed by real EditorState instances.
 						</p>
 					</div>
 
@@ -278,6 +333,16 @@ export { formatPrice, summarize };`);
 						{/if}
 					</div>
 				</div>
+
+				<label class="echo-source">
+					<span>Source buffer</span>
+					<textarea
+						value={echoSourceContent}
+						oninput={(event) =>
+							applyEchoSourceContent((event.currentTarget as HTMLTextAreaElement).value)}
+						spellcheck="false"
+					></textarea>
+				</label>
 
 				<div class="echo-info">
 					<h4>How It Works</h4>
@@ -312,7 +377,17 @@ export { formatPrice, summarize };`);
 							{mismatches.length} issue{mismatches.length !== 1 ? 's' : ''} detected
 						</span>
 					</div>
-					<textarea class="code-input" value={bracketCode} oninput={updateBracketCode}></textarea>
+					<div class="code-input">
+						<CustomEditor
+							content={bracketCode}
+							language="javascript"
+							readonly={false}
+							folding={false}
+							multiCursor={false}
+							preferences={codeEditorPreferences}
+							onChange={updateBracketCode}
+						/>
+					</div>
 				</div>
 
 				<div class="bracket-analysis">
@@ -386,7 +461,8 @@ export { formatPrice, summarize };`);
 							Open Plugin Sandbox
 						</button>
 					</div>
-					<pre class="code-preview">{sandboxCode}</pre>
+					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+					<pre class="code-preview"><code>{@html sandboxCodeHTML}</code></pre>
 				</div>
 
 				<div class="plugin-info">
@@ -424,7 +500,7 @@ export { formatPrice, summarize };`);
 	}
 
 	.demo-header {
-		text-align: center;
+		text-align: left;
 		margin-bottom: 2rem;
 	}
 
@@ -544,10 +620,34 @@ export { formatPrice, summarize };`);
 	}
 
 	.echo-actions,
-	.keystroke-actions {
+	.echo-source {
 		display: flex;
+	}
+
+	.echo-actions {
 		align-items: center;
 		gap: 0.5rem;
+	}
+
+	.echo-source {
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.echo-source span {
+		font-size: 0.8rem;
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.echo-source textarea {
+		min-height: 150px;
+		padding: 0.75rem;
+		background: rgba(0, 0, 0, 0.3);
+		border: 1px solid var(--ide-border, #333);
+		border-radius: 6px;
+		color: var(--ide-text-primary, #e8e8f0);
+		font: 13px/1.5 monospace;
+		resize: vertical;
 	}
 
 	.action-label {
@@ -620,6 +720,7 @@ export { formatPrice, summarize };`);
 	.echo-marker {
 		position: absolute;
 		left: 40px;
+		right: 0.75rem;
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -646,6 +747,8 @@ export { formatPrice, summarize };`);
 	}
 
 	.echo-label {
+		/* Sit in the right margin instead of over the line's leading code. */
+		margin-left: auto;
 		padding: 2px 6px;
 		background: var(--color);
 		border-radius: 4px;
@@ -746,19 +849,27 @@ export { formatPrice, summarize };`);
 		min-height: 300px;
 		max-width: 100%;
 		box-sizing: border-box;
-		padding: 1rem;
 		background: rgba(0, 0, 0, 0.3);
 		border: none;
 		border-radius: 0 0 8px 8px;
-		font-family: monospace;
-		font-size: 13px;
-		line-height: 1.5;
 		color: var(--ide-text-primary, #e8e8f0);
-		resize: none;
+		overflow: hidden;
 	}
 
-	.code-input:focus {
-		outline: none;
+	.code-input :global(.custom-editor) {
+		height: 100%;
+		min-height: 300px;
+		background: transparent;
+		--editor-font-size: 13px !important;
+	}
+
+	.code-input :global(.custom-editor__content) {
+		background: transparent;
+		border-radius: 0 0 8px 8px;
+	}
+
+	.code-input :global(.custom-editor__line-content) {
+		padding-right: 1rem;
 	}
 
 	.bracket-analysis {
@@ -930,6 +1041,11 @@ export { formatPrice, summarize };`);
 		white-space: pre;
 	}
 
+	.code-preview code {
+		font-family: inherit;
+		font-size: inherit;
+	}
+
 	.plugin-info {
 		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
 		border-radius: 8px;
@@ -1003,6 +1119,10 @@ export { formatPrice, summarize };`);
 		.code-preview {
 			min-height: 220px;
 		}
+
+		.code-input :global(.custom-editor) {
+			min-height: 220px;
+		}
 	}
 
 	/* ===== Responsive: phones ===== */
@@ -1032,8 +1152,7 @@ export { formatPrice, summarize };`);
 		}
 
 		/* Stack control rows so they don't wrap awkwardly mid-label. */
-		.echo-actions,
-		.keystroke-actions {
+		.echo-actions {
 			flex-wrap: wrap;
 		}
 
@@ -1049,6 +1168,14 @@ export { formatPrice, summarize };`);
 		.code-preview,
 		.editor-mock {
 			font-size: var(--ide-font-size-xs, 11px);
+		}
+
+		.code-input {
+			--power-code-font-size: var(--ide-font-size-xs, 11px);
+		}
+
+		.code-input :global(.custom-editor) {
+			--editor-font-size: var(--power-code-font-size) !important;
 		}
 
 		/* Right-edge scroll affordance for the horizontally scrollable code preview. */

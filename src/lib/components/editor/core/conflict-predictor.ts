@@ -8,6 +8,32 @@
 
 import type { SemanticRegion } from './semantic-analyzer';
 
+export interface AwarenessCursorUser {
+	id: string;
+	name: string;
+	color: string;
+	isAI?: boolean;
+}
+
+export interface AwarenessCursorSource {
+	getCursors(): Map<
+		number,
+		{ user: AwarenessCursorUser; cursor: { anchor: number; head: number } }
+	>;
+}
+
+export interface AwarenessPositionBinding {
+	indexToPosition(index: number): { line: number; column: number };
+}
+
+interface AwarenessActivityRecord {
+	cursorSignature: string;
+	lastEditTime: number;
+	recentlyEditedLines: number[];
+}
+
+const awarenessActivity = new WeakMap<object, Map<string, AwarenessActivityRecord>>();
+
 /**
  * User awareness state for conflict detection
  */
@@ -79,6 +105,76 @@ const DEFAULT_CONFIG: ConflictPredictorConfig = {
 	warningThreshold: 0.3,
 	includeAI: true
 };
+
+function getActivityRecords(source: object): Map<string, AwarenessActivityRecord> {
+	let records = awarenessActivity.get(source);
+	if (!records) {
+		records = new Map();
+		awarenessActivity.set(source, records);
+	}
+	return records;
+}
+
+/**
+ * Mark a real awareness user's edit activity.
+ *
+ * Cursor changes are detected by awarenessToUserAwareness automatically. Use this
+ * when an editor content change happens without a distinct cursor update.
+ */
+export function markAwarenessActivity(
+	awareness: object,
+	userId: string,
+	now: number,
+	recentlyEditedLines: number[] = []
+): void {
+	const records = getActivityRecords(awareness);
+	const existing = records.get(userId);
+	records.set(userId, {
+		cursorSignature: existing?.cursorSignature ?? '',
+		lastEditTime: now,
+		recentlyEditedLines
+	});
+}
+
+/**
+ * Convert live Yjs awareness cursors into ConflictPredictor input.
+ */
+export function awarenessToUserAwareness(
+	awareness: AwarenessCursorSource,
+	binding: AwarenessPositionBinding,
+	now: number
+): UserAwareness[] {
+	const records = getActivityRecords(awareness);
+	const users: UserAwareness[] = [];
+
+	for (const [, { user, cursor }] of awareness.getCursors()) {
+		const position = binding.indexToPosition(cursor.head);
+		const signature = `${cursor.anchor}:${cursor.head}`;
+		const existing = records.get(user.id);
+		const changed = !existing || existing.cursorSignature !== signature;
+		const lastEditTime = changed ? now : existing.lastEditTime;
+		const recentlyEditedLines = changed ? [position.line] : existing.recentlyEditedLines;
+
+		records.set(user.id, {
+			cursorSignature: signature,
+			lastEditTime,
+			recentlyEditedLines
+		});
+
+		users.push({
+			id: user.id,
+			name: user.name,
+			color: user.color,
+			isAI: user.isAI ?? false,
+			cursorLine: position.line,
+			cursorColumn: position.column,
+			lastEditTime,
+			recentlyEditedLines
+		});
+	}
+
+	return users;
+}
 
 /**
  * Conflict Predictor class

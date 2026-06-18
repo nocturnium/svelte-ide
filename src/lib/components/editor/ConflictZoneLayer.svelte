@@ -40,17 +40,20 @@
 	 * Get color for severity level
 	 */
 	function getSeverityColor(severity: ConflictZone['severity']): string {
+		// Route through the shared --ide-* band tokens so conflict severity stays
+		// in lockstep with the complexity band system (one source of truth) and
+		// avoids the repo's phantom hardcoded-hex footgun.
 		switch (severity) {
 			case 'critical':
-				return '#ef4444';
+				return 'var(--ide-error)';
 			case 'high':
-				return '#f59e0b';
+				return 'var(--ide-warning)';
 			case 'medium':
-				return '#eab308';
+				return 'var(--ide-info)';
 			case 'low':
-				return '#22c55e';
+				return 'var(--ide-success)';
 			default:
-				return '#6b7280';
+				return 'var(--ide-text-muted)';
 		}
 	}
 
@@ -243,21 +246,25 @@
 	.conflict-zone {
 		position: absolute;
 		right: 0;
+		/* Tint by the zone's own severity color (was hardcoded red for every
+		   severity, so low/medium zones still washed red). */
 		background: linear-gradient(
 			90deg,
-			rgba(var(--zone-color-rgb, 239, 68, 68), var(--zone-opacity)),
+			color-mix(in srgb, var(--zone-color) calc(var(--zone-opacity) * 100%), transparent),
 			transparent
 		);
-		background-color: rgba(239, 68, 68, var(--zone-opacity));
-		border-left: 3px solid rgba(239, 68, 68, var(--border-opacity));
-		border-left-color: var(--zone-color);
+		border-left: 3px solid var(--zone-color);
 		pointer-events: auto;
 		cursor: pointer;
-		transition: background-color 0.2s ease;
+		transition: background 0.2s ease;
 	}
 
 	.conflict-zone:hover {
-		background-color: rgba(239, 68, 68, calc(var(--zone-opacity) + 0.1));
+		background: linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--zone-color) calc((var(--zone-opacity) + 0.1) * 100%), transparent),
+			transparent
+		);
 	}
 
 	.conflict-zone--critical {
@@ -417,17 +424,17 @@
 		display: inline-block;
 		padding: 1px 4px;
 		margin-left: 4px;
-		background: rgba(168, 85, 247, 0.3);
+		background: color-mix(in srgb, var(--ide-ai-assistant) 30%, transparent);
 		border-radius: 3px;
 		font-size: 9px;
-		color: #a855f7;
+		color: var(--ide-ai-assistant);
 	}
 
 	.conflict-tooltip__suggestion {
 		padding: 8px;
-		background: rgba(255, 200, 0, 0.1);
+		background: color-mix(in srgb, var(--ide-warning) 12%, transparent);
 		border-radius: 4px;
-		border-left: 2px solid #eab308;
+		border-left: 2px solid var(--ide-warning);
 		color: var(--ide-text-secondary, #a8c5d9);
 		font-size: 11px;
 		line-height: 1.4;

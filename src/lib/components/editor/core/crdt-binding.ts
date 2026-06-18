@@ -97,7 +97,7 @@ export class CRDTBinding {
 	 * Handle changes from CRDT
 	 * Uses Yjs relative positions for accurate cursor preservation during concurrent edits
 	 */
-	private handleCRDTChange(_event: Y.YTextEvent): void {
+	private handleCRDTChange(event: Y.YTextEvent): void {
 		this.isUpdating = true;
 		try {
 			// Capture current selection as relative positions BEFORE applying changes
@@ -110,30 +110,52 @@ export class CRDTBinding {
 			const anchorRelPos = Y.createRelativePositionFromTypeIndex(this.text, anchorIndex);
 			const headRelPos = Y.createRelativePositionFromTypeIndex(this.text, headIndex);
 
-			// Get new content
-			const content = this.text.toString();
-
 			// Resolve relative positions back to absolute positions
 			// This correctly handles insertions/deletions around the cursor
 			const anchorAbsPos = Y.createAbsolutePositionFromRelativePosition(anchorRelPos, this.doc);
 			const headAbsPos = Y.createAbsolutePositionFromRelativePosition(headRelPos, this.doc);
 
 			// Convert back to editor positions with bounds checking
-			const maxIndex = content.length;
+			const maxIndex = this.text.length;
 			const newAnchorIndex = anchorAbsPos ? Math.min(anchorAbsPos.index, maxIndex) : 0;
 			const newHeadIndex = headAbsPos ? Math.min(headAbsPos.index, maxIndex) : 0;
-
-			const newAnchor = this.indexToPosition(newAnchorIndex);
-			const newHead = this.indexToPosition(newHeadIndex);
 
 			// Apply content and selection atomically without triggering intermediate events
 			// This prevents race conditions where selection listeners modify state during update
 			this.editorState.runWithoutNotifications(() => {
-				this.editorState.setContent(content);
+				this.applyCRDTDelta(event.delta);
+				const newAnchor = this.indexToPosition(newAnchorIndex);
+				const newHead = this.indexToPosition(newHeadIndex);
 				this.editorState.setSelection(newAnchor, newHead);
 			});
 		} finally {
 			this.isUpdating = false;
+		}
+	}
+
+	/**
+	 * Apply a Y.Text delta to the editor using bounded index-based edit paths.
+	 */
+	private applyCRDTDelta(delta: Y.YTextEvent['delta']): void {
+		let index = 0;
+
+		for (const op of delta) {
+			if (op.retain) {
+				index += op.retain;
+			}
+
+			if (op.insert !== undefined) {
+				const insertedText = String(op.insert);
+				const position = this.indexToPosition(index);
+				this.editorState.insertAt(position, insertedText);
+				index += insertedText.length;
+			}
+
+			if (op.delete) {
+				const from = this.indexToPosition(index);
+				const to = this.indexToPosition(index + op.delete);
+				this.editorState.deleteRange(from, to);
+			}
 		}
 	}
 
@@ -194,8 +216,13 @@ export class CRDTBinding {
 						if (currentLength > 0) {
 							this.text.delete(0, currentLength);
 						}
-						if (event.text) {
-							this.text.insert(0, event.text);
+						// Source the full content from the editor itself, not from
+						// event.text: undo/redo emit a `replace` with no `text`, so
+						// trusting event.text here would empty the shared doc. getContent()
+						// is the authoritative post-change content for any replace emitter.
+						const fullContent = this.editorState.getContent();
+						if (fullContent) {
+							this.text.insert(0, fullContent);
 						}
 						break;
 					}

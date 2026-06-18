@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Phase 5: Developer Experience Features Demo
+	 * Developer Experience Features Demo
 	 *
 	 * Demonstrates Git Blame, Code Snippets, and Inline Diff visualization.
 	 */
@@ -158,7 +158,7 @@ export function DataComponent({ userId }: { userId: string }) {
 
 <div class="devx-features-demo">
 	<header class="demo-header">
-		<span class="demo-eyebrow">Phase 5</span>
+		<span class="demo-eyebrow">Developer Experience</span>
 		<h1>Developer Experience</h1>
 		<p>Git Blame, Code Snippets, and Inline Diff visualization</p>
 	</header>

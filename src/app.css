@@ -1,6 +1,70 @@
 @import 'tailwindcss';
 @import './lib/styles/theme.css';
 
+/* Rich default syntax palette for editor variables and tokenizer-rendered HTML. */
+:root {
+	--editor-token-comment: var(--ide-text-muted);
+	--editor-token-string: var(--color-nocturnium-aurora-green);
+	--editor-token-string-template: var(--color-nocturnium-aurora-green);
+	--editor-token-string-regex: var(--color-nocturnium-aurora-pink);
+	--editor-token-string-escape: var(--color-nocturnium-aurora-yellow);
+	--editor-token-number: var(--color-nocturnium-aurora-yellow);
+	--editor-token-keyword: var(--color-nocturnium-aurora-purple);
+	--editor-token-keyword-control: var(--color-nocturnium-aurora-purple);
+	--editor-token-keyword-operator: var(--color-nocturnium-aurora-purple);
+	--editor-token-keyword-definition: var(--color-nocturnium-aurora-purple);
+	--editor-token-keyword-module: var(--color-nocturnium-aurora-purple);
+	--editor-token-keyword-storage: var(--color-nocturnium-aurora-purple);
+	--editor-token-operator: var(--ide-text-primary);
+	--editor-token-variable: var(--ide-text-primary);
+	--editor-token-variable-definition: var(--color-nocturnium-wave);
+	--editor-token-variable-parameter: color-mix(
+		in srgb,
+		var(--color-nocturnium-wave) 80%,
+		var(--ide-text-muted)
+	);
+	--editor-token-function: var(--color-nocturnium-aurora-blue);
+	--editor-token-function-definition: var(--color-nocturnium-aurora-blue);
+	--editor-token-function-call: var(--color-nocturnium-aurora-blue);
+	--editor-token-property: var(--color-nocturnium-wave);
+	--editor-token-property-definition: var(--color-nocturnium-wave);
+	--editor-token-type: var(--color-nocturnium-teal);
+	--editor-token-type-class: var(--color-nocturnium-teal);
+	--editor-token-type-interface: var(--color-nocturnium-teal);
+	--editor-token-type-namespace: var(--color-nocturnium-teal);
+	--editor-token-type-builtin: var(--color-nocturnium-teal);
+	--editor-token-constant: var(--color-nocturnium-aurora-yellow);
+	--editor-token-constant-boolean: var(--color-nocturnium-aurora-yellow);
+	--editor-token-constant-null: var(--color-nocturnium-aurora-yellow);
+	--editor-token-constant-builtin: var(--color-nocturnium-aurora-yellow);
+	--editor-token-punctuation: var(--ide-text-secondary);
+	--editor-token-punctuation-brace: var(--color-nocturnium-aurora-yellow);
+	--editor-token-tag: var(--color-nocturnium-aurora-pink);
+	--editor-token-tag-attribute: var(--color-nocturnium-aurora-yellow);
+	--editor-token-tag-attribute-value: var(--color-nocturnium-aurora-green);
+	--editor-token-tag-punctuation: var(--ide-text-secondary);
+	--editor-token-markup-heading: var(--color-nocturnium-aurora-blue);
+	--editor-token-markup-link: var(--color-nocturnium-wave);
+	--editor-token-markup-code: var(--color-nocturnium-aurora-green);
+	--editor-token-markup-quote: var(--ide-text-secondary);
+	--editor-token-markup-list: var(--color-nocturnium-ember);
+	--editor-token-invalid: var(--ide-error);
+
+	--ide-syntax-comment: var(--editor-token-comment);
+	--ide-syntax-string: var(--editor-token-string);
+	--ide-syntax-number: var(--editor-token-number);
+	--ide-syntax-keyword: var(--editor-token-keyword);
+	--ide-syntax-operator: var(--editor-token-operator);
+	--ide-syntax-variable: var(--editor-token-variable);
+	--ide-syntax-function: var(--editor-token-function);
+	--ide-syntax-property: var(--editor-token-property);
+	--ide-syntax-type: var(--editor-token-type);
+	--ide-syntax-constant: var(--editor-token-constant);
+	--ide-syntax-punctuation: var(--editor-token-punctuation);
+	--ide-syntax-tag: var(--editor-token-tag);
+	--ide-syntax-attribute: var(--editor-token-tag-attribute);
+}
+
 /* Base Styles */
 *,
 *::before,
@@ -56,4 +120,142 @@ body {
 ::selection {
 	background-color: var(--ide-bg-tertiary);
 	color: var(--ide-text-primary);
+}
+
+/* Syntax highlighting tokens */
+.token-comment,
+.token-comment-line,
+.token-comment-block,
+.token-comment-doc {
+	color: var(--editor-token-comment);
+	font-style: italic;
+}
+
+.token-string,
+.token-string-template {
+	color: var(--editor-token-string);
+}
+
+.token-string-regex {
+	color: var(--editor-token-string-regex);
+}
+
+.token-string-escape {
+	color: var(--editor-token-string-escape);
+}
+
+.token-number,
+.token-number-integer,
+.token-number-float,
+.token-number-hex,
+.token-number-binary {
+	color: var(--editor-token-number);
+}
+
+.token-keyword,
+.token-keyword-control,
+.token-keyword-operator,
+.token-keyword-definition,
+.token-keyword-module,
+.token-keyword-storage {
+	color: var(--editor-token-keyword);
+}
+
+.token-operator,
+.token-operator-arithmetic,
+.token-operator-comparison,
+.token-operator-logical,
+.token-operator-assignment,
+.token-variable {
+	color: var(--editor-token-variable);
+}
+
+.token-variable-definition {
+	color: var(--editor-token-variable-definition);
+}
+
+.token-variable-parameter {
+	color: var(--editor-token-variable-parameter);
+}
+
+.token-function,
+.token-function-definition,
+.token-function-call {
+	color: var(--editor-token-function);
+}
+
+.token-property,
+.token-property-definition {
+	color: var(--editor-token-property);
+}
+
+.token-type,
+.token-type-class,
+.token-type-interface,
+.token-type-namespace,
+.token-type-builtin {
+	color: var(--editor-token-type);
+}
+
+.token-constant,
+.token-constant-boolean,
+.token-constant-null,
+.token-constant-builtin {
+	color: var(--editor-token-constant);
+}
+
+.token-punctuation,
+.token-punctuation-bracket,
+.token-punctuation-paren,
+.token-punctuation-separator,
+.token-punctuation-accessor {
+	color: var(--editor-token-punctuation);
+}
+
+.token-punctuation-brace {
+	color: var(--editor-token-punctuation-brace);
+	font-weight: 600;
+}
+
+.token-tag,
+.token-tag-name {
+	color: var(--editor-token-tag);
+}
+
+.token-tag-attribute {
+	color: var(--editor-token-tag-attribute);
+}
+
+.token-tag-attribute-value {
+	color: var(--editor-token-tag-attribute-value);
+}
+
+.token-tag-punctuation {
+	color: var(--editor-token-tag-punctuation);
+}
+
+.token-markup-heading {
+	color: var(--editor-token-markup-heading);
+	font-weight: bold;
+}
+
+.token-markup-link {
+	color: var(--editor-token-markup-link);
+	text-decoration: underline;
+}
+
+.token-markup-code {
+	color: var(--editor-token-markup-code);
+}
+
+.token-markup-quote {
+	color: var(--editor-token-markup-quote);
+}
+
+.token-markup-list {
+	color: var(--editor-token-markup-list);
+}
+
+.token-invalid {
+	color: var(--editor-token-invalid);
 }

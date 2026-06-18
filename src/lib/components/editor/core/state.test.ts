@@ -696,6 +696,15 @@ describe('EditorState — Cursor and Selection', () => {
 // ============================================================
 
 describe('EditorState — Undo and Redo', () => {
+	function undoStackEntries(
+		state: EditorState
+	): Array<{ content?: string; changes?: Array<{ text: string; removed: string }> }> {
+		return (state as unknown as { _undoStack: unknown[] })._undoStack as Array<{
+			content?: string;
+			changes?: Array<{ text: string; removed: string }>;
+		}>;
+	}
+
 	it('should undo an insert', () => {
 		const state = makeState('hello');
 		state.setCursor({ line: 0, column: 5 });
@@ -778,6 +787,55 @@ describe('EditorState — Undo and Redo', () => {
 
 		expect(state.getContent()).toBe('helloabc');
 		expect(state.cursor).toEqual({ line: 0, column: 8 });
+	});
+
+	it('should store history as deltas rather than full document snapshots', () => {
+		const largeContent = Array.from({ length: 1000 }, (_, i) => `line ${i}`).join('\n');
+		const state = makeState(largeContent);
+
+		state.setCursor({ line: 999, column: 'line 999'.length });
+		state.insert('!');
+
+		const entry = undoStackEntries(state)[0];
+		expect(entry.content).toBeUndefined();
+		expect(entry.changes).toHaveLength(1);
+		expect(entry.changes?.[0]).toMatchObject({ text: '!', removed: '' });
+		expect(JSON.stringify(entry)).not.toContain(largeContent);
+
+		expect(state.undo()).toBe(true);
+		expect(state.getContent()).toBe(largeContent);
+		expect(state.redo()).toBe(true);
+		expect(state.getContent()).toBe(`${largeContent}!`);
+	});
+
+	it('should undo a grouped multi-cursor typing run in one step', () => {
+		const state = makeState('aa\nbb');
+		state.setCursor({ line: 0, column: 2 });
+		state.addCursor({ line: 1, column: 2 });
+
+		state.insert('1');
+		state.insert('2');
+
+		expect(state.getContent()).toBe('aa12\nbb12');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 4 },
+			{ line: 1, column: 4 }
+		]);
+
+		expect(state.undo()).toBe(true);
+
+		expect(state.getContent()).toBe('aa\nbb');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 2 },
+			{ line: 1, column: 2 }
+		]);
+
+		expect(state.redo()).toBe(true);
+		expect(state.getContent()).toBe('aa12\nbb12');
+		expect(sortedCursorPositions(state)).toEqual([
+			{ line: 0, column: 4 },
+			{ line: 1, column: 4 }
+		]);
 	});
 });
 

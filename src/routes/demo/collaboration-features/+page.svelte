@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Phase 3: Collaboration Features Demo
+	 * Collaboration Features Demo
 	 *
 	 * Demonstrates:
 	 * - Time Machine Scrubbing
@@ -8,8 +8,11 @@
 	 */
 
 	import { onMount } from 'svelte';
-	import Icon from '$lib/components/core/Icon.svelte';
+	import * as Y from 'yjs';
+	import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness';
+	import { createAwarenessProtocol } from '$lib/crdt/awareness';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
+	import CollaborativeEditor from '$lib/components/editor/CollaborativeEditor.svelte';
 	import TimelineScrubber from '$lib/components/editor/TimelineScrubber.svelte';
 	import ConflictZoneLayer from '$lib/components/editor/ConflictZoneLayer.svelte';
 	import {
@@ -17,14 +20,15 @@
 		type SnapshotMetadata
 	} from '$lib/components/editor/core/timeline';
 	import {
+		awarenessToUserAwareness,
 		createConflictPredictor,
+		markAwarenessActivity,
 		type ConflictZone,
 		type UserAwareness
 	} from '$lib/components/editor/core/conflict-predictor';
 	import { getSemanticAnalyzer } from '$lib/components/editor/core/semantic-analyzer';
 
-	// Sample code shown in the editor for the demo. This is inert display text —
-	// it exercises the syntax highlighting, timeline, and conflict layers only.
+	// Initial code shared by the two live editors in this demo.
 	const SAMPLE_CODE = `// Order Processing Module
 
 interface Order {
@@ -90,10 +94,45 @@ export function applyDiscount(order: Order, percent: number): Order {
 }
 `;
 
+	const primaryUser = {
+		id: 'local-user',
+		name: 'You',
+		color: '#4a9eff'
+	};
+
+	const secondaryUser = {
+		id: 'reviewer-user',
+		name: 'Reviewer',
+		color: '#22c55e'
+	};
+
+	const sharedDoc = new Y.Doc();
+	const sharedText = sharedDoc.getText('content');
+	if (sharedText.length === 0) {
+		sharedText.insert(0, SAMPLE_CODE);
+	}
+
+	const primaryAwareness = new Awareness(sharedDoc);
+	const secondaryAwareness = new Awareness(sharedDoc);
+	// Both Awareness instances default to sharedDoc.clientID, so without a distinct
+	// id the second editor's presence overwrites the first's slot in the relayed
+	// states map and the predictor only ever sees one user (no conflict zone can
+	// form). Give the second editor its own presence id so two real cursors show.
+	secondaryAwareness.setLocalState(null);
+	secondaryAwareness.clientID = sharedDoc.clientID + 1;
+	secondaryAwareness.setLocalState({});
+	const predictorAwareness = createAwarenessProtocol(primaryAwareness, { destroyAwareness: false });
+
 	// Timeline state
 	const timelineManager = createTimelineManager({
-		snapshotInterval: 5000, // Faster for demo
-		maxSnapshots: 100
+		snapshotInterval: 60000,
+		maxSnapshots: 100,
+		minLinesForSnapshot: 0,
+		defaultAuthor: {
+			id: primaryUser.id,
+			name: primaryUser.name,
+			color: primaryUser.color
+		}
 	});
 
 	// Conflict predictor
@@ -110,21 +149,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 	let isPlayback = $state(false);
 	let isPlaying = $state(false);
 	let playbackContent = $state('');
-
-	// Simulated users for conflict demo
-	let simulatedUsers = $state<UserAwareness[]>([
-		{
-			id: 'user-1',
-			name: 'You',
-			color: '#4a9eff',
-			isAI: false,
-			cursorLine: 30,
-			cursorColumn: 0,
-			lastEditTime: Date.now(),
-			recentlyEditedLines: [28, 29, 30, 31]
-		}
-	]);
-
+	let awarenessUsers = $state<UserAwareness[]>([]);
 	let conflictZones = $state<ConflictZone[]>([]);
 	let markers = $state<
 		Array<{
@@ -135,41 +160,36 @@ export function applyDiscount(order: Order, percent: number): Order {
 			timestamp: number;
 		}>
 	>([]);
+	let primaryCursorLine = 0;
+	let secondaryCursorLine = 0;
+
+	const awarenessBinding = {
+		indexToPosition(index: number) {
+			const lines = content.split('\n');
+			if (lines.length === 0 || index <= 0) return { line: 0, column: 0 };
+
+			let remaining = index;
+			for (let line = 0; line < lines.length; line++) {
+				const lineText = lines[line] ?? '';
+				const isLastLine = line === lines.length - 1;
+				const effectiveLength = isLastLine ? lineText.length : lineText.length + 1;
+
+				if (remaining <= effectiveLength) {
+					return { line, column: Math.min(remaining, lineText.length) };
+				}
+				remaining -= lineText.length + 1;
+			}
+
+			const lastLine = lines.length - 1;
+			return { line: lastLine, column: lines[lastLine]?.length ?? 0 };
+		}
+	};
 
 	// Initialize timeline
 	onMount(() => {
 		timelineManager.start(SAMPLE_CODE);
-
-		// Create some initial history for demo
-		setTimeout(() => {
-			timelineManager.captureSnapshot(SAMPLE_CODE, {
-				author: 'alice',
-				authorColor: '#22c55e',
-				isAI: false,
-				description: 'Added user interface',
-				changeType: 'edit'
-			});
-		}, 100);
-
-		setTimeout(() => {
-			timelineManager.captureSnapshot(SAMPLE_CODE, {
-				author: 'ai-assistant',
-				authorColor: 'var(--ide-ai-assistant)',
-				isAI: true,
-				description: 'Added error handling',
-				changeType: 'ai-suggestion'
-			});
-		}, 200);
-
-		setTimeout(() => {
-			timelineManager.captureSnapshot(SAMPLE_CODE, {
-				author: 'bob',
-				authorColor: '#f59e0b',
-				isAI: false,
-				description: 'Refactored auth logic',
-				changeType: 'edit'
-			});
-		}, 300);
+		primaryAwareness.setLocalStateField('user', primaryUser);
+		secondaryAwareness.setLocalStateField('user', secondaryUser);
 
 		// Update markers
 		const updateMarkers = () => {
@@ -181,25 +201,82 @@ export function applyDiscount(order: Order, percent: number): Order {
 			updateMarkers();
 		});
 
+		let relayingAwareness = false;
+		const relayAwareness = (source: Awareness, target: Awareness) => {
+			const relay = (changes: { added: number[]; updated: number[]; removed: number[] }) => {
+				if (relayingAwareness) return;
+
+				const changedClients = [...changes.added, ...changes.updated, ...changes.removed];
+				if (changedClients.length === 0) return;
+
+				relayingAwareness = true;
+				try {
+					applyAwarenessUpdate(
+						target,
+						encodeAwarenessUpdate(source, changedClients),
+						'collaboration-features-demo'
+					);
+				} finally {
+					relayingAwareness = false;
+				}
+				refreshConflicts();
+			};
+
+			source.on('update', relay);
+			return () => source.off('update', relay);
+		};
+
+		const stopPrimaryRelay = relayAwareness(primaryAwareness, secondaryAwareness);
+		const stopSecondaryRelay = relayAwareness(secondaryAwareness, primaryAwareness);
+		const unsubscribePresence = predictorAwareness.onUsersChange(() => {
+			refreshConflicts();
+		});
+		refreshConflicts();
+
 		return () => {
 			unsubscribe();
+			unsubscribePresence();
+			stopPrimaryRelay();
+			stopSecondaryRelay();
 			timelineManager.stop();
+			predictorAwareness.destroy();
+			primaryAwareness.destroy();
+			secondaryAwareness.destroy();
+			sharedDoc.destroy();
 		};
 	});
 
-	// Update conflicts when users change
-	$effect(() => {
+	function refreshConflicts(now = Date.now()) {
 		const regions = semanticAnalyzer.analyze(
 			content.split('\n').map((text, i) => ({ text, number: i + 1 })),
 			'typescript'
 		);
-		conflictZones = conflictPredictor.predict(simulatedUsers, regions);
-	});
+		awarenessUsers = awarenessToUserAwareness(predictorAwareness, awarenessBinding, now);
+		conflictZones = conflictPredictor.predict(awarenessUsers, regions);
+	}
 
-	function handleContentChange(newContent: string) {
+	function handleContentChange(newContent: string, user: typeof primaryUser, recentLine: number) {
 		content = newContent;
 		timelineManager.recordChange(newContent);
-		timelineManager.captureOnEdit(newContent);
+		timelineManager.captureOnEdit(newContent, {
+			author: user.id,
+			authorColor: user.color,
+			isAI: false,
+			description: 'Edit',
+			changeType: 'edit'
+		});
+		markAwarenessActivity(predictorAwareness, user.id, Date.now(), [Math.max(0, recentLine)]);
+		refreshConflicts();
+	}
+
+	function handleCursorActivity(userId: string, line: number) {
+		const cursorLine = Math.max(0, line - 1);
+		if (userId === primaryUser.id) {
+			primaryCursorLine = cursorLine;
+		} else {
+			secondaryCursorLine = cursorLine;
+		}
+		refreshConflicts();
 	}
 
 	function handlePositionChange(position: number) {
@@ -222,60 +299,11 @@ export function applyDiscount(order: Order, percent: number): Order {
 		isPlayback = false;
 		playbackContent = '';
 	}
-
-	// Simulated collaborators for demo
-	function addSimulatedUser() {
-		const colors = ['#22c55e', '#f59e0b', '#ec4899', '#06b6d4'];
-		const names = ['Alice', 'Bob', 'Carol', 'Dave'];
-		const index = simulatedUsers.length - 1;
-
-		if (index < 4) {
-			simulatedUsers = [
-				...simulatedUsers,
-				{
-					id: `user-${Date.now()}`,
-					name: names[index],
-					color: colors[index],
-					isAI: false,
-					cursorLine: Math.floor(Math.random() * 50) + 20,
-					cursorColumn: 0,
-					lastEditTime: Date.now(),
-					recentlyEditedLines: []
-				}
-			];
-		}
-	}
-
-	function addAIAgent() {
-		simulatedUsers = [
-			...simulatedUsers,
-			{
-				id: `ai-${Date.now()}`,
-				name: 'AI Assistant',
-				color: 'var(--ide-ai-assistant)',
-				isAI: true,
-				cursorLine: 45,
-				cursorColumn: 0,
-				lastEditTime: Date.now(),
-				recentlyEditedLines: [44, 45, 46, 47]
-			}
-		];
-	}
-
-	function clearUsers() {
-		simulatedUsers = [simulatedUsers[0]]; // Keep "You"
-	}
-
-	function moveUserCursor(userId: string, line: number) {
-		simulatedUsers = simulatedUsers.map((u) =>
-			u.id === userId ? { ...u, cursorLine: line, lastEditTime: Date.now() } : u
-		);
-	}
 </script>
 
 <div class="demo-page">
 	<header class="demo-header">
-		<h1>Phase 3: Collaboration Features</h1>
+		<h1>Collaboration Features</h1>
 		<p>Time Machine Scrubbing and Collaborative Conflict Theater</p>
 	</header>
 
@@ -319,20 +347,12 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 				<div class="timeline-legend">
 					<div class="legend-item">
-						<span class="legend-dot" style="background: #4a9eff"></span>
-						<span>You</span>
+						<span class="legend-dot" style="background: {primaryUser.color}"></span>
+						<span>{primaryUser.name}</span>
 					</div>
 					<div class="legend-item">
-						<span class="legend-dot" style="background: #22c55e"></span>
-						<span>Alice</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-dot" style="background: var(--ide-ai-assistant)"></span>
-						<span>AI</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-dot" style="background: #f59e0b"></span>
-						<span>Bob</span>
+						<span class="legend-dot" style="background: {secondaryUser.color}"></span>
+						<span>{secondaryUser.name}</span>
 					</div>
 				</div>
 			</div>
@@ -342,26 +362,11 @@ export function applyDiscount(order: Order, percent: number): Order {
 		<section class="demo-section">
 			<h2>Collaborative Conflict Theater</h2>
 			<p class="demo-description">
-				Real-time conflict prediction when multiple users edit nearby regions. Add collaborators to
-				see conflict zones appear.
+				Real-time conflict prediction from two live editors sharing the same in-page document.
 			</p>
 
-			<div class="conflict-controls">
-				<button class="demo-btn" onclick={addSimulatedUser} disabled={simulatedUsers.length >= 5}>
-					Add Collaborator
-				</button>
-				<button class="demo-btn demo-btn--ai" onclick={addAIAgent}> Add AI Agent </button>
-				<button
-					class="demo-btn demo-btn--secondary"
-					onclick={clearUsers}
-					disabled={simulatedUsers.length <= 1}
-				>
-					Clear All
-				</button>
-			</div>
-
 			<div class="users-list">
-				{#each simulatedUsers as user (user.id)}
+				{#each awarenessUsers as user (user.id)}
 					<div class="user-card" style="--user-color: {user.color}">
 						<div
 							class="user-avatar"
@@ -370,7 +375,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 							aria-label={user.isAI ? `${user.name} (AI agent)` : `${user.name} avatar`}
 						>
 							{#if user.isAI}
-								<Icon name="bot" size={18} class="ai-icon" />
+								AI
 							{:else}
 								{user.name.charAt(0)}
 							{/if}
@@ -384,16 +389,6 @@ export function applyDiscount(order: Order, percent: number): Order {
 							</span>
 							<span class="user-line">Line {user.cursorLine + 1}</span>
 						</div>
-						{#if user.id !== 'user-1'}
-							<input
-								type="range"
-								min="0"
-								max="80"
-								value={user.cursorLine}
-								oninput={(e) => moveUserCursor(user.id, parseInt(e.currentTarget.value))}
-								class="user-slider"
-							/>
-						{/if}
 					</div>
 				{/each}
 			</div>
@@ -421,24 +416,63 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 		<!-- Editor with overlay -->
 		<section class="demo-section demo-section--editor">
-			<h2>Editor with Conflict Zones</h2>
-			<div class="editor-container">
-				<div class="conflict-overlay">
-					<ConflictZoneLayer
-						zones={conflictZones}
-						lineHeight={20}
-						gutterWidth={50}
-						showParticipants={true}
-						enabled={true}
-					/>
+			<h2>Shared Editors with Conflict Zones</h2>
+			<div class="collab-editor-grid">
+				<div class="editor-pane">
+					<div class="editor-pane__header">
+						<span class="legend-dot" style="background: {primaryUser.color}"></span>
+						<span>{isPlayback ? 'Timeline Playback' : primaryUser.name}</span>
+					</div>
+					<div class="editor-container">
+						<div class="conflict-overlay">
+							<ConflictZoneLayer
+								zones={conflictZones}
+								lineHeight={20}
+								gutterWidth={50}
+								showParticipants={true}
+								enabled={true}
+							/>
+						</div>
+						{#if isPlayback}
+							<CustomEditor
+								content={playbackContent}
+								language="typescript"
+								readonly={true}
+								folding={true}
+							/>
+						{:else}
+							<CollaborativeEditor
+								doc={sharedDoc}
+								awareness={primaryAwareness}
+								initialContent={SAMPLE_CODE}
+								textName="content"
+								language="typescript"
+								currentUser={primaryUser}
+								onChange={(value) => handleContentChange(value, primaryUser, primaryCursorLine)}
+								onCursorChange={(line) => handleCursorActivity(primaryUser.id, line)}
+							/>
+						{/if}
+					</div>
 				</div>
-				<CustomEditor
-					content={isPlayback ? playbackContent : content}
-					language="typescript"
-					readonly={isPlayback}
-					onChange={handleContentChange}
-					folding={true}
-				/>
+
+				<div class="editor-pane">
+					<div class="editor-pane__header">
+						<span class="legend-dot" style="background: {secondaryUser.color}"></span>
+						<span>{secondaryUser.name}</span>
+					</div>
+					<div class="editor-container">
+						<CollaborativeEditor
+							doc={sharedDoc}
+							awareness={secondaryAwareness}
+							initialContent={SAMPLE_CODE}
+							textName="content"
+							language="typescript"
+							currentUser={secondaryUser}
+							onChange={(value) => handleContentChange(value, secondaryUser, secondaryCursorLine)}
+							onCursorChange={(line) => handleCursorActivity(secondaryUser.id, line)}
+						/>
+					</div>
+				</div>
 			</div>
 		</section>
 	</div>
@@ -548,45 +582,6 @@ export function applyDiscount(order: Order, percent: number): Order {
 		border-radius: 50%;
 	}
 
-	/* Conflict Controls */
-	.conflict-controls {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
-	}
-
-	.demo-btn {
-		padding: 0.5rem 1rem;
-		background: var(--color-nocturnium-wave);
-		color: var(--color-nocturnium-night);
-		/* Transparent border reserves the box so the outlined secondary button
-		   stays the same height as the filled ones (no row misalignment). */
-		border: 1px solid transparent;
-		border-radius: 6px;
-		font-size: 0.875rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: opacity 0.15s ease;
-	}
-
-	.demo-btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.demo-btn--ai {
-		background: var(--ide-ai-assistant);
-		color: #fff;
-	}
-
-	.demo-btn--secondary {
-		background: var(--ide-bg-elevated);
-		color: var(--ide-text-secondary);
-		/* Outline so the secondary action still reads as a button even when
-		   disabled (e.g. 'Clear All' on first load), not an empty/error state. */
-		border-color: var(--ide-border);
-	}
-
 	/* Users List */
 	.users-list {
 		display: flex;
@@ -644,16 +639,6 @@ export function applyDiscount(order: Order, percent: number): Order {
 		color: var(--ide-ai-assistant);
 	}
 
-	.user-avatar :global(.ai-icon) {
-		display: block;
-		color: #fff;
-	}
-
-	.user-slider {
-		width: 80px;
-		margin-left: auto;
-	}
-
 	/* Conflict Summary */
 	.conflict-summary {
 		margin-top: 1rem;
@@ -677,16 +662,16 @@ export function applyDiscount(order: Order, percent: number): Order {
 	}
 
 	.conflict-card--low {
-		border-left-color: #22c55e;
+		border-left-color: var(--ide-success);
 	}
 	.conflict-card--medium {
-		border-left-color: #eab308;
+		border-left-color: var(--ide-info);
 	}
 	.conflict-card--high {
-		border-left-color: #f59e0b;
+		border-left-color: var(--ide-warning);
 	}
 	.conflict-card--critical {
-		border-left-color: #ef4444;
+		border-left-color: var(--ide-error);
 	}
 
 	.conflict-probability {
@@ -712,7 +697,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.conflict-suggestion {
 		font-size: 0.75rem;
-		color: #eab308;
+		color: var(--ide-warning);
 		font-style: italic;
 	}
 
@@ -720,6 +705,26 @@ export function applyDiscount(order: Order, percent: number): Order {
 	.demo-section--editor {
 		flex: 1;
 		min-height: 400px;
+	}
+
+	.collab-editor-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 1rem;
+	}
+
+	.editor-pane {
+		min-width: 0;
+	}
+
+	.editor-pane__header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--ide-text-secondary);
 	}
 
 	.editor-container {
@@ -755,14 +760,8 @@ export function applyDiscount(order: Order, percent: number): Order {
 			min-width: 0;
 		}
 
-		/* Controls wrap instead of overflowing the card */
-		.conflict-controls {
-			flex-wrap: wrap;
-		}
-
-		.demo-btn {
-			flex: 1 1 auto;
-			min-height: 44px;
+		.collab-editor-grid {
+			grid-template-columns: 1fr;
 		}
 
 		/* Tighter stat rhythm on narrow columns */
@@ -805,10 +804,6 @@ export function applyDiscount(order: Order, percent: number): Order {
 			width: 100%;
 		}
 
-		.user-slider {
-			width: 96px;
-		}
-
 		.timeline-info {
 			gap: 0.75rem 1.25rem;
 			flex-wrap: wrap;
@@ -817,19 +812,6 @@ export function applyDiscount(order: Order, percent: number): Order {
 		/* Conflict cards: keep probability + details readable when narrow */
 		.conflict-card {
 			gap: 0.75rem;
-		}
-
-		/* Balanced control group on phones: the primary action spans the full
-		   width and the two secondary actions share an even second row, so the
-		   group never looks unbalanced/incomplete on first load. */
-		.conflict-controls {
-			display: grid;
-			grid-template-columns: 1fr 1fr;
-			gap: 0.5rem;
-		}
-
-		.conflict-controls .demo-btn:first-child {
-			grid-column: 1 / -1;
 		}
 
 		/* Right-edge scroll affordance for the horizontally scrollable code,

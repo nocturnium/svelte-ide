@@ -199,6 +199,46 @@ describe('TimelineManager', () => {
 			expect(last.metadata.isAI).toBe(true);
 			expect(last.metadata.changeType).toBe('ai-suggestion');
 		});
+
+		it('captures distinct real edit states and reconstructs stored content exactly', () => {
+			const liveManager = new TimelineManager({ minLinesForSnapshot: 0 });
+			liveManager.start('const total = 1;');
+
+			const editStates = [
+				'const total = 1;\nconst tax = 0.08;',
+				'const total = 2;\nconst tax = 0.08;',
+				'const total = 2;\nconst tax = 0.08;\nconst grandTotal = total + tax;'
+			];
+
+			for (const state of editStates) {
+				vi.advanceTimersByTime(1);
+				liveManager.captureOnEdit(
+					state,
+					makeMetadata({ author: 'local-user', description: 'Edit' })
+				);
+			}
+
+			const contents = liveManager.getSnapshots().map((snapshot) => snapshot.content);
+			expect(contents).toEqual(['const total = 1;', ...editStates]);
+			expect(new Set(contents).size).toBe(contents.length);
+
+			const snapshots = liveManager.getSnapshots();
+			expect(liveManager.getContentAtPosition(0)).toBe('const total = 1;');
+			expect(liveManager.getContentAtPosition(1)).toBe(editStates[2]);
+			expect(liveManager.getContentAtPosition(0.5)).toBe(editStates[0]);
+			expect(snapshots[1].diffFromPrevious).toEqual({
+				addedLines: 1,
+				removedLines: 0,
+				changedRegions: [{ start: 1, end: 1 }]
+			});
+			expect(snapshots[2].diffFromPrevious).toEqual({
+				addedLines: 1,
+				removedLines: 1,
+				changedRegions: [{ start: 0, end: 0 }]
+			});
+
+			liveManager.stop();
+		});
 	});
 
 	// ---- captureAISuggestion ----------------------------------------------

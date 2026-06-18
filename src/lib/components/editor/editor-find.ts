@@ -159,12 +159,24 @@ export function createEditorFind(deps: EditorFindDeps) {
 		const lastVisibleRow = Math.max(0, Math.ceil((scrollTop + viewportHeight) / lineHeight) + 1);
 
 		const rects: MatchRect[] = [];
+		let low = 0;
+		let high = matches.length;
 
-		for (let i = 0; i < matches.length; i++) {
+		while (low < high) {
+			const mid = Math.floor((low + high) / 2);
+			const visualRow = lineToVisualRow(matches[mid].line);
+			if (visualRow < firstVisibleRow) {
+				low = mid + 1;
+			} else {
+				high = mid;
+			}
+		}
+
+		for (let i = low; i < matches.length; i++) {
 			const match = matches[i];
 			const visualRow = lineToVisualRow(match.line);
 
-			if (visualRow < firstVisibleRow || visualRow > lastVisibleRow) continue;
+			if (visualRow > lastVisibleRow) break;
 
 			const width = (match.endColumn - match.startColumn) * charWidth;
 			if (width <= 0) continue;

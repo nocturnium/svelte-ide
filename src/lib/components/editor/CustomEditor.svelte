@@ -20,11 +20,16 @@
 	import { createEditorInput } from './editor-input';
 	import { createEditorScroll } from './editor-scroll';
 	import ComplexityLayer from './ComplexityLayer.svelte';
+	import ComplexityHeatLayer from './ComplexityHeatLayer.svelte';
 	import AIFocusLayer from './AIFocusLayer.svelte';
 	import EditorSelections from './EditorSelections.svelte';
 	import EditorLines from './EditorLines.svelte';
 	import CommandPalette from './CommandPalette.svelte';
-	import { getComplexityAnalyzer, type ComplexityMetrics } from './core/complexity-analyzer';
+	import {
+		getComplexityAnalyzer,
+		type ComplexityMetrics,
+		type ComplexityRegion
+	} from './core/complexity-analyzer';
 	import { registerSemanticFoldCommands } from './core/commands';
 	import { getSemanticAnalyzer, type FoldPreset } from './core/semantic-analyzer';
 	import type { AIAwareness } from './core/ai-awareness';
@@ -127,6 +132,8 @@
 	const complexityAnalyzer = getComplexityAnalyzer();
 	let complexityMetrics = $state<ComplexityMetrics | null>(null);
 	let complexityUpdateTimeout: ReturnType<typeof setTimeout> | null = null;
+	let complexityFlashTimeout: ReturnType<typeof setTimeout> | null = null;
+	let complexityFlashRegionKey = $state('');
 
 	// DOM refs
 	let container: HTMLDivElement;
@@ -148,6 +155,7 @@
 	// Reactive viewport height of the scrollable content area. Drives line
 	// virtualization (only rows within scrollTop +/- viewport + overscan render).
 	let viewportHeight = $state(FALLBACK_VIEWPORT_HEIGHT);
+	let viewportWidth = $state(0);
 
 	// Selection rendering
 	let cursorVisible = $state(true);
@@ -545,6 +553,43 @@
 		foldManager.expandAll();
 	}
 
+	function getComplexityRegionKey(region: ComplexityRegion): string {
+		return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.score}`;
+	}
+
+	export function flashComplexityRegion(region: ComplexityRegion) {
+		if (complexityFlashTimeout) {
+			clearTimeout(complexityFlashTimeout);
+		}
+
+		complexityFlashRegionKey = '';
+		requestAnimationFrame(() => {
+			complexityFlashRegionKey = getComplexityRegionKey(region);
+			complexityFlashTimeout = setTimeout(() => {
+				complexityFlashRegionKey = '';
+				complexityFlashTimeout = null;
+			}, 1000);
+		});
+	}
+
+	/**
+	 * Imperative API (accessible via `bind:this`): scroll a raw document line into
+	 * view and optionally flash the matching complexity region.
+	 */
+	export async function scrollToLine(line: number, region?: ComplexityRegion) {
+		await tick();
+		if (!editorContent) return;
+
+		const row = lineToVisualRow(line);
+		const targetTop = row * lineHeight;
+		editorContent.scrollTop = Math.max(0, targetTop - editorContent.clientHeight * 0.3);
+
+		if (region) {
+			flashComplexityRegion(region);
+		}
+		hiddenInput?.focus();
+	}
+
 	function handleFoldIndicatorClick(lineNumber: number, e: MouseEvent) {
 		e.preventDefault();
 		e.stopPropagation();
@@ -579,6 +624,16 @@
 	// Total scrollable content height (in px) for the full document, accounting
 	// for folded/hidden lines. Drives the spacer so the scrollbar stays correct.
 	let totalContentHeight = $derived(Math.max(visibleLines.length, 1) * lineHeight);
+	let estimatedContentWidth = $derived.by(() => {
+		let maxLineLength = 0;
+		for (const line of lines) {
+			maxLineLength = Math.max(maxLineLength, line?.text.length ?? 0);
+		}
+		return Math.max(
+			viewportWidth,
+			gutterWidth + CONTENT_PADDING + maxLineLength * charWidth + CONTENT_PADDING
+		);
+	});
 
 	// Windowed slice of visibleLines: only the rows intersecting the viewport
 	// (plus overscan) are rendered to the DOM. Each entry keeps its absolute
@@ -768,6 +823,9 @@
 	$effect(() => {
 		if (editorState && language !== editorState.language) {
 			editorState.setLanguage(language);
+			if (complexityHighlighting) {
+				updateComplexityMetrics();
+			}
 		}
 	});
 
@@ -813,6 +871,7 @@
 		// Measure the initial viewport height for line virtualization.
 		if (editorContent) {
 			viewportHeight = editorContent.clientHeight || FALLBACK_VIEWPORT_HEIGHT;
+			viewportWidth = editorContent.clientWidth || 0;
 		}
 
 		// Register semantic fold commands for the command palette
@@ -845,6 +904,7 @@
 			inputHandlers.measureCharacter();
 			if (editorContent) {
 				viewportHeight = editorContent.clientHeight || FALLBACK_VIEWPORT_HEIGHT;
+				viewportWidth = editorContent.clientWidth || 0;
 			}
 		});
 		if (container) {
@@ -890,6 +950,11 @@
 			if (complexityUpdateTimeout) {
 				clearTimeout(complexityUpdateTimeout);
 				complexityUpdateTimeout = null;
+			}
+
+			if (complexityFlashTimeout) {
+				clearTimeout(complexityFlashTimeout);
+				complexityFlashTimeout = null;
 			}
 
 			// Clean up semantic fold command registration
@@ -1001,13 +1066,27 @@
 	>
 		<!-- Complexity highlighting layer (bottommost) -->
 		{#if complexityHighlighting && complexityMetrics}
+			<ComplexityHeatLayer
+				metrics={complexityMetrics}
+				{lineHeight}
+				{gutterWidth}
+				totalHeight={totalContentHeight}
+				contentWidth={estimatedContentWidth}
+				minScore={complexityThreshold}
+				enabled={complexityHighlighting}
+				flashRegionKey={complexityFlashRegionKey}
+				lineToVisualRow={(line) => lineToVisualRow(line)}
+			/>
 			<ComplexityLayer
 				metrics={complexityMetrics}
 				{lineHeight}
 				{gutterWidth}
 				totalHeight={totalContentHeight}
+				contentWidth={estimatedContentWidth}
 				minScore={complexityThreshold}
 				enabled={complexityHighlighting}
+				flashRegionKey={complexityFlashRegionKey}
+				lineToVisualRow={(line) => lineToVisualRow(line)}
 			/>
 		{/if}
 

@@ -79,7 +79,10 @@
 	/* IDE Semantic Colors */
 	--ide-success: var(--color-nocturnium-aurora-green);
 	--ide-warning: var(--color-nocturnium-aurora-yellow);
-	--ide-error: #ef4444;
+	/* Lightened from #ef4444 (~4.1:1 on the secondary panel #1a2744, below AA)
+	   to ~5.5:1 so the critical band is AA-safe as small text, not only as the
+	   large/bold score numerals. */
+	--ide-error: #f87171;
 	--ide-info: var(--color-nocturnium-aurora-blue);
 
 	/* AI Panel Colors */

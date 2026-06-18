@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createEditorFind, type EditorFindDeps } from './editor-find';
+import { createEditorFind, type EditorFindDeps, type MatchRect } from './editor-find';
+import type { SearchMatch } from './core';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -315,6 +316,48 @@ describe('computeMatchRects', () => {
 		contentPadding: 8
 	};
 
+	function legacyComputeMatchRects(
+		matches: SearchMatch[],
+		currentIndex: number,
+		localViewport: typeof viewport,
+		lineToVisualRow: (line: number) => number
+	): MatchRect[] {
+		const firstVisibleRow = Math.max(
+			0,
+			Math.floor(localViewport.scrollTop / measurements.lineHeight) - 1
+		);
+		const lastVisibleRow = Math.max(
+			0,
+			Math.ceil(
+				(localViewport.scrollTop + localViewport.viewportHeight) / measurements.lineHeight
+			) + 1
+		);
+		const rects: MatchRect[] = [];
+
+		for (let i = 0; i < matches.length; i++) {
+			const match = matches[i];
+			const visualRow = lineToVisualRow(match.line);
+
+			if (visualRow < firstVisibleRow || visualRow > lastVisibleRow) continue;
+
+			const width = (match.endColumn - match.startColumn) * measurements.charWidth;
+			if (width <= 0) continue;
+
+			rects.push({
+				top: visualRow * measurements.lineHeight,
+				left:
+					measurements.gutterWidth +
+					measurements.contentPadding +
+					match.startColumn * measurements.charWidth,
+				width,
+				height: measurements.lineHeight,
+				isCurrent: i === currentIndex
+			});
+		}
+
+		return rects;
+	}
+
 	it('should return empty array when no matches', () => {
 		const finder = createEditorFind(makeDeps());
 		const rects = finder.computeMatchRects(viewport, measurements);
@@ -374,5 +417,34 @@ describe('computeMatchRects', () => {
 		expect(current).toBeDefined();
 		// Current should be the second match (line 2)
 		expect(current!.top).toBe(2 * 20);
+	});
+
+	it('should match legacy full-scan rect output while scanning only visible matches', () => {
+		const manyLines = Array.from({ length: 10000 }, () => ({ text: 'hit value' }));
+		const lineToVisualRow = vi.fn((line: number) => line);
+		const finder = createEditorFind(
+			makeDeps({
+				getLines: () => manyLines,
+				getLineCount: () => manyLines.length,
+				lineToVisualRow
+			})
+		);
+		finder.setQuery('hit');
+
+		lineToVisualRow.mockClear();
+		const deepViewport = { scrollTop: 5000 * measurements.lineHeight, viewportHeight: 120 };
+		const optimized = finder.computeMatchRects(deepViewport, measurements);
+		const optimizedCalls = lineToVisualRow.mock.calls.length;
+		const legacy = legacyComputeMatchRects(
+			finder.matches,
+			finder.currentIndex,
+			deepViewport,
+			(line) => line
+		);
+
+		expect(optimized).toEqual(legacy);
+		expect(optimized.length).toBeGreaterThan(0);
+		expect(optimizedCalls).toBeLessThan(100);
+		expect(optimizedCalls).toBeLessThan(finder.matches.length);
 	});
 });

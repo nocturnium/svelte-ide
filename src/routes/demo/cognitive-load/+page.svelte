@@ -2,7 +2,7 @@
 	/**
 	 * Cognitive Load & Ghost Pair Demo
 	 *
-	 * Demonstrates the Phase 1 killer features:
+	 * Demonstrates cognitive load and AI presence features:
 	 * - Cognitive Load Meter: Real-time code complexity visualization
 	 * - Ghost Pair: AI cursor and focus visualization
 	 */
@@ -11,6 +11,7 @@
 	import CognitiveLoadMeter from '$lib/components/editor/CognitiveLoadMeter.svelte';
 	import {
 		type ComplexityMetrics,
+		type ComplexityRegion,
 		type AIAwareness,
 		createAIAwareness
 	} from '$lib/components/editor/core';
@@ -28,14 +29,14 @@ function add(a: number, b: number): number {
 /**
  * Medium complexity - nested conditionals
  */
-function processUser(user: User | null): string {
+function processUser(user: User | null, request: RequestContext): string {
 	if (!user) {
 		return 'No user';
 	}
 
 	if (user.role === 'admin') {
 		if (user.permissions.includes('write')) {
-			return 'Admin with write access';
+			return request.channel === 'api' ? 'Admin API write access' : 'Admin with write access';
 		} else {
 			return 'Admin readonly';
 		}
@@ -45,7 +46,39 @@ function processUser(user: User | null): string {
 }
 
 /**
- * HIGH COMPLEXITY - Multiple nested loops and conditionals
+ * High complexity - validation rules with branching
+ */
+function validateCheckout(cart: Cart, customer: Customer, flags: FeatureFlags): ValidationResult {
+	const errors: string[] = [];
+
+	for (const item of cart.items) {
+		if (item.quantity <= 0) {
+			errors.push('Invalid quantity');
+		} else if (item.quantity > item.stock) {
+			errors.push('Insufficient stock');
+		}
+
+		if (item.requiresApproval && !customer.isVerified) {
+			errors.push('Verification required');
+		}
+	}
+
+	if (flags.strictApprovals && customer.balance < cart.total) {
+		errors.push('Payment review required');
+	}
+
+	if (cart.coupon?.expired) {
+		errors.push('Coupon expired');
+	}
+
+	return {
+		ok: errors.length === 0,
+		errors
+	};
+}
+
+/**
+ * Critical complexity - Multiple nested loops and conditionals
  * This function would benefit from refactoring!
  */
 function analyzeDataMatrix(
@@ -106,6 +139,24 @@ function analyzeDataMatrix(
 						}
 					}
 				}
+
+				if (config.audit) {
+					for (const rule of config.audit.rules) {
+						if (rule.enabled) {
+							if (rule.mode === 'strict') {
+								if (cell > rule.limit) {
+									if (config.audit.onViolation) {
+										config.audit.onViolation(rule, cell, i, j);
+									}
+								}
+							} else if (rule.mode === 'sampled') {
+								if ((i + j) % rule.sampleRate === 0 && cell > rule.limit) {
+									results.push(rule.limit);
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -127,9 +178,26 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	// Track complexity metrics
 	let complexityMetrics = $state<ComplexityMetrics | null>(null);
 	let content = $state(complexCode);
+	let selectedLanguage = $state('typescript');
+	let editorRef = $state<CustomEditor | null>(null);
+
+	const languageOptions = ['javascript', 'typescript', 'python', 'go'];
+
+	let hottestRegion = $derived.by(() => {
+		if (!complexityMetrics || complexityMetrics.regions.length === 0) return null;
+		return complexityMetrics.regions.reduce<ComplexityRegion | null>((hottest, region) => {
+			if (!hottest || region.score > hottest.score) return region;
+			return hottest;
+		}, null);
+	});
 
 	function handleComplexityChange(metrics: ComplexityMetrics | null) {
 		complexityMetrics = metrics;
+	}
+
+	function jumpToHottestRegion() {
+		if (!hottestRegion) return;
+		editorRef?.scrollToLine(hottestRegion.startLine, hottestRegion);
 	}
 
 	// Demo AI agents for Ghost Pair visualization
@@ -258,7 +326,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 <div class="demo-page">
 	<header class="page-header">
 		<h1>Cognitive Load & Ghost Pair</h1>
-		<p>Phase 1 killer features: real-time complexity visualization and AI presence</p>
+		<p>Real-time complexity visualization and AI presence</p>
 	</header>
 
 	<!-- Cognitive Load Meter Demo -->
@@ -271,17 +339,33 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 		<!-- Standalone meter display -->
 		<div class="meter-showcase">
-			<div class="meter-card">
+			<button
+				type="button"
+				class="meter-card"
+				class:meter-card--interactive={!!hottestRegion}
+				onclick={jumpToHottestRegion}
+				disabled={!hottestRegion}
+				aria-label={hottestRegion
+					? `Jump to hottest region ${hottestRegion.name || hottestRegion.type}, score ${hottestRegion.score}`
+					: 'No complex region to jump to'}
+			>
 				<span class="meter-label">Current File Complexity</span>
 				<CognitiveLoadMeter metrics={complexityMetrics} showDetails={true} />
-			</div>
+				<span class="meter-hotspot">
+					{#if hottestRegion}
+						hottest: {hottestRegion.name || hottestRegion.type} - {hottestRegion.score}
+					{:else}
+						hottest: none
+					{/if}
+				</span>
+			</button>
 
 			{#if complexityMetrics}
 				<div class="metrics-summary">
 					<div class="metric">
 						<span
-							class="metric-value"
-							style="color: {complexityMetrics.level === 'critical'
+							class="metric-value metric-value--heat"
+							style="--metric-color: {complexityMetrics.level === 'critical'
 								? 'var(--ide-error)'
 								: complexityMetrics.level === 'high'
 									? 'var(--ide-warning)'
@@ -301,6 +385,24 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					</div>
 				</div>
 			{/if}
+		</div>
+
+		<div class="paste-panel">
+			<div class="paste-panel__header">
+				<label for="code-language">Language</label>
+				<select id="code-language" bind:value={selectedLanguage}>
+					{#each languageOptions as option (option)}
+						<option value={option}>{option}</option>
+					{/each}
+				</select>
+			</div>
+			<label class="paste-panel__label" for="visitor-code">Paste your code</label>
+			<textarea
+				id="visitor-code"
+				bind:value={content}
+				spellcheck={false}
+				placeholder="Paste JavaScript, TypeScript, Python, or Go here"
+			></textarea>
 		</div>
 
 		<!-- Legend (ranges match the analyzer's complexity levels) -->
@@ -374,12 +476,13 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 		<div class="editor-container">
 			<CustomEditor
+				bind:this={editorRef}
 				{content}
 				onChange={(value) => (content = value)}
-				language="typescript"
+				language={selectedLanguage}
 				readonly={false}
 				complexityHighlighting={true}
-				complexityThreshold={50}
+				complexityThreshold={30}
 				{aiAgents}
 				showAILabels={true}
 				showAIFocusRegions={true}
@@ -545,6 +648,13 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+		align-items: flex-start;
+		padding: 0;
+		background: transparent;
+		border: 0;
+		color: inherit;
+		font: inherit;
+		text-align: left;
 	}
 
 	.meter-label {
@@ -552,6 +662,30 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		color: var(--ide-text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+	}
+
+	.meter-card--interactive {
+		cursor: pointer;
+	}
+
+	.meter-card--interactive:hover .meter-hotspot {
+		color: var(--ide-text-primary);
+	}
+
+	.meter-card:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus, var(--ide-info));
+		outline-offset: 4px;
+		border-radius: 4px;
+	}
+
+	.meter-card:disabled {
+		cursor: default;
+	}
+
+	.meter-hotspot {
+		font-size: 0.75rem;
+		color: var(--ide-text-muted);
+		transition: color 0.15s ease;
 	}
 
 	.metrics-summary {
@@ -576,10 +710,94 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		font-variant-numeric: tabular-nums;
 	}
 
+	.metric-value--heat {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 44px;
+		height: 30px;
+		padding: 0 10px;
+		border: 1px solid color-mix(in srgb, var(--metric-color) 65%, transparent);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--metric-color) 18%, var(--ide-bg-primary));
+		box-shadow:
+			0 0 18px color-mix(in srgb, var(--metric-color) 32%, transparent),
+			inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+		color: var(--metric-color);
+		font-size: 22px;
+		font-weight: 800;
+		line-height: 1;
+		text-shadow: 0 0 12px color-mix(in srgb, var(--metric-color) 48%, transparent);
+		box-sizing: border-box;
+	}
+
 	.metric-label {
 		font-size: 0.8125rem;
 		color: var(--ide-text-muted);
 		text-align: center;
+	}
+
+	/* Paste Panel */
+	.paste-panel {
+		display: grid;
+		gap: 0.75rem;
+		padding: 1rem;
+		margin-bottom: 1.5rem;
+		background: var(--ide-bg-secondary);
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
+	}
+
+	.paste-panel__header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.paste-panel__header label,
+	.paste-panel__label {
+		font-size: 0.75rem;
+		color: var(--ide-text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.paste-panel select,
+	.paste-panel textarea {
+		background: var(--ide-bg-primary);
+		border: 1px solid var(--ide-border);
+		border-radius: 6px;
+		color: var(--ide-text-primary);
+		font: inherit;
+	}
+
+	.paste-panel select {
+		padding: 0.45rem 2rem 0.45rem 0.65rem;
+		color: var(--ide-text-secondary);
+		/* Replace the native OS dropdown chrome with a themed chevron. */
+		appearance: none;
+		-webkit-appearance: none;
+		cursor: pointer;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' stroke='%23a8c5d9' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 0.65rem center;
+	}
+
+	.paste-panel textarea {
+		width: 100%;
+		min-height: 150px;
+		padding: 0.75rem;
+		font-family: var(--ide-font-mono);
+		font-size: 0.8125rem;
+		line-height: 1.5;
+		resize: vertical;
+	}
+
+	.paste-panel select:focus-visible,
+	.paste-panel textarea:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus, var(--ide-info));
+		outline-offset: 2px;
 	}
 
 	/* Complexity Legend */

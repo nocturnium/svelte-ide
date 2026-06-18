@@ -233,9 +233,10 @@ describe('ComplexityAnalyzer', () => {
 			expect(add.endLine).toBe(4);
 			expect(analyzeDataMatrix.startLine).toBe(6);
 			expect(analyzeDataMatrix.endLine).toBe(27);
+			expect(analyzeDataMatrix.cognitiveComplexity).toBe(17);
 			expect(add.score).toBeLessThan(30);
 			// This nested loop/branch function is firmly "high" complexity; the
-			// deeper demo sample reaches critical (100). See WEIGHTS calibration.
+			// deeper demo sample reaches critical (100). See COGNITIVE_SCORE_MULTIPLIER calibration.
 			expect(analyzeDataMatrix.score).toBeGreaterThanOrEqual(80);
 			expect(analyzeDataMatrix.score).toBeGreaterThan(add.score);
 		});
@@ -269,6 +270,282 @@ describe('ComplexityAnalyzer', () => {
 		});
 	});
 
+	describe('cognitive complexity (SonarSource)', () => {
+		const cases: Array<{
+			id: string;
+			language: string;
+			expected: number;
+			code: string;
+			regionName?: string;
+		}> = [
+			{
+				id: 'JS-1',
+				language: 'javascript',
+				expected: 7,
+				regionName: 'sumOfPrimes',
+				code: [
+					'function sumOfPrimes(max) {',
+					'  let total = 0;',
+					'  outer: for (let i = 1; i <= max; i++) {',
+					'    for (let j = 2; j < i; j++) {',
+					'      if (i % j === 0) {',
+					'        continue outer;',
+					'      }',
+					'    }',
+					'    total += i;',
+					'  }',
+					'  return total;',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'DW-1',
+				language: 'javascript',
+				expected: 1,
+				regionName: 'loopOnce',
+				code: ['function loopOnce(c) {', '  do {', '    work();', '  } while (c);', '}'].join('\n')
+			},
+			{
+				id: 'DW-2',
+				language: 'javascript',
+				expected: 3,
+				regionName: 'loopGuard',
+				code: [
+					'function loopGuard(a, c) {',
+					'  do {',
+					'    if (a) {',
+					'      x();',
+					'    }',
+					'  } while (c);',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'JS-2',
+				language: 'javascript',
+				expected: 1,
+				regionName: 'getWords',
+				code: [
+					'function getWords(number) {',
+					'  switch (number) {',
+					'    case 1: return "one";',
+					'    case 2: return "two";',
+					'    case 3: return "three";',
+					'    default: return "lots";',
+					'  }',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'JS-3',
+				language: 'javascript',
+				expected: 5,
+				regionName: 'classify',
+				code: [
+					'function classify(x, y) {',
+					'  if (x > 0 && y > 0) {',
+					'    return "positive";',
+					'  } else if (x < 0 || y < 0) {',
+					'    return "negative";',
+					'  } else {',
+					'    return "mixed";',
+					'  }',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'JS-4',
+				language: 'javascript',
+				expected: 4,
+				regionName: 'check',
+				code: [
+					'function check(a, b) {',
+					'  if (a) {',
+					'    if (b) {}',
+					'  } else if (b) {}',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'JS-5',
+				language: 'javascript',
+				expected: 3,
+				code: 'const choose = (a, b, c, d) => (a && b || c) ? d : 0;'
+			},
+			{
+				id: 'TS-6',
+				language: 'typescript',
+				expected: 3,
+				regionName: 'setup',
+				code: [
+					'function setup(items: number[]) {',
+					'  items.forEach((it) => {',
+					'    if (it > 0) {}',
+					'  });',
+					'  if (items.length === 0) {}',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'TS-7',
+				language: 'typescript',
+				expected: 9,
+				regionName: 'myMethod',
+				code: [
+					'function myMethod(c1: boolean, c2: boolean) {',
+					'  try {',
+					'    if (c1) {',
+					'      for (const item of items) {',
+					'        while (c2) {}',
+					'      }',
+					'    }',
+					'  } catch (e) {',
+					'    if (c2) {}',
+					'  }',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'PY-1',
+				language: 'python',
+				expected: 7,
+				regionName: 'sum_of_primes',
+				code: [
+					'def sum_of_primes(max):',
+					'    total = 0',
+					'    for i in range(1, max + 1):',
+					'        for j in range(2, i):',
+					'            if i % j == 0:',
+					'                break',
+					'        else:',
+					'            total += i',
+					'    return total'
+				].join('\n')
+			},
+			{
+				id: 'PY-2',
+				language: 'python',
+				expected: 5,
+				regionName: 'validate',
+				code: [
+					'def validate(user):',
+					'    if user.active and user.email:',
+					'        return True',
+					'    elif user.admin or user.owner:',
+					'        return True',
+					'    try:',
+					'        return bool(user.id)',
+					'    except ValueError:',
+					'        return False'
+				].join('\n')
+			},
+			{
+				id: 'PY-3',
+				language: 'python',
+				expected: 2,
+				regionName: 'not_a_decorator',
+				code: [
+					'def not_a_decorator(a, b):',
+					'    my_var = a * b',
+					'    def inner(func):',
+					'        if condition:',
+					'            return func()',
+					'    return inner'
+				].join('\n')
+			},
+			{
+				id: 'GO-1',
+				language: 'go',
+				expected: 7,
+				regionName: 'sumOfPrimes',
+				code: [
+					'func sumOfPrimes(max int) int {',
+					'  total := 0',
+					'Outer:',
+					'  for i := 1; i <= max; i++ {',
+					'    for j := 2; j < i; j++ {',
+					'      if i%j == 0 {',
+					'        continue Outer',
+					'      }',
+					'    }',
+					'    total += i',
+					'  }',
+					'  return total',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'GO-2',
+				language: 'go',
+				expected: 4,
+				regionName: 'route',
+				code: [
+					'func route(x int, ok bool, ready bool) string {',
+					'  switch x {',
+					'  case 1:',
+					'    return "one"',
+					'  default:',
+					'    return "other"',
+					'  }',
+					'  if ok && ready || x > 0 {',
+					'    return "ready"',
+					'  }',
+					'  return "no"',
+					'}'
+				].join('\n')
+			},
+			{
+				id: 'GO-3',
+				language: 'go',
+				expected: 5,
+				regionName: 'process',
+				code: [
+					'func process(items []int) {',
+					'  handle := func(v int) {',
+					'    if v > 0 {}',
+					'  }',
+					'  for _, it := range items {',
+					'    if it%2 == 0 {',
+					'      handle(it)',
+					'    }',
+					'  }',
+					'}'
+				].join('\n')
+			}
+		];
+
+		for (const oracle of cases) {
+			it(`${oracle.id} returns exact cognitive complexity ${oracle.expected}`, () => {
+				const result = analyzer.analyze(makeLines(oracle.code), oracle.language);
+				const region = oracle.regionName
+					? result.regions.find((r) => r.name === oracle.regionName)
+					: result.regions[0];
+
+				expect(region, `${oracle.id} region`).toBeDefined();
+				expect(region!.cognitiveComplexity).toBe(oracle.expected);
+			});
+		}
+
+		it('keeps contribution and total cognitive complexity invariants', () => {
+			for (const oracle of cases) {
+				const result = analyzer.analyze(makeLines(oracle.code), oracle.language);
+				for (const region of result.regions) {
+					const sum = region.contributions.reduce(
+						(total, contribution) => total + contribution.increment,
+						0
+					);
+					expect(sum, `${oracle.id} ${region.name ?? region.type}`).toBe(
+						region.cognitiveComplexity
+					);
+				}
+
+				expect(result.totalCognitiveComplexity, oracle.id).toBe(
+					result.regions.reduce((total, region) => total + region.cognitiveComplexity, 0)
+				);
+			}
+		});
+	});
+
 	describe('getLineComplexity', () => {
 		it('reports the highest score among overlapping regions', () => {
 			const factors = {
@@ -282,9 +559,26 @@ describe('ComplexityAnalyzer', () => {
 				overall: 0,
 				level: 'low' as const,
 				hotspots: [],
+				totalCognitiveComplexity: 0,
 				regions: [
-					{ startLine: 0, endLine: 20, score: 90, type: 'function' as const, factors },
-					{ startLine: 5, endLine: 8, score: 40, type: 'block' as const, factors }
+					{
+						startLine: 0,
+						endLine: 20,
+						score: 90,
+						type: 'function' as const,
+						factors,
+						cognitiveComplexity: 0,
+						contributions: []
+					},
+					{
+						startLine: 5,
+						endLine: 8,
+						score: 40,
+						type: 'block' as const,
+						factors,
+						cognitiveComplexity: 0,
+						contributions: []
+					}
 				]
 			};
 			// Line 6 sits inside both the score-40 inner block and the score-90
@@ -597,6 +891,8 @@ describe('ComplexityAnalyzer', () => {
 		it('should produce low score for trivial function', () => {
 			const lines = makeLines(`function add(a, b) {\n  return a + b;\n}`);
 			const result = analyzer.analyze(lines);
+			expect(result.totalCognitiveComplexity).toBe(0);
+			expect(result.regions[0].cognitiveComplexity).toBe(0);
 			expect(result.level).toBe('low');
 			expect(result.overall).toBeLessThan(30);
 		});
@@ -636,6 +932,7 @@ describe('ComplexityAnalyzer', () => {
 			);
 
 			const result = analyzer.analyze(lines);
+			expect(result.regions[0].cognitiveComplexity).toBe(16);
 			expect(result.overall).toBeGreaterThan(30);
 		});
 

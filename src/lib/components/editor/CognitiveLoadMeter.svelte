@@ -156,6 +156,20 @@
 	{/if}
 </div>
 
+<!-- Always-available screen-reader equivalent of the visual, hover-only per-region
+     complexity breakdown. The thermal map and the hover tooltip are decorative/sighted,
+     so this exposes the same cognitive-load data to assistive technology. -->
+{#if metrics && highComplexityRegions.length > 0}
+	<div class="cognitive-meter__sr-only">
+		Overall cognitive complexity {score} out of 100, {levelLabel}. {highComplexityRegions.length}
+		high-complexity {highComplexityRegions.length === 1 ? 'region' : 'regions'}:
+		{#each highComplexityRegions.slice(0, 8) as region (region.startLine)}
+			{region.name || `${region.type} at line ${region.startLine + 1}`}, cognitive complexity
+			{region.cognitiveComplexity}, score {region.score} out of 100.
+		{/each}
+	</div>
+{/if}
+
 <style>
 	.cognitive-meter {
 		display: flex;
@@ -322,5 +336,18 @@
 		font-size: 11px;
 		color: var(--ide-text-muted, #a8c5d9);
 		line-height: 1.4;
+	}
+
+	/* Visually hidden, but exposed to assistive technology. */
+	.cognitive-meter__sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>

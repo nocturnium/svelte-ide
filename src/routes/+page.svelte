@@ -10,29 +10,32 @@
 
 	// Live editor showcased in the hero, lazy-mounted and read-only (edits are
 	// discarded so the sample always reads cleanly).
-	const heroSample = `import { CustomEditor } from '@nocturnium/svelte-ide';
-import '@nocturnium/svelte-ide/theme.css';
+	const heroSample = `type Signal = {
+  kind: 'error' | 'latency' | 'memory';
+  count: number;
+  owner?: string;
+};
 
-// A real editor — folding, multi-cursor, find/replace,
-// syntax highlighting for 12 languages. Zero CodeMirror.
-interface Snippet {
-  id: string;
-  language: 'ts' | 'go' | 'python' | 'svelte';
-  source: string;
+export function triageLoad(
+  signals: Signal[],
+  queueDepth: number
+): string {
+  let score = 0;
+  for (const signal of signals) {
+    if (signal.kind === 'error') {
+      if (signal.count > 3 && queueDepth > 20) {
+        if (signal.owner) score += signal.count * 6;
+        else if (queueDepth > 80) score += 24;
+        else score += 12;
+      } else {
+        score += 3;
+      }
+    } else if (signal.count > 5) {
+      score += 10;
+    }
+  }
+  return score > 80 ? 'critical' : 'clear';
 }
-
-export function highlight(snippet: Snippet): Token[] {
-  const lexer = createLexer(snippet.language);
-  return lexer.tokenize(snippet.source).map((tok) => ({
-    ...tok,
-    className: \`token-\${tok.scope}\`
-  }));
-}
-
-const editor = mount(CustomEditor, {
-  target: document.querySelector('#app')!,
-  props: { content: snippet.source, language: 'typescript' }
-});
 `;
 	let heroContent = $state(heroSample);
 
@@ -122,7 +125,7 @@ const editor = mount(CustomEditor, {
 				'Multi-cursor, column selection, find & replace with regex, code folding, and virtualized rendering that stays smooth at 10k+ lines.'
 		},
 		{
-			icon: '◈',
+			icon: '✦',
 			title: 'AI panel surface',
 			description:
 				'A built-in demo assistant panel for wiring your own model backend, plus inline edit previews and ghost-cursor visualization for AI pairing.'
@@ -260,14 +263,15 @@ const editor = mount(CustomEditor, {
 			<div class="hero-copy">
 				<div class="eyebrow">
 					<Badge variant="info">v{__APP_VERSION__}</Badge>
-					<span class="eyebrow-text">Zero-dependency editor core</span>
+					<span class="eyebrow-text">Live cognitive-load thermal map</span>
 				</div>
 				<h1 id="hero-title">
-					The IDE toolkit for <span class="grad">Svelte 5</span>.
+					See your code's <span class="grad">cognitive load</span> as a live visual layer.
 				</h1>
 				<p class="lede">
-					Build code editors, AI assistants, and collaborative tools with one runes-native component
-					library. No CodeMirror. No Monaco. Just Svelte — fast, themeable, and production-ready.
+					A from-scratch, Svelte 5-native editor for code editors, AI assistants, and collaborative
+					tools. No CodeMirror, no Monaco, zero runtime editor deps — just Svelte, fast, themeable,
+					and production-ready.
 				</p>
 				<div class="hero-actions">
 					<Button variant="primary" size="lg" onclick={() => goto(resolve('/demo/editor'))}>
@@ -294,7 +298,7 @@ const editor = mount(CustomEditor, {
 						<span class="dot dot--red" aria-hidden="true"></span>
 						<span class="dot dot--amber" aria-hidden="true"></span>
 						<span class="dot dot--green" aria-hidden="true"></span>
-						<span class="window-title">highlight.ts</span>
+						<span class="window-title">cognitive-load.ts</span>
 						<Badge variant="primary">live</Badge>
 					</div>
 					<div class="window-body" bind:this={heroEditorHost}>
@@ -305,7 +309,7 @@ const editor = mount(CustomEditor, {
 								readonly
 								folding
 								multiCursor
-								complexityHighlighting={false}
+								complexityHighlighting={true}
 							/>
 						{:else}
 							<!-- Lightweight syntax-highlighted paint shown until the live
@@ -515,10 +519,10 @@ const editor = mount(CustomEditor, {
 	/* Hero */
 	.hero {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+		grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.28fr);
 		gap: var(--ide-spacing-2xl);
 		align-items: center;
-		max-width: 1200px;
+		max-width: 1240px;
 		margin: 0 auto;
 		padding: var(--ide-spacing-3xl) var(--ide-spacing-xl) var(--ide-spacing-2xl);
 	}
@@ -665,113 +669,18 @@ const editor = mount(CustomEditor, {
 		tab-size: 2;
 	}
 
-	/* Token colors for tokenizer-rendered HTML (hero static paint + quick-start code).
-	   These mirror the live CustomEditor palette so the static paint is seamless.
-	   Scoped under .landing so they don't leak to the rest of the app. */
-	.landing :global(.token-comment),
-	.landing :global(.token-comment-line),
-	.landing :global(.token-comment-block),
-	.landing :global(.token-comment-doc) {
-		color: var(--ide-text-muted);
-		font-style: italic;
-	}
-	.landing :global(.token-string),
-	.landing :global(.token-string-template) {
-		color: var(--color-nocturnium-aurora-green);
-	}
-	.landing :global(.token-string-regex) {
-		color: var(--color-nocturnium-aurora-pink);
-	}
-	.landing :global(.token-string-escape) {
-		color: var(--color-nocturnium-aurora-yellow);
-	}
-	.landing :global(.token-number),
-	.landing :global(.token-number-integer),
-	.landing :global(.token-number-float),
-	.landing :global(.token-number-hex),
-	.landing :global(.token-number-binary) {
-		color: var(--color-nocturnium-aurora-yellow);
-	}
-	.landing :global(.token-keyword),
-	.landing :global(.token-keyword-control),
-	.landing :global(.token-keyword-operator),
-	.landing :global(.token-keyword-definition),
-	.landing :global(.token-keyword-module),
-	.landing :global(.token-keyword-storage) {
-		color: var(--color-nocturnium-aurora-purple);
-	}
-	.landing :global(.token-operator),
-	.landing :global(.token-operator-arithmetic),
-	.landing :global(.token-operator-comparison),
-	.landing :global(.token-operator-logical),
-	.landing :global(.token-operator-assignment),
-	.landing :global(.token-variable) {
-		color: var(--ide-text-primary);
-	}
-	.landing :global(.token-variable-definition) {
-		color: var(--color-nocturnium-wave);
-	}
-	.landing :global(.token-variable-parameter) {
-		color: color-mix(in srgb, var(--color-nocturnium-wave) 80%, var(--ide-text-muted));
-	}
-	.landing :global(.token-function),
-	.landing :global(.token-function-definition),
-	.landing :global(.token-function-call) {
-		color: var(--color-nocturnium-aurora-blue);
-	}
-	.landing :global(.token-property),
-	.landing :global(.token-property-definition) {
-		color: var(--color-nocturnium-wave);
-	}
-	.landing :global(.token-type),
-	.landing :global(.token-type-class),
-	.landing :global(.token-type-interface),
-	.landing :global(.token-type-namespace),
-	.landing :global(.token-type-builtin) {
-		color: var(--color-nocturnium-teal);
-	}
-	.landing :global(.token-constant),
-	.landing :global(.token-constant-boolean),
-	.landing :global(.token-constant-null),
-	.landing :global(.token-constant-builtin) {
-		color: var(--color-nocturnium-aurora-yellow);
-	}
-	.landing :global(.token-punctuation),
-	.landing :global(.token-punctuation-bracket),
-	.landing :global(.token-punctuation-paren),
-	.landing :global(.token-punctuation-separator),
-	.landing :global(.token-punctuation-accessor) {
-		color: var(--ide-text-secondary);
-	}
-	.landing :global(.token-punctuation-brace) {
-		color: var(--color-nocturnium-aurora-yellow);
-		font-weight: 600;
-	}
-	.landing :global(.token-tag),
-	.landing :global(.token-tag-name) {
-		color: var(--color-nocturnium-aurora-pink);
-	}
-	.landing :global(.token-tag-attribute) {
-		color: var(--color-nocturnium-aurora-yellow);
-	}
-	.landing :global(.token-tag-attribute-value) {
-		color: var(--color-nocturnium-aurora-green);
-	}
-	.landing :global(.token-tag-punctuation) {
-		color: var(--ide-text-secondary);
-	}
-
 	.hero-editor-glow {
 		position: absolute;
 		inset: 8% 4% -12% 4%;
 		z-index: 0;
 		background: radial-gradient(
 			ellipse at center,
-			color-mix(in srgb, var(--ide-accent) 35%, transparent),
-			transparent 70%
+			color-mix(in srgb, var(--ide-error) 42%, transparent),
+			color-mix(in srgb, var(--color-nocturnium-flame) 24%, transparent) 46%,
+			transparent 72%
 		);
-		filter: blur(48px);
-		opacity: 0.55;
+		filter: blur(56px);
+		opacity: 0.72;
 		pointer-events: none;
 	}
 
@@ -1068,6 +977,12 @@ const editor = mount(CustomEditor, {
 		.code-block {
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
 			mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+		}
+		/* Same scroll affordance for the live hero editor: fade the right edge so a
+		   long line reads as scrollable rather than hard-clipped mid-token. */
+		.window-body {
+			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+			mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
 		}
 	}
 </style>

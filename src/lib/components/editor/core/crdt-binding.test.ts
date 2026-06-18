@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as Y from 'yjs';
 import {
 	CRDTBinding,
@@ -274,6 +274,24 @@ describe('CRDT -> editor propagation', () => {
 		expect(editor.lines[0]?.text).toBe('line1');
 		expect(editor.lines[1]?.text).toBe('line2');
 		expect(editor.lines[2]?.text).toBe('line3');
+		binding.destroy();
+	});
+
+	it('applies remote insert and delete deltas without full document setContent', () => {
+		const { binding, doc, editor } = makeBinding('hello world');
+		const text = doc.getText('content');
+		const setContentSpy = vi.spyOn(editor, 'setContent');
+
+		doc.transact(() => {
+			text.insert(5, ', remote');
+			text.delete(13, 6);
+		});
+
+		expect(editor.getContent()).toBe('hello, remote');
+		expect(text.toString()).toBe('hello, remote');
+		expect(setContentSpy).not.toHaveBeenCalled();
+
+		setContentSpy.mockRestore();
 		binding.destroy();
 	});
 });

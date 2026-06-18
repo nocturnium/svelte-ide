@@ -52,17 +52,38 @@ export interface Line {
 }
 
 /**
+ * A primitive document change, expressed against the document state at the
+ * moment it was applied.
+ */
+export interface HistoryChange {
+	/** Start position of the replaced range */
+	from: Position;
+	/** End position of the replaced range before the change */
+	to: Position;
+	/** Inserted text */
+	text: string;
+	/** Removed text */
+	removed: string;
+}
+
+/**
  * History entry for undo/redo
  */
 export interface HistoryEntry {
-	/** Document content before this change */
-	content: string;
+	/** Primitive changes in the order they were applied */
+	changes: HistoryChange[];
 	/** Selection state before this change (deprecated, use cursors) */
 	selection: Selection;
 	/** All cursors state before this change */
 	cursors?: Cursor[];
 	/** Primary cursor ID */
 	primaryCursorId?: string;
+	/** Selection state after this change (deprecated, use afterCursors) */
+	afterSelection: Selection;
+	/** All cursors state after this change */
+	afterCursors?: Cursor[];
+	/** Primary cursor ID after this change */
+	afterPrimaryCursorId?: string;
 	/** Timestamp of the change */
 	timestamp: number;
 }
@@ -511,7 +532,7 @@ export class EditorState {
 	 * Insert text at all cursor positions
 	 */
 	insert(text: string): void {
-		this.saveHistory('insert');
+		const history = this.beginHistory('insert');
 
 		// Get cursors in reverse order (bottom to top) to maintain position validity
 		const cursors = this._cursorManager.getSortedCursorsReverse();
@@ -526,13 +547,13 @@ export class EditorState {
 			if (!isSelectionEmpty(cursor.selection)) {
 				const start = getSelectionStart(cursor.selection);
 				const end = getSelectionEnd(cursor.selection);
-				this.deleteRangeInternal(start, end);
+				this.deleteRangeInternal(start, end, history.entry.changes);
 				this.transformCursorUpdatesForDelete(updates, start, end);
 				currentPos = start;
 			}
 
 			// Insert text
-			const newPos = this.insertAtInternal(currentPos, text);
+			const newPos = this.insertAtInternal(currentPos, text, history.entry.changes);
 			this.transformCursorUpdatesForInsert(updates, currentPos, text);
 			updates.push({ id: cursor.id, position: newPos });
 		}
@@ -543,14 +564,23 @@ export class EditorState {
 		this.emitChange({ type: 'insert', from: this.cursor, text });
 		this.emitSelectionChange();
 		this.emitCursorChange();
+		this.commitHistory(history, 'insert');
 	}
 
 	/**
 	 * Insert text at a specific position (internal, doesn't update cursor)
 	 * @returns New position after insert
 	 */
-	private insertAtInternal(position: Position, text: string): Position {
+	private insertAtInternal(position: Position, text: string, changes?: HistoryChange[]): Position {
 		const pos = this.clampPosition(position);
+		if (changes) {
+			changes.push({
+				from: this.copyPosition(pos),
+				to: this.copyPosition(pos),
+				text,
+				removed: ''
+			});
+		}
 		const line = this._lines[pos.line];
 		const textLines = text.split('\n');
 
@@ -607,10 +637,11 @@ export class EditorState {
 	 * Insert text at a specific position (public API - single cursor)
 	 */
 	insertAt(position: Position, text: string): void {
-		this.saveHistory('insert');
-		const newPos = this.insertAtInternal(position, text);
+		const history = this.beginHistory('insert');
+		const newPos = this.insertAtInternal(position, text, history.entry.changes);
 		this.setCursor(newPos);
 		this.emitChange({ type: 'insert', from: position, text });
+		this.commitHistory(history, 'insert');
 	}
 
 	/**
@@ -630,7 +661,7 @@ export class EditorState {
 			return;
 		}
 
-		this.saveHistory('delete');
+		const history = this.beginHistory('delete');
 
 		const updates: Array<{ id: string; position: Position }> = [];
 
@@ -638,7 +669,7 @@ export class EditorState {
 			if (!isSelectionEmpty(cursor.selection)) {
 				const start = getSelectionStart(cursor.selection);
 				const end = getSelectionEnd(cursor.selection);
-				this.deleteRangeInternal(start, end);
+				this.deleteRangeInternal(start, end, history.entry.changes);
 				this.transformCursorUpdatesForDelete(updates, start, end);
 
 				updates.push({ id: cursor.id, position: start });
@@ -651,37 +682,54 @@ export class EditorState {
 		this.emitChange({ type: 'delete', from: this.cursor, to: this.cursor });
 		this.emitSelectionChange();
 		this.emitCursorChange();
+		this.commitHistory(history, 'delete');
 	}
 
 	/**
 	 * Delete a range of text (internal, doesn't update cursor)
 	 */
-	private deleteRangeInternal(from: Position, to: Position): void {
-		if (from.line === to.line) {
+	private deleteRangeInternal(from: Position, to: Position, changes?: HistoryChange[]): void {
+		const start = this.clampPosition(from);
+		const end = this.clampPosition(to);
+		if (comparePositions(start, end) >= 0) {
+			return;
+		}
+
+		const removed = this.getTextInRange(start, end);
+		if (changes) {
+			changes.push({
+				from: this.copyPosition(start),
+				to: this.copyPosition(end),
+				text: '',
+				removed
+			});
+		}
+
+		if (start.line === end.line) {
 			// Single line deletion
-			const line = this._lines[from.line];
-			line.text = line.text.slice(0, from.column) + line.text.slice(to.column);
+			const line = this._lines[start.line];
+			line.text = line.text.slice(0, start.column) + line.text.slice(end.column);
 			// Re-tokenize to end of document so removing a multi-line construct
 			// delimiter (e.g. a closing `*/`) re-propagates state to lines below.
-			this.retokenize(from.line, this._lines.length);
+			this.retokenize(start.line, this._lines.length);
 		} else {
 			// Multi-line deletion
-			const firstLine = this._lines[from.line];
-			const lastLine = this._lines[to.line];
+			const firstLine = this._lines[start.line];
+			const lastLine = this._lines[end.line];
 
 			// Merge first and last lines
-			firstLine.text = firstLine.text.slice(0, from.column) + lastLine.text.slice(to.column);
+			firstLine.text = firstLine.text.slice(0, start.column) + lastLine.text.slice(end.column);
 
 			// Remove intermediate lines
-			const removedCount = to.line - from.line;
-			this._lines.splice(from.line + 1, removedCount);
-			this._tokenizerStates.splice(from.line + 1, removedCount);
+			const removedCount = end.line - start.line;
+			this._lines.splice(start.line + 1, removedCount);
+			this._tokenizerStates.splice(start.line + 1, removedCount);
 
 			// Renumber lines
-			this.renumberLines(from.line + 1);
+			this.renumberLines(start.line + 1);
 
 			// Retokenize from affected line to end
-			this.retokenize(from.line, this._lines.length);
+			this.retokenize(start.line, this._lines.length);
 		}
 	}
 
@@ -713,7 +761,7 @@ export class EditorState {
 			return;
 		}
 
-		this.saveHistory('delete');
+		const history = this.beginHistory('delete');
 
 		const updates: Array<{ id: string; position: Position }> = [];
 
@@ -724,29 +772,17 @@ export class EditorState {
 				const from = { line, column: column - 1 };
 				const to = { line, column };
 
-				// Delete within line
-				const currentLine = this._lines[line];
-				currentLine.text =
-					currentLine.text.slice(0, from.column) + currentLine.text.slice(to.column);
-				// Re-tokenize to end of document so deleting a multi-line construct
-				// delimiter re-propagates state to lines below.
-				this.retokenize(line, this._lines.length);
+				this.deleteRangeInternal(from, to, history.entry.changes);
 
 				this.transformCursorUpdatesForDelete(updates, from, to);
 				updates.push({ id: cursor.id, position: from });
 			} else if (line > 0) {
 				// Join with previous line
-				const prevLine = this._lines[line - 1];
-				const currentLine = this._lines[line];
-				const newColumn = prevLine.text.length;
+				const newColumn = this._lines[line - 1].text.length;
 				const from = { line: line - 1, column: newColumn };
 				const to = { line, column: 0 };
 
-				prevLine.text += currentLine.text;
-				this._lines.splice(line, 1);
-				this._tokenizerStates.splice(line, 1);
-				this.renumberLines(line);
-				this.retokenize(line - 1, this._lines.length);
+				this.deleteRangeInternal(from, to, history.entry.changes);
 
 				this.transformCursorUpdatesForDelete(updates, from, to);
 				updates.push({ id: cursor.id, position: from });
@@ -759,6 +795,7 @@ export class EditorState {
 		this.emitChange({ type: 'delete', from: this.cursor, to: this.cursor });
 		this.emitSelectionChange();
 		this.emitCursorChange();
+		this.commitHistory(history, 'delete');
 	}
 
 	/**
@@ -781,7 +818,7 @@ export class EditorState {
 			return;
 		}
 
-		this.saveHistory('delete');
+		const history = this.beginHistory('delete');
 
 		const updates: Array<{ id: string; position: Position }> = [];
 
@@ -793,26 +830,16 @@ export class EditorState {
 				const from = { line, column };
 				const to = { line, column: column + 1 };
 
-				// Delete within line
-				currentLine.text =
-					currentLine.text.slice(0, from.column) + currentLine.text.slice(to.column);
-				// Re-tokenize to end of document so deleting a multi-line construct
-				// delimiter re-propagates state to lines below.
-				this.retokenize(line, this._lines.length);
+				this.deleteRangeInternal(from, to, history.entry.changes);
 
 				this.transformCursorUpdatesForDelete(updates, from, to);
 				updates.push({ id: cursor.id, position: from });
 			} else if (line < this._lines.length - 1) {
 				// Join with next line
-				const nextLine = this._lines[line + 1];
 				const from = { line, column };
 				const to = { line: line + 1, column: 0 };
 
-				currentLine.text += nextLine.text;
-				this._lines.splice(line + 1, 1);
-				this._tokenizerStates.splice(line + 1, 1);
-				this.renumberLines(line + 1);
-				this.retokenize(line, this._lines.length);
+				this.deleteRangeInternal(from, to, history.entry.changes);
 
 				this.transformCursorUpdatesForDelete(updates, from, to);
 				updates.push({ id: cursor.id, position: from });
@@ -825,6 +852,7 @@ export class EditorState {
 		this.emitChange({ type: 'delete', from: this.cursor, to: this.cursor });
 		this.emitSelectionChange();
 		this.emitCursorChange();
+		this.commitHistory(history, 'delete');
 	}
 
 	/**
@@ -847,48 +875,86 @@ export class EditorState {
 	// ============================================
 
 	/**
-	 * Save current state to history with optional grouping
-	 * @param changeType - Type of change for grouping consecutive edits
+	 * Create or reuse a history entry for a text-editing operation.
 	 */
-	private saveHistory(changeType?: 'insert' | 'delete'): void {
+	private beginHistory(changeType: 'insert' | 'delete'): { entry: HistoryEntry; isNew: boolean } {
 		const now = Date.now();
 
-		// Check if we should merge with the last history entry
 		const shouldMerge =
-			changeType &&
 			changeType === this.lastHistoryType &&
 			this._undoStack.length > 0 &&
 			now - this.lastHistoryTimestamp < this.historyGroupTimeout;
 
-		// Save cursor state
+		if (shouldMerge) {
+			return {
+				entry: this._undoStack[this._undoStack.length - 1],
+				isNew: false
+			};
+		}
+
 		const cursorState = this._cursorManager.clone();
 
-		const entry: HistoryEntry = {
-			content: this.getContent(),
-			selection: this.deepCopySelection(this.selection),
-			cursors: cursorState.cursors,
-			primaryCursorId: cursorState.primaryId,
-			timestamp: now
+		return {
+			entry: {
+				changes: [],
+				selection: this.deepCopySelection(this.selection),
+				cursors: cursorState.cursors,
+				primaryCursorId: cursorState.primaryId,
+				afterSelection: this.deepCopySelection(this.selection),
+				afterCursors: cursorState.cursors,
+				afterPrimaryCursorId: cursorState.primaryId,
+				timestamp: now
+			},
+			isNew: true
 		};
+	}
 
-		if (shouldMerge) {
-			// Keep the original restore snapshot; only extend the group's recency.
-			this._undoStack[this._undoStack.length - 1].timestamp = now;
-		} else {
-			this._undoStack.push(entry);
+	/**
+	 * Commit a history entry after its edit operation has finished.
+	 */
+	private commitHistory(
+		history: { entry: HistoryEntry; isNew: boolean },
+		changeType: 'insert' | 'delete'
+	): void {
+		if (history.entry.changes.length === 0) {
+			return;
+		}
 
-			// Limit history size
-			if (this._undoStack.length > this.maxHistorySize) {
+		const now = Date.now();
+		const cursorState = this._cursorManager.clone();
+		history.entry.afterSelection = this.deepCopySelection(this.selection);
+		history.entry.afterCursors = cursorState.cursors;
+		history.entry.afterPrimaryCursorId = cursorState.primaryId;
+		history.entry.timestamp = now;
+
+		if (history.isNew) {
+			this._undoStack.push(history.entry);
+
+			while (this._undoStack.length > this.maxHistorySize) {
 				this._undoStack.shift();
 			}
 		}
 
-		// Update grouping state
 		this.lastHistoryTimestamp = now;
-		this.lastHistoryType = changeType ?? null;
-
-		// Clear redo stack on new edit
+		this.lastHistoryType = changeType;
 		this._redoStack = [];
+	}
+
+	/**
+	 * Create a redo/undo entry representing the current state and inverse target.
+	 */
+	private createHistoryEntryFromCurrent(changes: HistoryChange[]): HistoryEntry {
+		const cursorState = this._cursorManager.clone();
+		return {
+			changes,
+			selection: this.deepCopySelection(this.selection),
+			cursors: cursorState.cursors,
+			primaryCursorId: cursorState.primaryId,
+			afterSelection: this.deepCopySelection(this.selection),
+			afterCursors: cursorState.cursors,
+			afterPrimaryCursorId: cursorState.primaryId,
+			timestamp: Date.now()
+		};
 	}
 
 	/**
@@ -900,18 +966,9 @@ export class EditorState {
 			return false;
 		}
 
-		// Save current state to redo stack
-		const currentCursorState = this._cursorManager.clone();
-		this._redoStack.push({
-			content: this.getContent(),
-			selection: this.deepCopySelection(this.selection),
-			cursors: currentCursorState.cursors,
-			primaryCursorId: currentCursorState.primaryId,
-			timestamp: Date.now()
-		});
+		this._redoStack.push(this.createHistoryEntryFromCurrent(entry.changes));
 
-		// Restore state
-		this.setContent(entry.content);
+		this.applyHistoryChanges(entry.changes, 'undo');
 
 		// Restore cursor state
 		if (entry.cursors && entry.primaryCursorId) {
@@ -921,8 +978,10 @@ export class EditorState {
 			this._cursorManager.setSingleSelection(entry.selection.anchor, entry.selection.head);
 		}
 
+		this.emitChange({ type: 'replace', from: { line: 0, column: 0 } });
 		this.emitSelectionChange();
 		this.emitCursorChange();
+		this.resetHistoryGrouping();
 
 		return true;
 	}
@@ -936,36 +995,61 @@ export class EditorState {
 			return false;
 		}
 
-		// Save current state to undo stack (with size limit)
-		const currentCursorState = this._cursorManager.clone();
-		this._undoStack.push({
-			content: this.getContent(),
-			selection: this.deepCopySelection(this.selection),
-			cursors: currentCursorState.cursors,
-			primaryCursorId: currentCursorState.primaryId,
-			timestamp: Date.now()
-		});
+		const undoEntry = this.createHistoryEntryFromCurrent(entry.changes);
+		undoEntry.selection = entry.selection;
+		undoEntry.cursors = entry.cursors;
+		undoEntry.primaryCursorId = entry.primaryCursorId;
+		undoEntry.afterSelection = entry.afterSelection;
+		undoEntry.afterCursors = entry.afterCursors;
+		undoEntry.afterPrimaryCursorId = entry.afterPrimaryCursorId;
+		this._undoStack.push(undoEntry);
 
 		// Enforce history size limit
 		while (this._undoStack.length > this.maxHistorySize) {
 			this._undoStack.shift();
 		}
 
-		// Restore state
-		this.setContent(entry.content);
+		this.applyHistoryChanges(entry.changes, 'redo');
 
 		// Restore cursor state
-		if (entry.cursors && entry.primaryCursorId) {
-			this._cursorManager.restore(entry.cursors, entry.primaryCursorId);
+		if (entry.afterCursors && entry.afterPrimaryCursorId) {
+			this._cursorManager.restore(entry.afterCursors, entry.afterPrimaryCursorId);
 		} else {
 			// Fallback for old history entries
-			this._cursorManager.setSingleSelection(entry.selection.anchor, entry.selection.head);
+			this._cursorManager.setSingleSelection(
+				entry.afterSelection.anchor,
+				entry.afterSelection.head
+			);
 		}
 
+		this.emitChange({ type: 'replace', from: { line: 0, column: 0 } });
 		this.emitSelectionChange();
 		this.emitCursorChange();
+		this.resetHistoryGrouping();
 
 		return true;
+	}
+
+	private applyHistoryChanges(changes: readonly HistoryChange[], direction: 'undo' | 'redo'): void {
+		const ordered = direction === 'undo' ? [...changes].reverse() : changes;
+		for (const change of ordered) {
+			if (direction === 'redo') {
+				this.replaceRangeInternal(change.from, change.to, change.text);
+			} else {
+				const insertedEnd = this.positionAfterText(change.from, change.text);
+				this.replaceRangeInternal(change.from, insertedEnd, change.removed);
+			}
+		}
+	}
+
+	private replaceRangeInternal(from: Position, to: Position, text: string): Position {
+		this.deleteRangeInternal(from, to);
+		return text.length > 0 ? this.insertAtInternal(from, text) : this.clampPosition(from);
+	}
+
+	private resetHistoryGrouping(): void {
+		this.lastHistoryTimestamp = 0;
+		this.lastHistoryType = null;
 	}
 
 	/**
@@ -975,6 +1059,40 @@ export class EditorState {
 		return {
 			anchor: { line: sel.anchor.line, column: sel.anchor.column },
 			head: { line: sel.head.line, column: sel.head.column }
+		};
+	}
+
+	private copyPosition(pos: Position): Position {
+		return { line: pos.line, column: pos.column };
+	}
+
+	private getTextInRange(from: Position, to: Position): string {
+		if (comparePositions(from, to) >= 0) {
+			return '';
+		}
+
+		if (from.line === to.line) {
+			return this._lines[from.line].text.slice(from.column, to.column);
+		}
+
+		const lines: string[] = [];
+		lines.push(this._lines[from.line].text.slice(from.column));
+		for (let i = from.line + 1; i < to.line; i++) {
+			lines.push(this._lines[i].text);
+		}
+		lines.push(this._lines[to.line].text.slice(0, to.column));
+		return lines.join('\n');
+	}
+
+	private positionAfterText(from: Position, text: string): Position {
+		const textLines = text.split('\n');
+		if (textLines.length === 1) {
+			return { line: from.line, column: from.column + text.length };
+		}
+
+		return {
+			line: from.line + textLines.length - 1,
+			column: textLines[textLines.length - 1].length
 		};
 	}
 
