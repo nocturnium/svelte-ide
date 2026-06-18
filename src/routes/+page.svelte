@@ -16,7 +16,10 @@
   owner?: string;
 };
 
-export function triageLoad(signals: Signal[], queueDepth: number): string {
+export function triageLoad(
+  signals: Signal[],
+  queueDepth: number
+): string {
   let score = 0;
   for (const signal of signals) {
     if (signal.kind === 'error') {
@@ -27,11 +30,11 @@ export function triageLoad(signals: Signal[], queueDepth: number): string {
       } else {
         score += 3;
       }
-    } else if (signal.kind === 'latency' || signal.kind === 'memory') {
-      score += signal.count > 5 ? 10 : 2;
+    } else if (signal.count > 5) {
+      score += 10;
     }
   }
-  return score > 80 ? 'critical' : score > 45 ? 'watch' : 'clear';
+  return score > 80 ? 'critical' : 'clear';
 }
 `;
 	let heroContent = $state(heroSample);
@@ -516,10 +519,10 @@ export function triageLoad(signals: Signal[], queueDepth: number): string {
 	/* Hero */
 	.hero {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+		grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.28fr);
 		gap: var(--ide-spacing-2xl);
 		align-items: center;
-		max-width: 1200px;
+		max-width: 1240px;
 		margin: 0 auto;
 		padding: var(--ide-spacing-3xl) var(--ide-spacing-xl) var(--ide-spacing-2xl);
 	}
@@ -672,11 +675,12 @@ export function triageLoad(signals: Signal[], queueDepth: number): string {
 		z-index: 0;
 		background: radial-gradient(
 			ellipse at center,
-			color-mix(in srgb, var(--ide-accent) 35%, transparent),
-			transparent 70%
+			color-mix(in srgb, var(--ide-error) 42%, transparent),
+			color-mix(in srgb, var(--color-nocturnium-flame) 24%, transparent) 46%,
+			transparent 72%
 		);
-		filter: blur(48px);
-		opacity: 0.55;
+		filter: blur(56px);
+		opacity: 0.72;
 		pointer-events: none;
 	}
 
