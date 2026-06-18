@@ -180,6 +180,19 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	let content = $state(complexCode);
 	let selectedLanguage = $state('typescript');
 	let editorRef = $state<CustomEditor | null>(null);
+	let extractMessage = $state<string | null>(null);
+	let extractMessageTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function extractSelection() {
+		const result = editorRef?.extractFunction();
+		clearTimeout(extractMessageTimer);
+		if (result && !result.ok) {
+			extractMessage = result.reason;
+			extractMessageTimer = setTimeout(() => (extractMessage = null), 4000);
+		} else {
+			extractMessage = null;
+		}
+	}
 
 	const languageOptions = ['javascript', 'typescript', 'python', 'go'];
 
@@ -473,6 +486,14 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			Edit the code below to see complexity analysis update in real-time. The AI cursor shows where
 			Claude is "looking".
 		</p>
+
+		<div class="extract-controls">
+			<button class="control-btn" onclick={extractSelection}>⟐ Extract to function</button>
+			<span class="extract-hint">Select a block of statements inside a function, then extract it.</span>
+			{#if extractMessage}
+				<span class="extract-toast" role="status" aria-live="polite">{extractMessage}</span>
+			{/if}
+		</div>
 
 		<div class="editor-container">
 			<CustomEditor
@@ -927,6 +948,28 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
 		border: 0;
+	}
+
+	.extract-controls {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.extract-hint {
+		font-size: 0.8125rem;
+		color: var(--ide-text-muted);
+	}
+
+	.extract-toast {
+		font-size: 0.8125rem;
+		padding: 0.25rem 0.6rem;
+		border-radius: 6px;
+		color: var(--ide-warning);
+		background: color-mix(in srgb, var(--ide-warning) 14%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-warning) 35%, transparent);
 	}
 
 	/* Editor Container */
