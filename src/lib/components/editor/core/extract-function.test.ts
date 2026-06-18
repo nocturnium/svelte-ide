@@ -309,7 +309,7 @@ describe('planExtractFunction', () => {
 		expectPostEditValid(lines, plan, 2, 2);
 	});
 
-	it.each(['x++;', '++x;', 'x--;', '--x;'])(
+	it.each(['x++;', '++x;', 'x--;', '--x;', 'x ++;', '++ x;', 'x  --;'])(
 		'never drops outer mutation for increment/decrement %s',
 		(statement) => {
 			const lines = makeLines(
@@ -330,6 +330,23 @@ describe('planExtractFunction', () => {
 			expectPostEditValid(lines, plan, 2, 2);
 		}
 	);
+
+	it('does not treat separated unary plus tokens as an increment', () => {
+		const lines = makeLines(['function f(a, b) {', '\ta + +b;', '\tuse(a);', '}'].join('\n'));
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 3, type: 'function' },
+				blockStart: 1,
+				blockEnd: 1
+			})
+		);
+
+		expect(plan.params).toEqual(['a', 'b']);
+		expect(plan.returns).toEqual([]);
+		expectPostEditValid(lines, plan, 1, 1);
+	});
 
 	it.each(['x &&= 7;', 'x ||= 0;', 'x ??= 7;', 'x **= 2;', 'x >>>= 1;'])(
 		'never drops outer mutation for fragmented compound assignment %s',
@@ -370,6 +387,100 @@ describe('planExtractFunction', () => {
 			'conditionally defined'
 		);
 	});
+
+	it('keeps an outer parameter used outside a shadowing arrow callback', () => {
+		const lines = makeLines(
+			['function f(k, rows) {', '\tconst r = rows.map((k) => k + 1) + k;', '\tuse(r);', '}'].join(
+				'\n'
+			)
+		);
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 3, type: 'function' },
+				blockStart: 1,
+				blockEnd: 1
+			})
+		);
+
+		expect(plan.params).toEqual(['rows', 'k']);
+		expect(plan.functionText).toContain('function extracted(rows, k)');
+		expect(plan.functionText).toContain('+ k;');
+		expect(plan.returns).toEqual(['r']);
+		expectPostEditValid(lines, plan, 1, 1);
+	});
+
+	it('keeps an outer parameter used outside a shadowing catch binding', () => {
+		const lines = makeLines(
+			[
+				'function f(err, logger) {',
+				'\tlogger.info(err);',
+				'\ttry { risky(); } catch (err) { logger.warn(err); }',
+				'}'
+			].join('\n')
+		);
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 3, type: 'function' },
+				blockStart: 1,
+				blockEnd: 2
+			})
+		);
+
+		expect(plan.params).toEqual(['logger', 'err']);
+		expect(plan.returns).toEqual([]);
+		expect(plan.functionText).toContain('function extracted(logger, err)');
+		expectPostEditValid(lines, plan, 1, 2);
+	});
+
+	it('does not treat a non-colliding arrow callback parameter as outer', () => {
+		const lines = makeLines(
+			[
+				'function f(items) {',
+				'\tconst values = items.map((it) => it.value);',
+				'\tuse(values);',
+				'}'
+			].join('\n')
+		);
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 3, type: 'function' },
+				blockStart: 1,
+				blockEnd: 1
+			})
+		);
+
+		expect(plan.params).toEqual(['items']);
+		expect(plan.params).not.toContain('it');
+		expect(plan.returns).toEqual(['values']);
+		expectPostEditValid(lines, plan, 1, 1);
+	});
+
+	it.each(['obj.x += 1;', 'arr[i]++;'])(
+		'keeps member and computed mutation targets out of returns for %s',
+		(statement) => {
+			const lines = makeLines(
+				['function f(obj, arr, i) {', `\t${statement}`, '\tuse(obj, arr, i);', '}'].join('\n')
+			);
+			const plan = expectPlan(
+				planExtractFunction({
+					lines,
+					language: 'javascript',
+					region: { startLine: 0, endLine: 3, type: 'function' },
+					blockStart: 1,
+					blockEnd: 1
+				})
+			);
+
+			expect(plan.returns).toEqual([]);
+			expectPostEditValid(lines, plan, 1, 1);
+		}
+	);
 
 	it('extracts object literal keys without treating them as labels', () => {
 		const lines = makeLines(

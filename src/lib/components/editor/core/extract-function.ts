@@ -27,6 +27,12 @@ type NamePosition = {
 	line: number;
 	col: number;
 	depth: number;
+	index: number;
+};
+
+type ScopedDeclaration = NamePosition & {
+	kind: string;
+	scope?: { startIndex: number; endIndex: number };
 };
 
 const SUPPORTED_LANGUAGES = new Set(['javascript', 'typescript', 'jsx', 'tsx']);
@@ -154,7 +160,9 @@ function planExtractFunctionUnsafe(input: ExtractInput): ExtractPlan | ExtractRe
 		)
 	]);
 	const insideDeclarations = getDeclarations(blockTokens);
-	const declaredInsideB = new Set(insideDeclarations.map((decl) => decl.name));
+	const declaredInsideB = new Set(
+		insideDeclarations.filter((decl) => decl.kind !== 'param').map((decl) => decl.name)
+	);
 	const usedInsideB = getIdentifierUses(blockTokens);
 	const usedAfterB = new Set(
 		getIdentifierUses(flatTokens.filter((token) => token.line > block.end)).map((use) => use.name)
@@ -177,7 +185,9 @@ function planExtractFunctionUnsafe(input: ExtractInput): ExtractPlan | ExtractRe
 	}
 
 	const params = uniqueByFirstPosition(
-		usedInsideB.filter((use) => declaredBeforeB.has(use.name) && !declaredInsideB.has(use.name))
+		usedInsideB.filter(
+			(use) => declaredBeforeB.has(use.name) && !isDeclaredInsideAtUse(use, insideDeclarations)
+		)
 	);
 	const assignedInsideB = getAssignments(blockTokens, insideDeclarations);
 	const unmodelledAssignedOutput = assignedInsideB.find(
@@ -391,8 +401,8 @@ function getFunctionParams(tokens: FlatToken[], functionStart: number): string[]
 	return collectBindingNames(tokens.slice(startIndex + 1, endIndex));
 }
 
-function getDeclarations(tokens: FlatToken[]): Array<NamePosition & { kind: string }> {
-	const declarations: Array<NamePosition & { kind: string }> = [];
+function getDeclarations(tokens: FlatToken[]): ScopedDeclaration[] {
+	const declarations: ScopedDeclaration[] = [];
 	for (let i = 0; i < tokens.length; i++) {
 		const token = tokens[i];
 		if (DECLARATION_KEYWORDS.has(token.text)) {
@@ -413,6 +423,7 @@ function getDeclarations(tokens: FlatToken[]): Array<NamePosition & { kind: stri
 					name: next.text,
 					line: next.line,
 					col: next.start,
+					index: next.index,
 					depth: getBraceDepthAt(tokens, next.line, next.start),
 					kind: 'function'
 				});
@@ -421,11 +432,13 @@ function getDeclarations(tokens: FlatToken[]): Array<NamePosition & { kind: stri
 			if (paramStart !== -1) {
 				const paramEnd = findMatching(tokens, paramStart, '(', ')');
 				if (paramEnd !== -1) {
+					const scope = getFunctionParamScope(tokens, paramStart, paramEnd);
 					for (const name of collectBindingNamePositions(tokens.slice(paramStart + 1, paramEnd))) {
 						declarations.push({
 							...name,
 							depth: getBraceDepthAt(tokens, name.line, name.col) + 1,
-							kind: 'param'
+							kind: 'param',
+							scope
 						});
 					}
 				}
@@ -433,11 +446,13 @@ function getDeclarations(tokens: FlatToken[]): Array<NamePosition & { kind: stri
 		} else if (token.text === 'catch' && tokens[i + 1]?.text === '(') {
 			const paramEnd = findMatching(tokens, i + 1, '(', ')');
 			if (paramEnd !== -1) {
+				const scope = getCatchParamScope(tokens, i + 1, paramEnd);
 				for (const name of collectBindingNamePositions(tokens.slice(i + 2, paramEnd))) {
 					declarations.push({
 						...name,
 						depth: getBraceDepthAt(tokens, name.line, name.col) + 1,
-						kind: 'param'
+						kind: 'param',
+						scope
 					});
 				}
 			}
@@ -446,26 +461,123 @@ function getDeclarations(tokens: FlatToken[]): Array<NamePosition & { kind: stri
 			if (previous?.text === ')') {
 				const paramStart = findMatchingBackward(tokens, i - 1, '(', ')');
 				if (paramStart !== -1) {
+					const scope = getArrowParamScope(tokens, paramStart, i);
 					for (const name of collectBindingNamePositions(tokens.slice(paramStart + 1, i - 1))) {
 						declarations.push({
 							...name,
 							depth: getBraceDepthAt(tokens, name.line, name.col) + 1,
-							kind: 'param'
+							kind: 'param',
+							scope
 						});
 					}
 				}
 			} else if (isIdentifierToken(previous)) {
+				const scope = getArrowParamScope(tokens, i - 1, i);
 				declarations.push({
 					name: previous.text,
 					line: previous.line,
 					col: previous.start,
+					index: previous.index,
 					depth: getBraceDepthAt(tokens, previous.line, previous.start) + 1,
-					kind: 'param'
+					kind: 'param',
+					scope
 				});
 			}
 		}
 	}
-	return uniqueByFirstPosition(declarations);
+	return declarations;
+}
+
+function isDeclaredInsideAtUse(use: NamePosition, declarations: ScopedDeclaration[]): boolean {
+	return declarations.some((decl) => {
+		if (decl.name !== use.name) return false;
+		if (decl.kind !== 'param') return true;
+		if (!decl.scope) return use.index === decl.index;
+		return use.index >= decl.scope.startIndex && use.index <= decl.scope.endIndex;
+	});
+}
+
+function getFunctionParamScope(
+	tokens: FlatToken[],
+	paramStart: number,
+	paramEnd: number
+): { startIndex: number; endIndex: number } {
+	const bodyStart = tokens.findIndex((item, index) => index > paramEnd && item.text === '{');
+	if (bodyStart === -1) {
+		return { startIndex: tokens[paramStart].index, endIndex: tokens[paramEnd].index };
+	}
+	const bodyEnd = findMatching(tokens, bodyStart, '{', '}');
+	return {
+		startIndex: tokens[paramStart].index,
+		endIndex: tokens[bodyEnd === -1 ? paramEnd : bodyEnd].index
+	};
+}
+
+function getCatchParamScope(
+	tokens: FlatToken[],
+	paramStart: number,
+	paramEnd: number
+): { startIndex: number; endIndex: number } {
+	const bodyStart = tokens.findIndex((item, index) => index > paramEnd && item.text === '{');
+	if (bodyStart === -1) {
+		return { startIndex: tokens[paramStart].index, endIndex: tokens[paramEnd].index };
+	}
+	const bodyEnd = findMatching(tokens, bodyStart, '{', '}');
+	return {
+		startIndex: tokens[paramStart].index,
+		endIndex: tokens[bodyEnd === -1 ? paramEnd : bodyEnd].index
+	};
+}
+
+function getArrowParamScope(
+	tokens: FlatToken[],
+	paramStart: number,
+	arrowIndex: number
+): { startIndex: number; endIndex: number } {
+	const bodyStart = arrowIndex + 1;
+	if (!tokens[bodyStart]) {
+		return { startIndex: tokens[paramStart].index, endIndex: tokens[arrowIndex].index };
+	}
+	if (tokens[bodyStart].text === '{') {
+		const bodyEnd = findMatching(tokens, bodyStart, '{', '}');
+		return {
+			startIndex: tokens[paramStart].index,
+			endIndex: tokens[bodyEnd === -1 ? bodyStart : bodyEnd].index
+		};
+	}
+	const bodyEnd = findArrowExpressionEnd(tokens, bodyStart);
+	return {
+		startIndex: tokens[paramStart].index,
+		endIndex: tokens[Math.max(bodyStart, bodyEnd)].index
+	};
+}
+
+function findArrowExpressionEnd(tokens: FlatToken[], bodyStart: number): number {
+	let paren = 0;
+	let bracket = 0;
+	let brace = 0;
+	for (let i = bodyStart; i < tokens.length; i++) {
+		const token = tokens[i];
+		if (
+			paren === 0 &&
+			bracket === 0 &&
+			brace === 0 &&
+			(token.text === ',' ||
+				token.text === ';' ||
+				token.text === ')' ||
+				token.text === ']' ||
+				token.text === '}')
+		) {
+			return i - 1;
+		}
+		if (token.text === '(') paren++;
+		else if (token.text === ')') paren--;
+		else if (token.text === '[') bracket++;
+		else if (token.text === ']') bracket--;
+		else if (token.text === '{') brace++;
+		else if (token.text === '}') brace--;
+	}
+	return tokens.length - 1;
 }
 
 function collectDeclarationNames(tokens: FlatToken[]): NamePosition[] {
@@ -487,7 +599,13 @@ function collectDeclarationNames(tokens: FlatToken[]): NamePosition[] {
 			throw new Error('destructuring declaration');
 		}
 		if (expectingName && paren === 0 && bracket === 0 && brace === 0 && isIdentifierToken(token)) {
-			names.push({ name: token.text, line: token.line, col: token.start, depth: 0 });
+			names.push({
+				name: token.text,
+				line: token.line,
+				col: token.start,
+				depth: 0,
+				index: token.index
+			});
 			expectingName = false;
 			continue;
 		}
@@ -529,7 +647,13 @@ function collectBindingNamePositions(tokens: FlatToken[]): NamePosition[] {
 		else if (token.text === '{') brace++;
 		else if (token.text === '}') brace--;
 		if (expectingName && paren === 0 && bracket === 0 && brace === 0 && isIdentifierToken(token)) {
-			positions.push({ name: token.text, line: token.line, col: token.start, depth: 0 });
+			positions.push({
+				name: token.text,
+				line: token.line,
+				col: token.start,
+				depth: 0,
+				index: token.index
+			});
 			expectingName = false;
 		}
 	}
@@ -550,6 +674,7 @@ function getIdentifierUses(tokens: FlatToken[]): NamePosition[] {
 			name: token.text,
 			line: token.line,
 			col: token.start,
+			index: token.index,
 			depth: getBraceDepthAt(tokens, token.line, token.start)
 		});
 	}
@@ -574,14 +699,12 @@ function isIdentifierUse(tokens: FlatToken[], index: number): boolean {
 	return true;
 }
 
-function getAssignments(
-	tokens: FlatToken[],
-	declarations: Array<NamePosition & { kind: string }>
-): NamePosition[] {
+function getAssignments(tokens: FlatToken[], declarations: ScopedDeclaration[]): NamePosition[] {
 	const assigned: NamePosition[] = declarations.map((decl) => ({
 		name: decl.name,
 		line: decl.line,
 		col: decl.col,
+		index: decl.index,
 		depth: decl.depth
 	}));
 	for (let i = 0; i < tokens.length; i++) {
@@ -625,12 +748,11 @@ function identifierInIncrement(tokens: FlatToken[], index: number): NamePosition
 	if (!target) return undefined;
 	if (target === previous && tokens[index - 2]?.text === '.') return undefined;
 	if (target === next && tokens[index + 3]?.text === '.') return undefined;
-	if (target === previous && !areAdjacent(target, first)) return undefined;
-	if (target === next && !areAdjacent(second, target)) return undefined;
 	return {
 		name: target.text,
 		line: target.line,
 		col: target.start,
+		index: target.index,
 		depth: getBraceDepthAt(tokens, target.line, target.start)
 	};
 }
@@ -665,6 +787,7 @@ function previousIdentifierInAssignment(
 			name: tokens[i].text,
 			line: tokens[i].line,
 			col: tokens[i].start,
+			index: tokens[i].index,
 			depth: getBraceDepthAt(tokens, tokens[i].line, tokens[i].start)
 		};
 	}
