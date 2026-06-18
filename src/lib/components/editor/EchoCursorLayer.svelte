@@ -186,15 +186,19 @@
 				{/if}
 			</div>
 
+			<!-- Echo readout: the mirror's CURRENT line at the echo position, drawn on
+			     an opaque lane so it never composites over the editor's own code
+			     glyphs (a full-document transparent overlay read as doubled text). -->
 			<div
 				class="echo-cursor-buffer"
-				style="left: {gutterWidth}px; --echo-color: var({getEchoColorToken(cursor)});"
+				style="top: {cursor.position.line *
+					lineHeight}px; left: {gutterWidth}px; height: {lineHeight}px; --echo-color: var({getEchoColorToken(
+					cursor
+				)});"
 			>
-				{#each echoContent.split('\n') as line, lineIndex (lineIndex)}
-					<div class="echo-cursor-buffer__line" style="height: {lineHeight}px;">
-						<span class="echo-cursor-buffer__text">{line || ' '}</span>
-					</div>
-				{/each}
+				<span class="echo-cursor-buffer__text"
+					>{echoContent.split('\n')[cursor.position.line] || ' '}</span
+				>
 			</div>
 		{/each}
 
@@ -224,6 +228,8 @@
 	.echo-cursor {
 		position: absolute;
 		pointer-events: auto;
+		/* Keep the caret/label/replay above the echo readout lane. */
+		z-index: 1;
 	}
 
 	.echo-cursor__caret {
@@ -354,23 +360,31 @@
 
 	.echo-cursor-buffer {
 		position: absolute;
-		top: 0;
-		left: var(--echo-buffer-left, 50px);
 		right: 0;
-		color: color-mix(in srgb, var(--echo-color) 82%, var(--ide-text-primary));
+		display: flex;
+		align-items: center;
+		padding: 0 8px 0 10px;
 		font-family: monospace;
 		font-size: 13px;
-		line-height: 20px;
-		pointer-events: none;
-		opacity: 0.8;
-	}
-
-	.echo-cursor-buffer__line {
+		line-height: 1;
 		white-space: pre;
+		overflow: hidden;
+		pointer-events: none;
+		/* Opaque lane: the echoed line must never show through onto the editor's
+		   own glyphs — that reads as doubled, illegible code. */
+		background: linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--echo-color) 24%, var(--ide-bg-secondary, #1a2744)) 0%,
+			var(--ide-bg-secondary, #1a2744) 72%
+		);
+		border-left: 2px solid var(--echo-color);
+		box-shadow: 0 1px 4px color-mix(in srgb, #000 35%, transparent);
 	}
 
 	.echo-cursor-buffer__text {
-		background: color-mix(in srgb, var(--echo-color) 12%, transparent);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		color: color-mix(in srgb, var(--echo-color) 60%, var(--ide-text-primary));
 	}
 
 	@keyframes echo-ripple {
