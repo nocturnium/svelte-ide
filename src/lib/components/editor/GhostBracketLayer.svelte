@@ -228,23 +228,31 @@
 		display: inline-block;
 		font-family: inherit;
 		font-size: inherit;
+		font-weight: 700;
 		color: var(--ghost-color);
-		opacity: 0.5;
+		/* Resting opacity ships legible (was 0.5) so the inferred brace reads
+		   against body text without a page-level :global override. */
+		opacity: 0.85;
+		/* Faint highlight: a soft glow in the confidence color keeps the AA-ish
+		   delta from surrounding code without recoloring the brace. */
+		text-shadow: 0 0 6px color-mix(in srgb, var(--ghost-color) 60%, transparent);
+		border-radius: 2px;
+		background: color-mix(in srgb, var(--ghost-color) 14%, transparent);
 		animation: ghost-pulse 2s ease-in-out infinite;
 	}
 
 	@keyframes ghost-pulse {
 		0%,
 		100% {
-			opacity: 0.5;
+			opacity: 0.85;
 		}
 		50% {
-			opacity: 0.3;
+			opacity: 0.65;
 		}
 	}
 
 	.ghost-bracket:hover .ghost-bracket__char {
-		opacity: 0.8;
+		opacity: 1;
 		animation: none;
 	}
 
@@ -350,9 +358,11 @@
 		position: absolute;
 		bottom: 2px;
 		left: 0;
-		width: 8px;
-		height: 2px;
-		background: var(--mismatch-color);
+		/* Span the brace and a short run of the offending line so the marker
+		   reads as anchored to its cause, not a detached tick above the code. */
+		width: 6ch;
+		height: 0;
+		border-bottom: 2px dotted var(--mismatch-color);
 		border-radius: 1px;
 	}
 

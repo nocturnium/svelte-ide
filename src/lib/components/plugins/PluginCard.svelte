@@ -68,7 +68,9 @@
 		{#if installed}
 			<Button variant="danger" size="xs" onclick={onUninstall}>Uninstall</Button>
 		{:else if plugin.status === 'deployed'}
-			<Button variant="primary" size="xs" onclick={onInstall}>Install</Button>
+			<Button variant="primary" size="xs" class="plugin-card__install" onclick={onInstall}>
+				Install
+			</Button>
 		{/if}
 	</div>
 </div>
@@ -140,5 +142,23 @@
 	.plugin-card__actions {
 		display: flex;
 		align-items: flex-start;
+	}
+
+	/*
+	 * Install CTA: keep the embedded panel in ONE accent story (wave-blue),
+	 * instead of the ember-orange `primary` fill competing with the surrounding
+	 * blue chrome. White-on-blue uses --ide-interactive-strong (deep ocean) for
+	 * AA-safe contrast (~5.3:1), not the lighter wave (~3.4:1, fails AA). The
+	 * accent stays BLUE per the owner brand decision.
+	 */
+	.plugin-card__actions :global(.ide-button.plugin-card__install) {
+		background: var(--ide-interactive-strong);
+		color: #fff;
+		border-color: var(--ide-interactive-strong);
+	}
+
+	.plugin-card__actions :global(.ide-button.plugin-card__install:hover:not(:disabled)) {
+		background: color-mix(in srgb, var(--ide-interactive-strong) 88%, white);
+		border-color: color-mix(in srgb, var(--ide-interactive-strong) 88%, white);
 	}
 </style>

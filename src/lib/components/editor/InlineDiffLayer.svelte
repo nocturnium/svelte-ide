@@ -50,7 +50,10 @@
 			case 'added':
 				return 'var(--ide-status-created)';
 			case 'modified':
-				return 'var(--ide-status-modified)';
+				// Modified indicator is BLUE to match the diff legend (Modified = blue).
+				// --ide-status-modified resolves to aurora-yellow (amber), which
+				// contradicts the legend; drive it from --ide-info (#60a5fa) instead.
+				return 'var(--ide-info)';
 			case 'removed':
 				return 'var(--ide-status-deleted)';
 			default:

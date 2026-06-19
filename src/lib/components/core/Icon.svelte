@@ -14,6 +14,8 @@
 		folder: 'M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z',
 		'folder-open':
 			'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v2M2 11h20l-2 8H4l-2-8z',
+		'file-code':
+			'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM14 2v6h6M10 13l-2 2 2 2M14 13l2 2-2 2',
 
 		// Actions
 		close: 'M18 6L6 18M6 6l12 12',
@@ -55,6 +57,11 @@
 		bot: 'M12 8V4H8M12 8a4 4 0 0 0-4 4v6a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-6a4 4 0 0 0-4-4zM9 13h.01M15 13h.01',
 		wand: 'M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M12.2 11.8L11 13M12.2 6.2L11 5M12 12l-9 9',
 		message: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z',
+		'message-circle':
+			'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z',
+		send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
+		// loader: a continuous spinner ring (3/4 arc with a leading cap) — distinct from `loading`'s 8 discrete spokes
+		loader: 'M21 12a9 9 0 1 1-6.219-8.56',
 
 		// Status
 		info: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 16v-4M12 8h.01',
@@ -77,6 +84,8 @@
 		'git-commit': 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM1.05 12H8M16 12h6.95',
 		'git-merge':
 			'M18 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21V9a9 9 0 0 0 9 9M6 21h12',
+		'git-compare':
+			'M18 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM13 6h3a2 2 0 0 1 2 2v7M11 18H8a2 2 0 0 1-2-2V9',
 
 		// Misc
 		play: 'M5 3l14 9-14 9V3z',
@@ -87,11 +96,20 @@
 		clock: 'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 6v6l4 2',
 		zap: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
 		plugin:
-			'M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24'
+			'M12 2v6M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h6M18 12h4M4.93 19.07l4.24-4.24M14.83 9.17l4.24-4.24',
+		database:
+			'M12 8c4.418 0 8-1.343 8-3s-3.582-3-8-3-8 1.343-8 3 3.582 3 8 3zM20 5v6c0 1.657-3.582 3-8 3s-8-1.343-8-3V5M20 11v6c0 1.657-3.582 3-8 3s-8-1.343-8-3v-6'
 	};
 
 	const path = $derived(icons[name] ?? icons.file);
 	const sizeValue = $derived(typeof size === 'number' ? `${size}px` : size);
+
+	// Dev-time guard: warn when a name misses the map so silent `file`-fallback drift is caught.
+	$effect(() => {
+		if (import.meta.env.DEV && !(name in icons)) {
+			console.warn(`[Icon] no glyph for name "${name}" — falling back to the generic "file" icon`);
+		}
+	});
 </script>
 
 <svg

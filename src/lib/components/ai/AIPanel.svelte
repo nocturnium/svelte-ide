@@ -60,7 +60,24 @@
 	onMount(async () => {
 		await initPersistence();
 		persistedConversations = await loadConversations();
+		// Anchor the conversation to the START of the last message on mount so a
+		// seeded/long assistant message reads from its header, not a stale browser
+		// mid-content scroll offset (which looks like an abandoned position).
+		scrollToLastMessageStart();
 	});
+
+	// Bring the start of the most recent message into view (its header at the top
+	// of the viewport) rather than slamming to the very bottom of its body.
+	function scrollToLastMessageStart() {
+		if (!messagesContainer) return;
+		const messages = messagesContainer.querySelectorAll('.ai-message, [data-ai-message]');
+		const last = messages[messages.length - 1] as HTMLElement | undefined;
+		if (last) {
+			messagesContainer.scrollTop = Math.max(0, last.offsetTop - messagesContainer.offsetTop);
+		} else {
+			messagesContainer.scrollTop = 0;
+		}
+	}
 
 	// Auto-scroll to bottom when new messages arrive
 	$effect(() => {
@@ -201,6 +218,7 @@
 					size="xs"
 					onclick={() => (sidebarOpen = !sidebarOpen)}
 					title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+					aria-label={sidebarOpen ? 'Hide conversation sidebar' : 'Show conversation sidebar'}
 				>
 					<Icon name={sidebarOpen ? 'panel-left-close' : 'panel-left'} size={14} />
 				</Button>
@@ -208,12 +226,16 @@
 					<Icon name="sparkles" size={16} />
 					<span>AI Assistant</span>
 				</div>
-				<span class="ai-panel__mock-badge" title="Demo mock - no real model"
-					>Demo mock - no real model</span
-				>
+				<span class="ai-panel__mock-badge" title="Demo mock - no real model">Demo mock</span>
 			</div>
 			<div class="ai-panel__actions">
-				<Button variant="ghost" size="xs" onclick={handleNewConversation} title="New conversation">
+				<Button
+					variant="ghost"
+					size="xs"
+					onclick={handleNewConversation}
+					title="New conversation"
+					aria-label="New conversation"
+				>
 					<Icon name="plus" size={14} />
 				</Button>
 			</div>
@@ -271,7 +293,13 @@
 			<div class="ai-panel__error">
 				<Icon name="alert-circle" size={14} />
 				<span>{getError()}</span>
-				<Button variant="ghost" size="xs" onclick={clearError}>
+				<Button
+					variant="ghost"
+					size="xs"
+					onclick={clearError}
+					title="Dismiss error"
+					aria-label="Dismiss error"
+				>
 					<Icon name="x" size={12} />
 				</Button>
 			</div>
@@ -283,7 +311,7 @@
 				bind:this={textareaEl}
 				bind:value={inputValue}
 				class="ai-panel__textarea"
-				placeholder="Ask AI anything... (Enter to send, Shift+Enter for new line)"
+				placeholder="Ask AI anything..."
 				rows={1}
 				disabled={getIsStreaming() || isSubmitting}
 				onkeydown={handleKeydown}
@@ -356,9 +384,9 @@
 	.ai-panel__mock-badge {
 		display: inline-flex;
 		align-items: center;
-		min-width: 0;
-		max-width: 100%;
-		overflow: hidden;
+		/* Size to the label so it never clips its own text; the header-left flex
+		   keeps it from squeezing the title. Full copy lives in the title tooltip. */
+		flex-shrink: 0;
 		padding: 0.125rem var(--ide-spacing-sm);
 		border: 1px solid color-mix(in srgb, var(--ide-accent) 40%, var(--ide-border));
 		border-radius: var(--ide-radius-full);
@@ -367,7 +395,6 @@
 		font-size: var(--ide-font-size-xs);
 		font-weight: 500;
 		line-height: var(--ide-line-height-normal);
-		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
@@ -504,6 +531,11 @@
 		align-items: flex-end;
 		gap: var(--ide-spacing-sm);
 		padding: var(--ide-spacing-md);
+		/* Anchor the composer to the bottom of the panel's flex column with a real
+		   bottom inset (incl. iOS safe-area) so it always sits above the host
+		   status bar and its border never reads as bleeding off-screen. */
+		padding-bottom: calc(var(--ide-spacing-md) + env(safe-area-inset-bottom, 0px));
+		flex-shrink: 0;
 		border-top: 1px solid var(--ide-border);
 		background: var(--ide-bg-secondary);
 	}
@@ -563,10 +595,6 @@
 
 		.ai-panel__input {
 			padding: var(--ide-spacing-sm);
-		}
-
-		.ai-panel__mock-badge {
-			white-space: normal;
 		}
 	}
 

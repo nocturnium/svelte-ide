@@ -451,7 +451,9 @@
 		align-items: center;
 		justify-content: flex-end;
 		margin: 0;
-		padding: 0 8px;
+		/* Reserve a left gap so the right-aligned chip never butts directly against
+		   code text on a long line — code and message keep a visible breathing gap. */
+		padding: 0 8px 0 16px;
 		background: transparent;
 		border: none;
 		border-left: 2px solid transparent;
@@ -500,11 +502,22 @@
 		text-align: center;
 	}
 
-	/* On narrow viewports an inline message would overprint code — drop it and
-	   rely on the gutter icon + tooltip instead. */
-	@media (max-width: 640px) {
+	/* On genuinely narrow (phone) viewports an inline message would overprint code
+	   with no room for the reserved gap — drop it there and rely on the gutter icon
+	   + tooltip instead. Tablets (641–768px) keep the message: the opaque severity
+	   chip and the reserved left gap below keep it legible and off the code. */
+	@media (max-width: 480px) {
 		.diagnostics-messages {
 			display: none;
+		}
+	}
+
+	/* Tablet (481–768px): keep the message on-screen but cap the chip so a long
+	   message ellipsizes within the pane instead of clipping past the right edge,
+	   and hold the reserved left gap so it never overprints code. */
+	@media (max-width: 768px) {
+		.diagnostic-row .row-chip {
+			max-width: min(100%, 40ch);
 		}
 	}
 

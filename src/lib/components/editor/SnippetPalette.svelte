@@ -7,6 +7,7 @@
 	 */
 
 	import type { SnippetManager, Snippet } from './core/snippet-manager';
+	import Icon from '../core/Icon.svelte';
 
 	interface Props {
 		/** Snippet manager instance */
@@ -174,6 +175,9 @@
 				bind:value={searchQuery}
 			/>
 			<span class="snippet-hint">Tab: categories, Enter: insert, Esc: close</span>
+			<button class="snippet-close" type="button" aria-label="Close" onclick={() => onClose?.()}>
+				<Icon name="close" size={18} />
+			</button>
 		</div>
 
 		<div class="snippet-categories">
@@ -318,8 +322,37 @@
 
 	.snippet-hint {
 		font-size: 11px;
-		color: var(--ide-text-muted, #a8c5d9);
+		color: var(--ide-text-secondary, #a8c5d9);
 		white-space: nowrap;
+	}
+
+	.snippet-close {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex: none;
+		width: 44px;
+		height: 44px;
+		margin: -8px -4px -8px 0;
+		padding: 0;
+		background: transparent;
+		border: none;
+		border-radius: 6px;
+		color: var(--ide-text-secondary, #a8c5d9);
+		cursor: pointer;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease;
+	}
+
+	.snippet-close:hover {
+		background: color-mix(in srgb, var(--ide-text-primary) 8%, transparent);
+		color: var(--ide-text-primary, #f4f1e0);
+	}
+
+	.snippet-close:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.snippet-categories {
@@ -343,13 +376,18 @@
 	}
 
 	.category-tab:hover {
-		background: rgba(255, 255, 255, 0.05);
+		background: color-mix(in srgb, var(--ide-text-primary) 5%, transparent);
 		color: var(--ide-text-primary, #f4f1e0);
 	}
 
 	.category-tab.active {
-		background: rgba(168, 85, 247, 0.2);
-		color: #a855f7;
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
+		color: var(--ide-interactive);
+	}
+
+	.category-tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.snippet-content {
@@ -367,7 +405,7 @@
 	.snippet-empty {
 		padding: 24px;
 		text-align: center;
-		color: var(--ide-text-muted, #a8c5d9);
+		color: var(--ide-text-secondary, #a8c5d9);
 		font-size: 13px;
 	}
 
@@ -385,7 +423,12 @@
 
 	.snippet-item:hover,
 	.snippet-item.selected {
-		background: rgba(168, 85, 247, 0.1);
+		background: color-mix(in srgb, var(--ide-interactive) 12%, transparent);
+	}
+
+	.snippet-item:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: -2px;
 	}
 
 	.snippet-item-header {
@@ -399,9 +442,9 @@
 		font-family: monospace;
 		font-size: 12px;
 		padding: 2px 6px;
-		background: rgba(168, 85, 247, 0.2);
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
 		border-radius: 4px;
-		color: #a855f7;
+		color: var(--ide-interactive);
 	}
 
 	.snippet-name {
@@ -413,15 +456,15 @@
 	.snippet-badge {
 		margin-left: auto;
 		padding: 1px 6px;
-		background: rgba(34, 197, 94, 0.2);
+		background: color-mix(in srgb, var(--ide-success) 20%, transparent);
 		border-radius: 4px;
 		font-size: 10px;
-		color: #22c55e;
+		color: var(--ide-success);
 	}
 
 	.snippet-item-desc {
 		font-size: 11px;
-		color: var(--ide-text-muted, #a8c5d9);
+		color: var(--ide-text-secondary, #a8c5d9);
 	}
 
 	/* Preview pane */
@@ -448,7 +491,7 @@
 	.preview-category {
 		font-size: 11px;
 		padding: 2px 8px;
-		background: rgba(255, 255, 255, 0.1);
+		background: color-mix(in srgb, var(--ide-text-primary) 10%, transparent);
 		border-radius: 4px;
 		color: var(--ide-text-secondary, #a8c5d9);
 	}
@@ -472,13 +515,13 @@
 	}
 
 	:global(.preview-tabstop) {
-		background: rgba(168, 85, 247, 0.3);
+		background: color-mix(in srgb, var(--ide-interactive) 30%, transparent);
 		border-radius: 2px;
 		padding: 0 2px;
 	}
 
 	:global(.preview-variable) {
-		color: #22c55e;
+		color: var(--ide-success);
 	}
 
 	.preview-footer {
@@ -486,12 +529,12 @@
 		justify-content: space-between;
 		margin-top: 12px;
 		font-size: 11px;
-		color: var(--ide-text-muted, #a8c5d9);
+		color: var(--ide-text-secondary, #a8c5d9);
 	}
 
 	.preview-footer code {
 		font-family: monospace;
-		background: rgba(255, 255, 255, 0.1);
+		background: color-mix(in srgb, var(--ide-text-primary) 10%, transparent);
 		padding: 1px 4px;
 		border-radius: 2px;
 	}
@@ -505,9 +548,9 @@
 	.lang-tag {
 		font-size: 10px;
 		padding: 2px 6px;
-		background: rgba(59, 130, 246, 0.2);
+		background: color-mix(in srgb, var(--ide-info) 20%, transparent);
 		border-radius: 3px;
-		color: #3b82f6;
+		color: var(--ide-info);
 	}
 
 	.preview-empty {
@@ -515,7 +558,7 @@
 		align-items: center;
 		justify-content: center;
 		height: 100%;
-		color: var(--ide-text-muted, #a8c5d9);
+		color: var(--ide-text-secondary, #a8c5d9);
 		font-size: 13px;
 	}
 
@@ -525,6 +568,6 @@
 		padding: 8px 16px;
 		border-top: 1px solid var(--ide-border, #a8c5d9);
 		font-size: 11px;
-		color: var(--ide-text-muted, #a8c5d9);
+		color: var(--ide-text-secondary, #a8c5d9);
 	}
 </style>

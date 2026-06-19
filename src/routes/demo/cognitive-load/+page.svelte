@@ -226,7 +226,10 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			attentionType: 'reading',
 			cursor: {
 				position: { line: 45, column: 8 },
-				color: '#8B5CF6',
+				// Brand AI-assistant purple (--ide-ai-assistant / aurora-purple). The
+				// editor paints the cursor in-canvas from this hex, so it can't read the
+				// CSS token directly; keep it in sync with --color-nocturnium-aurora-purple.
+				color: '#a78bfa',
 				visible: true,
 				animation: 'thinking'
 			},
