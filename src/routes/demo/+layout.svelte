@@ -2,6 +2,7 @@
 	import { base, resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
+	import BrandMark from '$lib/components/BrandMark.svelte';
 
 	interface Props {
 		children: import('svelte').Snippet;
@@ -147,7 +148,7 @@
 			<span class="ide-visually-hidden">Toggle navigation</span>
 		</button>
 		<a class="mobile-brand" href={resolve('/')}>
-			<span class="logo-icon" aria-hidden="true">◉</span>
+			<BrandMark size={22} />
 			<span>Nocturnium IDE</span>
 		</a>
 	</div>
@@ -161,7 +162,7 @@
 	>
 		<div class="demo-header">
 			<a class="demo-logo" href={resolve('/')} aria-label="Nocturnium Svelte IDE — home">
-				<span class="logo-icon" aria-hidden="true">◉</span>
+				<BrandMark size={24} />
 				<span class="logo-text">Nocturnium</span>
 			</a>
 			<div class="demo-header-meta">
@@ -316,10 +317,6 @@
 		gap: var(--ide-spacing-sm);
 		text-decoration: none;
 		color: var(--ide-text-primary);
-	}
-	.logo-icon {
-		font-size: var(--ide-font-size-xl);
-		color: var(--ide-accent);
 	}
 	.logo-text {
 		font-weight: 700;
