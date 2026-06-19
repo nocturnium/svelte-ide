@@ -255,7 +255,7 @@ class CollaborationSession {
 					>{`// Initialize collaboration
 import { initialize, setLocalCursor } from '$lib/stores/collaboration.svelte';
 
-await initialize({
+initialize({
   serverUrl: 'wss://collab.example.com',
   roomId: 'my-document',
   user: {
@@ -271,21 +271,23 @@ setLocalCursor({
   column: 5
 });
 
-// Create document snapshot
+// Create a document snapshot (2nd arg is the content to capture)
 import { createSnapshot } from '$lib/stores/collaboration.svelte';
 
-await createSnapshot('doc-id', 'Before refactoring');
+createSnapshot('doc-id', currentDocumentText, 'manual');
 
-// AI collaboration session
+// AI collaboration session — pass an AI user; returns the session id
 import { startAISession, proposeAIChange } from '$lib/stores/collaboration.svelte';
 
-const session = await startAISession('doc-id', {
-  task: 'Refactor to async/await'
+const sessionId = startAISession('doc-id', {
+  id: 'claude',
+  name: 'Claude',
+  color: '#a78bfa'
 });
 
-proposeAIChange(session.id, {
+proposeAIChange(sessionId, {
   type: 'replace',
-  range: { start: { line: 5, column: 0 }, end: { line: 10, column: 0 } },
+  range: { startLine: 5, startColumn: 0, endLine: 10, endColumn: 0 },
   originalContent: '...',
   proposedContent: '...',
   explanation: 'Converted to async/await syntax'
