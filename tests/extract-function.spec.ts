@@ -33,8 +33,7 @@ async function seed(page: Page, source: string): Promise<EditorHelper> {
 	return editor;
 }
 
-const extractButton = (page: Page) =>
-	page.getByRole('button', { name: /extract to function/i });
+const extractButton = (page: Page) => page.getByRole('button', { name: /extract to function/i });
 
 test.describe('extract function (Track H ph2)', () => {
 	test('extracts the selected block into a new function; one undo restores it', async ({
