@@ -7,7 +7,9 @@
 		createKeyboardHandler,
 		createDefaultKeybindings,
 		createFoldManager,
+		extractFunctionAt,
 		type EditorState,
+		type ExtractFunctionResult,
 		type Selection,
 		type SearchMatch,
 		type FoldManager,
@@ -588,6 +590,21 @@
 			flashComplexityRegion(region);
 		}
 		hiddenInput?.focus();
+	}
+
+	/**
+	 * Extract the current selection into a new function (Track H). Analyzes the
+	 * current content fresh (not the debounced complexityMetrics, which can lag a
+	 * recent edit) so the enclosing region is always correct, regardless of the
+	 * complexityHighlighting prop. The edit is applied as a single undo step; on
+	 * refusal the editor is untouched. Returns the result so callers can surface
+	 * the reason.
+	 */
+	export function extractFunction(): ExtractFunctionResult {
+		const metrics = complexityAnalyzer.analyze(editorState.lines, language);
+		const result = extractFunctionAt(editorState, metrics);
+		announce(result.ok ? 'Extracted function' : result.reason);
+		return result;
 	}
 
 	function handleFoldIndicatorClick(lineNumber: number, e: MouseEvent) {

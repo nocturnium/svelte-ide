@@ -1055,3 +1055,45 @@ describe('EditorState — multi-line tokenizer propagation', () => {
 		expect(lineHasBlockComment(state, 1)).toBe(false);
 	});
 });
+
+describe('EditorState — transact', () => {
+	it('folds multiple edits into a single undoable transaction', () => {
+		const state = makeState('hello world');
+		const original = state.getContent();
+
+		state.transact((tx) => {
+			tx.delete({ line: 0, column: 5 }, { line: 0, column: 11 });
+			tx.insert({ line: 0, column: 5 }, '!');
+		});
+		expect(state.getContent()).toBe('hello!');
+
+		// A single undo reverts the whole transaction...
+		state.undo();
+		expect(state.getContent()).toBe(original);
+		// ...and a single redo reapplies it.
+		state.redo();
+		expect(state.getContent()).toBe('hello!');
+	});
+
+	it('keeps consecutive transactions as separate undo steps', () => {
+		const state = makeState('abc');
+		state.transact((tx) => tx.insert({ line: 0, column: 0 }, '1'));
+		state.transact((tx) => tx.insert({ line: 0, column: 0 }, '2'));
+		expect(state.getContent()).toBe('21abc');
+
+		state.undo();
+		expect(state.getContent()).toBe('1abc');
+		state.undo();
+		expect(state.getContent()).toBe('abc');
+	});
+
+	it('notifies onContentChange subscribers', () => {
+		const state = makeState('abc');
+		let events = 0;
+		const unsub = state.onContentChange(() => events++);
+		state.transact((tx) => tx.insert({ line: 0, column: 3 }, 'd'));
+		unsub();
+		expect(state.getContent()).toBe('abcd');
+		expect(events).toBeGreaterThan(0);
+	});
+});

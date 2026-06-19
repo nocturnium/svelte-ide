@@ -40,6 +40,17 @@ export interface Selection {
 }
 
 /**
+ * Primitive edits available inside {@link EditorState.transact}. Every insert
+ * and delete is folded into a single undo step.
+ */
+export interface EditorTransaction {
+	/** Insert text at a position; returns the position after the inserted text. */
+	insert(position: Position, text: string): Position;
+	/** Delete the range [from, to) (end exclusive). */
+	delete(from: Position, to: Position): void;
+}
+
+/**
  * A single line in the document
  */
 export interface Line {
@@ -565,6 +576,33 @@ export class EditorState {
 		this.emitSelectionChange();
 		this.emitCursorChange();
 		this.commitHistory(history, 'insert');
+	}
+
+	/**
+	 * Run several primitive edits as ONE undoable transaction. Inserts/deletes
+	 * performed via the provided `tx` are folded into a single history entry, so
+	 * one undo reverts the whole change and one redo reapplies it. Used by
+	 * multi-edit refactors such as extract-function. Emits a single content +
+	 * selection + cursor change after the body so subscribers (and `bind:content`)
+	 * update once.
+	 */
+	transact(fn: (tx: EditorTransaction) => void): void {
+		// Force a fresh, isolated history entry: don't merge into prior typing, and
+		// (after commit) don't let the next keystroke merge into this one.
+		this.lastHistoryType = null;
+		const history = this.beginHistory('insert');
+
+		fn({
+			insert: (position, text) => this.insertAtInternal(position, text, history.entry.changes),
+			delete: (from, to) => this.deleteRangeInternal(from, to, history.entry.changes)
+		});
+
+		// The internal primitives don't move cursors; clamp the primary so it stays
+		// valid against the new content (callers may set a more precise position).
+		this.setCursor(this.clampPosition(this.selection.head));
+		this.emitChange({ type: 'replace', from: { line: 0, column: 0 } });
+		this.commitHistory(history, 'insert');
+		this.lastHistoryType = null;
 	}
 
 	/**

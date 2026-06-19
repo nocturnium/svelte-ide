@@ -176,7 +176,18 @@ function planExtractFunctionUnsafe(input: ExtractInput): ExtractPlan | ExtractRe
 	}
 
 	for (const decl of insideDeclarations) {
-		if (usedAfterB.has(decl.name) && decl.depth > 0) {
+		// A name declared at depth > 0 inside the block and used after it is only
+		// conditionally defined — extracting it would drop the after-use's binding.
+		// The ONE safe exception is a nested arrow/catch/function PARAM that merely
+		// shadows an outer var (params are excluded from outputs, and the after-use
+		// resolves to the always-defined outer binding). A real lexical
+		// let/const/for-of declaration that shadows an outer name is NOT safe: it
+		// becomes a declared return and the call site emits a duplicate `const`.
+		if (
+			usedAfterB.has(decl.name) &&
+			decl.depth > 0 &&
+			!(decl.kind === 'param' && declaredBeforeB.has(decl.name))
+		) {
 			return {
 				ok: false,
 				reason: 'A variable used after the block is only conditionally defined inside it.'
@@ -205,6 +216,19 @@ function planExtractFunctionUnsafe(input: ExtractInput): ExtractPlan | ExtractRe
 	const returnNames = returns.map((item) => item.name);
 	const declaredReturnNames = new Set(returnNames.filter((name) => declaredInsideB.has(name)));
 	const outerReturnNames = returnNames.filter((name) => !declaredInsideB.has(name));
+
+	// A `const`-emitted return (a name declared inside the block) that ALSO has an
+	// outer binding before the block would write a duplicate `const <name>` at the
+	// call site (SyntaxError). This is depth-independent, so it covers the
+	// for-/while-header lexical declarations the brace-depth guard above cannot see
+	// (a `for (const v of …)` binding sits before the loop body brace).
+	const duplicateConstReturn = [...declaredReturnNames].find((name) => declaredBeforeB.has(name));
+	if (duplicateConstReturn) {
+		return {
+			ok: false,
+			reason: 'A variable declared in the block shadows an outer variable used after it.'
+		};
+	}
 
 	if (returnNames.length > 1 && outerReturnNames.length > 0) {
 		return {
@@ -700,13 +724,19 @@ function isIdentifierUse(tokens: FlatToken[], index: number): boolean {
 }
 
 function getAssignments(tokens: FlatToken[], declarations: ScopedDeclaration[]): NamePosition[] {
-	const assigned: NamePosition[] = declarations.map((decl) => ({
-		name: decl.name,
-		line: decl.line,
-		col: decl.col,
-		index: decl.index,
-		depth: decl.depth
-	}));
+	// Seed with the block's own let/const/var/function declarations (a declared
+	// value used after the block is a return). Nested fn/arrow/catch params are
+	// NOT outputs — they're bindings scoped to their construct; a real assignment
+	// to one is still picked up by the operator scan below.
+	const assigned: NamePosition[] = declarations
+		.filter((decl) => decl.kind !== 'param')
+		.map((decl) => ({
+			name: decl.name,
+			line: decl.line,
+			col: decl.col,
+			index: decl.index,
+			depth: decl.depth
+		}));
 	for (let i = 0; i < tokens.length; i++) {
 		if (isAssignmentOperatorToken(tokens, i)) {
 			const target = previousIdentifierInAssignment(tokens, i);
@@ -737,8 +767,13 @@ function identifierInIncrement(tokens: FlatToken[], index: number): NamePosition
 	if (!first || !second) return undefined;
 	if ((first.text !== '+' && first.text !== '-') || second.text !== first.text) return undefined;
 	if (!areAdjacent(first, second)) return undefined;
-
 	const previous = tokens[index - 1];
+	// A run of 3+ identical operators (e.g. `a+++b` is `a++ + b`) yields overlapping
+	// pairs; only the run's leading pair is a real increment. Skip a pair whose
+	// previous token is the same operator adjacent to it, so the trailing operand
+	// (`b`) is never spuriously modeled as a mutation target.
+	if (previous && previous.text === first.text && areAdjacent(previous, first)) return undefined;
+
 	const next = tokens[index + 2];
 	const target = isIdentifierToken(previous)
 		? previous

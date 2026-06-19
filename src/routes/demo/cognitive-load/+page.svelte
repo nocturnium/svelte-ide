@@ -180,6 +180,22 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	let content = $state(complexCode);
 	let selectedLanguage = $state('typescript');
 	let editorRef = $state<CustomEditor | null>(null);
+	let extractMessage = $state<{ text: string; ok: boolean } | null>(null);
+	let extractMessageTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function extractSelection() {
+		const result = editorRef?.extractFunction();
+		clearTimeout(extractMessageTimer);
+		if (!result) {
+			extractMessage = null;
+			return;
+		}
+		extractMessage = {
+			text: result.ok ? 'Extracted into a new function' : result.reason,
+			ok: result.ok
+		};
+		extractMessageTimer = setTimeout(() => (extractMessage = null), result.ok ? 2500 : 4000);
+	}
 
 	const languageOptions = ['javascript', 'typescript', 'python', 'go'];
 
@@ -473,6 +489,23 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			Edit the code below to see complexity analysis update in real-time. The AI cursor shows where
 			Claude is "looking".
 		</p>
+
+		<div class="extract-controls">
+			<button class="control-btn extract-btn" onclick={extractSelection}
+				>⟐ Extract to function</button
+			>
+			<span class="extract-hint"
+				>Select a block of statements inside a function, then extract it.</span
+			>
+			{#if extractMessage}
+				<span
+					class="extract-toast"
+					class:extract-toast--ok={extractMessage.ok}
+					role="status"
+					aria-live="polite">{extractMessage.text}</span
+				>
+			{/if}
+		</div>
 
 		<div class="editor-container">
 			<CustomEditor
@@ -927,6 +960,44 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
 		border: 0;
+	}
+
+	.extract-controls {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.extract-hint {
+		font-size: 0.8125rem;
+		color: var(--ide-text-muted);
+	}
+
+	.extract-toast {
+		font-size: 0.8125rem;
+		padding: 0.25rem 0.6rem;
+		border-radius: 6px;
+		color: var(--ide-warning);
+		background: color-mix(in srgb, var(--ide-warning) 14%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-warning) 35%, transparent);
+	}
+
+	.extract-toast--ok {
+		color: var(--ide-success);
+		background: color-mix(in srgb, var(--ide-success) 14%, transparent);
+		border-color: color-mix(in srgb, var(--ide-success) 35%, transparent);
+	}
+
+	/* The extract action is a refactor, not an AI control — use the page's
+	   interactive accent instead of the shared .control-btn AI-purple. */
+	.extract-btn:hover:not(:disabled) {
+		border-color: var(--ide-interactive);
+	}
+
+	.extract-btn:focus-visible {
+		outline-color: var(--ide-interactive-focus);
 	}
 
 	/* Editor Container */

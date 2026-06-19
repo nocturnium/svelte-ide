@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parse } from 'acorn';
 import { tokenize } from '../tokenizer';
 import { planExtractFunction, type ExtractPlan } from './extract-function';
 
@@ -68,6 +69,15 @@ function expectPostEditValid(
 		}
 	}
 	expect({ braces, parens, brackets }).toEqual({ braces: 0, parens: 0, brackets: 0 });
+
+	// Parser gate: the applied output must actually PARSE, not merely balance
+	// delimiters. Delimiter balance is blind to duplicate-declaration and
+	// illegal-statement-position SyntaxErrors — exactly the miswrite class that
+	// slipped earlier gates. acorn is JS-only, so skip TS inputs whose retained
+	// source type annotations it cannot parse.
+	if (language === 'javascript') {
+		expect(() => parse(edited, { ecmaVersion: 'latest', sourceType: 'module' })).not.toThrow();
+	}
 }
 
 describe('planExtractFunction', () => {
@@ -460,6 +470,148 @@ describe('planExtractFunction', () => {
 		expect(plan.returns).toEqual(['values']);
 		expectPostEditValid(lines, plan, 1, 1);
 	});
+
+	it('keeps a block-body closure param local without leaking an outer shadowed var', () => {
+		// The forEach callback param `d` shadows the outer `d` (used after the
+		// block). The block-body brace-range scope must keep the callback's `d`
+		// local — so `d` is neither a param nor confused with the outer one.
+		const lines = makeLines(
+			[
+				'function f(d, rows) {',
+				'\trows.forEach((d) => {',
+				'\t\trecord(d);',
+				'\t});',
+				'\tsink(d);',
+				'}'
+			].join('\n')
+		);
+		const plan = expectPlan(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 5, type: 'function' },
+				blockStart: 1,
+				blockEnd: 3
+			})
+		);
+
+		expect(plan.params).toEqual(['rows']);
+		expect(plan.params).not.toContain('d');
+		expect(plan.returns).toEqual([]);
+		expectPostEditValid(lines, plan, 1, 3);
+	});
+
+	it('refuses a block whose inner lexical let shadows an outer var used after it', () => {
+		// `x` is declared before, re-declared with `let` inside the `if`, and read
+		// after. Returning the inner `x` would emit a duplicate `const x` at the
+		// call site (SyntaxError) — must refuse, not silently miswrite.
+		const lines = makeLines(
+			[
+				'function f(cond) {',
+				'\tlet x = 1;',
+				'\tif (cond) {',
+				'\t\tlet x = 2;',
+				'\t\tlog(x);',
+				'\t}',
+				'\tsink(x);',
+				'}'
+			].join('\n')
+		);
+		expectRefusal(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 7, type: 'function' },
+				blockStart: 2,
+				blockEnd: 5
+			}),
+			'conditionally defined'
+		);
+	});
+
+	it('refuses a block whose inner const shadows an outer var used after it', () => {
+		const lines = makeLines(
+			[
+				'function f(cond) {',
+				'\tconst y = 5;',
+				'\twhile (cond) {',
+				'\t\tconst y = 9;',
+				'\t\temit(y);',
+				'\t}',
+				'\treport(y);',
+				'}'
+			].join('\n')
+		);
+		expectRefusal(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 7, type: 'function' },
+				blockStart: 2,
+				blockEnd: 5
+			}),
+			'conditionally defined'
+		);
+	});
+
+	it.each([
+		['for-of const', 'for (const v of rows) {'],
+		['for-in const', 'for (const v in rows) {'],
+		['for let', 'for (let v = 0; v < 3; v++) {']
+	])(
+		'refuses a %s header declaration shadowing an outer var used after (depth-blind)',
+		(_label, header) => {
+			// The shadowed name lives in the loop HEADER, before the body brace, so its
+			// block-relative depth is 0 — the depth guard misses it. The depth-independent
+			// duplicate-const check must still refuse it.
+			const lines = makeLines(
+				[
+					'function f(rows) {',
+					'\tconst v = 0;',
+					`\t${header}`,
+					'\t\temit(v);',
+					'\t}',
+					'\tsink(v);',
+					'}'
+				].join('\n')
+			);
+			expectRefusal(
+				planExtractFunction({
+					lines,
+					language: 'javascript',
+					region: { startLine: 0, endLine: 6, type: 'function' },
+					blockStart: 2,
+					blockEnd: 4
+				}),
+				'shadows an outer variable'
+			);
+		}
+	);
+
+	it.each(['x+++y', 'x---y'])(
+		'does not over-model the trailing operand of %s as a mutation',
+		(expr) => {
+			// `x+++y` is `x++ + y`: x is incremented (a real mutation), y is only
+			// read. Without the run guard, the trailing `y` was spuriously modeled
+			// as assigned, forcing a multi-return-with-outer refusal.
+			const lines = makeLines(
+				['function f(y) {', '\tlet x = 0;', `\t${expr};`, '\tuse(x);', '\tsink(y);', '}'].join('\n')
+			);
+			const plan = expectPlan(
+				planExtractFunction({
+					lines,
+					language: 'javascript',
+					region: { startLine: 0, endLine: 5, type: 'function' },
+					blockStart: 2,
+					blockEnd: 2
+				})
+			);
+
+			expect(plan.returns).toContain('x');
+			expect(plan.returns).not.toContain('y');
+			expectPostEditValid(lines, plan, 2, 2);
+		}
+	);
 
 	it.each(['obj.x += 1;', 'arr[i]++;'])(
 		'keeps member and computed mutation targets out of returns for %s',
