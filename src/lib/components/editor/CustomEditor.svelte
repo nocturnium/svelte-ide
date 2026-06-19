@@ -607,6 +607,16 @@
 		return result;
 	}
 
+	/** Current primary selection (anchor/head), for callers driving code actions. */
+	export function getSelection(): Selection {
+		return editorState.selection;
+	}
+
+	/** Text covered by the current primary selection ('' when collapsed). */
+	export function getSelectedText(): string {
+		return editorState.getSelectedText();
+	}
+
 	function handleFoldIndicatorClick(lineNumber: number, e: MouseEvent) {
 		e.preventDefault();
 		e.stopPropagation();

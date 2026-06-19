@@ -13,6 +13,7 @@
 	import EchoCursorLayer from '$lib/components/editor/EchoCursorLayer.svelte';
 	import GhostBracketLayer from '$lib/components/editor/GhostBracketLayer.svelte';
 	import ContextLens from '$lib/components/editor/ContextLens.svelte';
+	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import {
 		createQuickActionsManager,
 		type QuickActionsManager,
@@ -247,7 +248,21 @@ export const formatSession = (session: UserSession): string => {
 	// Quick Actions state
 	let quickActionsManager = $state<QuickActionsManager>(null!);
 	let quickActionsEnabled = $state(true);
-	let lastAction = $state<string | null>(null);
+
+	// Quick Actions tab: a REAL editor so the advertised actions actually run.
+	const qaSampleCode = `function renderInvoice(order) {
+	const subtotal = order.items.reduce((sum, item) => sum + item.price, 0);
+	const tax = subtotal * order.taxRate;
+	const total = subtotal + tax;
+	printLine(\`Subtotal: \${subtotal}\`);
+	printLine(\`Tax: \${tax}\`);
+	printLine(\`Total: \${total}\`);
+}`;
+	let qaEditorRef = $state<CustomEditor | null>(null);
+	let qaContent = $state(qaSampleCode);
+	let qaCursorLine = $state(0);
+	let qaActionResult = $state<{ text: string; ok: boolean } | null>(null);
+	let qaActionTimer: ReturnType<typeof setTimeout> | undefined;
 
 	// Overlay state
 	let echoCursorManager = $state<EchoCursorManager | null>(null);
@@ -400,11 +415,11 @@ export const formatSession = (session: UserSession): string => {
 
 		// Set initial context
 		quickActionsManager.updateContext({
-			position: { line: cursorLine, column: 10 },
+			position: { line: 0, column: 0 },
 			diagnostics: [],
-			lineContent: sampleLines[cursorLine] || '',
+			lineContent: qaContent.split('\n')[0] ?? '',
 			language: 'typescript',
-			content: sampleCode
+			content: qaContent
 		});
 
 		const echoManager = createEchoCursorManager({ defaultDelay: 220 });
@@ -440,9 +455,42 @@ export const formatSession = (session: UserSession): string => {
 		cursorLine = symbol.line;
 	}
 
+	function syncQuickActions() {
+		const editor = qaEditorRef;
+		if (!editor || !quickActionsManager) return;
+		const sel = editor.getSelection();
+		const startLine = Math.min(sel.anchor.line, sel.head.line);
+		const endLine = Math.max(sel.anchor.line, sel.head.line);
+		qaCursorLine = startLine;
+		quickActionsManager.updateContext({
+			position: { line: sel.head.line, column: sel.head.column },
+			selection: {
+				start: { line: startLine, column: 0 },
+				end: { line: endLine, column: 0 }
+			},
+			selectedText: editor.getSelectedText(),
+			diagnostics: [],
+			lineContent: qaContent.split('\n')[sel.head.line] ?? '',
+			language: 'typescript',
+			content: qaContent
+		});
+	}
+
 	function handleQuickActionExecute(action: CodeAction) {
-		lastAction = action.title;
-		setTimeout(() => (lastAction = null), 2000);
+		clearTimeout(qaActionTimer);
+		if (action.command?.command === 'refactor.extractFunction') {
+			const result = qaEditorRef?.extractFunction();
+			qaActionResult = result
+				? { text: result.ok ? 'Extracted into a new function' : result.reason, ok: result.ok }
+				: null;
+		} else {
+			qaActionResult = {
+				text: `${action.title} — preview only; Extract to function is the wired action in this build.`,
+				ok: false
+			};
+		}
+		const ok = qaActionResult?.ok ?? false;
+		qaActionTimer = setTimeout(() => (qaActionResult = null), ok ? 2600 : 4200);
 	}
 
 	function handleSymbolNavigate(symbol: DocumentSymbol) {
@@ -777,52 +825,40 @@ export const formatSession = (session: UserSession): string => {
 
 			<div class="quickactions-demo">
 				<div class="quickactions-editor">
-					<div class="editor-preview-small" style="position: relative;">
-						{#if quickActionsManager}
-							<QuickActionsMenu
-								manager={quickActionsManager}
-								{lineHeight}
-								{cursorLine}
-								gutterWidth={50}
-								showLightbulb={quickActionsEnabled}
-								onExecute={handleQuickActionExecute}
-							/>
+					<div class="qa-editor-wrap">
+						<CustomEditor
+							bind:this={qaEditorRef}
+							bind:content={qaContent}
+							language="typescript"
+							complexityHighlighting={false}
+							onCursorChange={syncQuickActions}
+							onChange={syncQuickActions}
+						/>
+						{#if quickActionsManager && quickActionsEnabled}
+							<div class="qa-menu-layer">
+								<QuickActionsMenu
+									manager={quickActionsManager}
+									lineHeight={20}
+									cursorLine={qaCursorLine}
+									gutterWidth={50}
+									showLightbulb={true}
+									onExecute={handleQuickActionExecute}
+								/>
+							</div>
 						{/if}
 
-						{#each sampleLines.slice(20, 50) as line, i (i)}
-							<div
-								class="code-line"
-								role="button"
-								tabindex={-1}
-								class:code-line--current={i + 20 === cursorLine}
-								style="height: {lineHeight}px;"
-								onclick={() => {
-									cursorLine = i + 20;
-									quickActionsManager?.updateContext({
-										position: { line: cursorLine, column: 10 },
-										diagnostics: [],
-										lineContent: sampleLines[cursorLine] || '',
-										language: 'typescript',
-										content: sampleCode
-									});
-								}}
-								onkeydown={(e) => {
-									if (e.key === 'Enter') {
-										cursorLine = i + 20;
-									}
-								}}
-							>
-								<span class="line-num">{i + 21}</span>
-								<span class="line-content">{line || ' '}</span>
+						{#if qaActionResult}
+							<div class="action-toast" class:action-toast--ok={qaActionResult.ok}>
+								{qaActionResult.text}
 							</div>
-						{/each}
+						{/if}
 					</div>
 
-					{#if lastAction}
-						<div class="action-toast">
-							Executed: {lastAction}
-						</div>
-					{/if}
+					<p class="qa-hint">
+						Select a block of statements (e.g. the three <code>const</code> lines), open the
+						lightbulb, and run <strong>Extract to function</strong> — it applies a real, single-undo refactor
+						right here.
+					</p>
 				</div>
 
 				<div class="quickactions-controls">
@@ -1244,6 +1280,33 @@ export const formatSession = (session: UserSession): string => {
 		position: relative;
 	}
 
+	/* Quick Actions tab: real editor + overlaid lightbulb menu */
+	.qa-editor-wrap {
+		position: relative;
+		height: 264px;
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.qa-menu-layer {
+		position: absolute;
+		inset: 8px 0 0 0; /* offset by the editor's top content padding so the bulb sits on its row */
+		pointer-events: none;
+		z-index: 30;
+	}
+
+	.qa-menu-layer :global(.quick-actions) {
+		pointer-events: auto;
+	}
+
+	.qa-hint {
+		margin: 0.75rem 0 0;
+		font-size: 0.8125rem;
+		line-height: 1.5;
+		color: var(--ide-text-muted);
+	}
+
 	.code-viewport {
 		transition: transform 0.1s ease;
 	}
@@ -1420,12 +1483,21 @@ export const formatSession = (session: UserSession): string => {
 		position: absolute;
 		bottom: 12px;
 		right: 12px;
+		max-width: 80%;
 		padding: 8px 16px;
-		background: #22c55e;
-		color: #fff;
+		background: color-mix(in srgb, var(--ide-warning) 16%, var(--ide-bg-elevated, #252536));
+		color: var(--ide-warning);
+		border: 1px solid color-mix(in srgb, var(--ide-warning) 40%, transparent);
 		border-radius: 6px;
 		font-size: 0.85rem;
 		animation: fadeIn 0.2s ease;
+		z-index: 40;
+	}
+
+	.action-toast--ok {
+		background: color-mix(in srgb, var(--ide-success) 16%, var(--ide-bg-elevated, #252536));
+		color: var(--ide-success);
+		border-color: color-mix(in srgb, var(--ide-success) 40%, transparent);
 	}
 
 	@keyframes fadeIn {
