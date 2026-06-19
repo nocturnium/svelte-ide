@@ -9,7 +9,8 @@
 	import {
 		createGitBlameManager,
 		generateMockBlameData,
-		type GitBlameManager
+		type GitBlameManager,
+		type BlameInfo
 	} from '$lib/components/editor/core/git-blame';
 	import {
 		createSnippetManager,
@@ -27,6 +28,8 @@
 	let blameManager = $state<GitBlameManager>(null!);
 	let blameEnabled = $state(false);
 	let blameColorMode = $state<'age' | 'author'>('age');
+	// Selected commit, set when a blame row's onCommitClick fires.
+	let selectedCommit = $state<BlameInfo | null>(null);
 
 	// Snippet demo
 	let snippetManager = $state<SnippetManager>(null!);
@@ -35,10 +38,15 @@
 	let expandedCode = $state('');
 
 	// Diff demo
-	let diffChanges = $state<
-		Array<{ line: number; type: 'added' | 'modified' | 'removed'; originalContent?: string }>
-	>([]);
+	type DiffChange = {
+		line: number;
+		type: 'added' | 'modified' | 'removed';
+		originalContent?: string;
+	};
+	let diffChanges = $state<DiffChange[]>([]);
 	let diffEnabled = $state(true);
+	// Selected change, set when a diff indicator's onChangeClick fires.
+	let selectedChange = $state<DiffChange | null>(null);
 
 	// Sample code for demos
 	const sampleCode = `import { useState, useEffect } from 'react';
@@ -106,6 +114,17 @@ export function DataComponent({ userId }: { userId: string }) {
 		updateWidth();
 		window.addEventListener('resize', updateWidth);
 
+		// Real Ctrl/Cmd+Shift+S shortcut to open the snippet palette, matching the
+		// hint shown on the Snippets tab.
+		const handleKeydown = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+				e.preventDefault();
+				activeDemo = 'snippets';
+				snippetPaletteOpen = true;
+			}
+		};
+		window.addEventListener('keydown', handleKeydown);
+
 		// Initialize blame manager
 		blameManager = createGitBlameManager();
 		const mockBlame = generateMockBlameData(sampleLines.length);
@@ -114,24 +133,35 @@ export function DataComponent({ userId }: { userId: string }) {
 		// Initialize snippet manager
 		snippetManager = createSnippetManager();
 
-		// Initialize diff changes
+		// Initialize diff changes.
+		// NOTE: InlineDiffLayer consumes `line` as 0-based (top = line * lineHeight)
+		// and the code preview below renders row N at array index N (the `i` key),
+		// so each entry's 0-based `line` must equal the array index of the line it
+		// describes. Every `originalContent` is the genuine "before" of that exact
+		// rendered line, so each bar sits on the line it actually annotates.
 		diffChanges = [
-			{ line: 3, type: 'added' },
-			{ line: 4, type: 'added' },
-			{ line: 15, type: 'modified', originalContent: '  const [data, setData] = useState([]);' },
+			// Logging was newly introduced.
+			{ line: 2, type: 'added' }, // import { Logger } from './utils/logger';
+			{ line: 4, type: 'added' }, // const logger = new Logger('DataComponent');
+			// useState calls were typed / re-defaulted.
+			{ line: 14, type: 'modified', originalContent: '  const [data, setData] = useState([]);' },
 			{
-				line: 16,
+				line: 15,
 				type: 'modified',
 				originalContent: '  const [loading, setLoading] = useState(false);'
 			},
-			{ line: 25, type: 'added' },
-			{ line: 26, type: 'added' },
-			{ line: 35, type: 'removed', originalContent: '  if (loading) return null;' },
-			{ line: 42, type: 'modified', originalContent: '        <p>{item.value}</p>' }
+			// Error state was added.
+			{ line: 16, type: 'added' }, // const [error, setError] = useState<string | null>(null);
+			// A bare `if (loading) return null;` early-return that used to sit just
+			// above the loading guard was deleted; the triangle marks where it was.
+			{ line: 34, type: 'removed', originalContent: '  if (loading) return null;' },
+			// The value paragraph gained its "Value:" label.
+			{ line: 43, type: 'modified', originalContent: '          <p>{item.value}</p>' }
 		];
 
 		return () => {
 			window.removeEventListener('resize', updateWidth);
+			window.removeEventListener('keydown', handleKeydown);
 		};
 	});
 
@@ -147,6 +177,14 @@ export function DataComponent({ userId }: { userId: string }) {
 	function setBlameColorMode(mode: 'age' | 'author') {
 		blameColorMode = mode;
 		blameManager.setConfig({ colorMode: mode });
+	}
+
+	function handleCommitClick(info: BlameInfo) {
+		selectedCommit = info;
+	}
+
+	function handleChangeClick(change: DiffChange) {
+		selectedChange = change;
 	}
 
 	function handleSnippetSelect(snippet: Snippet) {
@@ -228,6 +266,7 @@ export function DataComponent({ userId }: { userId: string }) {
 							gutterWidth={0}
 							{blameWidth}
 							enabled={true}
+							onCommitClick={handleCommitClick}
 						/>
 					{/if}
 
@@ -248,9 +287,29 @@ export function DataComponent({ userId }: { userId: string }) {
 						<li>Shows author and timestamp for each line</li>
 						<li>Color-coded by age (green = recent, gray = old) or author</li>
 						<li>Hover for full commit details</li>
-						<li>Click to view full commit</li>
+						<li>Click a blame row to load the full commit below</li>
 						<li>Groups consecutive lines from same commit</li>
 					</ul>
+
+					{#if selectedCommit}
+						<div class="selected-commit">
+							<h5>Selected Commit</h5>
+							<div class="commit-row">
+								<span class="commit-sha">{selectedCommit.commitSha.slice(0, 7)}</span>
+								<span class="commit-author">{selectedCommit.author}</span>
+								<span class="commit-date">
+									{selectedCommit.timestamp.toLocaleDateString(undefined, {
+										year: 'numeric',
+										month: 'short',
+										day: 'numeric'
+									})}
+								</span>
+							</div>
+							<p class="commit-message">{selectedCommit.message}</p>
+						</div>
+					{:else}
+						<p class="blame-hint">Enable blame, then click a row to inspect its commit here.</p>
+					{/if}
 				</div>
 			</div>
 		</section>
@@ -386,6 +445,7 @@ export function DataComponent({ userId }: { userId: string }) {
 						enabled={diffEnabled}
 						gutterOnly={true}
 						indicatorWidth={4}
+						onChangeClick={handleChangeClick}
 					/>
 
 					<!-- Code display -->
@@ -406,8 +466,31 @@ export function DataComponent({ userId }: { userId: string }) {
 						<li>Blue bar: Lines that have been modified</li>
 						<li>Red triangle: Lines that were removed</li>
 						<li>Hover to see original content</li>
-						<li>Click to navigate to diff view</li>
+						<li>Click an indicator to inspect the change below</li>
 					</ul>
+
+					{#if selectedChange}
+						<div class="selected-change">
+							<h5>Selected Change</h5>
+							<div class="change-row">
+								<span class="change-type change-type--{selectedChange.type}">
+									{selectedChange.type}
+								</span>
+								<span class="change-line">Line {selectedChange.line + 1}</span>
+							</div>
+							{#if selectedChange.originalContent}
+								<div class="change-original">
+									<span class="change-original-label">Original:</span>
+									<pre>{selectedChange.originalContent}</pre>
+								</div>
+							{:else}
+								<p class="change-note">
+									This line was {selectedChange.type === 'added' ? 'newly added' : 'removed'}, so it
+									has no prior content.
+								</p>
+							{/if}
+						</div>
+					{/if}
 
 					<div class="diff-summary">
 						<h5>Changes Summary</h5>
@@ -891,6 +974,112 @@ export function DataComponent({ userId }: { userId: string }) {
 	.stat--del {
 		background: rgba(239, 68, 68, 0.2);
 		color: #ef4444;
+	}
+
+	/* Selected commit / change detail panels (populated by the click handlers) */
+	.selected-commit,
+	.selected-change {
+		margin-top: 1rem;
+		padding: 0.75rem;
+		background: rgba(0, 0, 0, 0.25);
+		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 25%, transparent);
+		border-radius: 8px;
+	}
+
+	.selected-commit h5,
+	.selected-change h5 {
+		margin: 0 0 0.5rem;
+		font-size: 0.8rem;
+		color: var(--color-nocturnium-aurora-purple);
+	}
+
+	.commit-row,
+	.change-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
+		font-size: 0.8rem;
+	}
+
+	.commit-sha {
+		font-family: 'JetBrains Mono', monospace;
+		color: var(--ide-interactive, #4f8cc9);
+	}
+
+	.commit-author {
+		color: var(--ide-text-primary, #e8e8f0);
+		font-weight: 500;
+	}
+
+	.commit-date,
+	.change-line {
+		color: var(--ide-text-muted, #888);
+	}
+
+	.commit-message {
+		margin: 0.5rem 0 0;
+		font-size: 0.85rem;
+		color: var(--ide-text-secondary, #aaa);
+		line-height: 1.4;
+	}
+
+	.change-type {
+		padding: 1px 8px;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		text-transform: capitalize;
+	}
+
+	.change-type--added {
+		background: rgba(34, 197, 94, 0.2);
+		color: #22c55e;
+	}
+
+	.change-type--modified {
+		background: rgba(59, 130, 246, 0.2);
+		color: #3b82f6;
+	}
+
+	.change-type--removed {
+		background: rgba(239, 68, 68, 0.2);
+		color: #ef4444;
+	}
+
+	.change-original {
+		margin-top: 0.5rem;
+	}
+
+	.change-original-label {
+		display: block;
+		font-size: 0.7rem;
+		color: var(--ide-text-muted, #888);
+		margin-bottom: 0.25rem;
+	}
+
+	.change-original pre,
+	.change-note {
+		margin: 0;
+		font-size: 0.75rem;
+	}
+
+	.change-original pre {
+		font-family: 'JetBrains Mono', monospace;
+		color: var(--ide-text-secondary, #aaa);
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+
+	.change-note {
+		color: var(--ide-text-muted, #888);
+		line-height: 1.4;
+	}
+
+	.blame-hint {
+		margin: 0.75rem 0 0;
+		font-size: 0.78rem;
+		color: var(--ide-text-muted, #888);
+		font-style: italic;
 	}
 
 	/* ===== Responsive: tablet -> mobile ===== */

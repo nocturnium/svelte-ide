@@ -2,7 +2,7 @@
 	/**
 	 * Power Features Demo
 	 *
-	 * Demonstrates Echo Cursors, Bracket Healing, and Plugin Preview Sandbox.
+	 * Demonstrates Echo Cursors, Bracket Healing, and Plugin Preview.
 	 */
 
 	import { onMount } from 'svelte';
@@ -34,6 +34,10 @@
 	let echoEditorState = $state<EditorState | null>(null);
 	let echoEnabled = $state(false);
 	let echoCursors = $state<EchoCursor[]>([]);
+	// Snapshot of each echo's real EditorState mirror buffer, keyed by cursor id.
+	// Refreshed from echoManager.getEchoContent() so the replayed buffers are
+	// actually surfaced in the UI (not just the cursor markers).
+	let echoMirrorContents = $state<Record<string, string>>({});
 	let echoSourceContent = $state(`const user = getUser();
 const profile = user.profile;
 const status = profile.status;
@@ -45,7 +49,7 @@ renderStatus(status);`);
 
 	// Bracket healer demo
 	let bracketHealer: BracketHealer;
-	let bracketCode = $state(`function processData(items) {
+	let bracketCode = $state(`function processData(items) {  // '{' opened here is never closed
 	const results = [];
 	for (let i = 0; i < items.length; i++) {
 		if (items[i].valid {  // Missing closing paren
@@ -53,13 +57,23 @@ renderStatus(status);`);
 		}
 	}
 	return results;
-// Missing closing brace`);
+// The function body's closing brace is missing — flagged at line 1, where '{' opened`);
 	let ghosts = $state<GhostBracket[]>([]);
 	let mismatches = $state<BracketMismatch[]>([]);
 
+	// Color the "n issue(s)" badge by the most severe issue actually present so it
+	// matches the severity the healer assigns (unclosed brackets are 'warning').
+	let mismatchSeverity = $derived<'error' | 'warning' | 'info'>(
+		mismatches.some((m) => m.severity === 'error')
+			? 'error'
+			: mismatches.some((m) => m.severity === 'warning')
+				? 'warning'
+				: 'info'
+	);
+
 	// Plugin sandbox demo
 	let sandboxVisible = $state(false);
-	let sandboxCode = $state(`// Inert sample source for the plugin sandbox preview.
+	let sandboxCode = $state(`// Inert sample source for the plugin preview.
 function formatPrice(value) {
 	const rounded = Math.round(value * 100) / 100;
 	return '$' + rounded.toFixed(2);
@@ -108,6 +122,7 @@ export { formatPrice, summarize };`);
 		echoEditorState = realEchoEditor;
 		echoManager.subscribe((event) => {
 			echoCursors = echoManager.getEchoCursors();
+			refreshEchoMirrors();
 
 			if (event.type === 'keystroke-recorded') {
 				const ks = event.event;
@@ -145,6 +160,17 @@ export { formatPrice, summarize };`);
 		};
 	});
 
+	// Pull each echo's real mirror-buffer content out of the manager so the
+	// replayed buffers can be rendered. Keeps the caption honest: the visible
+	// mirror buffers are backed by real EditorState instances.
+	function refreshEchoMirrors() {
+		const next: Record<string, string> = {};
+		for (const cursor of echoManager.getEchoCursors()) {
+			next[cursor.id] = echoManager.getEchoContent(cursor.id);
+		}
+		echoMirrorContents = next;
+	}
+
 	function toggleEchoMode() {
 		if (echoEnabled) {
 			echoManager.disable();
@@ -152,6 +178,7 @@ export { formatPrice, summarize };`);
 			echoManager.enable();
 		}
 		echoEnabled = echoManager.isEnabled();
+		refreshEchoMirrors();
 	}
 
 	function addEchoPoint(line: number, delay: number) {
@@ -164,11 +191,13 @@ export { formatPrice, summarize };`);
 			{ delay, label: `Echo ${line + 1}` }
 		);
 		echoCursors = echoManager.getEchoCursors();
+		refreshEchoMirrors();
 	}
 
 	function clearEchoes() {
 		echoManager.clearAllEchoes();
 		echoCursors = [];
+		echoMirrorContents = {};
 	}
 
 	function positionFromIndex(content: string, index: number): Position {
@@ -241,7 +270,7 @@ export { formatPrice, summarize };`);
 <div class="power-features-demo">
 	<header class="demo-header">
 		<h1>Power Features</h1>
-		<p>Echo Cursors, Bracket Healing, and Plugin Preview Sandbox</p>
+		<p>Echo Cursors, Bracket Healing, and Plugin Preview</p>
 	</header>
 
 	<!-- Demo tabs -->
@@ -261,7 +290,7 @@ export { formatPrice, summarize };`);
 			class:active={activeDemo === 'plugin'}
 			onclick={() => (activeDemo = 'plugin')}
 		>
-			Plugin Sandbox
+			Plugin Preview
 		</button>
 	</div>
 
@@ -317,8 +346,25 @@ export { formatPrice, summarize };`);
 								</div>
 							{/each}
 						</div>
+
+						{#if echoCursors.length > 0}
+							<div class="echo-mirrors">
+								{#each echoCursors as cursor (cursor.id)}
+									<div class="echo-mirror" style="--color: {cursor.color};">
+										<div class="echo-mirror__header">
+											<span class="echo-mirror__dot"></span>
+											<span class="echo-mirror__label">{cursor.label}</span>
+											<span class="echo-mirror__delay">{cursor.delayMs}ms</span>
+										</div>
+										<pre class="echo-mirror__buffer">{echoMirrorContents[cursor.id] ?? ''}</pre>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
 						<p class="mock-caption" role="note">
-							Visible mirror buffers are backed by real EditorState instances.
+							Each echo's buffer above is a real EditorState mirror — keystrokes you type in the
+							source replay into it after the echo's delay.
 						</p>
 					</div>
 
@@ -373,7 +419,7 @@ export { formatPrice, summarize };`);
 				<div class="bracket-editor">
 					<div class="editor-header">
 						<span>Code with bracket issues</span>
-						<span class="mismatch-count">
+						<span class="mismatch-count mismatch-count--{mismatchSeverity}">
 							{mismatches.length} issue{mismatches.length !== 1 ? 's' : ''} detected
 						</span>
 					</div>
@@ -442,14 +488,14 @@ export { formatPrice, summarize };`);
 		</section>
 	{/if}
 
-	<!-- Plugin Sandbox Demo -->
+	<!-- Plugin Preview Demo -->
 	{#if activeDemo === 'plugin'}
 		<section class="demo-section">
 			<div class="section-header">
-				<h2>Plugin Preview Sandbox</h2>
+				<h2>Plugin Preview</h2>
 				<p>
-					Preview plugin transformations in a sandboxed environment before applying them to your
-					code.
+					Preview a plugin's transformation — see the diff and stats — before applying it to your
+					code. Trusted plugin code runs in this editor's realm, not an isolated sandbox.
 				</p>
 			</div>
 
@@ -458,7 +504,7 @@ export { formatPrice, summarize };`);
 					<div class="editor-header">
 						<span>Source Code</span>
 						<button class="open-sandbox-btn" onclick={() => (sandboxVisible = true)}>
-							Open Plugin Sandbox
+							Open Plugin Preview
 						</button>
 					</div>
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -475,7 +521,7 @@ export { formatPrice, summarize };`);
 						<li><strong>Minify</strong> - Compress code by removing whitespace</li>
 					</ul>
 					<p class="info-note">
-						Click "Open Plugin Sandbox" to preview transformations before applying them.
+						Click "Open Plugin Preview" to preview transformations before applying them.
 					</p>
 				</div>
 			</div>
@@ -699,6 +745,63 @@ export { formatPrice, summarize };`);
 		color: var(--ide-text-muted, #9b9bb0);
 	}
 
+	/* Real EditorState mirror buffers, one per echo cursor. */
+	.echo-mirrors {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+		gap: 0.75rem;
+		margin-top: 0.75rem;
+	}
+
+	.echo-mirror {
+		min-width: 0;
+		background: rgba(0, 0, 0, 0.25);
+		border: 1px solid var(--ide-border, #333);
+		border-left: 3px solid var(--color);
+		border-radius: 6px;
+		overflow: hidden;
+	}
+
+	.echo-mirror__header {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.35rem 0.6rem;
+		background: rgba(255, 255, 255, 0.04);
+		font-size: 0.7rem;
+	}
+
+	.echo-mirror__dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--color);
+		flex-shrink: 0;
+	}
+
+	.echo-mirror__label {
+		color: var(--ide-text-secondary, #aaa);
+		font-weight: 600;
+	}
+
+	.echo-mirror__delay {
+		margin-left: auto;
+		color: var(--ide-text-muted, #9b9bb0);
+	}
+
+	.echo-mirror__buffer {
+		margin: 0;
+		padding: 0.5rem 0.6rem;
+		font-family: monospace;
+		font-size: 11px;
+		line-height: 1.5;
+		color: var(--ide-text-secondary, #b4b4c4);
+		white-space: pre;
+		overflow-x: auto;
+		max-height: 160px;
+		overflow-y: auto;
+	}
+
 	.mock-line {
 		display: flex;
 		padding: 0 0.5rem;
@@ -838,10 +941,21 @@ export { formatPrice, summarize };`);
 
 	.mismatch-count {
 		padding: 2px 8px;
-		background: rgba(239, 68, 68, 0.2);
 		border-radius: 4px;
-		color: #ef4444;
 		font-size: 0.75rem;
+		/* Neutral default; severity modifiers below tint it to match the engine. */
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.mismatch-count--error {
+		background: rgba(239, 68, 68, 0.2);
+		color: #ef4444;
+	}
+
+	.mismatch-count--warning {
+		background: rgba(245, 158, 11, 0.2);
+		color: #f59e0b;
 	}
 
 	.code-input {
@@ -1141,7 +1255,7 @@ export { formatPrice, summarize };`);
 
 		/* Tighter tab padding so all three short labels are more likely to fit
 		   without scrolling, plus a wider right-edge fade so the third demo
-		   ("Plugin Sandbox") stays discoverable when the strip does scroll. */
+		   ("Plugin Preview") stays discoverable when the strip does scroll. */
 		.demo-tabs {
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
 			mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);

@@ -205,7 +205,7 @@ class TaskManager:
 			language: 'markdown',
 			content: `# Svelte IDE
 
-A **zero-dependency** IDE component library for Svelte 5.
+A Svelte 5 IDE component library with a **dependency-free editor core**.
 
 ## Features
 
@@ -492,7 +492,7 @@ A **zero-dependency** IDE component library for Svelte 5.
 	<section class="component-section" aria-labelledby="caps-title">
 		<h2 id="caps-title">What's inside the editor core</h2>
 		<div class="features-list">
-			{#each [{ t: 'Syntax highlighting', d: 'Tokenizers for TypeScript, JavaScript, Python, Go, HTML, CSS, JSON, Markdown and more.' }, { t: 'Multi-cursor & selection', d: 'Add cursors, select occurrences, and edit in parallel with full selection support.' }, { t: 'Code folding', d: 'Bracket- and indentation-aware folds with semantic presets.' }, { t: 'Find & replace', d: 'Incremental search, regex, case sensitivity, and replace-all.' }, { t: 'Virtualized rendering', d: 'Only the visible window renders — smooth at 10k+ lines.' }, { t: 'Zero dependencies', d: 'No CodeMirror, no Monaco. Pure Svelte 5.' }] as feature, i (i)}
+			{#each [{ t: 'Syntax highlighting', d: 'Tokenizers for TypeScript, JavaScript, Python, Go, HTML, CSS, JSON, Markdown and more.' }, { t: 'Multi-cursor & selection', d: 'Add cursors, select occurrences, and edit in parallel with full selection support.' }, { t: 'Code folding', d: 'Bracket- and indentation-aware folds with semantic presets.' }, { t: 'Find & replace', d: 'Incremental search, regex, case sensitivity, and replace-all.' }, { t: 'Virtualized rendering', d: 'Only the visible window renders — smooth at 10k+ lines.' }, { t: 'No editor-engine dependency', d: 'No CodeMirror, no Monaco — the editor core is pure Svelte 5. Real-time collaboration is an optional peer (yjs).' }] as feature, i (i)}
 				<div class="feature">
 					<span class="feature-icon" aria-hidden="true">✓</span>
 					<div>

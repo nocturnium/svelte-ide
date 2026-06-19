@@ -234,6 +234,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 		refreshConflicts();
 
 		return () => {
+			handlePause();
 			unsubscribe();
 			unsubscribePresence();
 			stopPrimaryRelay();
@@ -279,15 +280,69 @@ export function applyDiscount(order: Order, percent: number): Order {
 		refreshConflicts();
 	}
 
+	// Real playback loop: animates timelinePosition forward through history at a
+	// fixed rate and replays each snapshot's content. Drives isPlaying so the
+	// scrubber's Play/Pause button reflects (and controls) actual state.
+	let playbackFrame: ReturnType<typeof requestAnimationFrame> | null = null;
+	let lastFrameTime = 0;
+	// Sweep the full timeline in ~6s regardless of real elapsed duration, so the
+	// replay is watchable even when all snapshots were captured seconds apart.
+	const PLAYBACK_DURATION_MS = 6000;
+
+	function applyPlaybackPosition(position: number) {
+		const snapshotContent = timelineManager.getContentAtPosition(position);
+		if (snapshotContent !== null) {
+			playbackContent = snapshotContent;
+		}
+	}
+
+	function stepPlayback(now: number) {
+		if (!isPlaying) return;
+		const delta = now - lastFrameTime;
+		lastFrameTime = now;
+
+		const next = timelinePosition + delta / PLAYBACK_DURATION_MS;
+		if (next >= 1) {
+			// Reached the present — stop and snap to live.
+			handleGoLive();
+			return;
+		}
+
+		timelinePosition = next;
+		isPlayback = true;
+		applyPlaybackPosition(next);
+		playbackFrame = requestAnimationFrame(stepPlayback);
+	}
+
+	function handlePlay() {
+		if (isPlaying) return;
+		// Nothing to replay once we're already live — rewind to the start first.
+		if (timelinePosition >= 1) {
+			timelinePosition = 0;
+			isPlayback = true;
+			applyPlaybackPosition(0);
+		}
+		isPlaying = true;
+		lastFrameTime = performance.now();
+		playbackFrame = requestAnimationFrame(stepPlayback);
+	}
+
+	function handlePause() {
+		isPlaying = false;
+		if (playbackFrame !== null) {
+			cancelAnimationFrame(playbackFrame);
+			playbackFrame = null;
+		}
+	}
+
 	function handlePositionChange(position: number) {
+		// A manual scrub takes over from any running playback.
+		handlePause();
 		timelinePosition = position;
 
 		if (position < 1) {
 			isPlayback = true;
-			const snapshotContent = timelineManager.getContentAtPosition(position);
-			if (snapshotContent) {
-				playbackContent = snapshotContent;
-			}
+			applyPlaybackPosition(position);
 		} else {
 			isPlayback = false;
 			playbackContent = '';
@@ -295,6 +350,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 	}
 
 	function handleGoLive() {
+		handlePause();
 		timelinePosition = 1;
 		isPlayback = false;
 		playbackContent = '';
@@ -341,6 +397,8 @@ export function applyDiscount(order: Order, percent: number): Order {
 					{isPlaying}
 					duration={timelineManager.getDuration()}
 					onPositionChange={handlePositionChange}
+					onPlay={handlePlay}
+					onPause={handlePause}
 					onGoLive={handleGoLive}
 					enabled={true}
 				/>
@@ -417,6 +475,12 @@ export function applyDiscount(order: Order, percent: number): Order {
 		<!-- Editor with overlay -->
 		<section class="demo-section demo-section--editor">
 			<h2>Shared Editors with Conflict Zones</h2>
+			<p class="demo-description">
+				Both editors below write to the same in-page document. The conflict band is rendered over
+				the primary (left) editor; it marks the lines where both cursors are predicted to collide.
+				The overlay is anchored to the top of the editor, so it stays accurate near the top of the
+				file and may drift once you scroll the code past the first viewport.
+			</p>
 			<div class="collab-editor-grid">
 				<div class="editor-pane">
 					<div class="editor-pane__header">

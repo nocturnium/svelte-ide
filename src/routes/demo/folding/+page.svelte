@@ -186,6 +186,7 @@ def process_batch(items, batch_size=100):
 				<button
 					class="control-btn"
 					class:control-btn--active={selectedLanguage === 'javascript'}
+					aria-pressed={selectedLanguage === 'javascript'}
 					onclick={() => (selectedLanguage = 'javascript')}
 				>
 					JavaScript
@@ -193,6 +194,7 @@ def process_batch(items, batch_size=100):
 				<button
 					class="control-btn"
 					class:control-btn--active={selectedLanguage === 'python'}
+					aria-pressed={selectedLanguage === 'python'}
 					onclick={() => (selectedLanguage = 'python')}
 				>
 					Python

@@ -216,6 +216,33 @@ export const capitalize = (str: string): string =>
 		editor?.unfoldAll();
 	}
 
+	// Categories the TypeScript/JavaScript semantic analyzer can actually emit
+	// (see JAVASCRIPT_PATTERNS in semantic-analyzer.ts). Some shipped presets list
+	// aspirational categories — `public`, `setup`, `boilerplate` — that have no
+	// detector, so they never match a region and never fold anything. We filter the
+	// active-preset readout to the categories that genuinely do something, so the
+	// panel reports what folds rather than what the preset wishes it could fold.
+	const EMITTABLE_CATEGORIES = new Set([
+		'imports',
+		'exports',
+		'types',
+		'error-handling',
+		'logging',
+		'tests',
+		'comments',
+		'function',
+		'class',
+		'private',
+		'constants'
+	]);
+
+	// Folding is driven entirely by the preset's `hide` set (applyFoldPreset only
+	// collapses hidden categories — it does not isolate a `show` set), so the readout
+	// surfaces the categories actually being collapsed, filtered to ones that exist.
+	let activeHiddenCategories = $derived(
+		activePreset ? activePreset.hide.filter((c) => EMITTABLE_CATEGORIES.has(c)) : []
+	);
+
 	// Get category color
 	function getCategoryColor(category: string): string {
 		const colors: Record<string, string> = {
@@ -234,35 +261,53 @@ export const capitalize = (str: string): string =>
 		return colors[category] || '#888';
 	}
 
-	// Handle scroll
+	// Feed the editor's scroll position into the Structure Map's viewport indicator.
+	// NOTE: CustomEditor scrolls inside its own internal content element and exposes
+	// no scroll callback/accessor today, so this handler on .editor-pane does not yet
+	// fire (the inner `scroll` event doesn't bubble). It activates honestly once
+	// CustomEditor surfaces its scroll position — see componentChangesNeeded.
 	function handleScroll(e: Event) {
 		const target = e.target as HTMLElement;
 		scrollLine = Math.floor(target.scrollTop / 20); // Approximate line height
 	}
 
-	// Navigate to line
+	// Navigate to line: move the Structure Map's cursor indicator AND scroll the
+	// live editor to that line via CustomEditor's exported scrollToLine() (bound
+	// through `editor`). scrollToLine is async; we fire-and-forget from the click.
 	function navigateToLine(line: number) {
 		cursorLine = line;
-		// In real implementation, scroll editor to line
+		void editor?.scrollToLine(line);
 	}
 
 	// Mobile: collapsible Structure Map
 	let structureMapOpen = $state(false);
 
 	// Symbol count surfaced on the collapsed mobile accordion toggle so its value
-	// is legible before expanding. Mirrors the structural categories StructureMap
-	// renders (see StructureMap.svelte structuralCategories) so the badge matches
-	// what's inside.
+	// is legible before expanding. Computed with the SAME structural categories AND
+	// the same de-dup rule StructureMap applies (see StructureMap.svelte: it drops a
+	// generic `exports` node when a function/class/types node begins on the same
+	// line, e.g. `export class Foo`), so the badge equals StructureMap's header count
+	// rather than double-counting those lines.
 	const STRUCTURE_CATEGORIES = ['function', 'class', 'exports', 'types', 'tests', 'imports'];
-	let structureSymbolCount = $derived(
-		semanticRegions.filter((r) => STRUCTURE_CATEGORIES.includes(r.category)).length
-	);
+	let structureSymbolCount = $derived.by(() => {
+		const structural = semanticRegions.filter((r) => STRUCTURE_CATEGORIES.includes(r.category));
+		const specificStartLines = new Set(
+			structural
+				.filter(
+					(r) => r.category === 'function' || r.category === 'class' || r.category === 'types'
+				)
+				.map((r) => r.startLine)
+		);
+		return structural.filter(
+			(r) => !(r.category === 'exports' && specificStartLines.has(r.startLine))
+		).length;
+	});
 </script>
 
 <div class="demo-page">
 	<header class="page-header">
 		<h1>Semantic Features</h1>
-		<p>Intelligent code understanding with semantic folding, context lens, and structure map</p>
+		<p>Intelligent code understanding with semantic folding and a live structure map</p>
 	</header>
 
 	<!-- Semantic Regions Overview -->
@@ -305,8 +350,8 @@ export const capitalize = (str: string): string =>
 	<section class="component-section">
 		<h2>Fold Presets</h2>
 		<p class="section-desc">
-			One-click folding based on semantic understanding. Hide tests, show only exports, focus on
-			debugging.
+			One-click folding based on semantic understanding. Each preset collapses a set of categories —
+			hide tests, fold comments and types, or focus on error handling — and clears with one click.
 		</p>
 
 		<div class="presets-grid">
@@ -339,9 +384,12 @@ export const capitalize = (str: string): string =>
 		{#if activePreset}
 			<div class="active-preset-info">
 				<strong>Active:</strong>
-				{activePreset.name} - Showing: {activePreset.show.join(', ')} | Hiding: {activePreset.hide.join(
-					', '
-				)}
+				{activePreset.name} —
+				{#if activeHiddenCategories.length > 0}
+					collapsing {activeHiddenCategories.join(', ')}
+				{:else}
+					nothing to collapse in this sample
+				{/if}
 			</div>
 		{/if}
 	</section>
@@ -350,7 +398,8 @@ export const capitalize = (str: string): string =>
 	<section class="component-section">
 		<h2>Live Demo</h2>
 		<p class="section-desc">
-			Editor with Context Lens (hover over functions) and Structure Map (right panel).
+			Editor with a live Structure Map (right panel). Click a symbol in the map — or a region in the
+			Semantic Analysis cards above — to scroll the editor to it.
 		</p>
 
 		<div class="editor-with-map">
@@ -487,9 +536,10 @@ export const capitalize = (str: string): string =>
 						<path d="M12 16v-4M12 8h.01" />
 					</svg>
 				</div>
-				<h3>Context Lens</h3>
+				<h3>Semantic Regions</h3>
 				<p>
-					Inline type information appears as you navigate. See function signatures without hovering.
+					The analyzer labels code by meaning — imports, types, exports, tests, error handling — not
+					just syntax.
 				</p>
 			</div>
 
@@ -530,8 +580,8 @@ export const capitalize = (str: string): string =>
 				</div>
 				<h3>Fold Presets</h3>
 				<p>
-					Save and share folding configurations. Perfect for code review, debugging, or
-					documentation.
+					Built-in folding presets for code review, debugging, and documentation — one click to
+					reshape the view.
 				</p>
 			</div>
 		</div>

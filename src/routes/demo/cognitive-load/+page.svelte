@@ -446,8 +446,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Ghost Pair - AI Presence</h2>
 		<p class="section-desc">
-			Visualize AI agents working alongside you. See where they're looking, what they're thinking,
-			and what they're changing.
+			Visualize AI agents working alongside you. A ghost cursor, a focus-region glow, and an
+			activity label show where an agent is looking and what it's focused on.
 		</p>
 
 		<div class="ghost-pair-controls">
@@ -528,7 +528,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Feature Highlights</h2>
 		<div class="features-grid">
-			<div class="feature-card" style="--feature-accent: var(--color-error, #ef4444)">
+			<div class="feature-card" style="--feature-accent: var(--ide-error)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -574,7 +574,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<p>See where AI agents are looking with ghost cursors and focus region highlights.</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--color-success, #22c55e)">
+			<div class="feature-card" style="--feature-accent: var(--ide-success)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -591,10 +591,13 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					</svg>
 				</div>
 				<h3>Refactoring Suggestions</h3>
-				<p>Hover over complex regions to see actionable suggestions for improvement.</p>
+				<p>
+					Hover the gutter markers on high-complexity regions for a breakdown, with an actionable
+					suggestion once a region crosses the medium threshold.
+				</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--color-warning, #f59e0b)">
+			<div class="feature-card" style="--feature-accent: var(--ide-warning)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -615,7 +618,10 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					</svg>
 				</div>
 				<h3>Activity Visualization</h3>
-				<p>Distinct visual states for reading, thinking, writing, and reviewing activities.</p>
+				<p>
+					A distinct cursor glyph and focus-glow color for each activity state — reading, thinking,
+					writing, and reviewing.
+				</p>
 			</div>
 		</div>
 	</section>

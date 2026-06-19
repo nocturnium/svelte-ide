@@ -141,11 +141,16 @@
 
 		<div class="demo-group">
 			<h3>States</h3>
+			<p class="group-note">
+				<code>error</code> is a first-class prop on <code>Input</code>. Success styling has no prop
+				— it's composed at the call site (a wrapper border override plus your own checkmark span).
+			</p>
 			<div class="input-demos">
 				<Input placeholder="Error state" error="This field is required" />
 				<label class="field input-success">
-					<Input placeholder="Success state" />
-					<span class="field__success">{@render iconCheck()} Looks good</span>
+					<Input placeholder="Composed success styling" />
+					<span class="field__success">{@render iconCheck()} Looks good (composed, not a prop)</span
+					>
 				</label>
 				<label class="field">
 					<Input placeholder="With helper" />
@@ -387,6 +392,23 @@
 
 	.tooltip-row {
 		gap: 1.5rem;
+	}
+
+	.group-note {
+		font-size: 0.8125rem;
+		color: var(--ide-text-secondary);
+		margin-bottom: 1rem;
+		max-width: 480px;
+		line-height: 1.5;
+	}
+
+	.group-note code {
+		font-family: var(--ide-font-mono);
+		font-size: 0.8125em;
+		padding: 0.05rem 0.3rem;
+		border-radius: var(--ide-radius-sm);
+		background: var(--ide-bg-secondary);
+		color: var(--ide-text-primary);
 	}
 
 	.input-demos {

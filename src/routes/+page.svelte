@@ -37,7 +37,6 @@ export function triageLoad(
   return score > 80 ? 'critical' : 'clear';
 }
 `;
-	let heroContent = $state(heroSample);
 
 	// Render a snippet to highlighted HTML using the library tokenizer (same token
 	// classes as the live editor). Lines are tokenized independently then joined,
@@ -122,7 +121,7 @@ export function triageLoad(
 			icon: '⟡',
 			title: 'Real editing model',
 			description:
-				'Multi-cursor, column selection, find & replace with regex, code folding, and virtualized rendering that stays smooth at 10k+ lines.'
+				'Multi-cursor, multi-line cursors, find & replace with regex, code folding, and virtualized rendering that stays smooth at 10k+ lines.'
 		},
 		{
 			icon: '✦',
@@ -304,7 +303,7 @@ export function triageLoad(
 					<div class="window-body" bind:this={heroEditorHost}>
 						{#if HeroEditor}
 							<HeroEditor
-								content={heroContent}
+								content={heroSample}
 								language="typescript"
 								readonly
 								folding

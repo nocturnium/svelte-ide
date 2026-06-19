@@ -47,7 +47,7 @@
 			description: 'Enhanced Git integration with blame annotations and history',
 			category: 'integration',
 			tags: ['git', 'history'],
-			version: 0,
+			version: 1,
 			status: 'testing',
 			author: 'Charlie',
 			parameters: { type: 'object', properties: {} },
@@ -64,7 +64,7 @@
 			description: 'Inline code suggestions powered by AI',
 			category: 'ai',
 			tags: ['ai', 'completion'],
-			version: 0,
+			version: 1,
 			status: 'reviewing',
 			author: 'Diana',
 			parameters: { type: 'object', properties: {} },
@@ -81,7 +81,7 @@
 			description: 'Advanced file browser with search and filtering',
 			category: 'ui',
 			tags: ['files', 'navigation'],
-			version: 0,
+			version: 1,
 			status: 'draft',
 			author: 'Eve',
 			parameters: { type: 'object', properties: {} },
@@ -123,49 +123,18 @@
 		seedProposals(SAMPLE_PROPOSALS as unknown as PluginProposal[]);
 	}
 
-	// Sample plugins for demo
-	const samplePlugins: PluginInfo[] = [
-		{
-			id: 'prettier-format',
-			name: 'Prettier Format',
-			description: 'Automatically format code using Prettier on save',
-			status: 'deployed',
-			version: '1.2.0',
-			author: 'Alice'
-		},
-		{
-			id: 'eslint-check',
-			name: 'ESLint Checker',
-			description: 'Real-time ESLint diagnostics and quick fixes',
-			status: 'deployed',
-			version: '2.0.1',
-			author: 'Bob'
-		},
-		{
-			id: 'git-lens',
-			name: 'Git Lens',
-			description: 'Enhanced Git integration with blame annotations and history',
-			status: 'testing',
-			version: '0.9.0',
-			author: 'Charlie'
-		},
-		{
-			id: 'copilot-suggest',
-			name: 'AI Suggestions',
-			description: 'Inline code suggestions powered by AI',
-			status: 'reviewing',
-			version: '0.5.0',
-			author: 'Diana'
-		},
-		{
-			id: 'file-browser',
-			name: 'Enhanced File Browser',
-			description: 'Advanced file browser with search and filtering',
-			status: 'draft',
-			version: '0.1.0',
-			author: 'Eve'
-		}
-	];
+	// Cards and the embedded PluginPanel share ONE source of truth: SAMPLE_PROPOSALS.
+	// We derive the card list from those same proposals and format the version exactly
+	// the way PluginPanel does (`${proposal.version}.0.0`), so a plugin can never show
+	// one version in the panel and a different one on its card.
+	const samplePlugins: PluginInfo[] = SAMPLE_PROPOSALS.map((p) => ({
+		id: p.id,
+		name: p.name,
+		description: p.description,
+		status: p.status as PluginStatus,
+		version: `${p.version}.0.0`,
+		author: p.author
+	}));
 
 	// Forward lifecycle, in order — mirrors the Plugin Lifecycle stepper below.
 	const lifecycleStatuses: PluginStatus[] = [
@@ -355,40 +324,55 @@
 		<div class="config-demo">
 			<pre><code
 					>{`// Connect to plugin system
-import { connect, createProposal, loadPlugin } from '@nocturnium/svelte-ide/stores';
+import {
+  connect,
+  createProposal,
+  loadPlugin,
+  unloadPlugin
+} from '@nocturnium/svelte-ide/stores';
 
-// Connect to the backend
-await connect('wss://plugins.example.com');
+// Connect to the backend's Server-Sent-Events stream.
+// connect() is synchronous (void) and opens an EventSource over HTTP;
+// it defaults to the same-origin '/api/plugins/stream'.
+connect('https://plugins.example.com/api/plugins/stream');
 
-// Create a new plugin proposal
-const proposal = await createProposal({
+// Create a new plugin proposal. createProposal is async and resolves
+// to the new proposal's id (or null on failure).
+const proposalId = await createProposal({
   name: 'My Plugin',
   description: 'Does something useful',
   category: 'utility',
   tags: ['helper', 'productivity'],
-  implementation: \`
-    export async function execute(context) {
-      // Plugin logic here
-      return { success: true };
-    }
-  \`
+  author: 'you',
+  parameters: { type: 'object', properties: {} },
+  testCases: [],
+  implementation: {
+    type: 'module',
+    entryPoint: 'execute',
+    moduleCode: \`
+      export async function execute(context) {
+        // Plugin logic here
+        return { success: true };
+      }
+    \`
+  }
 });
 
-// Register commands
+// Register a command. registerCommand(pluginId, command) takes the
+// owning plugin's id plus a { id, title, handler } command.
 import { registerCommand } from '@nocturnium/svelte-ide/stores';
 
-registerCommand({
-  name: 'myPlugin.run',
-  description: 'Run my plugin',
-  keybinding: 'Ctrl+Shift+M',
+registerCommand('my-plugin', {
+  id: 'run',
+  title: 'Run my plugin',
   handler: async () => {
     // Command logic
   }
 });
 
-// Load and unload plugins
+// Load and unload plugins. loadPlugin is async; unloadPlugin is sync (void).
 await loadPlugin('prettier-format');
-await unloadPlugin('prettier-format');`}</code
+unloadPlugin('prettier-format');`}</code
 				></pre>
 		</div>
 	</section>

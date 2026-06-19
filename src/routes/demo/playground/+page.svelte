@@ -310,6 +310,11 @@ MIT License - see LICENSE file for details
 	let rightPanelOpen = $state(true);
 	let leftPanel = $state<'files' | 'plugins'>('files');
 	let bottomPanelOpen = $state(false);
+	let activeBottomTab = $state<'terminal' | 'output' | 'problems'>('terminal');
+
+	// Live cursor position, fed by CustomEditor's onCursorChange (already 1-based).
+	// Reset to 1,1 on tab switch since the {#key activeTabId} block remounts the editor.
+	let cursor = $state({ line: 1, column: 1 });
 
 	// Responsive: below 860px the shell becomes single-pane with drawer overlays.
 	let isMobile = $state(false);
@@ -398,6 +403,13 @@ MIT License - see LICENSE file for details
 		{ name: 'tsconfig.json', type: 'file' }
 	];
 
+	function selectTab(id: string) {
+		// The {#key activeTabId} editor remounts on switch; reset the readout so it
+		// reflects the freshly-mounted editor rather than the previous file's caret.
+		cursor = { line: 1, column: 1 };
+		activeTabId = id;
+	}
+
 	function openFile(id: string) {
 		if (!tabs.find((t) => t.id === id)) {
 			const file = files.find((f) => f.id === id);
@@ -405,13 +417,14 @@ MIT License - see LICENSE file for details
 				tabs = [...tabs, file];
 			}
 		}
-		activeTabId = id;
+		selectTab(id);
 	}
 
 	function closeTab(id: string) {
+		const wasActive = activeTabId === id;
 		tabs = tabs.filter((t) => t.id !== id);
-		if (activeTabId === id && tabs.length > 0) {
-			activeTabId = tabs[tabs.length - 1].id;
+		if (wasActive && tabs.length > 0) {
+			selectTab(tabs[tabs.length - 1].id);
 		}
 	}
 
@@ -576,13 +589,19 @@ MIT License - see LICENSE file for details
 			<EditorTabs
 				{tabs}
 				{activeTabId}
-				onSelect={(id: string) => (activeTabId = id)}
+				onSelect={(id: string) => selectTab(id)}
 				onClose={closeTab}
 			/>
 			<div class="editor-wrapper">
 				{#if activeFile}
 					{#key activeTabId}
-						<CustomEditor {content} {language} onChange={handleContentChange} onSave={handleSave} />
+						<CustomEditor
+							{content}
+							{language}
+							onChange={handleContentChange}
+							onSave={handleSave}
+							onCursorChange={(line, column) => (cursor = { line, column })}
+						/>
 					{/key}
 				{:else}
 					<div class="empty-state">
@@ -594,27 +613,65 @@ MIT License - see LICENSE file for details
 
 		{#if bottomPanelOpen}
 			<div class="bottom-panel">
-				<div class="panel-tabs">
-					<button class="panel-tab active">Terminal</button>
-					<button class="panel-tab">Output</button>
-					<button class="panel-tab">Problems</button>
+				<div class="panel-tabs" role="tablist">
+					<button
+						class="panel-tab"
+						class:active={activeBottomTab === 'terminal'}
+						role="tab"
+						aria-selected={activeBottomTab === 'terminal'}
+						onclick={() => (activeBottomTab = 'terminal')}>Terminal</button
+					>
+					<button
+						class="panel-tab"
+						class:active={activeBottomTab === 'output'}
+						role="tab"
+						aria-selected={activeBottomTab === 'output'}
+						onclick={() => (activeBottomTab = 'output')}>Output</button
+					>
+					<button
+						class="panel-tab"
+						class:active={activeBottomTab === 'problems'}
+						role="tab"
+						aria-selected={activeBottomTab === 'problems'}
+						onclick={() => (activeBottomTab = 'problems')}>Problems</button
+					>
 				</div>
-				<div class="terminal">
-					<div class="terminal-line">
-						<span class="prompt">$</span>
-						<span>npm run dev</span>
+				{#if activeBottomTab === 'terminal'}
+					<div class="terminal">
+						<div class="terminal-line">
+							<span class="prompt">$</span>
+							<span>npm run dev</span>
+						</div>
+						<div class="terminal-output">
+							<span class="info">Starting development server...</span>
+						</div>
+						<div class="terminal-output">
+							<span class="success">Ready on http://localhost:5173</span>
+						</div>
+						<div class="terminal-line">
+							<span class="prompt">$</span>
+							<span class="cursor">|</span>
+						</div>
 					</div>
-					<div class="terminal-output">
-						<span class="info">Starting development server...</span>
+				{:else if activeBottomTab === 'output'}
+					<div class="terminal">
+						<div class="terminal-output">
+							<span class="info">[vite] connected.</span>
+						</div>
+						<div class="terminal-output">
+							<span class="info">[vite] hmr update /src/App.svelte</span>
+						</div>
+						<div class="terminal-output">
+							<span class="success">page reload src/index.ts</span>
+						</div>
 					</div>
-					<div class="terminal-output">
-						<span class="success">Ready on http://localhost:5173</span>
+				{:else}
+					<div class="terminal">
+						<div class="terminal-output">
+							<span class="success">No problems detected in the open files.</span>
+						</div>
 					</div>
-					<div class="terminal-line">
-						<span class="prompt">$</span>
-						<span class="cursor">|</span>
-					</div>
-				</div>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -646,13 +703,12 @@ MIT License - see LICENSE file for details
 	<!-- Status Bar -->
 	<div class="status-bar">
 		<div class="status-left">
-			<Badge variant="success">Connected</Badge>
-			<span class="status-item">main</span>
+			<Badge variant="secondary">Demo</Badge>
 		</div>
 		<div class="status-right">
 			<span class="status-item">{language}</span>
 			<span class="status-item status-item--secondary">UTF-8</span>
-			<span class="status-item">Ln 1, Col 1</span>
+			<span class="status-item">Ln {cursor.line}, Col {cursor.column}</span>
 		</div>
 	</div>
 </div>
@@ -1066,7 +1122,7 @@ MIT License - see LICENSE file for details
 		}
 
 		/* Shed secondary status metrics on phones so the bar doesn't crowd;
-		   keep Connected/main and the active language as the priority. */
+		   keep the active language and live cursor position as the priority. */
 		.status-item--secondary {
 			display: none;
 		}

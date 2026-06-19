@@ -508,7 +508,7 @@
 	<!-- Edit Preview -->
 	<section class="component-section">
 		<h2>Edit Preview</h2>
-		<p class="section-desc">Side-by-side diff view for AI-proposed changes</p>
+		<p class="section-desc">Unified diff view for AI-proposed changes</p>
 
 		<div class="edit-preview-demo">
 			<AIEditPreview session={mockEditSession} />
@@ -537,7 +537,7 @@
 				<span class="feature-icon"><Icon name="file-code" size={20} /></span>
 				<div>
 					<strong>Code Context</strong>
-					<p>Automatically includes open files and selections as context</p>
+					<p>Pass open files and selections as conversation context via updateContext()</p>
 				</div>
 			</div>
 			<div class="feature">

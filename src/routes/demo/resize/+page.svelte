@@ -19,7 +19,8 @@
 	<header class="page-header">
 		<h1>Resizable Panes</h1>
 		<p>
-			Drag the handles between panels to resize. Ghost line preview shows where the edge will be.
+			Drag the handles between panels to resize. The edge follows your cursor live, and panel
+			content fades to hide reflow.
 		</p>
 	</header>
 
@@ -141,12 +142,16 @@
 		<h2>Features</h2>
 		<ul class="features-list">
 			<li>
-				<strong>Ghost Line Preview:</strong> A glowing line shows where the edge will be during drag
+				<strong>Live Edge:</strong> The handle highlights and the panel edge tracks your cursor in real
+				time as you drag
 			</li>
 			<li><strong>Smooth Transitions:</strong> Panel sizes animate smoothly when released</li>
 			<li><strong>Content Fade:</strong> Panel content fades during resize to hide text reflow</li>
 			<li><strong>Min/Max Constraints:</strong> Panels respect minimum and maximum size limits</li>
-			<li><strong>Double-click Reset:</strong> Double-click the handle to reset to default size</li>
+			<li>
+				<strong>Double-click Snap:</strong> Double-click the handle to snap to the midpoint of its min/max
+				range
+			</li>
 		</ul>
 	</section>
 </div>
