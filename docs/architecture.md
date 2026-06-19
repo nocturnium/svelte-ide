@@ -1,6 +1,6 @@
 # Architecture
 
-`@nocturnium/svelte-ide` is a zero-dependency, Svelte 5-native editor toolkit. It ships as plain Svelte components, runes-based stores, and small service modules — no UI framework, no CodeMirror, and no bundled server. Every feature that needs a backend (language servers, real-time collaboration, a virtual filesystem, a plugin host, an AI chat endpoint) talks to a network boundary that _you_ supply; nothing is reachable until you wire it up. This page is the contributor's and advanced user's map of how the pieces are layered, how editor state flows through runes, where the optional networked seams are, and how the package is built and published.
+`@nocturnium/svelte-ide` is a Svelte 5-native editor toolkit with **zero required runtime dependencies beyond the Svelte 5 peer** (the optional Yjs collaboration stack is the only other runtime dependency, and it's pulled in only if you use the CRDT module). It ships as plain Svelte components, runes-based stores, and small service modules — no UI framework, no CSS framework, no CodeMirror, and no bundled server. Every feature that needs a backend (language servers, real-time collaboration, a virtual filesystem, a plugin host, an AI chat endpoint) talks to a network boundary that _you_ supply; nothing is reachable until you wire it up. This page is the contributor's and advanced user's map of how the pieces are layered, how editor state flows through runes, where the optional networked seams are, and how the package is built and published.
 
 ## Table of contents
 
