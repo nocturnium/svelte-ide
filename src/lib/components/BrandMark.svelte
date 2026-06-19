@@ -1,14 +1,14 @@
 <script module lang="ts">
 	// Unique-per-instance counter (SSR-safe — no Math.random/Date) so the gradient
-	// id is distinct when several marks render in one document (header + footer).
+	// and clip ids stay distinct when several marks render in one document.
 	let markCounter = 0;
 </script>
 
 <script lang="ts">
 	/**
-	 * Nocturnium Svelte IDE brand mark — an editor-window corner framing an aurora
-	 * text caret (the cursor where code is written), with the spark of a thought
-	 * becoming syntax. Transparent ground; meant to sit on the dark UI.
+	 * Nocturnium Svelte IDE brand mark — a minimal vial holding a glowing blue→purple
+	 * "Nocturnium" reagent (the -ium element synthesized in the dark). Light outline +
+	 * coordinated aurora liquid; transparent ground, meant to sit on the dark UI.
 	 */
 	interface Props {
 		/** Rendered size in pixels (square). */
@@ -18,7 +18,11 @@
 	}
 
 	let { size = 24, class: className = '' }: Props = $props();
-	const gradId = `noct-caret-${++markCounter}`;
+	const n = ++markCounter;
+	const gradId = `noct-vial-grad-${n}`;
+	const clipId = `noct-vial-clip-${n}`;
+	const body =
+		'M21 9 L21 15 C21 17 16 18 16 23 L16 37 Q16 41 20 41 L28 41 Q32 41 32 37 L32 23 C32 18 27 17 27 15 L27 9 Z';
 </script>
 
 <svg
@@ -32,33 +36,18 @@
 	xmlns="http://www.w3.org/2000/svg"
 >
 	<defs>
-		<linearGradient id={gradId} x1="25" y1="17.5" x2="25" y2="39" gradientUnits="userSpaceOnUse">
-			<stop offset="0" stop-color="#a78bfa" />
-			<stop offset="1" stop-color="#4a8db7" />
+		<linearGradient id={gradId} x1="16" y1="24" x2="32" y2="24" gradientUnits="userSpaceOnUse">
+			<stop offset="0" stop-color="#4a8db7" />
+			<stop offset="1" stop-color="#a78bfa" />
 		</linearGradient>
+		<clipPath id={clipId}><path d={body} /></clipPath>
 	</defs>
-	<!-- editor-window top-left corner (segmented frame) -->
-	<g stroke="#e8eefc" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-		<path d="M10 25 L10 13 a3 3 0 0 1 3 -3 L21 10" />
-		<path d="M28 10 L38 10" />
-		<path d="M10 29 L10 38" />
-	</g>
-	<!-- typing spark: a thought becoming syntax -->
-	<g stroke="#e8eefc" stroke-width="2" stroke-linecap="round">
-		<path d="M25 9.5 L25 12.5" />
-		<path d="M20.4 11.3 L22.5 13.9" />
-		<path d="M29.6 11.3 L27.5 13.9" />
-	</g>
-	<!-- caret / text cursor in aurora gradient -->
-	<line
-		x1="25"
-		y1="18.5"
-		x2="25"
-		y2="38"
-		stroke="url(#{gradId})"
-		stroke-width="5"
-		stroke-linecap="round"
-	/>
+	<!-- aurora reagent, clipped to the vial interior -->
+	<rect x="14" y="25.5" width="20" height="17" fill="url(#{gradId})" clip-path="url(#{clipId})" />
+	<!-- vial outline -->
+	<path d={body} fill="none" stroke="#e8eefc" stroke-width="2.4" stroke-linejoin="round" />
+	<!-- lip -->
+	<rect x="19.5" y="5.6" width="9" height="3.8" rx="1.9" fill="#e8eefc" />
 </svg>
 
 <style>
