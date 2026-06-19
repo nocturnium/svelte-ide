@@ -1,3 +1,11 @@
+# [1.4.0](https://github.com/nocturnium/svelte-ide/compare/v1.3.0...v1.4.0) (2026-06-19)
+
+
+### Features
+
+* **demo:** make the Quick Actions tab tell the truth — real extract-function (Track H ph3a) ([5f7e1ef](https://github.com/nocturnium/svelte-ide/commit/5f7e1ef6215bb5e519dd32e53d24bf0d21aeec6d))
+* **demo:** wire extract-variable + organize-imports as real quick actions (Track H ph3b) ([79d7fda](https://github.com/nocturnium/svelte-ide/commit/79d7fda89f04af4e987c8537b0467cbabe2d70dc))
+
 # [1.3.0](https://github.com/nocturnium/svelte-ide/compare/v1.2.1...v1.3.0) (2026-06-19)
 
 
