@@ -158,7 +158,25 @@ describe('extractFunctionAt', () => {
 
 		const result = extractFunctionAt(editor, metricsOf(editor));
 		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.reason.toLowerCase()).toContain('class method');
+		if (!result.ok) expect(result.reason.toLowerCase()).toContain('method');
+		expect(editor.getContent()).toBe(code);
+	});
+
+	it('refuses extracting from inside an object-literal method (no enclosing class region)', () => {
+		const code = [
+			'const o = {',
+			'\tm(a) {',
+			'\t\tconst d = a * 2;',
+			'\t\tuse(d);',
+			'\t}',
+			'};'
+		].join('\n');
+		const editor = stateFrom(code);
+		selectLines(editor, 2, 3);
+
+		const result = extractFunctionAt(editor, metricsOf(editor));
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.reason.toLowerCase()).toContain('method');
 		expect(editor.getContent()).toBe(code);
 	});
 });

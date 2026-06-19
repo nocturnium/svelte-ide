@@ -217,6 +217,19 @@ function planExtractFunctionUnsafe(input: ExtractInput): ExtractPlan | ExtractRe
 	const declaredReturnNames = new Set(returnNames.filter((name) => declaredInsideB.has(name)));
 	const outerReturnNames = returnNames.filter((name) => !declaredInsideB.has(name));
 
+	// A `const`-emitted return (a name declared inside the block) that ALSO has an
+	// outer binding before the block would write a duplicate `const <name>` at the
+	// call site (SyntaxError). This is depth-independent, so it covers the
+	// for-/while-header lexical declarations the brace-depth guard above cannot see
+	// (a `for (const v of …)` binding sits before the loop body brace).
+	const duplicateConstReturn = [...declaredReturnNames].find((name) => declaredBeforeB.has(name));
+	if (duplicateConstReturn) {
+		return {
+			ok: false,
+			reason: 'A variable declared in the block shadows an outer variable used after it.'
+		};
+	}
+
 	if (returnNames.length > 1 && outerReturnNames.length > 0) {
 		return {
 			ok: false,

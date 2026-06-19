@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parse } from 'acorn';
 import { tokenize } from '../tokenizer';
 import { planExtractFunction, type ExtractPlan } from './extract-function';
 
@@ -68,6 +69,15 @@ function expectPostEditValid(
 		}
 	}
 	expect({ braces, parens, brackets }).toEqual({ braces: 0, parens: 0, brackets: 0 });
+
+	// Parser gate: the applied output must actually PARSE, not merely balance
+	// delimiters. Delimiter balance is blind to duplicate-declaration and
+	// illegal-statement-position SyntaxErrors — exactly the miswrite class that
+	// slipped earlier gates. acorn is JS-only, so skip TS inputs whose retained
+	// source type annotations it cannot parse.
+	if (language === 'javascript') {
+		expect(() => parse(edited, { ecmaVersion: 'latest', sourceType: 'module' })).not.toThrow();
+	}
 }
 
 describe('planExtractFunction', () => {
@@ -543,6 +553,40 @@ describe('planExtractFunction', () => {
 			'conditionally defined'
 		);
 	});
+
+	it.each([
+		['for-of const', 'for (const v of rows) {'],
+		['for-in const', 'for (const v in rows) {'],
+		['for let', 'for (let v = 0; v < 3; v++) {']
+	])(
+		'refuses a %s header declaration shadowing an outer var used after (depth-blind)',
+		(_label, header) => {
+			// The shadowed name lives in the loop HEADER, before the body brace, so its
+			// block-relative depth is 0 — the depth guard misses it. The depth-independent
+			// duplicate-const check must still refuse it.
+			const lines = makeLines(
+				[
+					'function f(rows) {',
+					'\tconst v = 0;',
+					`\t${header}`,
+					'\t\temit(v);',
+					'\t}',
+					'\tsink(v);',
+					'}'
+				].join('\n')
+			);
+			expectRefusal(
+				planExtractFunction({
+					lines,
+					language: 'javascript',
+					region: { startLine: 0, endLine: 6, type: 'function' },
+					blockStart: 2,
+					blockEnd: 4
+				}),
+				'shadows an outer variable'
+			);
+		}
+	);
 
 	it.each(['x+++y', 'x---y'])(
 		'does not over-model the trailing operand of %s as a mutation',
