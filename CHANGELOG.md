@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/nocturnium/svelte-ide/compare/v1.5.0...v1.6.0) (2026-06-19)
+
+
+### Features
+
+* **brand:** new editor-caret logo + center-align the header lockup ([5761f2c](https://github.com/nocturnium/svelte-ide/commit/5761f2cabfa84363dd9bed0f8e24cd95f0b0cd39)), closes [#a78bfa](https://github.com/nocturnium/svelte-ide/issues/a78bfa) [#4a8db7](https://github.com/nocturnium/svelte-ide/issues/4a8db7)
+
 # [1.5.0](https://github.com/nocturnium/svelte-ide/compare/v1.4.0...v1.5.0) (2026-06-19)
 
 
