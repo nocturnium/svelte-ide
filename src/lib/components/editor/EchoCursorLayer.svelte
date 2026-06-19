@@ -400,7 +400,10 @@
 
 	/* Mode indicator */
 	.echo-mode-indicator {
-		position: fixed;
+		/* Anchor to this layer's own editor (the .echo-cursor-layer fills it via
+		   absolute inset:0), not the viewport — a fixed pill would float free of
+		   the editor it reports on wherever the layer is embedded. */
+		position: absolute;
 		bottom: 16px;
 		right: 16px;
 		display: flex;

@@ -16,7 +16,7 @@
 	const featured: Demo = {
 		title: 'Code Editor',
 		description:
-			'The flagship demo — a real mini-IDE with a language switcher, sample files, and live feature toggles for folding and multi-cursor.',
+			'The flagship demo — a real mini-IDE with a language switcher, sample files, and live feature toggles.',
 		href: '/demo/editor',
 		icon: '✎',
 		tag: 'Flagship',

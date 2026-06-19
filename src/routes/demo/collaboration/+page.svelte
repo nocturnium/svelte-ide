@@ -1,10 +1,20 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import CollaborativeEditor from '$lib/components/editor/CollaborativeEditor.svelte';
 	import Avatar from '$lib/components/core/Avatar.svelte';
 	import Badge from '$lib/components/core/Badge.svelte';
 	import Button from '$lib/components/core/Button.svelte';
 	import Icon from '$lib/components/core/Icon.svelte';
-	import type { CollaborationUser, CollaboratorCursor } from '$lib/types/crdt';
+	import {
+		startAISession,
+		setAITask,
+		proposeAIChange,
+		reviewAIChange,
+		cancelAISession,
+		getPendingChanges,
+		getAISessions
+	} from '$lib/stores/collaboration.svelte';
+	import type { CollaborationUser, CollaboratorCursor, AIProposedChange } from '$lib/types/crdt';
 
 	const collaborationColors = {
 		alice: 'var(--ide-collab-cursor-1)',
@@ -21,7 +31,10 @@
 		{ id: '4', name: 'Claude', color: collaborationColors.claude, isAI: true }
 	];
 
-	// Sample cursors
+	// Sample remote-cursor awareness data. These are illustrative fixed
+	// positions for the two remote collaborators (the standalone editor below
+	// has no provider, so there is no live remote presence). The local caret's
+	// live position is tracked separately via onCursorChange (see `localCursor`).
 	const cursors: CollaboratorCursor[] = [
 		{
 			userId: '1',
@@ -39,8 +52,26 @@
 		}
 	];
 
+	// Live local caret position, driven by the editor's real onCursorChange callback.
+	let localCursor = $state({ line: 1, column: 1 });
+
+	// Connection-status indicators. These are demo controls you can drive below —
+	// the embedded editor runs standalone (no server), so toggling these simulates
+	// the presence/sync UI rather than reflecting a real socket.
 	let connectionStatus = $state<'disconnected' | 'connecting' | 'connected'>('connected');
 	let synced = $state(true);
+
+	function cycleConnection() {
+		const order = ['connected', 'connecting', 'disconnected'] as const;
+		const next = order[(order.indexOf(connectionStatus) + 1) % order.length];
+		connectionStatus = next;
+		// When fully connected, the doc is up to date; otherwise it falls behind.
+		synced = next === 'connected';
+	}
+
+	function toggleSynced() {
+		synced = !synced;
+	}
 
 	const sampleContent = `// Collaborative editing demo
 // Multiple users can edit this document in real-time
@@ -73,6 +104,96 @@ class CollaborationSession {
     return this.provider.awareness;
   }
 }`;
+
+	// --- AI Collaboration session, wired to the real collaboration store ---
+	// We drive an actual AICollaborationSession + AIProposedChanges through the
+	// store and reflect the store's reactive state back into the UI, so the
+	// Accept / Review / Cancel buttons exercise the genuine store functions
+	// (reviewAIChange / cancelAISession) rather than no-ops.
+	let sessionId = $state('');
+
+	const reviewerId = 'demo-reviewer';
+	const aiUser: CollaborationUser = {
+		id: 'claude',
+		name: 'Claude',
+		color: collaborationColors.claude,
+		isAI: true
+	};
+
+	// The task references getText, which is genuinely present in sampleContent
+	// (class CollaborationSession.getText), so the narrative matches the code.
+	const aiTask = 'Refactoring CollaborationSession.getText';
+
+	// Stable short labels for the changes we propose; the store assigns the ids.
+	const changeBlueprints = [
+		{ label: 'Memoize the Y.Text lookup', explanation: 'Cache the getText() result' },
+		{ label: 'Add a null-doc guard', explanation: 'Guard against an undefined doc' },
+		{ label: 'Add a return-type annotation', explanation: 'Annotate the Y.Text return type' }
+	] as const;
+
+	// Map change id -> its display label (the store change carries explanation, not a short label).
+	let changeLabels = $state<Record<string, string>>({});
+
+	function seedSession() {
+		sessionId = startAISession('demo-doc', aiUser);
+		setAITask(sessionId, aiTask);
+		const labels: Record<string, string> = {};
+		for (const bp of changeBlueprints) {
+			const id = proposeAIChange(sessionId, {
+				type: 'replace',
+				range: { startLine: 89, startColumn: 2, endLine: 91, endColumn: 3 },
+				originalContent: "return this.doc.getText('content');",
+				proposedContent: "return (this._text ??= this.doc.getText('content'));",
+				explanation: bp.explanation
+			});
+			labels[id] = bp.label;
+		}
+		changeLabels = labels;
+	}
+
+	onMount(() => {
+		seedSession();
+	});
+
+	// Reactive view of this session's changes, derived from the store's state.
+	const sessionChanges = $derived(getPendingChanges().filter((c) => c.sessionId === sessionId));
+
+	// Whether this session is still open (not completed/cancelled).
+	const sessionActive = $derived(
+		getAISessions().some(
+			(s) => s.id === sessionId && (s.status === 'active' || s.status === 'pending')
+		)
+	);
+
+	function statusBadge(status: AIProposedChange['status']): {
+		variant: 'success' | 'warning' | 'danger';
+		label: string;
+	} {
+		if (status === 'approved') return { variant: 'success', label: 'Accepted' };
+		if (status === 'rejected') return { variant: 'danger', label: 'Rejected' };
+		return { variant: 'warning', label: 'Pending' };
+	}
+
+	function acceptAll() {
+		for (const change of sessionChanges) {
+			if (change.status === 'pending') reviewAIChange(change.id, true, reviewerId);
+		}
+	}
+
+	function reviewNext() {
+		// Approve the first still-pending change, mimicking a step-through review.
+		const next = sessionChanges.find((c) => c.status === 'pending');
+		if (next) reviewAIChange(next.id, true, reviewerId);
+	}
+
+	function cancelSession() {
+		// Cancel the session: rejects all of its pending changes and removes the AI user.
+		if (sessionId) cancelAISession(sessionId);
+	}
+
+	function restartSession() {
+		seedSession();
+	}
 </script>
 
 <div class="demo-page">
@@ -84,7 +205,11 @@ class CollaborationSession {
 	<!-- Status Bar -->
 	<section class="component-section">
 		<h2>Connection Status</h2>
-		<p class="section-desc">Real-time sync status indicators</p>
+		<p class="section-desc">
+			Sync-status indicator components. Drive them with the controls below to see each
+			connection/sync state — the embedded editor runs standalone, so these reflect demo state, not
+			a live socket.
+		</p>
 
 		<div class="status-demo">
 			<div class="status-row">
@@ -108,8 +233,13 @@ class CollaborationSession {
 					{#each collaborators as user (user.id)}
 						<Avatar name={user.name} color={user.color} isAI={user.isAI} size="sm" />
 					{/each}
-					<span class="collab-count">{collaborators.length} online</span>
+					<span class="collab-count">{collaborators.length} sample users</span>
 				</div>
+			</div>
+			<div class="status-row status-controls">
+				<span class="status-label">Controls:</span>
+				<Button variant="secondary" size="sm" onclick={cycleConnection}>Cycle status</Button>
+				<Button variant="ghost" size="sm" onclick={toggleSynced}>Toggle synced</Button>
 			</div>
 		</div>
 	</section>
@@ -117,14 +247,18 @@ class CollaborationSession {
 	<!-- Collaborative Editor -->
 	<section class="component-section">
 		<h2>Collaborative Editor</h2>
-		<p class="section-desc">Real-time multi-user editing with cursor awareness</p>
+		<p class="section-desc">
+			The editor is CRDT-backed (Yjs) and exposes a live <code>onCursorChange</code> callback. This instance
+			runs standalone with no provider, so the presence strip below is illustrative sample data — but
+			your own caret position underneath is genuinely live.
+		</p>
 
 		<div class="editor-header">
 			<div class="file-info">
 				<span class="file-name">collaboration.ts</span>
-				<Badge variant="success">Synced</Badge>
+				<Badge variant="default">Standalone</Badge>
 			</div>
-			<div class="active-users">
+			<div class="active-users" aria-label="Sample collaborator presence">
 				{#each collaborators.slice(0, 3) as user (user.id)}
 					<div class="user-cursor" style="--cursor-color: {user.color}">
 						<Avatar name={user.name} color={user.color} isAI={user.isAI} size="sm" />
@@ -142,16 +276,38 @@ class CollaborationSession {
 				documentId="demo-doc"
 				initialContent={sampleContent}
 				language="typescript"
+				onCursorChange={(line, column) => (localCursor = { line, column })}
 			/>
+		</div>
+
+		<div class="editor-footer">
+			<span class="presence-note">Presence strip above is sample data.</span>
+			<span class="live-caret">
+				Your caret: <strong>Ln {localCursor.line}, Col {localCursor.column}</strong> (live)
+			</span>
 		</div>
 	</section>
 
 	<!-- Cursor Visualization -->
 	<section class="component-section">
 		<h2>Cursor Awareness</h2>
-		<p class="section-desc">See where other users are editing</p>
+		<p class="section-desc">
+			The awareness-row UI for remote collaborators. These are sample positions (a live provider
+			would feed them from the editor's <code>onCursorChange</code>); your own live caret is shown
+			under the editor above.
+		</p>
 
 		<div class="cursors-demo">
+			<!-- Local user row: genuinely live, driven by the editor's onCursorChange. -->
+			<div class="cursor-info cursor-info--you" style="--cursor-color: var(--ide-interactive)">
+				<div class="cursor-indicator"></div>
+				<Avatar name="You" color="var(--ide-interactive)" size="sm" />
+				<div class="cursor-details">
+					<strong>You</strong>
+					<span>Line {localCursor.line}, Col {localCursor.column}</span>
+					<Badge variant="success">Live</Badge>
+				</div>
+			</div>
 			{#each cursors as cursor (cursor.userId)}
 				<div class="cursor-info" style="--cursor-color: {cursor.user.color}">
 					<div class="cursor-indicator"></div>
@@ -162,6 +318,7 @@ class CollaborationSession {
 						{#if cursor.selection}
 							<Badge variant="info">Selecting</Badge>
 						{/if}
+						<Badge variant="default">Sample</Badge>
 					</div>
 				</div>
 			{/each}
@@ -178,28 +335,35 @@ class CollaborationSession {
 				<Avatar name="Claude" isAI color={collaborationColors.claude} />
 				<div class="session-info">
 					<strong>Claude is editing</strong>
-					<span>Refactoring fetchUserData function</span>
+					<span>{aiTask}</span>
 				</div>
-				<Badge variant="info">Active</Badge>
+				<Badge variant={sessionActive ? 'info' : 'default'}>
+					{sessionActive ? 'Active' : 'Closed'}
+				</Badge>
 			</div>
 			<div class="session-changes">
-				<div class="change-item">
-					<Badge variant="warning">Pending</Badge>
-					<span>Convert to async/await</span>
-				</div>
-				<div class="change-item">
-					<Badge variant="warning">Pending</Badge>
-					<span>Add error handling</span>
-				</div>
-				<div class="change-item">
-					<Badge variant="success">Accepted</Badge>
-					<span>Add TypeScript types</span>
-				</div>
+				{#if sessionChanges.length === 0}
+					<div class="change-item">
+						<span>No pending changes — the session has been closed.</span>
+					</div>
+				{:else}
+					{#each sessionChanges as change (change.id)}
+						{@const badge = statusBadge(change.status)}
+						<div class="change-item">
+							<Badge variant={badge.variant}>{badge.label}</Badge>
+							<span>{changeLabels[change.id] ?? change.explanation ?? change.id}</span>
+						</div>
+					{/each}
+				{/if}
 			</div>
 			<div class="session-actions">
-				<Button variant="primary" size="sm">Accept All</Button>
-				<Button variant="ghost" size="sm">Review Changes</Button>
-				<Button variant="danger" size="sm">Cancel Session</Button>
+				{#if sessionActive}
+					<Button variant="primary" size="sm" onclick={acceptAll}>Accept All</Button>
+					<Button variant="secondary" size="sm" onclick={reviewNext}>Review Next</Button>
+					<Button variant="danger" size="sm" onclick={cancelSession}>Cancel Session</Button>
+				{:else}
+					<Button variant="secondary" size="sm" onclick={restartSession}>Restart Session</Button>
+				{/if}
 			</div>
 		</div>
 	</section>
@@ -255,7 +419,7 @@ class CollaborationSession {
 					>{`// Initialize collaboration
 import { initialize, setLocalCursor } from '$lib/stores/collaboration.svelte';
 
-await initialize({
+initialize({
   serverUrl: 'wss://collab.example.com',
   roomId: 'my-document',
   user: {
@@ -271,21 +435,23 @@ setLocalCursor({
   column: 5
 });
 
-// Create document snapshot
+// Create a document snapshot (2nd arg is the content to capture)
 import { createSnapshot } from '$lib/stores/collaboration.svelte';
 
-await createSnapshot('doc-id', 'Before refactoring');
+createSnapshot('doc-id', currentDocumentText, 'manual');
 
-// AI collaboration session
+// AI collaboration session — pass an AI user; returns the session id
 import { startAISession, proposeAIChange } from '$lib/stores/collaboration.svelte';
 
-const session = await startAISession('doc-id', {
-  task: 'Refactor to async/await'
+const sessionId = startAISession('doc-id', {
+  id: 'claude',
+  name: 'Claude',
+  color: '#a78bfa'
 });
 
-proposeAIChange(session.id, {
+proposeAIChange(sessionId, {
   type: 'replace',
-  range: { start: { line: 5, column: 0 }, end: { line: 10, column: 0 } },
+  range: { startLine: 5, startColumn: 0, endLine: 10, endColumn: 0 },
   originalContent: '...',
   proposedContent: '...',
   explanation: 'Converted to async/await syntax'
@@ -355,10 +521,25 @@ proposeAIChange(session.id, {
 		gap: 1rem;
 	}
 
+	.status-controls {
+		flex-wrap: wrap;
+		border-top: 1px dashed var(--ide-border);
+		padding-top: 1rem;
+	}
+
 	.status-label {
 		font-size: 0.875rem;
 		color: var(--ide-text-secondary);
 		min-width: 100px;
+	}
+
+	.section-desc code {
+		font-family: var(--ide-font-mono);
+		font-size: 0.8125rem;
+		color: var(--ide-text-primary);
+		background: var(--ide-bg-tertiary);
+		padding: 0.05rem 0.3rem;
+		border-radius: 4px;
 	}
 
 	.status-value {
@@ -467,6 +648,22 @@ proposeAIChange(session.id, {
 		overflow: hidden;
 	}
 
+	.editor-footer {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.5rem 1rem;
+		margin-top: 0.625rem;
+		font-size: 0.75rem;
+		color: var(--ide-text-muted);
+	}
+
+	.live-caret strong {
+		color: var(--ide-text-primary);
+		font-variant-numeric: tabular-nums;
+	}
+
 	.cursors-demo {
 		display: flex;
 		flex-direction: column;
@@ -482,6 +679,10 @@ proposeAIChange(session.id, {
 		border: 1px solid var(--ide-border);
 		border-left: 3px solid var(--cursor-color);
 		border-radius: 6px;
+	}
+
+	.cursor-info--you {
+		background: color-mix(in srgb, var(--ide-interactive) 8%, var(--ide-bg-secondary));
 	}
 
 	.cursor-indicator {
@@ -562,7 +763,11 @@ proposeAIChange(session.id, {
 		gap: 0.5rem;
 		margin-bottom: 1rem;
 		padding: 0.75rem;
-		background: var(--ide-bg-tertiary);
+		/* Demote the nested panel: a near-black tint + subtle border instead of the
+		   bright ocean (--ide-bg-tertiary), so it reads as a quiet nested list rather
+		   than the brightest surface on the card, and the change labels clear AA. */
+		background: var(--ide-bg-primary);
+		border: 1px solid var(--ide-border);
 		border-radius: 6px;
 	}
 
@@ -571,7 +776,8 @@ proposeAIChange(session.id, {
 		align-items: center;
 		gap: 0.75rem;
 		font-size: 0.8125rem;
-		color: var(--ide-text-secondary);
+		/* Primary text so labels clear WCAG AA on the nested panel. */
+		color: var(--ide-text-primary);
 	}
 
 	.session-actions {
@@ -594,7 +800,7 @@ proposeAIChange(session.id, {
 	}
 
 	.feature-icon {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-interactive);
 		font-size: 1.25rem;
 	}
 

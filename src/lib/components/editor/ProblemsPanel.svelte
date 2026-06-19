@@ -426,7 +426,9 @@
 	}
 
 	.action-btn.active {
-		color: #a855f7;
+		/* interactive accent stays BLUE per owner brand decision
+		   (was an off-token #a855f7 purple literal) */
+		color: var(--ide-interactive, #4f8cc9);
 	}
 
 	.close-btn {
@@ -571,6 +573,9 @@
 
 	.diagnostic-message {
 		flex: 1;
+		/* min-width:0 lets the message shrink/ellipsize instead of forcing the
+		   metadata (code/chip/[Ln,Col]) to absorb the squeeze first */
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -582,22 +587,52 @@
 	}
 
 	.diagnostic-source {
+		flex-shrink: 0;
 		font-size: 10px;
 		padding: 1px 4px;
-		background: rgba(255, 255, 255, 0.1);
+		/* nudged a notch lighter (0.1 -> 0.16) so the chip label clears AA */
+		background: rgba(255, 255, 255, 0.16);
 		border-radius: 2px;
-		color: var(--ide-text-muted, #888);
+		/* lifted from --ide-text-muted (~3:1, below AA at 10-11px) to clear 4.5:1 */
+		color: var(--ide-text-secondary, #aaa);
 	}
 
 	.diagnostic-code {
+		flex-shrink: 0;
 		font-family: monospace;
 		font-size: 10px;
-		color: var(--ide-text-muted, #888);
+		/* lifted from --ide-text-muted so TS codes (TS2552/TS6133) clear AA */
+		color: var(--ide-text-secondary, #aaa);
 	}
 
 	.diagnostic-location {
+		flex-shrink: 0;
 		font-family: monospace;
 		font-size: 10px;
-		color: var(--ide-text-muted, #666);
+		/* lifted from --ide-text-muted so [Ln, Col] coords clear AA */
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	/* Narrow viewports: collapse the single-line row into two lines so the
+	   message stays readable instead of truncating to a single glyph while the
+	   code / chip / [Ln, Col] keep full width. The icon + message hold line one
+	   (message gets a 2-line clamp); the source/code/location metadata wrap to a
+	   second, gutter-indented line. */
+	@media (max-width: 480px) {
+		.diagnostic-item {
+			flex-wrap: wrap;
+			row-gap: 2px;
+		}
+
+		.diagnostic-message {
+			/* take the full first line so metadata is pushed to line two */
+			flex: 1 1 100%;
+			/* message is the LAST field to truncate: allow up to 2 lines */
+			white-space: normal;
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			line-clamp: 2;
+			-webkit-box-orient: vertical;
+		}
 	}
 </style>

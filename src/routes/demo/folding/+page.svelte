@@ -186,6 +186,7 @@ def process_batch(items, batch_size=100):
 				<button
 					class="control-btn"
 					class:control-btn--active={selectedLanguage === 'javascript'}
+					aria-pressed={selectedLanguage === 'javascript'}
 					onclick={() => (selectedLanguage = 'javascript')}
 				>
 					JavaScript
@@ -193,6 +194,7 @@ def process_batch(items, batch_size=100):
 				<button
 					class="control-btn"
 					class:control-btn--active={selectedLanguage === 'python'}
+					aria-pressed={selectedLanguage === 'python'}
 					onclick={() => (selectedLanguage = 'python')}
 				>
 					Python
@@ -343,7 +345,12 @@ def process_batch(items, batch_size=100):
 		color: var(--ide-text-secondary);
 		font-size: 0.875rem;
 		cursor: pointer;
-		transition: all 0.15s ease;
+		/* Animate only the paint properties so the toggle never animates layout. */
+		transition:
+			background 0.15s ease,
+			border-color 0.15s ease,
+			color 0.15s ease,
+			box-shadow 0.15s ease;
 	}
 
 	.control-btn:hover {
@@ -352,19 +359,27 @@ def process_batch(items, batch_size=100):
 	}
 
 	.control-btn:focus-visible {
-		outline: 2px solid var(--ide-interactive);
+		outline: 2px solid var(--ide-interactive-focus);
 		outline-offset: 2px;
 	}
 
 	.control-btn--active {
-		background: var(--ide-interactive);
-		border-color: var(--ide-interactive);
-		color: white;
+		/* Filled active state carries white text, so use the deeper blue token
+		   (--ide-interactive-strong, ocean) — white on it is ~5.3:1, clearing AA;
+		   white on plain --ide-interactive (#4a8db7) is only ~3.4:1. */
+		background: var(--ide-interactive-strong);
+		border-color: var(--ide-interactive-strong);
+		color: #fff;
+		font-weight: 500;
 	}
 
 	.control-btn--active:hover {
-		background: var(--ide-interactive);
-		color: white;
+		/* Real hover feedback: a slight lift via brightness + elevation rather
+		   than a no-op repaint of the resting active state. */
+		background: color-mix(in srgb, var(--ide-interactive-strong) 88%, white);
+		border-color: color-mix(in srgb, var(--ide-interactive-strong) 88%, white);
+		color: #fff;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 	}
 
 	.editor-container {
@@ -451,7 +466,7 @@ def process_batch(items, batch_size=100):
 	}
 
 	.fold-demo-icon.expanded {
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 	}
 
 	.fold-demo-icon.collapsed {
@@ -464,7 +479,8 @@ def process_batch(items, batch_size=100):
 		border: 1px solid var(--ide-border);
 		border-radius: 3px;
 		font-size: 0.85em;
-		color: var(--ide-text-muted);
+		/* Text-bearing chip: muted (~3:1) fails AA at this size; secondary clears it. */
+		color: var(--ide-text-secondary);
 	}
 
 	/* Tablet -> mobile shift */

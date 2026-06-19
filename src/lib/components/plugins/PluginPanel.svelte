@@ -54,7 +54,13 @@
 				<Badge variant="success" size="sm" dot>Live</Badge>
 			{/if}
 		</div>
-		<Button variant="ghost" size="xs" onclick={() => (showCreateForm = true)}>
+		<Button
+			variant="ghost"
+			size="xs"
+			title="Demo only — the create-proposal flow is illustrative on this static host"
+			aria-label="New plugin proposal (demo only)"
+			onclick={() => (showCreateForm = true)}
+		>
 			{#snippet icon()}<Icon name="plus" size={14} />{/snippet}
 			New
 		</Button>
@@ -110,7 +116,9 @@
 		{:else if activeTab === 'installed'}
 			{#if installedPlugins.length === 0}
 				<div class="plugin-panel__empty">
-					<Icon name="plugin" size={32} />
+					<!-- Static container glyph, not the radial `plugin` spoke (which mirrors
+					     the `loading` glyph and reads as a spinner over this empty copy). -->
+					<Icon name="folder" size={32} />
 					<p>No plugins installed</p>
 					<Button variant="secondary" size="sm" onclick={() => (activeTab = 'available')}>
 						Browse Available
@@ -162,7 +170,13 @@
 				<div class="plugin-panel__empty">
 					<Icon name="file" size={32} />
 					<p>No proposals yet</p>
-					<Button variant="primary" size="sm" onclick={() => (showCreateForm = true)}>
+					<Button
+						variant="primary"
+						size="sm"
+						title="Demo only — the create-proposal flow is illustrative on this static host"
+						aria-label="Create plugin proposal (demo only)"
+						onclick={() => (showCreateForm = true)}
+					>
 						Create Plugin
 					</Button>
 				</div>

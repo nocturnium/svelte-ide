@@ -34,6 +34,13 @@
 		showSquiggles?: boolean;
 		/** Show gutter icons */
 		showGutterIcons?: boolean;
+		/**
+		 * Show the diagnostic message inline at the end of its line (Error Lens
+		 * style), always visible — so the message no longer requires hovering the
+		 * thin squiggle. The whole line becomes the hover/click target for the
+		 * detailed tooltip. Default true.
+		 */
+		showInlineMessages?: boolean;
 		/** Callback when fix is applied */
 		onApplyFix?: (diagnostic: Diagnostic, fix: DiagnosticFix) => void;
 		/** Callback when diagnostic is clicked */
@@ -49,9 +56,18 @@
 		enabled = true,
 		showSquiggles = true,
 		showGutterIcons = true,
+		showInlineMessages = true,
 		onApplyFix,
 		onDiagnosticClick
 	}: Props = $props();
+
+	// Severity ordering for picking a line's primary (most severe) diagnostic.
+	const SEVERITY_RANK: Record<DiagnosticSeverity, number> = {
+		error: 0,
+		warning: 1,
+		info: 2,
+		hint: 3
+	};
 
 	let diagnostics = $state<Diagnostic[]>([]);
 	let hoveredDiagnostic = $state<Diagnostic | null>(null);
@@ -100,10 +116,22 @@
 		return 'hint';
 	}
 
+	// One always-visible inline message per affected line: the most severe
+	// diagnostic on that line, plus a count of how many others share it.
+	const lineMessages = $derived(() =>
+		linesWithDiagnostics().map((line) => {
+			const diags = diagnosticsByLine().get(line) || [];
+			const primary = [...diags].sort(
+				(a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]
+			)[0];
+			return { line, primary, count: diags.length, severity: getLineSeverity(line) };
+		})
+	);
+
 	/**
 	 * Handle mouse enter on diagnostic
 	 */
-	function handleMouseEnter(diagnostic: Diagnostic, event: MouseEvent) {
+	function handleMouseEnter(diagnostic: Diagnostic, event: MouseEvent | FocusEvent) {
 		hoveredDiagnostic = diagnostic;
 		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
 		tooltipPosition = {
@@ -168,7 +196,38 @@
 </script>
 
 {#if enabled && diagnostics.length > 0}
-	<div class="diagnostics-layer" aria-hidden="true">
+	<div class="diagnostics-layer">
+		<!-- Inline messages (Error Lens style): the message is ALWAYS visible at the
+		     end of its line, and the full-line-height row — not the 4px squiggle — is
+		     the hover/click/focus target for the detailed tooltip. -->
+		{#if showInlineMessages}
+			<div class="diagnostics-messages" style="left: {gutterWidth}px;">
+				{#each lineMessages() as { line, primary, count, severity } (line)}
+					<button
+						type="button"
+						class="diagnostic-row diagnostic-row--{severity}"
+						style="top: {line * lineHeight}px; height: {lineHeight}px;"
+						aria-label="{severity}: {primary.message}{count > 1
+							? ` (and ${count - 1} more on this line)`
+							: ''}"
+						onmouseenter={(e) => handleMouseEnter(primary, e)}
+						onmouseleave={handleMouseLeave}
+						onfocus={(e) => handleMouseEnter(primary, e)}
+						onblur={handleMouseLeave}
+						onclick={() => onDiagnosticClick?.(primary)}
+					>
+						<span class="row-chip">
+							<span class="row-icon" aria-hidden="true">{getSeverityIcon(severity)}</span>
+							<span class="row-message">{primary.message}</span>
+							{#if count > 1}
+								<span class="row-count" aria-hidden="true">+{count - 1}</span>
+							{/if}
+						</span>
+					</button>
+				{/each}
+			</div>
+		{/if}
+
 		<!-- Gutter icons -->
 		{#if showGutterIcons}
 			<div class="diagnostics-gutter" style="width: {gutterWidth}px;">
@@ -192,9 +251,9 @@
 			</div>
 		{/if}
 
-		<!-- Squiggly underlines -->
+		<!-- Squiggly underlines (decorative cue; interaction lives on the row above) -->
 		{#if showSquiggles}
-			<div class="diagnostics-squiggles" style="left: {gutterWidth}px;">
+			<div class="diagnostics-squiggles" style="left: {gutterWidth}px;" aria-hidden="true">
 				{#each diagnostics as diagnostic (diagnostic.id)}
 					{@const startCol = diagnostic.range.start.column}
 					{@const endCol = diagnostic.range.end.column}
@@ -210,10 +269,6 @@
 							left: {startCol * charWidth}px;
 							width: {width}px;
 						"
-						onmouseenter={(e) => handleMouseEnter(diagnostic, e)}
-						onmouseleave={handleMouseLeave}
-						role="button"
-						tabindex={-1}
 					>
 						<svg class="squiggle-svg" {width} height="4" viewBox="0 0 {width} 4">
 							<path d={generateSquigglePath(width)} stroke={color} stroke-width="1" fill="none" />
@@ -336,19 +391,19 @@
 	}
 
 	.gutter-icon--error .icon-text {
-		color: #f44747;
+		color: var(--ide-error);
 	}
 
 	.gutter-icon--warning .icon-text {
-		color: #ff8c00;
+		color: var(--ide-warning);
 	}
 
 	.gutter-icon--info .icon-text {
-		color: #3794ff;
+		color: var(--ide-info);
 	}
 
 	.gutter-icon--hint .icon-text {
-		color: #6c6c6c;
+		color: var(--ide-text-muted);
 	}
 
 	.icon-count {
@@ -376,8 +431,166 @@
 
 	.squiggle {
 		position: absolute;
-		pointer-events: auto;
+		/* Decorative now — the full-line row above owns hover/click. */
+		pointer-events: none;
+	}
+
+	/* Inline messages (Error Lens style) */
+	.diagnostics-messages {
+		position: absolute;
+		top: 0;
+		right: 0;
+		height: 100%;
+	}
+
+	.diagnostic-row {
+		position: absolute;
+		left: 0;
+		right: 0;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		margin: 0;
+		/* Reserve a left gap so the right-aligned chip never butts directly against
+		   code text on a long line — code and message keep a visible breathing gap. */
+		padding: 0 8px 0 16px;
+		background: transparent;
+		border: none;
+		border-left: 2px solid transparent;
+		font: inherit;
 		cursor: pointer;
+		pointer-events: auto;
+		overflow: hidden;
+		transition: background 0.12s ease;
+	}
+
+	/* The message sits in an opaque chip so it stays legible even if it overlaps
+	   code on a long line — the row's faint full-width tint is just the line
+	   highlight / hit target underneath. */
+	.row-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		max-width: min(100%, 64ch);
+		padding: 1px 8px;
+		border-radius: 6px;
+		overflow: hidden;
+	}
+
+	.row-icon {
+		flex-shrink: 0;
+		font-size: 11px;
+	}
+
+	.row-message {
+		overflow: hidden;
+		font-size: 12px;
+		line-height: 1.4;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	.row-count {
+		flex-shrink: 0;
+		min-width: 16px;
+		padding: 1px 5px;
+		border-radius: 8px;
+		background: color-mix(in srgb, var(--ide-text-muted) 22%, transparent);
+		font-size: 10px;
+		font-weight: 600;
+		color: var(--ide-text-secondary, #aaa);
+		text-align: center;
+	}
+
+	/* On genuinely narrow (phone) viewports an inline message would overprint code
+	   with no room for the reserved gap — drop it there and rely on the gutter icon
+	   + tooltip instead. Tablets (641–768px) keep the message: the opaque severity
+	   chip and the reserved left gap below keep it legible and off the code. */
+	@media (max-width: 480px) {
+		.diagnostics-messages {
+			display: none;
+		}
+	}
+
+	/* Tablet (481–768px): keep the message on-screen but cap the chip so a long
+	   message ellipsizes within the pane instead of clipping past the right edge,
+	   and hold the reserved left gap so it never overprints code. */
+	@media (max-width: 768px) {
+		.diagnostic-row .row-chip {
+			max-width: min(100%, 40ch);
+		}
+	}
+
+	.diagnostic-row:focus-visible {
+		outline: 1px solid var(--ide-interactive, #4f8cc9);
+		outline-offset: -1px;
+	}
+
+	.diagnostic-row--error {
+		background: color-mix(in srgb, var(--ide-error) 9%, transparent);
+		border-left-color: color-mix(in srgb, var(--ide-error) 55%, transparent);
+	}
+	.diagnostic-row--error:hover,
+	.diagnostic-row--error:focus-visible {
+		background: color-mix(in srgb, var(--ide-error) 17%, transparent);
+	}
+	.diagnostic-row--error .row-icon,
+	.diagnostic-row--error .row-message {
+		color: var(--ide-error);
+	}
+
+	.diagnostic-row--warning {
+		background: color-mix(in srgb, var(--ide-warning) 9%, transparent);
+		border-left-color: color-mix(in srgb, var(--ide-warning) 55%, transparent);
+	}
+	.diagnostic-row--warning:hover,
+	.diagnostic-row--warning:focus-visible {
+		background: color-mix(in srgb, var(--ide-warning) 17%, transparent);
+	}
+	.diagnostic-row--warning .row-icon,
+	.diagnostic-row--warning .row-message {
+		color: var(--ide-warning);
+	}
+
+	.diagnostic-row--info {
+		background: color-mix(in srgb, var(--ide-info) 8%, transparent);
+		border-left-color: color-mix(in srgb, var(--ide-info) 50%, transparent);
+	}
+	.diagnostic-row--info:hover,
+	.diagnostic-row--info:focus-visible {
+		background: color-mix(in srgb, var(--ide-info) 16%, transparent);
+	}
+	.diagnostic-row--info .row-icon,
+	.diagnostic-row--info .row-message {
+		color: var(--ide-info);
+	}
+
+	.diagnostic-row--hint {
+		background: color-mix(in srgb, var(--ide-text-muted) 7%, transparent);
+		border-left-color: color-mix(in srgb, var(--ide-text-muted) 45%, transparent);
+	}
+	.diagnostic-row--hint:hover,
+	.diagnostic-row--hint:focus-visible {
+		background: color-mix(in srgb, var(--ide-text-muted) 14%, transparent);
+	}
+	.diagnostic-row--hint .row-icon,
+	.diagnostic-row--hint .row-message {
+		color: var(--ide-text-muted);
+	}
+
+	/* Opaque chip surfaces: an elevated base tinted by severity, so the message
+	   reads cleanly whether it floats over empty space or over code. */
+	.diagnostic-row--error .row-chip {
+		background: color-mix(in srgb, var(--ide-error) 16%, var(--ide-bg-elevated, #252536));
+	}
+	.diagnostic-row--warning .row-chip {
+		background: color-mix(in srgb, var(--ide-warning) 16%, var(--ide-bg-elevated, #252536));
+	}
+	.diagnostic-row--info .row-chip {
+		background: color-mix(in srgb, var(--ide-info) 14%, var(--ide-bg-elevated, #252536));
+	}
+	.diagnostic-row--hint .row-chip {
+		background: color-mix(in srgb, var(--ide-text-muted) 14%, var(--ide-bg-elevated, #252536));
 	}
 
 	.squiggle--deprecated {

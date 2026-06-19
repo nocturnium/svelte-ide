@@ -2,7 +2,7 @@
 	/**
 	 * Power Features Demo
 	 *
-	 * Demonstrates Echo Cursors, Bracket Healing, and Plugin Preview Sandbox.
+	 * Demonstrates Echo Cursors, Bracket Healing, and Plugin Preview.
 	 */
 
 	import { onMount } from 'svelte';
@@ -34,6 +34,10 @@
 	let echoEditorState = $state<EditorState | null>(null);
 	let echoEnabled = $state(false);
 	let echoCursors = $state<EchoCursor[]>([]);
+	// Snapshot of each echo's real EditorState mirror buffer, keyed by cursor id.
+	// Refreshed from echoManager.getEchoContent() so the replayed buffers are
+	// actually surfaced in the UI (not just the cursor markers).
+	let echoMirrorContents = $state<Record<string, string>>({});
 	let echoSourceContent = $state(`const user = getUser();
 const profile = user.profile;
 const status = profile.status;
@@ -45,7 +49,7 @@ renderStatus(status);`);
 
 	// Bracket healer demo
 	let bracketHealer: BracketHealer;
-	let bracketCode = $state(`function processData(items) {
+	let bracketCode = $state(`function processData(items) {  // '{' opened here is never closed
 	const results = [];
 	for (let i = 0; i < items.length; i++) {
 		if (items[i].valid {  // Missing closing paren
@@ -53,31 +57,48 @@ renderStatus(status);`);
 		}
 	}
 	return results;
-// Missing closing brace`);
+// The function body's closing brace is missing — flagged at line 1, where '{' opened`);
 	let ghosts = $state<GhostBracket[]>([]);
 	let mismatches = $state<BracketMismatch[]>([]);
 
+	// Color the "n issue(s)" badge by the most severe issue actually present so it
+	// matches the severity the healer assigns (unclosed brackets are 'warning').
+	let mismatchSeverity = $derived<'error' | 'warning' | 'info'>(
+		mismatches.some((m) => m.severity === 'error')
+			? 'error'
+			: mismatches.some((m) => m.severity === 'warning')
+				? 'warning'
+				: 'info'
+	);
+
 	// Plugin sandbox demo
 	let sandboxVisible = $state(false);
-	let sandboxCode = $state(`// Inert sample source for the plugin sandbox preview.
-function formatPrice(value) {
-	const rounded = Math.round(value * 100) / 100;
-	return '$' + rounded.toFixed(2);
-}
-
-function summarize(items) {
-	const total = items.reduce((sum, item) => sum + item.price, 0);
-	const count = items.length;
-	const name = "cart";
-
-	return {
-		name,
-		count,
-		total: formatPrice(total)
-	};
-}
-
-export { formatPrice, summarize };`);
+	// Deliberately loose sample: several lines carry trailing whitespace so the
+	// Prettier preview yields a real, satisfying diff (it trims line ends) instead
+	// of a silent +0 -0 no-op.
+	let sandboxCode = $state(
+		[
+			'// Inert sample source for the plugin preview.   ',
+			'function formatPrice(value) {   ',
+			'\tconst rounded = Math.round(value * 100) / 100;  ',
+			"\treturn '$' + rounded.toFixed(2);",
+			'}',
+			'',
+			'function summarize(items) {  ',
+			'\tconst total = items.reduce((sum, item) => sum + item.price, 0);   ',
+			'\tconst count = items.length;',
+			'\tconst name = "cart";  ',
+			'',
+			'\treturn {',
+			'\t\tname,',
+			'\t\tcount,   ',
+			'\t\ttotal: formatPrice(total)',
+			'\t};',
+			'}',
+			'',
+			'export { formatPrice, summarize };'
+		].join('\n')
+	);
 
 	// Line height for visualizations
 	const lineHeight = 20;
@@ -108,6 +129,7 @@ export { formatPrice, summarize };`);
 		echoEditorState = realEchoEditor;
 		echoManager.subscribe((event) => {
 			echoCursors = echoManager.getEchoCursors();
+			refreshEchoMirrors();
 
 			if (event.type === 'keystroke-recorded') {
 				const ks = event.event;
@@ -145,6 +167,17 @@ export { formatPrice, summarize };`);
 		};
 	});
 
+	// Pull each echo's real mirror-buffer content out of the manager so the
+	// replayed buffers can be rendered. Keeps the caption honest: the visible
+	// mirror buffers are backed by real EditorState instances.
+	function refreshEchoMirrors() {
+		const next: Record<string, string> = {};
+		for (const cursor of echoManager.getEchoCursors()) {
+			next[cursor.id] = echoManager.getEchoContent(cursor.id);
+		}
+		echoMirrorContents = next;
+	}
+
 	function toggleEchoMode() {
 		if (echoEnabled) {
 			echoManager.disable();
@@ -152,6 +185,7 @@ export { formatPrice, summarize };`);
 			echoManager.enable();
 		}
 		echoEnabled = echoManager.isEnabled();
+		refreshEchoMirrors();
 	}
 
 	function addEchoPoint(line: number, delay: number) {
@@ -164,11 +198,13 @@ export { formatPrice, summarize };`);
 			{ delay, label: `Echo ${line + 1}` }
 		);
 		echoCursors = echoManager.getEchoCursors();
+		refreshEchoMirrors();
 	}
 
 	function clearEchoes() {
 		echoManager.clearAllEchoes();
 		echoCursors = [];
+		echoMirrorContents = {};
 	}
 
 	function positionFromIndex(content: string, index: number): Position {
@@ -241,7 +277,7 @@ export { formatPrice, summarize };`);
 <div class="power-features-demo">
 	<header class="demo-header">
 		<h1>Power Features</h1>
-		<p>Echo Cursors, Bracket Healing, and Plugin Preview Sandbox</p>
+		<p>Echo Cursors, Bracket Healing, and Plugin Preview</p>
 	</header>
 
 	<!-- Demo tabs -->
@@ -261,7 +297,7 @@ export { formatPrice, summarize };`);
 			class:active={activeDemo === 'plugin'}
 			onclick={() => (activeDemo = 'plugin')}
 		>
-			Plugin Sandbox
+			Plugin Preview
 		</button>
 	</div>
 
@@ -317,8 +353,25 @@ export { formatPrice, summarize };`);
 								</div>
 							{/each}
 						</div>
+
+						{#if echoCursors.length > 0}
+							<div class="echo-mirrors">
+								{#each echoCursors as cursor (cursor.id)}
+									<div class="echo-mirror" style="--color: {cursor.color};">
+										<div class="echo-mirror__header">
+											<span class="echo-mirror__dot"></span>
+											<span class="echo-mirror__label">{cursor.label}</span>
+											<span class="echo-mirror__delay">{cursor.delayMs}ms</span>
+										</div>
+										<pre class="echo-mirror__buffer">{echoMirrorContents[cursor.id] ?? ''}</pre>
+									</div>
+								{/each}
+							</div>
+						{/if}
+
 						<p class="mock-caption" role="note">
-							Visible mirror buffers are backed by real EditorState instances.
+							Each echo's buffer above is a real EditorState mirror — keystrokes you type in the
+							source replay into it after the echo's delay.
 						</p>
 					</div>
 
@@ -373,7 +426,7 @@ export { formatPrice, summarize };`);
 				<div class="bracket-editor">
 					<div class="editor-header">
 						<span>Code with bracket issues</span>
-						<span class="mismatch-count">
+						<span class="mismatch-count mismatch-count--{mismatchSeverity}">
 							{mismatches.length} issue{mismatches.length !== 1 ? 's' : ''} detected
 						</span>
 					</div>
@@ -405,7 +458,9 @@ export { formatPrice, summarize };`);
 										>
 										<span
 											class="ghost-confidence"
-											style="color: {ghost.confidence > 0.8 ? '#22c55e' : '#eab308'}"
+											style="color: {ghost.confidence > 0.8
+												? 'var(--ide-success)'
+												: 'var(--ide-warning)'}"
 										>
 											{Math.round(ghost.confidence * 100)}%
 										</span>
@@ -442,14 +497,14 @@ export { formatPrice, summarize };`);
 		</section>
 	{/if}
 
-	<!-- Plugin Sandbox Demo -->
+	<!-- Plugin Preview Demo -->
 	{#if activeDemo === 'plugin'}
 		<section class="demo-section">
 			<div class="section-header">
-				<h2>Plugin Preview Sandbox</h2>
+				<h2>Plugin Preview</h2>
 				<p>
-					Preview plugin transformations in a sandboxed environment before applying them to your
-					code.
+					Preview a plugin's transformation — see the diff and stats — before applying it to your
+					code. Trusted plugin code runs in this editor's realm, not an isolated sandbox.
 				</p>
 			</div>
 
@@ -458,7 +513,7 @@ export { formatPrice, summarize };`);
 					<div class="editor-header">
 						<span>Source Code</span>
 						<button class="open-sandbox-btn" onclick={() => (sandboxVisible = true)}>
-							Open Plugin Sandbox
+							Open Plugin Preview
 						</button>
 					</div>
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -475,7 +530,7 @@ export { formatPrice, summarize };`);
 						<li><strong>Minify</strong> - Compress code by removing whitespace</li>
 					</ul>
 					<p class="info-note">
-						Click "Open Plugin Sandbox" to preview transformations before applying them.
+						Click "Open Plugin Preview" to preview transformations before applying them.
 					</p>
 				</div>
 			</div>
@@ -543,14 +598,14 @@ export { formatPrice, summarize };`);
 	}
 
 	.tab:focus-visible {
-		outline: 2px solid var(--ide-interactive-focus, var(--color-nocturnium-aurora-purple));
+		outline: 2px solid var(--ide-interactive-focus);
 		outline-offset: 2px;
 	}
 
 	.tab.active {
-		color: var(--color-nocturnium-aurora-purple);
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
-		border-bottom-color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
+		background: color-mix(in srgb, var(--ide-interactive) 12%, transparent);
+		border-bottom-color: var(--ide-interactive);
 	}
 
 	/* Section */
@@ -591,32 +646,39 @@ export { formatPrice, summarize };`);
 
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
-		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 30%, transparent);
 		border-radius: 6px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 		font-size: 0.875rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.control-btn:hover {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 30%, transparent);
 	}
 
+	.control-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	/* Filled active pill: deeper blue so white text clears AA (~5.3:1). */
 	.control-btn.active {
-		background: var(--color-nocturnium-aurora-purple);
+		background: var(--ide-interactive-strong);
+		border-color: var(--ide-interactive-strong);
 		color: #fff;
 	}
 
 	.control-btn--danger {
-		background: rgba(239, 68, 68, 0.2);
-		border-color: rgba(239, 68, 68, 0.3);
-		color: #ef4444;
+		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
+		border-color: color-mix(in srgb, var(--ide-error) 35%, transparent);
+		color: var(--ide-error);
 	}
 
 	.control-btn--danger:hover {
-		background: rgba(239, 68, 68, 0.3);
+		background: color-mix(in srgb, var(--ide-error) 30%, transparent);
 	}
 
 	.echo-actions,
@@ -650,9 +712,17 @@ export { formatPrice, summarize };`);
 		resize: vertical;
 	}
 
+	/* Brand focus ring (blue) instead of the default browser blue outline. */
+	.echo-source textarea:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+		border-color: var(--ide-interactive);
+	}
+
 	.action-label {
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #9b9bb0);
+		/* Functional UI label: secondary (not muted) so it clears AA on the card. */
+		color: var(--ide-text-secondary, #aaa);
 	}
 
 	.small-btn {
@@ -670,15 +740,26 @@ export { formatPrice, summarize };`);
 		color: var(--ide-text-primary, #e8e8f0);
 	}
 
+	.small-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.echo-visualization {
 		display: grid;
 		grid-template-columns: 1fr 250px;
 		gap: 1rem;
+		/* Keep both columns top-aligned; the left column carries its own min-height
+		   so a short mirror buffer no longer collapses below the log card. */
+		align-items: start;
 	}
 
 	.editor-mock-wrap {
 		/* Allow the 1fr grid column to shrink instead of forcing overflow. */
 		min-width: 0;
+		/* Match the Keystroke Log card's height so the two columns stay vertically
+		   aligned regardless of how many lines the mirror buffer has. */
+		min-height: 140px;
 	}
 
 	.editor-mock {
@@ -697,6 +778,63 @@ export { formatPrice, summarize };`);
 		font-size: 0.75rem;
 		font-style: italic;
 		color: var(--ide-text-muted, #9b9bb0);
+	}
+
+	/* Real EditorState mirror buffers, one per echo cursor. */
+	.echo-mirrors {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+		gap: 0.75rem;
+		margin-top: 0.75rem;
+	}
+
+	.echo-mirror {
+		min-width: 0;
+		background: rgba(0, 0, 0, 0.25);
+		border: 1px solid var(--ide-border, #333);
+		border-left: 3px solid var(--color);
+		border-radius: 6px;
+		overflow: hidden;
+	}
+
+	.echo-mirror__header {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.35rem 0.6rem;
+		background: rgba(255, 255, 255, 0.04);
+		font-size: 0.7rem;
+	}
+
+	.echo-mirror__dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--color);
+		flex-shrink: 0;
+	}
+
+	.echo-mirror__label {
+		color: var(--ide-text-secondary, #aaa);
+		font-weight: 600;
+	}
+
+	.echo-mirror__delay {
+		margin-left: auto;
+		color: var(--ide-text-muted, #9b9bb0);
+	}
+
+	.echo-mirror__buffer {
+		margin: 0;
+		padding: 0.5rem 0.6rem;
+		font-family: monospace;
+		font-size: 11px;
+		line-height: 1.5;
+		color: var(--ide-text-secondary, #b4b4c4);
+		white-space: pre;
+		overflow-x: auto;
+		max-height: 160px;
+		overflow-y: auto;
 	}
 
 	.mock-line {
@@ -787,19 +925,19 @@ export { formatPrice, summarize };`);
 		font-family: monospace;
 		font-size: 0.75rem;
 		padding: 0.25rem 0;
-		color: #22c55e;
+		color: var(--ide-success);
 	}
 
 	.echo-info {
 		padding: 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 10%, transparent);
 		border-radius: 8px;
 	}
 
 	.echo-info h4 {
 		margin: 0 0 0.5rem;
 		font-size: 0.9rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.echo-info ul {
@@ -838,10 +976,21 @@ export { formatPrice, summarize };`);
 
 	.mismatch-count {
 		padding: 2px 8px;
-		background: rgba(239, 68, 68, 0.2);
 		border-radius: 4px;
-		color: #ef4444;
 		font-size: 0.75rem;
+		/* Neutral default; severity modifiers below tint it to match the engine. */
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--ide-text-secondary, #aaa);
+	}
+
+	.mismatch-count--error {
+		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
+		color: var(--ide-error);
+	}
+
+	.mismatch-count--warning {
+		background: color-mix(in srgb, var(--ide-warning) 20%, transparent);
+		color: var(--ide-warning);
 	}
 
 	.code-input {
@@ -898,7 +1047,7 @@ export { formatPrice, summarize };`);
 
 	.ghost-suggestion {
 		padding: 0.75rem;
-		background: rgba(34, 197, 94, 0.1);
+		background: color-mix(in srgb, var(--ide-success) 12%, transparent);
 		border-radius: 6px;
 		margin-bottom: 0.5rem;
 	}
@@ -913,7 +1062,7 @@ export { formatPrice, summarize };`);
 	.ghost-char {
 		font-family: monospace;
 		font-weight: bold;
-		color: #22c55e;
+		color: var(--ide-success);
 	}
 
 	.ghost-pos {
@@ -935,16 +1084,21 @@ export { formatPrice, summarize };`);
 
 	.accept-btn {
 		padding: 0.25rem 0.75rem;
-		background: rgba(34, 197, 94, 0.2);
+		background: color-mix(in srgb, var(--ide-success) 20%, transparent);
 		border: none;
 		border-radius: 4px;
-		color: #22c55e;
+		color: var(--ide-success);
 		font-size: 0.75rem;
 		cursor: pointer;
 	}
 
 	.accept-btn:hover {
-		background: rgba(34, 197, 94, 0.3);
+		background: color-mix(in srgb, var(--ide-success) 30%, transparent);
+	}
+
+	.accept-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.mismatch-item {
@@ -958,11 +1112,11 @@ export { formatPrice, summarize };`);
 	}
 
 	.mismatch-item--error {
-		background: rgba(239, 68, 68, 0.1);
+		background: color-mix(in srgb, var(--ide-error) 12%, transparent);
 	}
 
 	.mismatch-item--warning {
-		background: rgba(245, 158, 11, 0.1);
+		background: color-mix(in srgb, var(--ide-warning) 12%, transparent);
 	}
 
 	.mm-icon {
@@ -970,11 +1124,11 @@ export { formatPrice, summarize };`);
 	}
 
 	.mismatch-item--error .mm-icon {
-		color: #ef4444;
+		color: var(--ide-error);
 	}
 
 	.mismatch-item--warning .mm-icon {
-		color: #f59e0b;
+		color: var(--ide-warning);
 	}
 
 	.mm-char {
@@ -1010,7 +1164,8 @@ export { formatPrice, summarize };`);
 
 	.open-sandbox-btn {
 		padding: 0.375rem 1rem;
-		background: var(--color-nocturnium-aurora-purple);
+		/* Filled primary: deeper blue so white text clears AA (~5.3:1). */
+		background: var(--ide-interactive-strong);
 		border: none;
 		border-radius: 4px;
 		color: #fff;
@@ -1020,7 +1175,12 @@ export { formatPrice, summarize };`);
 	}
 
 	.open-sandbox-btn:hover {
-		background: #9333ea;
+		background: var(--ide-interactive);
+	}
+
+	.open-sandbox-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.code-preview {
@@ -1047,7 +1207,7 @@ export { formatPrice, summarize };`);
 	}
 
 	.plugin-info {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 10%, transparent);
 		border-radius: 8px;
 		padding: 1rem;
 	}
@@ -1055,7 +1215,7 @@ export { formatPrice, summarize };`);
 	.plugin-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.plugin-info ul {
@@ -1141,7 +1301,7 @@ export { formatPrice, summarize };`);
 
 		/* Tighter tab padding so all three short labels are more likely to fit
 		   without scrolling, plus a wider right-edge fade so the third demo
-		   ("Plugin Sandbox") stays discoverable when the strip does scroll. */
+		   ("Plugin Preview") stays discoverable when the strip does scroll. */
 		.demo-tabs {
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
 			mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);

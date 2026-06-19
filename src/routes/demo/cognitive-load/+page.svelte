@@ -226,7 +226,10 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			attentionType: 'reading',
 			cursor: {
 				position: { line: 45, column: 8 },
-				color: '#8B5CF6',
+				// Brand AI-assistant purple (--ide-ai-assistant / aurora-purple). The
+				// editor paints the cursor in-canvas from this hex, so it can't read the
+				// CSS token directly; keep it in sync with --color-nocturnium-aurora-purple.
+				color: '#a78bfa',
 				visible: true,
 				animation: 'thinking'
 			},
@@ -446,8 +449,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Ghost Pair - AI Presence</h2>
 		<p class="section-desc">
-			Visualize AI agents working alongside you. See where they're looking, what they're thinking,
-			and what they're changing.
+			Visualize AI agents working alongside you. A ghost cursor, a focus-region glow, and an
+			activity label show where an agent is looking and what it's focused on.
 		</p>
 
 		<div class="ghost-pair-controls">
@@ -478,6 +481,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 						{claudeAgent.activity}
 					</span>
 				</div>
+			{:else}
+				<span class="ai-status-hidden">AI cursor hidden — enable to see Claude's focus</span>
 			{/if}
 		</div>
 	</section>
@@ -528,7 +533,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Feature Highlights</h2>
 		<div class="features-grid">
-			<div class="feature-card" style="--feature-accent: var(--color-error, #ef4444)">
+			<div class="feature-card" style="--feature-accent: var(--ide-error)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -552,7 +557,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: #8b5cf6">
+			<div class="feature-card" style="--feature-accent: var(--ide-ai-assistant)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -574,7 +579,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<p>See where AI agents are looking with ghost cursors and focus region highlights.</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--color-success, #22c55e)">
+			<div class="feature-card" style="--feature-accent: var(--ide-success)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -591,10 +596,13 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					</svg>
 				</div>
 				<h3>Refactoring Suggestions</h3>
-				<p>Hover over complex regions to see actionable suggestions for improvement.</p>
+				<p>
+					Hover the gutter markers on high-complexity regions for a breakdown, with an actionable
+					suggestion once a region crosses the medium threshold.
+				</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--color-warning, #f59e0b)">
+			<div class="feature-card" style="--feature-accent: var(--ide-warning)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -615,7 +623,10 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					</svg>
 				</div>
 				<h3>Activity Visualization</h3>
-				<p>Distinct visual states for reading, thinking, writing, and reviewing activities.</p>
+				<p>
+					A distinct cursor glyph and focus-glow color for each activity state — reading, thinking,
+					writing, and reviewing.
+				</p>
 			</div>
 		</div>
 	</section>
@@ -876,7 +887,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	.toggle-control input {
 		width: 18px;
 		height: 18px;
-		accent-color: #8b5cf6;
+		accent-color: var(--ide-ai-assistant);
 	}
 
 	.toggle-label {
@@ -898,7 +909,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	.control-btn:hover:not(:disabled) {
 		background: var(--ide-bg-hover);
 		color: var(--ide-text-primary);
-		border-color: #8b5cf6;
+		border-color: var(--ide-ai-assistant);
 	}
 
 	.control-btn:disabled {
@@ -908,7 +919,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	.control-btn:focus-visible,
 	.toggle-control input:focus-visible {
-		outline: 2px solid #8b5cf6;
+		outline: 2px solid var(--ide-ai-assistant);
 		outline-offset: 2px;
 	}
 
@@ -917,9 +928,17 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.375rem 0.75rem;
-		background: rgba(139, 92, 246, 0.1);
-		border: 1px solid rgba(139, 92, 246, 0.3);
+		background: color-mix(in srgb, var(--ide-ai-assistant) 10%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-ai-assistant) 30%, transparent);
 		border-radius: 6px;
+	}
+
+	/* Communicates the off-state so the freed panel space reads as "hidden",
+	   not "broken". */
+	.ai-status-hidden {
+		font-size: 0.8125rem;
+		font-style: italic;
+		color: var(--ide-text-muted);
 	}
 
 	.ai-dot {
@@ -941,7 +960,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	.ai-name {
 		font-weight: 600;
-		color: #8b5cf6;
+		color: var(--ide-ai-assistant);
 		font-size: 0.875rem;
 	}
 
@@ -1015,24 +1034,20 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		gap: 1rem;
 	}
 
+	/* Feature cards are descriptive content, not links/buttons — keep the hover
+	   subtle (border tint only). The translateY lift + box-shadow read as a press
+	   affordance and promise an action these <div>s don't have. */
 	.feature-card {
 		--feature-accent: var(--ide-interactive);
 		padding: 1.25rem;
 		background: var(--ide-bg-secondary);
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
-		transition:
-			transform 0.15s ease,
-			border-color 0.15s ease,
-			box-shadow 0.15s ease;
+		transition: border-color 0.15s ease;
 	}
 
 	.feature-card:hover {
-		transform: translateY(-2px);
 		border-color: color-mix(in srgb, var(--feature-accent) 45%, var(--ide-border));
-		box-shadow:
-			0 6px 18px rgba(0, 0, 0, 0.35),
-			0 0 0 1px color-mix(in srgb, var(--feature-accent) 28%, transparent);
 	}
 
 	.feature-icon {
@@ -1079,6 +1094,14 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	@media (max-width: 768px) {
+		/* Tidy 2x2 grid at the tablet band instead of 3+1 with a lonely card;
+		   grid-auto-rows: 1fr equalizes heights so a wrapped title doesn't desync
+		   the row baselines. */
+		.features-grid {
+			grid-template-columns: repeat(2, 1fr);
+			grid-auto-rows: 1fr;
+		}
+
 		/* Stack the meter card above its metrics so no data is clipped */
 		.meter-showcase {
 			flex-direction: column;

@@ -17,6 +17,7 @@
 		createBreakpointManager,
 		type BreakpointManager
 	} from '$lib/components/editor/core/breakpoints';
+	import type { DiagnosticFix } from '$lib/components/editor/core/diagnostics';
 	import InlineDiagnosticsLayer from '$lib/components/editor/InlineDiagnosticsLayer.svelte';
 	import ProblemsPanel from '$lib/components/editor/ProblemsPanel.svelte';
 	import BreakpointLayer from '$lib/components/editor/BreakpointLayer.svelte';
@@ -26,8 +27,8 @@
 	// Demo state
 	let activeDemo = $state<'diagnostics' | 'problems' | 'breakpoints' | 'console'>('diagnostics');
 
-	// Sample code
-	const sampleCode = `import { useState, useEffect } from 'react';
+	// Sample code (mutable so the inline quick-fixes below can really rewrite it)
+	let sampleCode = $state(`import { useState, useEffect } from 'react';
 import { fetchData } from './api';
 import { unusedImport } from './unused';
 
@@ -36,7 +37,7 @@ const logger = console;
 interface User {
   id: string
   name: string;
-  email: string
+  email: strng
 }
 
 export function UserComponent({ userId }: { userId: string }) {
@@ -75,9 +76,9 @@ export const helper = (x) => x * 2;
 
 function privateHelper(value) {
   return value + 1
-}`;
+}`);
 
-	const sampleLines = sampleCode.split('\n');
+	const sampleLines = $derived(sampleCode.split('\n'));
 	const lineHeight = 20;
 	const charWidth = 8;
 	const filePath = 'src/components/UserComponent.tsx';
@@ -94,7 +95,12 @@ function privateHelper(value) {
 	let consoleEntries = $state<ConsoleEntry[]>([]);
 	let entryId = 0;
 
-	// Preset diagnostics for demo
+	// Preset diagnostics for demo.
+	//
+	// Every fix carries a REAL TextEdit (not an empty array): applying it actually
+	// rewrites `sampleCode` in handleApplyFix below, so the inline quick-fixes are
+	// live, not decorative. Column ranges are 0-based and point at the exact text
+	// the message describes (verified against `sampleCode`).
 	const demoDiagnostics: Omit<Diagnostic, 'id'>[] = [
 		{
 			range: { start: { line: 2, column: 9 }, end: { line: 2, column: 21 } },
@@ -102,25 +108,86 @@ function privateHelper(value) {
 			message: "'unusedImport' is defined but never used",
 			source: 'typescript',
 			code: 'TS6133',
-			tags: { unnecessary: true }
-		},
-		{
-			range: { start: { line: 7, column: 2 }, end: { line: 7, column: 4 } },
-			severity: 'error',
-			message: "Property 'id' has no initializer and is not definitely assigned",
-			source: 'typescript',
-			code: 'TS2564',
+			tags: { unnecessary: true },
 			fixes: [
-				{ title: 'Add definite assignment assertion', isPreferred: true, edits: [] },
-				{ title: 'Add initializer', edits: [] }
+				{
+					title: "Remove unused import 'unusedImport'",
+					isPreferred: true,
+					// Replace the whole import line (incl. trailing newline) with nothing.
+					edits: [
+						{
+							range: { start: { line: 2, column: 0 }, end: { line: 3, column: 0 } },
+							newText: ''
+						}
+					]
+				}
 			]
 		},
 		{
-			range: { start: { line: 8, column: 2 }, end: { line: 8, column: 6 } },
+			range: { start: { line: 7, column: 2 }, end: { line: 7, column: 4 } },
 			severity: 'hint',
-			message: "Missing semicolon at end of 'name' property",
+			message: "Missing semicolon at end of 'id' property",
 			source: 'prettier',
-			code: 'prettier/semi'
+			code: 'prettier/semi',
+			fixes: [
+				{
+					title: 'Add semicolon',
+					isPreferred: true,
+					edits: [
+						{
+							range: { start: { line: 7, column: 12 }, end: { line: 7, column: 12 } },
+							newText: ';'
+						}
+					]
+				}
+			]
+		},
+		{
+			range: { start: { line: 9, column: 9 }, end: { line: 9, column: 14 } },
+			severity: 'error',
+			message: "Cannot find name 'strng'. Did you mean 'string'?",
+			source: 'typescript',
+			code: 'TS2552',
+			relatedInfo: [
+				{
+					range: { start: { line: 7, column: 6 }, end: { line: 7, column: 12 } },
+					message: "'string' is used here — the sibling 'id' property",
+					filePath
+				}
+			],
+			fixes: [
+				{
+					title: "Change spelling to 'string'",
+					isPreferred: true,
+					edits: [
+						{
+							range: { start: { line: 9, column: 9 }, end: { line: 9, column: 14 } },
+							newText: 'string'
+						}
+					]
+				}
+			]
+		},
+		{
+			// Second diagnostic on the SAME line (9) so the gutter count badge (which
+			// only renders when a line has >1 diagnostic) is actually demonstrated.
+			range: { start: { line: 9, column: 9 }, end: { line: 9, column: 14 } },
+			severity: 'hint',
+			message: "Missing semicolon at end of 'email' property",
+			source: 'prettier',
+			code: 'prettier/semi',
+			fixes: [
+				{
+					title: 'Add semicolon',
+					isPreferred: true,
+					edits: [
+						{
+							range: { start: { line: 9, column: 14 }, end: { line: 9, column: 14 } },
+							newText: ';'
+						}
+					]
+				}
+			]
 		},
 		{
 			range: { start: { line: 16, column: 6 }, end: { line: 16, column: 20 } },
@@ -128,36 +195,97 @@ function privateHelper(value) {
 			message: "'unusedVariable' is assigned a value but never used",
 			source: 'eslint',
 			code: 'no-unused-vars',
-			tags: { unnecessary: true }
+			tags: { unnecessary: true },
+			fixes: [
+				{
+					title: "Remove unused variable 'unusedVariable'",
+					isPreferred: true,
+					edits: [
+						{
+							range: { start: { line: 16, column: 0 }, end: { line: 17, column: 0 } },
+							newText: ''
+						}
+					]
+				}
+			]
 		},
 		{
-			range: { start: { line: 24, column: 18 }, end: { line: 24, column: 29 } },
+			// 'err.message' sits at cols 17-28 on this line — point the squiggle there.
+			range: { start: { line: 24, column: 17 }, end: { line: 24, column: 28 } },
 			severity: 'error',
 			message: "Property 'message' does not exist on type 'unknown'",
 			source: 'typescript',
 			code: 'TS2339',
-			fixes: [{ title: "Add type annotation 'Error'", isPreferred: true, edits: [] }]
+			relatedInfo: [
+				{
+					range: { start: { line: 23, column: 15 }, end: { line: 23, column: 18 } },
+					message: "'err' is typed 'unknown' here — narrow it before reading .message",
+					filePath
+				}
+			],
+			fixes: [
+				{
+					title: "Narrow with '(err as Error).message'",
+					isPreferred: true,
+					edits: [
+						{
+							range: { start: { line: 24, column: 17 }, end: { line: 24, column: 28 } },
+							newText: '(err as Error).message'
+						}
+					]
+				}
+			]
 		},
 		{
-			range: { start: { line: 43, column: 25 }, end: { line: 43, column: 26 } },
+			range: { start: { line: 44, column: 23 }, end: { line: 44, column: 24 } },
 			severity: 'warning',
 			message: "Parameter 'x' implicitly has an 'any' type",
 			source: 'typescript',
-			code: 'TS7006'
+			code: 'TS7006',
+			fixes: [
+				{
+					title: "Annotate 'x' as 'number'",
+					isPreferred: true,
+					edits: [
+						{
+							range: { start: { line: 44, column: 24 }, end: { line: 44, column: 24 } },
+							newText: ': number'
+						}
+					]
+				}
+			]
 		},
 		{
-			range: { start: { line: 46, column: 2 }, end: { line: 46, column: 18 } },
+			// Point at the function name 'privateHelper' (cols 9-22), not mid-word.
+			range: { start: { line: 46, column: 9 }, end: { line: 46, column: 22 } },
 			severity: 'info',
 			message: 'Function missing return type annotation',
 			source: 'eslint',
-			code: '@typescript-eslint/explicit-function-return-type'
+			code: '@typescript-eslint/explicit-function-return-type',
+			fixes: [
+				{
+					title: "Add return type ': number'",
+					isPreferred: true,
+					edits: [
+						{
+							range: { start: { line: 46, column: 29 }, end: { line: 46, column: 29 } },
+							newText: ': number'
+						}
+					]
+				}
+			]
 		}
 	];
+
+	// Live working set of diagnostics — a quick fix removes the one it resolves so
+	// the inline message, squiggle, and Problems panel all update for real.
+	let activeDiagnostics = $state<Omit<Diagnostic, 'id'>[]>([]);
 
 	onMount(() => {
 		// Initialize diagnostics manager
 		diagnosticsManager = createDiagnosticsManager();
-		diagnosticsManager.setDiagnostics(filePath, demoDiagnostics);
+		activeDiagnostics = demoDiagnostics.map((d) => ({ ...d }));
+		diagnosticsManager.setDiagnostics(filePath, activeDiagnostics);
 
 		// Initialize breakpoint manager
 		breakpointManager = createBreakpointManager();
@@ -172,9 +300,10 @@ function privateHelper(value) {
 			logMessage: 'Error occurred: {err}'
 		});
 
-		// Add initial console entries
+		// Add initial console entries. The second carries a source location so the
+		// "Source location links" affordance is actually exercised on load.
 		addConsoleEntry('log', 'Debug session started');
-		addConsoleEntry('info', 'Connected to debugger');
+		addConsoleEntry('info', 'Paused at breakpoint in loadUser()', { file: filePath, line: 19 });
 
 		return () => {
 			diagnosticsManager?.destroy();
@@ -236,6 +365,57 @@ function privateHelper(value) {
 	function handleBreakpointToggle(line: number) {
 		addConsoleEntry('info', `Breakpoint toggled at line ${line + 1}`);
 	}
+
+	/**
+	 * Apply a quick fix for REAL: splice the fix's TextEdit(s) into `sampleCode`,
+	 * drop the resolved diagnostic from the working set, and re-seed the manager.
+	 * The inline message, gutter icon, squiggle, and Problems panel all update.
+	 */
+	function handleApplyFix(diagnostic: Diagnostic, fix: DiagnosticFix) {
+		// Apply each edit bottom-to-top so earlier edits don't shift later offsets.
+		const edits = [...fix.edits].sort((a, b) => {
+			if (a.range.start.line !== b.range.start.line) {
+				return b.range.start.line - a.range.start.line;
+			}
+			return b.range.start.column - a.range.start.column;
+		});
+
+		let lines = sampleCode.split('\n');
+		for (const edit of edits) {
+			const { start, end } = edit.range;
+			if (start.line === end.line) {
+				const line = lines[start.line] ?? '';
+				lines[start.line] = line.slice(0, start.column) + edit.newText + line.slice(end.column);
+			} else {
+				// Multi-line replace (used by the "remove line" fixes).
+				const head = (lines[start.line] ?? '').slice(0, start.column);
+				const tail = (lines[end.line] ?? '').slice(end.column);
+				const merged = head + edit.newText + tail;
+				lines.splice(start.line, end.line - start.line + 1, merged);
+			}
+		}
+		sampleCode = lines.join('\n');
+
+		// Remove the diagnostic we just resolved (match on the live id), keeping the
+		// rest. The manager re-issues ids, so compare on message + range instead.
+		activeDiagnostics = activeDiagnostics.filter(
+			(d) =>
+				!(
+					d.message === diagnostic.message &&
+					d.range.start.line === diagnostic.range.start.line &&
+					d.range.start.column === diagnostic.range.start.column
+				)
+		);
+		diagnosticsManager.setDiagnostics(filePath, activeDiagnostics);
+
+		addConsoleEntry(
+			'info',
+			`Applied quick fix "${fix.title}" — ${activeDiagnostics.length} diagnostic${
+				activeDiagnostics.length === 1 ? '' : 's'
+			} remaining`,
+			{ file: filePath, line: diagnostic.range.start.line + 1 }
+		);
+	}
 </script>
 
 <div class="debugging-demo">
@@ -289,7 +469,11 @@ function privateHelper(value) {
 		<section class="demo-section">
 			<div class="section-header">
 				<h2>Inline Diagnostics</h2>
-				<p>Squiggly underlines and gutter icons for errors, warnings, and hints.</p>
+				<p>
+					The message rides at the end of its line — always visible, no pixel-hunting for a
+					squiggle. Hover or focus the line for the full detail and quick fixes; click to jump to
+					the location.
+				</p>
 			</div>
 
 			<div class="diagnostics-demo">
@@ -305,6 +489,9 @@ function privateHelper(value) {
 								enabled={diagnosticsEnabled}
 								showSquiggles={true}
 								showGutterIcons={true}
+								showInlineMessages={true}
+								onApplyFix={handleApplyFix}
+								onDiagnosticClick={(d) => handleDiagnosticNavigate(filePath, d)}
 							/>
 						{/if}
 
@@ -360,11 +547,11 @@ function privateHelper(value) {
 				<div class="feature-info">
 					<h4>Features</h4>
 					<ul>
-						<li>Squiggly underlines with severity colors</li>
-						<li>Gutter icons with diagnostic count</li>
-						<li>Hover for details and quick fixes</li>
-						<li>Click to apply fixes</li>
-						<li>Support for deprecated/unnecessary tags</li>
+						<li>Always-visible inline messages (Error Lens style)</li>
+						<li>Full-line hover/focus/click target — no squiggle-hunting</li>
+						<li>Squiggly underlines + gutter icons with diagnostic count</li>
+						<li>Detailed tooltip with related info and quick fixes</li>
+						<li>Severity-colored via shared band tokens; keyboard accessible</li>
 					</ul>
 				</div>
 			</div>
@@ -514,7 +701,7 @@ function privateHelper(value) {
 				<div class="feature-info">
 					<h4>Features</h4>
 					<ul>
-						<li>Expression evaluation in scope</li>
+						<li>Pluggable evaluate handler — wire your own runtime (simulated here)</li>
 						<li>Command history (Up/Down arrows)</li>
 						<li>Filter by message type</li>
 						<li>Expandable object inspection</li>
@@ -575,6 +762,11 @@ function privateHelper(value) {
 	.tab:hover {
 		color: var(--ide-text-primary, #e8e8f0);
 		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.tab.active {
@@ -666,14 +858,27 @@ function privateHelper(value) {
 		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 28%, transparent);
 	}
 
+	.control-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	/* Filled active state: white text needs the deeper blue to clear WCAG AA
+	   (white on --ide-interactive #4a8db7 is only ~3.4:1; --ide-interactive-strong
+	   pushes white to ~5.3:1). */
 	.control-btn.active {
-		background: var(--ide-accent, #4a8db7);
+		background: var(--ide-interactive-strong);
+		border-color: var(--ide-interactive-strong);
 		color: #fff;
+	}
+
+	.control-btn.active:hover {
+		background: color-mix(in srgb, var(--ide-interactive-strong) 88%, #fff);
 	}
 
 	.hint {
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary, #aaa);
 	}
 
 	/* Legend */

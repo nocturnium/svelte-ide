@@ -739,7 +739,10 @@
 		line-height: 1.5;
 		color: var(--ide-text-primary, #f4f1e0);
 		overflow: auto;
-		white-space: pre;
+		/* Wrap long single-line transformed output (e.g. Minify) instead of
+		   clipping it off the pane's right edge with no scroll affordance. */
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
 	}
 
 	/* Split view */
@@ -793,6 +796,7 @@
 
 	.diff-line__num {
 		width: 40px;
+		flex-shrink: 0;
 		color: var(--ide-text-muted, #a8c5d9);
 		text-align: right;
 		padding-right: 8px;
@@ -801,6 +805,7 @@
 
 	.diff-line__sign {
 		width: 16px;
+		flex-shrink: 0;
 		color: var(--ide-text-muted, #a8c5d9);
 	}
 
@@ -814,7 +819,10 @@
 
 	.diff-line__content {
 		flex: 1;
-		white-space: pre;
+		min-width: 0;
+		/* Wrap long single-line diff output instead of clipping it off-pane. */
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
 	}
 
 	.diff-line--add .diff-line__content {

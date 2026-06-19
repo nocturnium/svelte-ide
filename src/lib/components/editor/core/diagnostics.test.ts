@@ -546,7 +546,9 @@ describe('getSeverityIcon', () => {
 		expect(getSeverityIcon('error')).toBe('✕');
 		expect(getSeverityIcon('warning')).toBe('⚠');
 		expect(getSeverityIcon('info')).toBe('ℹ');
-		expect(getSeverityIcon('hint')).toBe('💡');
+		// Monochrome glyph, not the 💡 color emoji (which would ignore `color` and
+		// render the lowest severity louder than a warning).
+		expect(getSeverityIcon('hint')).toBe('◇');
 	});
 });
 

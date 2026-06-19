@@ -9,7 +9,8 @@
 	import {
 		createGitBlameManager,
 		generateMockBlameData,
-		type GitBlameManager
+		type GitBlameManager,
+		type BlameInfo
 	} from '$lib/components/editor/core/git-blame';
 	import {
 		createSnippetManager,
@@ -27,6 +28,8 @@
 	let blameManager = $state<GitBlameManager>(null!);
 	let blameEnabled = $state(false);
 	let blameColorMode = $state<'age' | 'author'>('age');
+	// Selected commit, set when a blame row's onCommitClick fires.
+	let selectedCommit = $state<BlameInfo | null>(null);
 
 	// Snippet demo
 	let snippetManager = $state<SnippetManager>(null!);
@@ -35,61 +38,75 @@
 	let expandedCode = $state('');
 
 	// Diff demo
-	let diffChanges = $state<
-		Array<{ line: number; type: 'added' | 'modified' | 'removed'; originalContent?: string }>
-	>([]);
+	type DiffChange = {
+		line: number;
+		type: 'added' | 'modified' | 'removed';
+		originalContent?: string;
+	};
+	let diffChanges = $state<DiffChange[]>([]);
 	let diffEnabled = $state(true);
+	// Selected change, set when a diff indicator's onChangeClick fires.
+	let selectedChange = $state<DiffChange | null>(null);
 
-	// Sample code for demos
-	const sampleCode = `import { useState, useEffect } from 'react';
-import { fetchData, processResults } from './api';
-import { Logger } from './utils/logger';
+	// Sample code for demos — idiomatic Svelte 5 (runes), so the DevX demos
+	// showcase the product's own language rather than React/JSX.
+	const sampleCode = `<script lang="ts">
+  import { fetchData, processResults } from './api';
+  import { Logger } from './utils/logger';
 
-const logger = new Logger('DataComponent');
+  const logger = new Logger('DataPanel');
 
-interface DataItem {
-  id: string;
-  name: string;
-  value: number;
-  createdAt: Date;
-}
+  interface DataItem {
+    id: string;
+    name: string;
+    value: number;
+    createdAt: Date;
+  }
 
-export function DataComponent({ userId }: { userId: string }) {
-  const [data, setData] = useState<DataItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  let { userId }: { userId: string } = $props();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        logger.info('Fetching data for user:', userId);
-        const results = await fetchData(userId);
-        const processed = processResults(results);
-        setData(processed);
-      } catch (err) {
+  let data = $state<DataItem[]>([]);
+  let loading = $state(true);
+  let error = $state<string | null>(null);
+
+  const total = $derived(data.reduce((sum, item) => sum + item.value, 0));
+
+  $effect(() => {
+    let cancelled = false;
+    loading = true;
+    logger.info('Fetching data for user:', userId);
+    fetchData(userId)
+      .then((results) => {
+        if (cancelled) return;
+        data = processResults(results);
+      })
+      .catch((err) => {
         logger.error('Failed to fetch data:', err);
-        setError('Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [userId]);
+        error = 'Failed to load data';
+      })
+      .finally(() => {
+        if (!cancelled) loading = false;
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
+${'<'}/script>
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <div className="data-list">
-      {data.map(item => (
-        <div key={item.id} className="data-item">
-          <h3>{item.name}</h3>
-          <p>Value: {item.value}</p>
-        </div>
-      ))}
-    </div>
-  );
-}`;
+{#if loading}
+  <div>Loading...</div>
+{:else if error}
+  <div>Error: {error}</div>
+{:else}
+  <div class="data-list">
+    {#each data as item (item.id)}
+      <div class="data-item">
+        <h3>{item.name}</h3>
+        <p>Value: {item.value}</p>
+      </div>
+    {/each}
+  </div>
+{/if}`;
 
 	const sampleLines = sampleCode.split('\n');
 	const lineHeight = 20;
@@ -106,6 +123,17 @@ export function DataComponent({ userId }: { userId: string }) {
 		updateWidth();
 		window.addEventListener('resize', updateWidth);
 
+		// Real Ctrl/Cmd+Shift+S shortcut to open the snippet palette, matching the
+		// hint shown on the Snippets tab.
+		const handleKeydown = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+				e.preventDefault();
+				activeDemo = 'snippets';
+				snippetPaletteOpen = true;
+			}
+		};
+		window.addEventListener('keydown', handleKeydown);
+
 		// Initialize blame manager
 		blameManager = createGitBlameManager();
 		const mockBlame = generateMockBlameData(sampleLines.length);
@@ -114,24 +142,33 @@ export function DataComponent({ userId }: { userId: string }) {
 		// Initialize snippet manager
 		snippetManager = createSnippetManager();
 
-		// Initialize diff changes
+		// Initialize diff changes.
+		// NOTE: InlineDiffLayer consumes `line` as 0-based (top = line * lineHeight)
+		// and the code preview below renders row N at array index N (the `i` key),
+		// so each entry's 0-based `line` must equal the array index of the line it
+		// describes. Every `originalContent` is the genuine "before" of that exact
+		// rendered line, so each bar sits on the line it actually annotates.
 		diffChanges = [
-			{ line: 3, type: 'added' },
-			{ line: 4, type: 'added' },
-			{ line: 15, type: 'modified', originalContent: '  const [data, setData] = useState([]);' },
-			{
-				line: 16,
-				type: 'modified',
-				originalContent: '  const [loading, setLoading] = useState(false);'
-			},
-			{ line: 25, type: 'added' },
-			{ line: 26, type: 'added' },
-			{ line: 35, type: 'removed', originalContent: '  if (loading) return null;' },
-			{ line: 42, type: 'modified', originalContent: '        <p>{item.value}</p>' }
+			// Logging was newly introduced.
+			{ line: 2, type: 'added' }, // import { Logger } from './utils/logger';
+			{ line: 4, type: 'added' }, // const logger = new Logger('DataPanel');
+			// $state runes were typed / re-defaulted.
+			{ line: 15, type: 'modified', originalContent: '  let data = $state([]);' },
+			{ line: 16, type: 'modified', originalContent: '  let loading = $state(false);' },
+			// Error state was added.
+			{ line: 17, type: 'added' }, // let error = $state<string | null>(null);
+			// A derived total was newly introduced.
+			{ line: 19, type: 'added' }, // const total = $derived(...)
+			// A bare `if (loading) return;` early-return that used to sit just inside
+			// the effect was deleted; the triangle marks where it was.
+			{ line: 22, type: 'removed', originalContent: '    if (loading) return;' },
+			// The value paragraph gained its "Value:" label.
+			{ line: 52, type: 'modified', originalContent: '        <p>{item.value}</p>' }
 		];
 
 		return () => {
 			window.removeEventListener('resize', updateWidth);
+			window.removeEventListener('keydown', handleKeydown);
 		};
 	});
 
@@ -147,6 +184,14 @@ export function DataComponent({ userId }: { userId: string }) {
 	function setBlameColorMode(mode: 'age' | 'author') {
 		blameColorMode = mode;
 		blameManager.setConfig({ colorMode: mode });
+	}
+
+	function handleCommitClick(info: BlameInfo) {
+		selectedCommit = info;
+	}
+
+	function handleChangeClick(change: DiffChange) {
+		selectedChange = change;
 	}
 
 	function handleSnippetSelect(snippet: Snippet) {
@@ -228,6 +273,7 @@ export function DataComponent({ userId }: { userId: string }) {
 							gutterWidth={0}
 							{blameWidth}
 							enabled={true}
+							onCommitClick={handleCommitClick}
 						/>
 					{/if}
 
@@ -248,9 +294,29 @@ export function DataComponent({ userId }: { userId: string }) {
 						<li>Shows author and timestamp for each line</li>
 						<li>Color-coded by age (green = recent, gray = old) or author</li>
 						<li>Hover for full commit details</li>
-						<li>Click to view full commit</li>
+						<li>Click a blame row to load the full commit below</li>
 						<li>Groups consecutive lines from same commit</li>
 					</ul>
+
+					{#if selectedCommit}
+						<div class="selected-commit">
+							<h5>Selected Commit</h5>
+							<div class="commit-row">
+								<span class="commit-sha">{selectedCommit.commitSha.slice(0, 7)}</span>
+								<span class="commit-author">{selectedCommit.author}</span>
+								<span class="commit-date">
+									{selectedCommit.timestamp.toLocaleDateString(undefined, {
+										year: 'numeric',
+										month: 'short',
+										day: 'numeric'
+									})}
+								</span>
+							</div>
+							<p class="commit-message">{selectedCommit.message}</p>
+						</div>
+					{:else}
+						<p class="blame-hint">Enable blame, then click a row to inspect its commit here.</p>
+					{/if}
 				</div>
 			</div>
 		</section>
@@ -365,11 +431,11 @@ export function DataComponent({ userId }: { userId: string }) {
 
 				<div class="diff-legend">
 					<div class="legend-item">
-						<span class="legend-color" style="background: #22c55e;"></span>
+						<span class="legend-color legend-color--added"></span>
 						<span>Added lines</span>
 					</div>
 					<div class="legend-item">
-						<span class="legend-color" style="background: #3b82f6;"></span>
+						<span class="legend-color legend-color--modified"></span>
 						<span>Modified lines</span>
 					</div>
 					<div class="legend-item">
@@ -386,6 +452,7 @@ export function DataComponent({ userId }: { userId: string }) {
 						enabled={diffEnabled}
 						gutterOnly={true}
 						indicatorWidth={4}
+						onChangeClick={handleChangeClick}
 					/>
 
 					<!-- Code display -->
@@ -406,8 +473,31 @@ export function DataComponent({ userId }: { userId: string }) {
 						<li>Blue bar: Lines that have been modified</li>
 						<li>Red triangle: Lines that were removed</li>
 						<li>Hover to see original content</li>
-						<li>Click to navigate to diff view</li>
+						<li>Click an indicator to inspect the change below</li>
 					</ul>
+
+					{#if selectedChange}
+						<div class="selected-change">
+							<h5>Selected Change</h5>
+							<div class="change-row">
+								<span class="change-type change-type--{selectedChange.type}">
+									{selectedChange.type}
+								</span>
+								<span class="change-line">Line {selectedChange.line + 1}</span>
+							</div>
+							{#if selectedChange.originalContent}
+								<div class="change-original">
+									<span class="change-original-label">Original:</span>
+									<pre>{selectedChange.originalContent}</pre>
+								</div>
+							{:else}
+								<p class="change-note">
+									This line was {selectedChange.type === 'added' ? 'newly added' : 'removed'}, so it
+									has no prior content.
+								</p>
+							{/if}
+						</div>
+					{/if}
 
 					<div class="diff-summary">
 						<h5>Changes Summary</h5>
@@ -450,9 +540,9 @@ export function DataComponent({ userId }: { userId: string }) {
 		font-weight: 600;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: var(--color-nocturnium-aurora-purple);
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 12%, transparent);
-		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		color: var(--ide-interactive);
+		background: color-mix(in srgb, var(--ide-interactive) 14%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 35%, transparent);
 		border-radius: 999px;
 	}
 
@@ -460,16 +550,16 @@ export function DataComponent({ userId }: { userId: string }) {
 		margin: 0 0 0.4rem;
 		font-size: 2rem;
 		font-weight: 700;
-		background: linear-gradient(135deg, #e8e8f0 0%, var(--color-nocturnium-aurora-purple) 100%);
+		background: linear-gradient(135deg, var(--ide-text-primary) 0%, var(--ide-interactive) 100%);
 		-webkit-background-clip: text;
 		background-clip: text;
 		-webkit-text-fill-color: transparent;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.demo-header p {
 		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	/* Tabs */
@@ -491,21 +581,32 @@ export function DataComponent({ userId }: { userId: string }) {
 		padding: 0.75rem 1.5rem;
 		background: transparent;
 		border: none;
+		border-bottom: 2px solid transparent;
 		border-radius: 6px 6px 0 0;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		font-size: 0.9rem;
+		font-weight: 500;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.tab:hover {
-		color: var(--ide-text-primary, #e8e8f0);
-		background: rgba(255, 255, 255, 0.05);
+		color: var(--ide-text-primary);
+		background: color-mix(in srgb, var(--ide-text-primary) 6%, transparent);
 	}
 
+	.tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	/* Filled active state: white text on the deeper ocean blue clears AA (~5.3:1),
+	   plus a flush bottom accent so the selected demo is unmistakable. */
 	.tab.active {
-		color: var(--color-nocturnium-aurora-purple);
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		color: #fff;
+		font-weight: 600;
+		background: var(--ide-interactive-strong);
+		border-bottom-color: var(--ide-interactive);
 	}
 
 	/* Section */
@@ -522,22 +623,22 @@ export function DataComponent({ userId }: { userId: string }) {
 	.section-header h2 {
 		margin: 0 0 0.5rem;
 		font-size: 1.25rem;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.section-header p {
 		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		font-size: 0.9rem;
 	}
 
 	/* Controls */
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
-		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 35%, transparent);
 		border-radius: 6px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-text-primary);
 		font-size: 0.875rem;
 		font-weight: 500;
 		cursor: pointer;
@@ -545,23 +646,28 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.control-btn:hover {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 35%, transparent);
-		border-color: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 55%, transparent);
-		color: #f3e8ff;
+		background: color-mix(in srgb, var(--ide-interactive) 35%, transparent);
+		border-color: color-mix(in srgb, var(--ide-interactive) 55%, transparent);
+		color: var(--ide-text-primary);
 	}
 
-	.control-btn.active {
-		background: var(--color-nocturnium-aurora-purple);
-		color: #fff;
+	.control-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
+	/* Filled states use white text — pair with the deeper ocean blue (AA-safe). */
+	.control-btn.active,
 	.control-btn.primary {
-		background: var(--color-nocturnium-aurora-purple);
+		background: var(--ide-interactive-strong);
+		border-color: var(--ide-interactive-strong);
 		color: #fff;
 	}
 
 	.control-btn.primary:hover {
-		background: #9333ea;
+		background: color-mix(in srgb, var(--ide-interactive-strong) 85%, white 15%);
+		border-color: color-mix(in srgb, var(--ide-interactive-strong) 85%, white 15%);
+		color: #fff;
 	}
 
 	/* Blame demo */
@@ -584,26 +690,34 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.toggle-label {
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.mode-btn {
 		padding: 0.25rem 0.75rem;
-		background: rgba(255, 255, 255, 0.1);
+		background: color-mix(in srgb, var(--ide-text-primary) 10%, transparent);
 		border: none;
 		border-radius: 4px;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		font-size: 0.75rem;
 		cursor: pointer;
+		transition: all 0.15s ease;
 	}
 
 	.mode-btn:hover {
-		background: rgba(255, 255, 255, 0.15);
+		background: color-mix(in srgb, var(--ide-text-primary) 15%, transparent);
+		color: var(--ide-text-primary);
 	}
 
+	.mode-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	/* Filled active toggle: white text on the deeper ocean blue (AA-safe). */
 	.mode-btn.active {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
-		color: var(--color-nocturnium-aurora-purple);
+		background: var(--ide-interactive-strong);
+		color: #fff;
 	}
 
 	.editor-preview {
@@ -630,21 +744,21 @@ export function DataComponent({ userId }: { userId: string }) {
 		width: 40px;
 		padding-right: 8px;
 		text-align: right;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 		user-select: none;
 	}
 
 	.line-content {
 		flex: 1;
 		white-space: pre;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.blame-info,
 	.snippets-info,
 	.diff-info {
 		padding: 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 10%, transparent);
 		border-radius: 8px;
 	}
 
@@ -653,7 +767,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.diff-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.blame-info ul,
@@ -661,7 +775,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		margin: 0;
 		padding-left: 1.25rem;
 		font-size: 0.85rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	.blame-info li,
@@ -683,7 +797,7 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.shortcut-hint {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.snippets-content {
@@ -701,7 +815,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.snippet-preview-area h4 {
 		margin: 0 0 1rem;
 		font-size: 0.9rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	.selected-snippet {
@@ -720,19 +834,19 @@ export function DataComponent({ userId }: { userId: string }) {
 		font-family: monospace;
 		font-size: 12px;
 		padding: 2px 6px;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
 		border-radius: 4px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.snippet-name {
 		font-weight: 500;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.snippet-desc {
 		font-size: 0.85rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.snippet-body,
@@ -747,14 +861,14 @@ export function DataComponent({ userId }: { userId: string }) {
 		margin: 0;
 		font-family: 'JetBrains Mono', monospace;
 		font-size: 12px;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 		white-space: pre-wrap;
 	}
 
 	.expanded-preview h5 {
 		margin: 0 0 0.5rem;
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.no-snippet {
@@ -762,24 +876,24 @@ export function DataComponent({ userId }: { userId: string }) {
 		flex-direction: column;
 		align-items: center;
 		gap: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 		font-size: 0.9rem;
 		text-align: center;
 		padding: 2rem 1.5rem;
-		border: 1px dashed color-mix(in srgb, var(--color-nocturnium-aurora-purple) 35%, transparent);
+		border: 1px dashed color-mix(in srgb, var(--ide-interactive) 35%, transparent);
 		border-radius: 8px;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 4%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 4%, transparent);
 	}
 
 	.no-snippet-text {
 		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		font-weight: 500;
 	}
 
 	.no-snippet-hint {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.snippet-categories {
@@ -791,7 +905,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.category h5 {
 		margin: 0 0 0.5rem;
 		font-size: 0.85rem;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.category ul {
@@ -802,16 +916,16 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.category li {
 		font-size: 0.8rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		margin: 0.25rem 0;
 	}
 
 	.category code {
 		font-family: monospace;
-		background: rgba(255, 255, 255, 0.1);
+		background: color-mix(in srgb, var(--ide-text-primary) 10%, transparent);
 		padding: 1px 4px;
 		border-radius: 2px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	/* Diff demo */
@@ -837,7 +951,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.8rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	.legend-color {
@@ -846,10 +960,18 @@ export function DataComponent({ userId }: { userId: string }) {
 		border-radius: 3px;
 	}
 
+	.legend-color--added {
+		background: var(--ide-success);
+	}
+
+	.legend-color--modified {
+		background: var(--ide-info);
+	}
+
 	.legend-color--removed {
 		width: 0;
 		height: 0;
-		border-left: 10px solid #ef4444;
+		border-left: 10px solid var(--ide-error);
 		border-top: 5px solid transparent;
 		border-bottom: 5px solid transparent;
 		border-radius: 0;
@@ -858,13 +980,13 @@ export function DataComponent({ userId }: { userId: string }) {
 	.diff-summary {
 		margin-top: 1rem;
 		padding-top: 1rem;
-		border-top: 1px solid rgba(255, 255, 255, 0.1);
+		border-top: 1px solid var(--ide-border);
 	}
 
 	.diff-summary h5 {
 		margin: 0 0 0.5rem;
 		font-size: 0.85rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	.summary-stats {
@@ -879,18 +1001,124 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.stat--add {
-		background: rgba(34, 197, 94, 0.2);
-		color: #22c55e;
+		background: color-mix(in srgb, var(--ide-success) 20%, transparent);
+		color: var(--ide-success);
 	}
 
 	.stat--mod {
-		background: rgba(59, 130, 246, 0.2);
-		color: #3b82f6;
+		background: color-mix(in srgb, var(--ide-info) 20%, transparent);
+		color: var(--ide-info);
 	}
 
 	.stat--del {
-		background: rgba(239, 68, 68, 0.2);
-		color: #ef4444;
+		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
+		color: var(--ide-error);
+	}
+
+	/* Selected commit / change detail panels (populated by the click handlers) */
+	.selected-commit,
+	.selected-change {
+		margin-top: 1rem;
+		padding: 0.75rem;
+		background: rgba(0, 0, 0, 0.25);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 25%, transparent);
+		border-radius: 8px;
+	}
+
+	.selected-commit h5,
+	.selected-change h5 {
+		margin: 0 0 0.5rem;
+		font-size: 0.8rem;
+		color: var(--ide-interactive);
+	}
+
+	.commit-row,
+	.change-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
+		font-size: 0.8rem;
+	}
+
+	.commit-sha {
+		font-family: 'JetBrains Mono', monospace;
+		color: var(--ide-interactive);
+	}
+
+	.commit-author {
+		color: var(--ide-text-primary);
+		font-weight: 500;
+	}
+
+	.commit-date,
+	.change-line {
+		color: var(--ide-text-secondary);
+	}
+
+	.commit-message {
+		margin: 0.5rem 0 0;
+		font-size: 0.85rem;
+		color: var(--ide-text-secondary);
+		line-height: 1.4;
+	}
+
+	.change-type {
+		padding: 1px 8px;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		text-transform: capitalize;
+	}
+
+	.change-type--added {
+		background: color-mix(in srgb, var(--ide-success) 20%, transparent);
+		color: var(--ide-success);
+	}
+
+	.change-type--modified {
+		background: color-mix(in srgb, var(--ide-info) 20%, transparent);
+		color: var(--ide-info);
+	}
+
+	.change-type--removed {
+		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
+		color: var(--ide-error);
+	}
+
+	.change-original {
+		margin-top: 0.5rem;
+	}
+
+	.change-original-label {
+		display: block;
+		font-size: 0.7rem;
+		color: var(--ide-text-secondary);
+		margin-bottom: 0.25rem;
+	}
+
+	.change-original pre,
+	.change-note {
+		margin: 0;
+		font-size: 0.75rem;
+	}
+
+	.change-original pre {
+		font-family: 'JetBrains Mono', monospace;
+		color: var(--ide-text-secondary);
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+
+	.change-note {
+		color: var(--ide-text-secondary);
+		line-height: 1.4;
+	}
+
+	.blame-hint {
+		margin: 0.75rem 0 0;
+		font-size: 0.78rem;
+		color: var(--ide-text-secondary);
+		font-style: italic;
 	}
 
 	/* ===== Responsive: tablet -> mobile ===== */

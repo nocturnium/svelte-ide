@@ -310,6 +310,11 @@ MIT License - see LICENSE file for details
 	let rightPanelOpen = $state(true);
 	let leftPanel = $state<'files' | 'plugins'>('files');
 	let bottomPanelOpen = $state(false);
+	let activeBottomTab = $state<'terminal' | 'output' | 'problems'>('terminal');
+
+	// Live cursor position, fed by CustomEditor's onCursorChange (already 1-based).
+	// Reset to 1,1 on tab switch since the {#key activeTabId} block remounts the editor.
+	let cursor = $state({ line: 1, column: 1 });
 
 	// Responsive: below 860px the shell becomes single-pane with drawer overlays.
 	let isMobile = $state(false);
@@ -358,9 +363,11 @@ MIT License - see LICENSE file for details
 		rightPanelOpen = false;
 	}
 
-	// Resizable panel state
+	// Resizable panel state. The AI panel defaults a touch narrower (320, not 350)
+	// so on a standard ~1440px laptop the editor + tab strip keep breathing room
+	// with all three panels open, instead of crushing the tabs to scroll on load.
 	let leftPanelWidth = $state(240);
-	let rightPanelWidth = $state(350);
+	let rightPanelWidth = $state(320);
 	let isResizingLeft = $state(false);
 	let isResizingRight = $state(false);
 	let isResizing = $derived(isResizingLeft || isResizingRight);
@@ -398,6 +405,13 @@ MIT License - see LICENSE file for details
 		{ name: 'tsconfig.json', type: 'file' }
 	];
 
+	function selectTab(id: string) {
+		// The {#key activeTabId} editor remounts on switch; reset the readout so it
+		// reflects the freshly-mounted editor rather than the previous file's caret.
+		cursor = { line: 1, column: 1 };
+		activeTabId = id;
+	}
+
 	function openFile(id: string) {
 		if (!tabs.find((t) => t.id === id)) {
 			const file = files.find((f) => f.id === id);
@@ -405,13 +419,14 @@ MIT License - see LICENSE file for details
 				tabs = [...tabs, file];
 			}
 		}
-		activeTabId = id;
+		selectTab(id);
 	}
 
 	function closeTab(id: string) {
+		const wasActive = activeTabId === id;
 		tabs = tabs.filter((t) => t.id !== id);
-		if (activeTabId === id && tabs.length > 0) {
-			activeTabId = tabs[tabs.length - 1].id;
+		if (wasActive && tabs.length > 0) {
+			selectTab(tabs[tabs.length - 1].id);
 		}
 	}
 
@@ -576,13 +591,19 @@ MIT License - see LICENSE file for details
 			<EditorTabs
 				{tabs}
 				{activeTabId}
-				onSelect={(id: string) => (activeTabId = id)}
+				onSelect={(id: string) => selectTab(id)}
 				onClose={closeTab}
 			/>
 			<div class="editor-wrapper">
 				{#if activeFile}
 					{#key activeTabId}
-						<CustomEditor {content} {language} onChange={handleContentChange} onSave={handleSave} />
+						<CustomEditor
+							{content}
+							{language}
+							onChange={handleContentChange}
+							onSave={handleSave}
+							onCursorChange={(line, column) => (cursor = { line, column })}
+						/>
 					{/key}
 				{:else}
 					<div class="empty-state">
@@ -594,27 +615,65 @@ MIT License - see LICENSE file for details
 
 		{#if bottomPanelOpen}
 			<div class="bottom-panel">
-				<div class="panel-tabs">
-					<button class="panel-tab active">Terminal</button>
-					<button class="panel-tab">Output</button>
-					<button class="panel-tab">Problems</button>
+				<div class="panel-tabs" role="tablist">
+					<button
+						class="panel-tab"
+						class:active={activeBottomTab === 'terminal'}
+						role="tab"
+						aria-selected={activeBottomTab === 'terminal'}
+						onclick={() => (activeBottomTab = 'terminal')}>Terminal</button
+					>
+					<button
+						class="panel-tab"
+						class:active={activeBottomTab === 'output'}
+						role="tab"
+						aria-selected={activeBottomTab === 'output'}
+						onclick={() => (activeBottomTab = 'output')}>Output</button
+					>
+					<button
+						class="panel-tab"
+						class:active={activeBottomTab === 'problems'}
+						role="tab"
+						aria-selected={activeBottomTab === 'problems'}
+						onclick={() => (activeBottomTab = 'problems')}>Problems</button
+					>
 				</div>
-				<div class="terminal">
-					<div class="terminal-line">
-						<span class="prompt">$</span>
-						<span>npm run dev</span>
+				{#if activeBottomTab === 'terminal'}
+					<div class="terminal">
+						<div class="terminal-line">
+							<span class="prompt">$</span>
+							<span>npm run dev</span>
+						</div>
+						<div class="terminal-output">
+							<span class="info">Starting development server...</span>
+						</div>
+						<div class="terminal-output">
+							<span class="success">Ready on http://localhost:5173</span>
+						</div>
+						<div class="terminal-line">
+							<span class="prompt">$</span>
+							<span class="cursor">|</span>
+						</div>
 					</div>
-					<div class="terminal-output">
-						<span class="info">Starting development server...</span>
+				{:else if activeBottomTab === 'output'}
+					<div class="terminal">
+						<div class="terminal-output">
+							<span class="info">[vite] connected.</span>
+						</div>
+						<div class="terminal-output">
+							<span class="info">[vite] hmr update /src/App.svelte</span>
+						</div>
+						<div class="terminal-output">
+							<span class="success">page reload src/index.ts</span>
+						</div>
 					</div>
-					<div class="terminal-output">
-						<span class="success">Ready on http://localhost:5173</span>
+				{:else}
+					<div class="terminal">
+						<div class="terminal-output">
+							<span class="success">No problems detected in the open files.</span>
+						</div>
 					</div>
-					<div class="terminal-line">
-						<span class="prompt">$</span>
-						<span class="cursor">|</span>
-					</div>
-				</div>
+				{/if}
 			</div>
 		{/if}
 	</div>
@@ -646,13 +705,12 @@ MIT License - see LICENSE file for details
 	<!-- Status Bar -->
 	<div class="status-bar">
 		<div class="status-left">
-			<Badge variant="success">Connected</Badge>
-			<span class="status-item">main</span>
+			<Badge variant="secondary">Demo</Badge>
 		</div>
 		<div class="status-right">
 			<span class="status-item">{language}</span>
 			<span class="status-item status-item--secondary">UTF-8</span>
-			<span class="status-item">Ln 1, Col 1</span>
+			<span class="status-item">Ln {cursor.line}, Col {cursor.column}</span>
 		</div>
 	</div>
 </div>
@@ -713,11 +771,18 @@ MIT License - see LICENSE file for details
 		background: var(--ide-bg-hover);
 	}
 
+	.activity-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.activity-btn.active {
 		opacity: 1;
-		/* Dark glyph on the wave-blue fill for AA contrast */
-		color: var(--color-nocturnium-night);
-		background: var(--color-nocturnium-wave);
+		/* Filled active state with white glyph: use the deeper blue token
+		   (--ide-interactive-strong, ocean) — white on it is ~5.3:1, clearing AA;
+		   white on plain --ide-interactive (#4a8db7) is only ~3.4:1. */
+		color: #fff;
+		background: var(--ide-interactive-strong);
 	}
 
 	/* First-run hint: a few soft wave-tinted pulses draw the eye to the rail on
@@ -734,7 +799,7 @@ MIT License - see LICENSE file for details
 			box-shadow: 0 0 0 0 transparent;
 		}
 		50% {
-			box-shadow: 0 0 8px 1px color-mix(in srgb, var(--color-nocturnium-wave) 55%, transparent);
+			box-shadow: 0 0 8px 1px color-mix(in srgb, var(--ide-interactive) 55%, transparent);
 		}
 	}
 
@@ -769,7 +834,8 @@ MIT License - see LICENSE file for details
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--ide-text-muted);
+		/* Secondary (not muted) so the 0.75rem uppercase label clears AA */
+		color: var(--ide-text-secondary);
 		border-bottom: 1px solid var(--ide-border);
 	}
 
@@ -811,9 +877,16 @@ MIT License - see LICENSE file for details
 		background: var(--ide-bg-hover);
 	}
 
+	.tree-file:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: -2px;
+	}
+
 	.tree-file.active {
-		background: var(--color-nocturnium-wave);
-		color: var(--color-nocturnium-night);
+		/* Filled selected row carries white text, so use the deeper blue token
+		   (--ide-interactive-strong) for AA — see activity-btn.active above. */
+		background: var(--ide-interactive-strong);
+		color: #fff;
 	}
 
 	/* Main Content */
@@ -865,13 +938,19 @@ MIT License - see LICENSE file for details
 		background: transparent;
 		border: none;
 		font-size: 0.8125rem;
-		color: var(--ide-text-muted);
+		/* Secondary (not muted) so the inactive tab labels clear AA as small text */
+		color: var(--ide-text-secondary);
 		cursor: pointer;
+	}
+
+	.panel-tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: -2px;
 	}
 
 	.panel-tab.active {
 		color: var(--ide-text-primary);
-		border-bottom: 2px solid var(--color-nocturnium-wave);
+		border-bottom: 2px solid var(--ide-interactive);
 	}
 
 	.terminal {
@@ -889,7 +968,7 @@ MIT License - see LICENSE file for details
 	}
 
 	.prompt {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-interactive);
 	}
 
 	.terminal-output {
@@ -898,7 +977,8 @@ MIT License - see LICENSE file for details
 	}
 
 	.terminal-output .info {
-		color: var(--ide-text-muted);
+		/* Secondary (not muted) so log lines clear AA as small mono text */
+		color: var(--ide-text-secondary);
 	}
 
 	.terminal-output .success {
@@ -1066,7 +1146,7 @@ MIT License - see LICENSE file for details
 		}
 
 		/* Shed secondary status metrics on phones so the bar doesn't crowd;
-		   keep Connected/main and the active language as the priority. */
+		   keep the active language and live cursor position as the priority. */
 		.status-item--secondary {
 			display: none;
 		}

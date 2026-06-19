@@ -351,7 +351,10 @@ export function getSeverityIcon(severity: DiagnosticSeverity): string {
 		case 'info':
 			return 'ℹ';
 		case 'hint':
-			return '💡';
+			// Monochrome glyph (not the 💡 emoji): a color emoji ignores `color` and
+			// would render the LOWEST severity louder than a warning, inverting the
+			// severity hierarchy.
+			return '◇';
 	}
 }
 

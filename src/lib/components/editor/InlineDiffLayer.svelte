@@ -50,7 +50,10 @@
 			case 'added':
 				return 'var(--ide-status-created)';
 			case 'modified':
-				return 'var(--ide-status-modified)';
+				// Modified indicator is BLUE to match the diff legend (Modified = blue).
+				// --ide-status-modified resolves to aurora-yellow (amber), which
+				// contradicts the legend; drive it from --ide-info (#60a5fa) instead.
+				return 'var(--ide-info)';
 			case 'removed':
 				return 'var(--ide-status-deleted)';
 			default:
@@ -175,7 +178,10 @@
 				onclick={() => handleClick(group.changes[0])}
 				onkeydown={(e) => e.key === 'Enter' && handleClick(group.changes[0])}
 				role="button"
-				tabindex={-1}
+				tabindex={onChangeClick ? 0 : -1}
+				aria-label={onChangeClick
+					? `${getLabel(group.type)}: ${group.changes.length} line${group.changes.length !== 1 ? 's' : ''} — view full diff`
+					: undefined}
 				title="{getLabel(group.type)}: {group.changes.length} line{group.changes.length !== 1
 					? 's'
 					: ''}"

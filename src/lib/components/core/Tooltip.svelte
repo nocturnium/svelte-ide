@@ -1,3 +1,9 @@
+<script module lang="ts">
+	// Stable per-instance counter (SSR-safe — no Math.random/Date) so the bubble's
+	// id matches across server render and hydration for aria-describedby.
+	let tooltipCounter = 0;
+</script>
+
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
@@ -11,6 +17,7 @@
 
 	let { content, position = 'top', delay = 300, class: className = '', children }: Props = $props();
 
+	const tooltipId = `ide-tooltip-${++tooltipCounter}`;
 	let visible = $state(false);
 	let timeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -29,17 +36,21 @@
 	}
 </script>
 
+<!-- Presentational hover/focus container: the real trigger is the wrapped child,
+     and the tooltip text is exposed via aria-describedby. It is deliberately NOT
+     given a role (a role="tooltip" here was the original bug). -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="ide-tooltip-wrapper {className}"
 	onmouseenter={show}
 	onmouseleave={hide}
 	onfocus={show}
 	onblur={hide}
-	role="tooltip"
+	aria-describedby={visible && content ? tooltipId : undefined}
 >
 	{@render children()}
 	{#if visible && content}
-		<div class="ide-tooltip ide-tooltip--{position}" role="tooltip">
+		<div id={tooltipId} class="ide-tooltip ide-tooltip--{position}" role="tooltip">
 			{content}
 		</div>
 	{/if}

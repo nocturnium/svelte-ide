@@ -381,7 +381,7 @@
 			<div class="demo-messages">
 				{#if demoMessages.length === 0}
 					<div class="empty-state">
-						<Icon name="message-circle" size={32} />
+						<Icon name="message" size={32} />
 						<p>Send a message to start the demo</p>
 						<div class="suggestions">
 							<button
@@ -448,9 +448,9 @@
 						onclick={handleSendStreaming}
 					>
 						{#if isStreaming}
-							<span class="spin"><Icon name="loader" size={14} /></span>
+							<span class="spin"><Icon name="loading" size={14} /></span>
 						{:else}
-							<Icon name="send" size={14} />
+							<Icon name="arrow-right" size={14} />
 						{/if}
 						Stream
 					</Button>
@@ -508,7 +508,7 @@
 	<!-- Edit Preview -->
 	<section class="component-section">
 		<h2>Edit Preview</h2>
-		<p class="section-desc">Side-by-side diff view for AI-proposed changes</p>
+		<p class="section-desc">Unified diff view for AI-proposed changes</p>
 
 		<div class="edit-preview-demo">
 			<AIEditPreview session={mockEditSession} />
@@ -534,21 +534,21 @@
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon"><Icon name="file-code" size={20} /></span>
+				<span class="feature-icon"><Icon name="code" size={20} /></span>
 				<div>
 					<strong>Code Context</strong>
-					<p>Automatically includes open files and selections as context</p>
+					<p>Pass open files and selections as conversation context via updateContext()</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon"><Icon name="git-compare" size={20} /></span>
+				<span class="feature-icon"><Icon name="git-merge" size={20} /></span>
 				<div>
 					<strong>Edit Sessions</strong>
 					<p>Track and review AI-proposed code changes with diff view</p>
 				</div>
 			</div>
 			<div class="feature">
-				<span class="feature-icon"><Icon name="database" size={20} /></span>
+				<span class="feature-icon"><Icon name="save" size={20} /></span>
 				<div>
 					<strong>Persistence</strong>
 					<p>Conversations saved to IndexedDB with search and starring</p>
@@ -667,8 +667,13 @@ registerTool({
 
 	.control-group input[type='range'] {
 		width: 100px;
-		accent-color: var(--color-nocturnium-wave);
+		accent-color: var(--ide-interactive);
 		cursor: pointer;
+	}
+
+	.control-group input[type='range']:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.control-group span {
@@ -681,8 +686,13 @@ registerTool({
 	}
 
 	.checkbox-label input[type='checkbox'] {
-		accent-color: var(--color-nocturnium-wave);
+		accent-color: var(--ide-interactive);
 		cursor: pointer;
+	}
+
+	.checkbox-label input[type='checkbox']:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.control-buttons {
@@ -713,7 +723,7 @@ registerTool({
 		align-items: center;
 		justify-content: center;
 		height: 100%;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 		text-align: center;
 	}
 
@@ -740,9 +750,14 @@ registerTool({
 	}
 
 	.suggestions button:hover {
-		background: var(--color-nocturnium-wave);
-		border-color: var(--color-nocturnium-wave);
-		color: var(--color-nocturnium-night);
+		background: var(--ide-interactive);
+		border-color: var(--ide-interactive);
+		color: var(--ide-text-inverse);
+	}
+
+	.suggestions button:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.typing-indicator {
@@ -815,9 +830,10 @@ registerTool({
 		resize: none;
 	}
 
-	.demo-input textarea:focus {
-		outline: none;
-		border-color: var(--color-nocturnium-wave);
+	.demo-input textarea:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+		border-color: var(--ide-interactive);
 	}
 
 	.input-actions {
@@ -876,7 +892,7 @@ registerTool({
 	}
 
 	.feature-icon {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-interactive);
 		flex-shrink: 0;
 	}
 

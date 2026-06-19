@@ -174,7 +174,8 @@
 					onclick={() => handleClick(info)}
 					onkeydown={(e) => e.key === 'Enter' && handleClick(info)}
 					role="button"
-					tabindex={-1}
+					tabindex={onCommitClick ? 0 : -1}
+					aria-label={onCommitClick ? `View commit ${info.commitSha} by ${info.author}` : undefined}
 				>
 					<!-- Color indicator bar -->
 					<div class="git-blame-bar"></div>
@@ -240,7 +241,9 @@
 				<div class="tooltip-uncommitted-badge">Uncommitted changes</div>
 			{/if}
 
-			<div class="tooltip-hint">Click to view full commit</div>
+			{#if onCommitClick}
+				<div class="tooltip-hint">Click to view full commit</div>
+			{/if}
 		</div>
 	{/if}
 {/if}
@@ -295,11 +298,15 @@
 		cursor: pointer;
 		transition: background 0.1s ease;
 		overflow: hidden;
+		/* Recency tint ramp: in 'age' colorMode --blame-color runs green (recent)
+		   -> gray (old), so a faint wash of it across the whole row makes the
+		   green->gray gradient actually visible instead of a flat dark fill. */
+		background: color-mix(in srgb, var(--blame-color, #6b7280) 22%, transparent);
 	}
 
 	.git-blame-row:hover,
 	.git-blame-row--hovered {
-		background: rgba(255, 255, 255, 0.05);
+		background: color-mix(in srgb, var(--blame-color, #6b7280) 34%, transparent);
 	}
 
 	.git-blame-row--uncommitted {

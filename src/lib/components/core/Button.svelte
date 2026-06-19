@@ -74,8 +74,15 @@
 		outline-offset: 2px;
 	}
 
-	.ide-button:disabled {
-		opacity: 0.5;
+	/* Disabled/loading: dim the fill, not the label. Routing every variant
+	   to a neutral tertiary surface with muted (still legible) text keeps the
+	   label >=3:1 instead of multiplying the variant fill by opacity 0.5,
+	   which crushed cream-on-orange/white-on-salmon below readable contrast. */
+	.ide-button.ide-button:disabled {
+		background: var(--ide-bg-tertiary);
+		color: var(--ide-text-secondary);
+		border-color: var(--ide-border);
+		opacity: 0.85;
 		cursor: not-allowed;
 	}
 
@@ -86,7 +93,7 @@
 	/* Variants */
 	.ide-button--primary {
 		background: var(--ide-primary);
-		color: var(--ide-text-primary);
+		color: var(--ide-text-inverse);
 	}
 
 	.ide-button--primary:hover:not(:disabled) {
@@ -116,7 +123,7 @@
 
 	.ide-button--danger {
 		background: var(--ide-error);
-		color: white;
+		color: var(--ide-text-inverse);
 	}
 
 	.ide-button--danger:hover:not(:disabled) {

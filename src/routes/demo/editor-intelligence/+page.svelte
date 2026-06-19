@@ -206,44 +206,48 @@ export const formatSession = (session: UserSession): string => {
 			id: 'class-usermanager',
 			name: 'UserManager',
 			type: 'class',
-			line: 18,
+			line: 17,
 			siblings: [
-				{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 18 },
-				{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 62 }
+				{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 17 },
+				{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 65 }
 			]
 		},
 		{
 			id: 'method-getuser',
 			name: 'getUser',
 			type: 'method',
-			line: 24,
+			line: 25,
 			detail: '(id: string): Promise<User | null>',
 			siblings: [
 				{
 					id: 'method-getuser',
 					name: 'getUser',
 					type: 'method',
-					line: 24,
-					detail: '(id: string): Promise<User>'
+					line: 25,
+					detail: '(id: string): Promise<User | null>'
 				},
 				{
 					id: 'method-updateprofile',
 					name: 'updateProfile',
 					type: 'method',
-					line: 41,
+					line: 43,
 					detail: '(id, updates): Promise<boolean>'
 				},
 				{
 					id: 'method-clearcache',
 					name: 'clearCache',
 					type: 'method',
-					line: 56,
+					line: 59,
 					detail: '(): void'
 				}
 			]
 		}
 	]);
-	let cursorLine = $state(28);
+	// Seed the cursor on the active breadcrumb's definition line (getUser, line
+	// index 25) so the breadcrumb "Ln" chip, the "Current: Line N" label, and the
+	// editor highlight all agree on one answer to "where am I" — the page's whole
+	// theme is navigation precision, so the indicators must not contradict.
+	let cursorLine = $state(25);
 
 	// Quick Actions state
 	let quickActionsManager = $state<QuickActionsManager>(null!);
@@ -328,7 +332,7 @@ function renderInvoice(order) {
 			name: 'UserManager',
 			kind: 'class',
 			line: 17,
-			endLine: 59,
+			endLine: 63,
 			children: [
 				{
 					id: 'prop-cache',
@@ -358,22 +362,22 @@ function renderInvoice(order) {
 					name: 'getUser',
 					kind: 'method',
 					line: 25,
-					endLine: 39,
+					endLine: 41,
 					detail: '(id): Promise<User | null>'
 				},
 				{
 					id: 'method-updateprofile',
 					name: 'updateProfile',
 					kind: 'method',
-					line: 41,
-					endLine: 54,
+					line: 43,
+					endLine: 57,
 					detail: '(id, updates): Promise<boolean>'
 				},
 				{
 					id: 'method-clearcache',
 					name: 'clearCache',
 					kind: 'method',
-					line: 56,
+					line: 59,
 					detail: '(): void'
 				}
 			]
@@ -382,25 +386,25 @@ function renderInvoice(order) {
 			id: 'fn-useuserprofile',
 			name: 'useUserProfile',
 			kind: 'function',
-			line: 62,
-			endLine: 93,
+			line: 65,
+			endLine: 102,
 			detail: '(userId: string)',
 			children: [
-				{ id: 'var-user', name: 'user', kind: 'variable', line: 63, detail: 'User | null' },
-				{ id: 'var-loading', name: 'loading', kind: 'variable', line: 64, detail: 'boolean' },
-				{ id: 'var-error', name: 'error', kind: 'variable', line: 65, detail: 'string | null' },
+				{ id: 'var-user', name: 'user', kind: 'variable', line: 66, detail: 'User | null' },
+				{ id: 'var-loading', name: 'loading', kind: 'variable', line: 67, detail: 'boolean' },
+				{ id: 'var-error', name: 'error', kind: 'variable', line: 68, detail: 'string | null' },
 				{
 					id: 'fn-loaduser',
 					name: 'loadUser',
 					kind: 'function',
-					line: 67,
+					line: 70,
 					detail: 'useCallback async'
 				},
 				{
 					id: 'fn-updateprofile',
 					name: 'updateProfile',
 					kind: 'function',
-					line: 82,
+					line: 88,
 					detail: 'async'
 				}
 			]
@@ -409,7 +413,7 @@ function renderInvoice(order) {
 			id: 'const-config',
 			name: 'DEFAULT_CONFIG',
 			kind: 'constant',
-			line: 95,
+			line: 104,
 			detail: '{ cacheTimeout, maxRetries, enableLogging }'
 		}
 	]);
@@ -857,6 +861,13 @@ function renderInvoice(order) {
 
 			<div class="quickactions-demo">
 				<div class="quickactions-editor">
+					<p class="qa-callout">
+						<span class="qa-callout__glint" aria-hidden="true">💡</span>
+						<span
+							>This is a live editor — <strong>select code</strong> or click a line, then open the lightbulb
+							to run a real refactor.</span
+						>
+					</p>
 					<div class="qa-editor-wrap">
 						<CustomEditor
 							bind:this={qaEditorRef}
@@ -886,14 +897,31 @@ function renderInvoice(order) {
 						{/if}
 					</div>
 
-					<p class="qa-hint">
-						Three actions here apply a <strong>real, single-undo edit</strong> (green = done, amber
-						= safely refused): select <code>subtotal * order.taxRate</code> →
-						<strong>Extract to variable</strong>; select the three <code>const</code> lines →
-						<strong>Extract to function</strong>; click into the imports →
-						<strong>Organize imports</strong> (it removes the duplicate). Other menu items are preview-only
-						and say so.
-					</p>
+					<div class="qa-hint">
+						<p class="qa-hint__lead">
+							Three actions apply a <strong>real, single-undo edit</strong> (green = done, amber = safely
+							refused). Try each:
+						</p>
+						<ul class="qa-triggers">
+							<li>
+								<span class="qa-triggers__do">select <code>subtotal * order.taxRate</code></span>
+								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
+								<span class="qa-triggers__action">Extract to variable</span>
+							</li>
+							<li>
+								<span class="qa-triggers__do">select the three <code>const</code> lines</span>
+								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
+								<span class="qa-triggers__action">Extract to function</span>
+							</li>
+							<li>
+								<span class="qa-triggers__do">click into the imports</span>
+								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
+								<span class="qa-triggers__action">Organize imports</span>
+								<span class="qa-triggers__note">(removes the duplicate)</span>
+							</li>
+						</ul>
+						<p class="qa-hint__foot">Other menu items are preview-only and say so.</p>
+					</div>
 				</div>
 
 				<div class="quickactions-controls">
@@ -1116,8 +1144,9 @@ function renderInvoice(order) {
 				<div class="feature-info">
 					<h4>What It Shows</h4>
 					<p>
-						The bracket healer marks the unclosed object block and places a translucent closing
-						brace where it expects the structure to recover.
+						The <code>return &#123;</code> object on line 3 is never closed. The healer marks the
+						break and floats a glowing ghost <code>&#125;</code> where it expects the structure to recover
+						— so you see the missing brace before the document drifts further.
 					</p>
 				</div>
 			</div>
@@ -1215,8 +1244,7 @@ function renderInvoice(order) {
 		   scrollable, not just technically reachable. Renders only when
 		   the strip overflows (i.e. on narrow/phone widths). */
 		scrollbar-width: thin;
-		scrollbar-color: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 50%, transparent)
-			transparent;
+		scrollbar-color: color-mix(in srgb, var(--ide-interactive) 50%, transparent) transparent;
 	}
 
 	.demo-tabs::-webkit-scrollbar {
@@ -1224,7 +1252,7 @@ function renderInvoice(order) {
 	}
 
 	.demo-tabs::-webkit-scrollbar-thumb {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 50%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 50%, transparent);
 		border-radius: 2px;
 	}
 
@@ -1245,9 +1273,14 @@ function renderInvoice(order) {
 		background: rgba(255, 255, 255, 0.05);
 	}
 
+	.tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.tab.active {
-		color: var(--color-nocturnium-aurora-purple);
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 14%, transparent);
+		color: var(--ide-interactive);
+		background: color-mix(in srgb, var(--ide-interactive) 14%, transparent);
 	}
 
 	/* Section */
@@ -1327,11 +1360,119 @@ function renderInvoice(order) {
 		pointer-events: auto;
 	}
 
+	/* First-glance "this is interactive" callout: a thin accent rail + a glint
+	   that pulses once on load so the live editor invites a click instead of
+	   relying on muted body copy to carry all the discovery load. */
+	.qa-callout {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin: 0 0 0.75rem;
+		padding: 0.55rem 0.75rem;
+		font-size: 0.85rem;
+		line-height: 1.4;
+		color: var(--ide-text-secondary);
+		background: color-mix(in srgb, var(--ide-interactive) 12%, transparent);
+		border-left: 3px solid var(--ide-interactive);
+		border-radius: 0 6px 6px 0;
+	}
+
+	.qa-callout strong {
+		color: var(--ide-interactive);
+		font-weight: 600;
+	}
+
+	.qa-callout__glint {
+		flex-shrink: 0;
+		font-size: 1rem;
+		line-height: 1;
+		transform-origin: center;
+		animation: qaGlint 1.6s ease-in-out 2;
+	}
+
+	@keyframes qaGlint {
+		0%,
+		100% {
+			transform: scale(1);
+			filter: none;
+		}
+		50% {
+			transform: scale(1.18);
+			filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ide-interactive) 70%, transparent));
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.qa-callout__glint {
+			animation: none;
+		}
+	}
+
 	.qa-hint {
 		margin: 0.75rem 0 0;
 		font-size: 0.8125rem;
 		line-height: 1.5;
+		color: var(--ide-text-secondary);
+	}
+
+	.qa-hint__lead {
+		margin: 0 0 0.5rem;
+	}
+
+	.qa-hint__lead strong {
+		color: var(--ide-text-primary);
+	}
+
+	.qa-hint__foot {
+		margin: 0.5rem 0 0;
 		color: var(--ide-text-muted);
+	}
+
+	/* The actionable steps, lifted out of the muted paragraph into discrete
+	   rows so the gesture (left) and the refactor it triggers (accented, right)
+	   read at a glance. */
+	.qa-triggers {
+		display: grid;
+		gap: 0.35rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.qa-triggers li {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
+	.qa-triggers__do {
+		color: var(--ide-text-secondary);
+	}
+
+	.qa-triggers__do code {
+		padding: 1px 5px;
+		background: rgba(255, 255, 255, 0.08);
+		border-radius: 3px;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.78rem;
+	}
+
+	.qa-triggers__arrow {
+		color: var(--ide-text-muted);
+	}
+
+	.qa-triggers__action {
+		padding: 1px 8px;
+		font-weight: 600;
+		color: var(--ide-interactive);
+		background: color-mix(in srgb, var(--ide-interactive) 14%, transparent);
+		border-radius: 999px;
+	}
+
+	.qa-triggers__note {
+		color: var(--ide-text-muted);
+		font-size: 0.78rem;
 	}
 
 	.code-viewport {
@@ -1349,7 +1490,7 @@ function renderInvoice(order) {
 	}
 
 	.code-line--current {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 15%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 15%, transparent);
 	}
 
 	.line-num {
@@ -1437,14 +1578,14 @@ function renderInvoice(order) {
 
 	.breadcrumbs-controls {
 		padding: 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 10%, transparent);
 		border-radius: 8px;
 	}
 
 	.breadcrumbs-controls h4 {
 		margin: 0 0 0.5rem;
 		font-size: 0.9rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.breadcrumbs-controls ul {
@@ -1477,21 +1618,29 @@ function renderInvoice(order) {
 
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
-		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 30%, transparent);
 		border-radius: 6px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 		font-size: 0.875rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.control-btn:hover {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 30%, transparent);
+	}
+
+	.control-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.control-btn.active {
-		background: var(--color-nocturnium-aurora-purple);
+		/* Filled active state: white on the deeper ocean blue clears AA (~5.3:1),
+		   where white on the base interactive blue (#4a8db7) is only ~3.4:1. */
+		background: var(--ide-interactive-strong);
+		border-color: var(--ide-interactive-strong);
 		color: #fff;
 	}
 
@@ -1568,7 +1717,7 @@ function renderInvoice(order) {
 		content: '•';
 		position: absolute;
 		left: 0;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	h5.category-title--real {
@@ -1645,9 +1794,16 @@ function renderInvoice(order) {
 		background: rgba(255, 255, 255, 0.15);
 	}
 
+	.sort-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.sort-btn.active {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
-		color: var(--color-nocturnium-aurora-purple);
+		/* Tinted (not filled) active state: the accent text rides on a 30% blue
+		   wash, so it keeps the interactive blue rather than the deeper fill. */
+		background: color-mix(in srgb, var(--ide-interactive) 30%, transparent);
+		color: var(--ide-interactive);
 	}
 
 	/* Overlay demos */
@@ -1702,6 +1858,30 @@ function renderInvoice(order) {
 		bottom: 14px;
 	}
 
+	/* Ghost-bracket legibility boost (page-side): the component renders the
+	   inferred brace at opacity 0.5 in the confidence color, which on this dark
+	   panel sits too close to real glyphs to read as a suggestion. Lift the
+	   resting opacity and add an accent glow so the ghost brace announces itself
+	   at a glance. (The component still owns the deeper fix — anchoring the
+	   marker on the unclosed line — tracked as a component change.) */
+	.overlay-editor :global(.ghost-bracket__char) {
+		opacity: 0.92;
+		font-weight: 700;
+		text-shadow: 0 0 8px color-mix(in srgb, var(--ide-interactive) 60%, transparent);
+	}
+
+	/* Re-anchor the echo status pill to THIS editor instead of the viewport.
+	   The component ships position:fixed (bottom/right:16px), which leaves the
+	   "~ N echos" chip clinging to the section's outer right edge, detached from
+	   the editor it reports on. Pin it to the overlay editor's top-right corner
+	   so it reads like the Context Lens / Ghost markers — a status chip bound to
+	   its surface. (.overlay-editor is position:relative.) */
+	.overlay-editor :global(.echo-mode-indicator) {
+		position: absolute;
+		inset: 8px 8px auto auto;
+		bottom: auto;
+	}
+
 	.overlay-editor--context :global(.context-lens) {
 		top: 30px;
 	}
@@ -1709,7 +1889,7 @@ function renderInvoice(order) {
 	/* Feature info */
 	.feature-info {
 		padding: 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 10%, transparent);
 		border-radius: 8px;
 		margin-top: 1rem;
 	}
@@ -1717,7 +1897,7 @@ function renderInvoice(order) {
 	.feature-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.feature-info ul {
@@ -1732,6 +1912,15 @@ function renderInvoice(order) {
 		font-size: 0.85rem;
 		line-height: 1.5;
 		color: var(--ide-text-secondary, #c4c4d4);
+	}
+
+	.feature-info p code {
+		padding: 1px 5px;
+		background: rgba(255, 255, 255, 0.08);
+		border-radius: 3px;
+		font-family: 'JetBrains Mono', monospace;
+		font-size: 0.8rem;
+		color: var(--ide-text-primary, #e8e8f0);
 	}
 
 	.feature-info li {
@@ -1799,7 +1988,15 @@ function renderInvoice(order) {
 		}
 
 		.editor-preview {
+			/* Re-assert the fixed viewport after .editor-container reflows to a
+			   column at this breakpoint: without this the inline height:400px no
+			   longer constrains the child, the editor renders all ~109 lines
+			   inline, and the minimap (which encodes a 400px scroll window)
+			   becomes decorative noise. Keep it framed and scrollable. */
+			height: 400px;
+			max-height: 400px;
 			overflow-x: auto;
+			overflow-y: auto;
 			-webkit-overflow-scrolling: touch;
 			font-size: 12px;
 			-webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
