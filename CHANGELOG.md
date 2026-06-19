@@ -1,3 +1,22 @@
+# [1.5.0](https://github.com/nocturnium/svelte-ide/compare/v1.4.0...v1.5.0) (2026-06-19)
+
+
+### Bug Fixes
+
+* **a11y/design:** resolve component-level follow-ups from the design audit ([2c33e82](https://github.com/nocturnium/svelte-ide/commit/2c33e829b66d9fb6a47eb6c4073bc6f5d29a1ad4)), closes [#a78bfa](https://github.com/nocturnium/svelte-ide/issues/a78bfa) [#8B5CF6](https://github.com/nocturnium/svelte-ide/issues/8B5CF6)
+* **a11y:** keyboard-operable ResizeHandle + correct Tooltip roles ([9424a95](https://github.com/nocturnium/svelte-ide/commit/9424a9583b9c2da0d0ba3f7d97fe53c20635cda3))
+* **demo:** correct Symbol Outline + Breadcrumbs line numbers (editor-intelligence) ([a82c5fb](https://github.com/nocturnium/svelte-ide/commit/a82c5fbc029444584bab3d15d8618f907479c478))
+* **demo:** make every demo page tell the truth + wire dead controls for real ([118b628](https://github.com/nocturnium/svelte-ide/commit/118b628598d68089c192d00bb592d695fe829e7f))
+* **demo:** make the collaboration Store API sample compile against the real exports ([20b41ed](https://github.com/nocturnium/svelte-ide/commit/20b41edc726784cdbf59b7002fd1566a60c04067))
+* **demo:** make the debugging diagnostics accurate to the sample code ([0ab830d](https://github.com/nocturnium/svelte-ide/commit/0ab830d14475c814d01e24f4d4c7f3ef8e300aae))
+* **design:** apply design-pass findings across all demo pages (AA-clean blue) ([43dfa87](https://github.com/nocturnium/svelte-ide/commit/43dfa87e7859742a8a232e927ba261ab48586270)), closes [#2d5a7b](https://github.com/nocturnium/svelte-ide/issues/2d5a7b) [white-on-#4a8db7](https://github.com/white-on-/issues/4a8db7) [#4a9eff](https://github.com/nocturnium/svelte-ide/issues/4a9eff) [#8b5cf6](https://github.com/nocturnium/svelte-ide/issues/8b5cf6) [#hex](https://github.com/nocturnium/svelte-ide/issues/hex)
+* **theme:** one deliberate primary — derive primary-hover from --ide-primary ([3fb11fc](https://github.com/nocturnium/svelte-ide/commit/3fb11fcd77995f02fc829f2fa40994a95c15d250))
+
+
+### Features
+
+* **editor:** always-visible inline diagnostics (Error Lens) + monochrome severity icons ([0e10cbc](https://github.com/nocturnium/svelte-ide/commit/0e10cbc6e5c36a6908f0e2b8c94f8ade604feb21)), closes [large/hi#DPI](https://github.com/large/hi/issues/DPI)
+
 # [1.4.0](https://github.com/nocturnium/svelte-ide/compare/v1.3.0...v1.4.0) (2026-06-19)
 
 
