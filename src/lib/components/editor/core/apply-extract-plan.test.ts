@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { createEditorState, type EditorState } from './state';
 import { planExtractFunction, type ExtractPlan } from './extract-function';
-import { applyExtractPlan, extractFunctionAt, findEnclosingFunctionRegion } from './apply-extract-plan';
+import {
+	applyExtractPlan,
+	extractFunctionAt,
+	findEnclosingFunctionRegion
+} from './apply-extract-plan';
 import { getComplexityAnalyzer, type ComplexityMetrics } from './complexity-analyzer';
 
 function stateFrom(code: string): EditorState {
@@ -121,14 +125,9 @@ describe('extractFunctionAt', () => {
 	});
 
 	it('passes the planner refusal through (block escapes with return)', () => {
-		const code = [
-			'function f() {',
-			'\tif (cond) {',
-			'\t\treturn 1;',
-			'\t}',
-			'\tdone();',
-			'}'
-		].join('\n');
+		const code = ['function f() {', '\tif (cond) {', '\t\treturn 1;', '\t}', '\tdone();', '}'].join(
+			'\n'
+		);
 		const editor = stateFrom(code);
 		selectLines(editor, 1, 3);
 
@@ -148,5 +147,18 @@ describe('extractFunctionAt', () => {
 		const editor = stateFrom('const x = 1;\nconst y = 2;');
 		selectLines(editor, 0, 1);
 		expect(extractFunctionAt(editor, metricsOf(editor)).ok).toBe(false);
+	});
+
+	it('refuses extracting from inside a class method (would insert a bare function in the class body)', () => {
+		const code = ['class C {', '\tm(a) {', '\t\tconst d = a * 2;', '\t\tuse(d);', '\t}', '}'].join(
+			'\n'
+		);
+		const editor = stateFrom(code);
+		selectLines(editor, 2, 3);
+
+		const result = extractFunctionAt(editor, metricsOf(editor));
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.reason.toLowerCase()).toContain('class method');
+		expect(editor.getContent()).toBe(code);
 	});
 });

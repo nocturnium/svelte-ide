@@ -491,6 +491,59 @@ describe('planExtractFunction', () => {
 		expectPostEditValid(lines, plan, 1, 3);
 	});
 
+	it('refuses a block whose inner lexical let shadows an outer var used after it', () => {
+		// `x` is declared before, re-declared with `let` inside the `if`, and read
+		// after. Returning the inner `x` would emit a duplicate `const x` at the
+		// call site (SyntaxError) — must refuse, not silently miswrite.
+		const lines = makeLines(
+			[
+				'function f(cond) {',
+				'\tlet x = 1;',
+				'\tif (cond) {',
+				'\t\tlet x = 2;',
+				'\t\tlog(x);',
+				'\t}',
+				'\tsink(x);',
+				'}'
+			].join('\n')
+		);
+		expectRefusal(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 7, type: 'function' },
+				blockStart: 2,
+				blockEnd: 5
+			}),
+			'conditionally defined'
+		);
+	});
+
+	it('refuses a block whose inner const shadows an outer var used after it', () => {
+		const lines = makeLines(
+			[
+				'function f(cond) {',
+				'\tconst y = 5;',
+				'\twhile (cond) {',
+				'\t\tconst y = 9;',
+				'\t\temit(y);',
+				'\t}',
+				'\treport(y);',
+				'}'
+			].join('\n')
+		);
+		expectRefusal(
+			planExtractFunction({
+				lines,
+				language: 'javascript',
+				region: { startLine: 0, endLine: 7, type: 'function' },
+				blockStart: 2,
+				blockEnd: 5
+			}),
+			'conditionally defined'
+		);
+	});
+
 	it.each(['x+++y', 'x---y'])(
 		'does not over-model the trailing operand of %s as a mutation',
 		(expr) => {

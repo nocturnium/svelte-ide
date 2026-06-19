@@ -82,6 +82,20 @@ export function extractFunctionAt(
 		return { ok: false, reason: 'Place the selection inside a function to extract from.' };
 	}
 
+	// The analyzer types class methods as `function` too, but the applier would
+	// insert a bare `function extracted()` into the class body (a SyntaxError).
+	// Refuse rather than miswrite until method extraction is supported.
+	const inClassBody = metrics?.regions.some(
+		(r) =>
+			r !== region &&
+			r.type === 'class' &&
+			r.startLine <= region.startLine &&
+			region.endLine <= r.endLine
+	);
+	if (inClassBody) {
+		return { ok: false, reason: 'Extracting from a class method is not supported yet.' };
+	}
+
 	const plan = planExtractFunction({
 		lines: editor.lines.map((line) => ({ text: line.text })),
 		language: editor.language,

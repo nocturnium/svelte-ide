@@ -176,11 +176,18 @@ function planExtractFunctionUnsafe(input: ExtractInput): ExtractPlan | ExtractRe
 	}
 
 	for (const decl of insideDeclarations) {
-		// Only refuse when the after-block use can ONLY refer to this conditionally
-		// defined binding. If the same name is also bound before the block — e.g. a
-		// nested arrow/catch param shadows an outer var — the after-use refers to
-		// that outer binding (always defined), which is safe.
-		if (usedAfterB.has(decl.name) && decl.depth > 0 && !declaredBeforeB.has(decl.name)) {
+		// A name declared at depth > 0 inside the block and used after it is only
+		// conditionally defined — extracting it would drop the after-use's binding.
+		// The ONE safe exception is a nested arrow/catch/function PARAM that merely
+		// shadows an outer var (params are excluded from outputs, and the after-use
+		// resolves to the always-defined outer binding). A real lexical
+		// let/const/for-of declaration that shadows an outer name is NOT safe: it
+		// becomes a declared return and the call site emits a duplicate `const`.
+		if (
+			usedAfterB.has(decl.name) &&
+			decl.depth > 0 &&
+			!(decl.kind === 'param' && declaredBeforeB.has(decl.name))
+		) {
 			return {
 				ok: false,
 				reason: 'A variable used after the block is only conditionally defined inside it.'
