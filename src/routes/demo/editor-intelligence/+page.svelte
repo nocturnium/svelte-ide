@@ -206,38 +206,38 @@ export const formatSession = (session: UserSession): string => {
 			id: 'class-usermanager',
 			name: 'UserManager',
 			type: 'class',
-			line: 18,
+			line: 17,
 			siblings: [
-				{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 18 },
-				{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 62 }
+				{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 17 },
+				{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 65 }
 			]
 		},
 		{
 			id: 'method-getuser',
 			name: 'getUser',
 			type: 'method',
-			line: 24,
+			line: 25,
 			detail: '(id: string): Promise<User | null>',
 			siblings: [
 				{
 					id: 'method-getuser',
 					name: 'getUser',
 					type: 'method',
-					line: 24,
-					detail: '(id: string): Promise<User>'
+					line: 25,
+					detail: '(id: string): Promise<User | null>'
 				},
 				{
 					id: 'method-updateprofile',
 					name: 'updateProfile',
 					type: 'method',
-					line: 41,
+					line: 43,
 					detail: '(id, updates): Promise<boolean>'
 				},
 				{
 					id: 'method-clearcache',
 					name: 'clearCache',
 					type: 'method',
-					line: 56,
+					line: 59,
 					detail: '(): void'
 				}
 			]
@@ -328,7 +328,7 @@ function renderInvoice(order) {
 			name: 'UserManager',
 			kind: 'class',
 			line: 17,
-			endLine: 59,
+			endLine: 63,
 			children: [
 				{
 					id: 'prop-cache',
@@ -358,22 +358,22 @@ function renderInvoice(order) {
 					name: 'getUser',
 					kind: 'method',
 					line: 25,
-					endLine: 39,
+					endLine: 41,
 					detail: '(id): Promise<User | null>'
 				},
 				{
 					id: 'method-updateprofile',
 					name: 'updateProfile',
 					kind: 'method',
-					line: 41,
-					endLine: 54,
+					line: 43,
+					endLine: 57,
 					detail: '(id, updates): Promise<boolean>'
 				},
 				{
 					id: 'method-clearcache',
 					name: 'clearCache',
 					kind: 'method',
-					line: 56,
+					line: 59,
 					detail: '(): void'
 				}
 			]
@@ -382,25 +382,25 @@ function renderInvoice(order) {
 			id: 'fn-useuserprofile',
 			name: 'useUserProfile',
 			kind: 'function',
-			line: 62,
-			endLine: 93,
+			line: 65,
+			endLine: 102,
 			detail: '(userId: string)',
 			children: [
-				{ id: 'var-user', name: 'user', kind: 'variable', line: 63, detail: 'User | null' },
-				{ id: 'var-loading', name: 'loading', kind: 'variable', line: 64, detail: 'boolean' },
-				{ id: 'var-error', name: 'error', kind: 'variable', line: 65, detail: 'string | null' },
+				{ id: 'var-user', name: 'user', kind: 'variable', line: 66, detail: 'User | null' },
+				{ id: 'var-loading', name: 'loading', kind: 'variable', line: 67, detail: 'boolean' },
+				{ id: 'var-error', name: 'error', kind: 'variable', line: 68, detail: 'string | null' },
 				{
 					id: 'fn-loaduser',
 					name: 'loadUser',
 					kind: 'function',
-					line: 67,
+					line: 70,
 					detail: 'useCallback async'
 				},
 				{
 					id: 'fn-updateprofile',
 					name: 'updateProfile',
 					kind: 'function',
-					line: 82,
+					line: 88,
 					detail: 'async'
 				}
 			]
@@ -409,7 +409,7 @@ function renderInvoice(order) {
 			id: 'const-config',
 			name: 'DEFAULT_CONFIG',
 			kind: 'constant',
-			line: 95,
+			line: 104,
 			detail: '{ cacheTimeout, maxRetries, enableLogging }'
 		}
 	]);
