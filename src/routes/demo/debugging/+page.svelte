@@ -36,7 +36,7 @@ const logger = console;
 interface User {
   id: string
   name: string;
-  email: string
+  email: strng
 }
 
 export function UserComponent({ userId }: { userId: string }) {
@@ -106,21 +106,19 @@ function privateHelper(value) {
 		},
 		{
 			range: { start: { line: 7, column: 2 }, end: { line: 7, column: 4 } },
-			severity: 'error',
-			message: "Property 'id' has no initializer and is not definitely assigned",
-			source: 'typescript',
-			code: 'TS2564',
-			fixes: [
-				{ title: 'Add definite assignment assertion', isPreferred: true, edits: [] },
-				{ title: 'Add initializer', edits: [] }
-			]
+			severity: 'hint',
+			message: "Missing semicolon at end of 'id' property",
+			source: 'prettier',
+			code: 'prettier/semi',
+			fixes: [{ title: 'Add semicolon', isPreferred: true, edits: [] }]
 		},
 		{
-			range: { start: { line: 8, column: 2 }, end: { line: 8, column: 6 } },
-			severity: 'hint',
-			message: "Missing semicolon at end of 'name' property",
-			source: 'prettier',
-			code: 'prettier/semi'
+			range: { start: { line: 9, column: 9 }, end: { line: 9, column: 14 } },
+			severity: 'error',
+			message: "Cannot find name 'strng'. Did you mean 'string'?",
+			source: 'typescript',
+			code: 'TS2552',
+			fixes: [{ title: "Change spelling to 'string'", isPreferred: true, edits: [] }]
 		},
 		{
 			range: { start: { line: 16, column: 6 }, end: { line: 16, column: 20 } },
