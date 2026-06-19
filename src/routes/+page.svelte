@@ -6,6 +6,7 @@
 	import Badge from '$lib/components/core/Badge.svelte';
 	import Button from '$lib/components/core/Button.svelte';
 	import Icon from '$lib/components/core/Icon.svelte';
+	import BrandMark from '$lib/components/BrandMark.svelte';
 	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
 
 	// Live editor showcased in the hero, lazy-mounted and read-only (edits are
@@ -245,7 +246,7 @@ export function triageLoad(
 	<!-- Top bar -->
 	<header class="topbar">
 		<a class="brand" href={resolve('/')} aria-label="Nocturnium Svelte IDE — home">
-			<span class="brand-mark" aria-hidden="true">◉</span>
+			<BrandMark size={26} />
 			<span class="brand-name">Nocturnium</span>
 			<span class="brand-sub">Svelte IDE</span>
 		</a>
@@ -406,7 +407,7 @@ export function triageLoad(
 	<footer class="footer">
 		<div class="footer-grid">
 			<div class="footer-brand">
-				<span class="brand-mark" aria-hidden="true">◉</span>
+				<BrandMark size={24} />
 				<div>
 					<strong>Nocturnium Svelte IDE</strong>
 					<p>Zero-dependency IDE components for Svelte 5.</p>
@@ -474,24 +475,23 @@ export function triageLoad(
 
 	.brand {
 		display: inline-flex;
-		align-items: baseline;
+		/* Center the mark + both wordmark spans on one axis (was baseline, which
+		   sank the smaller "Svelte IDE" sub-label out of line with "Nocturnium"). */
+		align-items: center;
 		gap: var(--ide-spacing-sm);
 		text-decoration: none;
 		color: var(--ide-text-primary);
-	}
-	.brand-mark {
-		color: var(--ide-accent);
-		font-size: var(--ide-font-size-xl);
-		align-self: center;
 	}
 	.brand-name {
 		font-weight: 700;
 		font-size: var(--ide-font-size-lg);
 		letter-spacing: -0.01em;
+		line-height: 1;
 	}
 	.brand-sub {
 		font-size: var(--ide-font-size-sm);
 		color: var(--ide-text-muted);
+		line-height: 1;
 	}
 
 	.topnav {
