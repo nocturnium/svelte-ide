@@ -48,56 +48,65 @@
 	// Selected change, set when a diff indicator's onChangeClick fires.
 	let selectedChange = $state<DiffChange | null>(null);
 
-	// Sample code for demos
-	const sampleCode = `import { useState, useEffect } from 'react';
-import { fetchData, processResults } from './api';
-import { Logger } from './utils/logger';
+	// Sample code for demos — idiomatic Svelte 5 (runes), so the DevX demos
+	// showcase the product's own language rather than React/JSX.
+	const sampleCode = `<script lang="ts">
+  import { fetchData, processResults } from './api';
+  import { Logger } from './utils/logger';
 
-const logger = new Logger('DataComponent');
+  const logger = new Logger('DataPanel');
 
-interface DataItem {
-  id: string;
-  name: string;
-  value: number;
-  createdAt: Date;
-}
+  interface DataItem {
+    id: string;
+    name: string;
+    value: number;
+    createdAt: Date;
+  }
 
-export function DataComponent({ userId }: { userId: string }) {
-  const [data, setData] = useState<DataItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  let { userId }: { userId: string } = $props();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        logger.info('Fetching data for user:', userId);
-        const results = await fetchData(userId);
-        const processed = processResults(results);
-        setData(processed);
-      } catch (err) {
+  let data = $state<DataItem[]>([]);
+  let loading = $state(true);
+  let error = $state<string | null>(null);
+
+  const total = $derived(data.reduce((sum, item) => sum + item.value, 0));
+
+  $effect(() => {
+    let cancelled = false;
+    loading = true;
+    logger.info('Fetching data for user:', userId);
+    fetchData(userId)
+      .then((results) => {
+        if (cancelled) return;
+        data = processResults(results);
+      })
+      .catch((err) => {
         logger.error('Failed to fetch data:', err);
-        setError('Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [userId]);
+        error = 'Failed to load data';
+      })
+      .finally(() => {
+        if (!cancelled) loading = false;
+      });
+    return () => {
+      cancelled = true;
+    };
+  });
+${'<'}/script>
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <div className="data-list">
-      {data.map(item => (
-        <div key={item.id} className="data-item">
-          <h3>{item.name}</h3>
-          <p>Value: {item.value}</p>
-        </div>
-      ))}
-    </div>
-  );
-}`;
+{#if loading}
+  <div>Loading...</div>
+{:else if error}
+  <div>Error: {error}</div>
+{:else}
+  <div class="data-list">
+    {#each data as item (item.id)}
+      <div class="data-item">
+        <h3>{item.name}</h3>
+        <p>Value: {item.value}</p>
+      </div>
+    {/each}
+  </div>
+{/if}`;
 
 	const sampleLines = sampleCode.split('\n');
 	const lineHeight = 20;
@@ -142,21 +151,19 @@ export function DataComponent({ userId }: { userId: string }) {
 		diffChanges = [
 			// Logging was newly introduced.
 			{ line: 2, type: 'added' }, // import { Logger } from './utils/logger';
-			{ line: 4, type: 'added' }, // const logger = new Logger('DataComponent');
-			// useState calls were typed / re-defaulted.
-			{ line: 14, type: 'modified', originalContent: '  const [data, setData] = useState([]);' },
-			{
-				line: 15,
-				type: 'modified',
-				originalContent: '  const [loading, setLoading] = useState(false);'
-			},
+			{ line: 4, type: 'added' }, // const logger = new Logger('DataPanel');
+			// $state runes were typed / re-defaulted.
+			{ line: 15, type: 'modified', originalContent: '  let data = $state([]);' },
+			{ line: 16, type: 'modified', originalContent: '  let loading = $state(false);' },
 			// Error state was added.
-			{ line: 16, type: 'added' }, // const [error, setError] = useState<string | null>(null);
-			// A bare `if (loading) return null;` early-return that used to sit just
-			// above the loading guard was deleted; the triangle marks where it was.
-			{ line: 34, type: 'removed', originalContent: '  if (loading) return null;' },
+			{ line: 17, type: 'added' }, // let error = $state<string | null>(null);
+			// A derived total was newly introduced.
+			{ line: 19, type: 'added' }, // const total = $derived(...)
+			// A bare `if (loading) return;` early-return that used to sit just inside
+			// the effect was deleted; the triangle marks where it was.
+			{ line: 22, type: 'removed', originalContent: '    if (loading) return;' },
 			// The value paragraph gained its "Value:" label.
-			{ line: 43, type: 'modified', originalContent: '          <p>{item.value}</p>' }
+			{ line: 52, type: 'modified', originalContent: '        <p>{item.value}</p>' }
 		];
 
 		return () => {
@@ -424,11 +431,11 @@ export function DataComponent({ userId }: { userId: string }) {
 
 				<div class="diff-legend">
 					<div class="legend-item">
-						<span class="legend-color" style="background: #22c55e;"></span>
+						<span class="legend-color legend-color--added"></span>
 						<span>Added lines</span>
 					</div>
 					<div class="legend-item">
-						<span class="legend-color" style="background: #3b82f6;"></span>
+						<span class="legend-color legend-color--modified"></span>
 						<span>Modified lines</span>
 					</div>
 					<div class="legend-item">
@@ -533,9 +540,9 @@ export function DataComponent({ userId }: { userId: string }) {
 		font-weight: 600;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		color: var(--color-nocturnium-aurora-purple);
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 12%, transparent);
-		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		color: var(--ide-interactive);
+		background: color-mix(in srgb, var(--ide-interactive) 14%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 35%, transparent);
 		border-radius: 999px;
 	}
 
@@ -543,16 +550,16 @@ export function DataComponent({ userId }: { userId: string }) {
 		margin: 0 0 0.4rem;
 		font-size: 2rem;
 		font-weight: 700;
-		background: linear-gradient(135deg, #e8e8f0 0%, var(--color-nocturnium-aurora-purple) 100%);
+		background: linear-gradient(135deg, var(--ide-text-primary) 0%, var(--ide-interactive) 100%);
 		-webkit-background-clip: text;
 		background-clip: text;
 		-webkit-text-fill-color: transparent;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.demo-header p {
 		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	/* Tabs */
@@ -574,21 +581,32 @@ export function DataComponent({ userId }: { userId: string }) {
 		padding: 0.75rem 1.5rem;
 		background: transparent;
 		border: none;
+		border-bottom: 2px solid transparent;
 		border-radius: 6px 6px 0 0;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		font-size: 0.9rem;
+		font-weight: 500;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.tab:hover {
-		color: var(--ide-text-primary, #e8e8f0);
-		background: rgba(255, 255, 255, 0.05);
+		color: var(--ide-text-primary);
+		background: color-mix(in srgb, var(--ide-text-primary) 6%, transparent);
 	}
 
+	.tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	/* Filled active state: white text on the deeper ocean blue clears AA (~5.3:1),
+	   plus a flush bottom accent so the selected demo is unmistakable. */
 	.tab.active {
-		color: var(--color-nocturnium-aurora-purple);
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		color: #fff;
+		font-weight: 600;
+		background: var(--ide-interactive-strong);
+		border-bottom-color: var(--ide-interactive);
 	}
 
 	/* Section */
@@ -605,22 +623,22 @@ export function DataComponent({ userId }: { userId: string }) {
 	.section-header h2 {
 		margin: 0 0 0.5rem;
 		font-size: 1.25rem;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.section-header p {
 		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		font-size: 0.9rem;
 	}
 
 	/* Controls */
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
-		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 35%, transparent);
 		border-radius: 6px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-text-primary);
 		font-size: 0.875rem;
 		font-weight: 500;
 		cursor: pointer;
@@ -628,23 +646,28 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.control-btn:hover {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 35%, transparent);
-		border-color: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 55%, transparent);
-		color: #f3e8ff;
+		background: color-mix(in srgb, var(--ide-interactive) 35%, transparent);
+		border-color: color-mix(in srgb, var(--ide-interactive) 55%, transparent);
+		color: var(--ide-text-primary);
 	}
 
-	.control-btn.active {
-		background: var(--color-nocturnium-aurora-purple);
-		color: #fff;
+	.control-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
+	/* Filled states use white text — pair with the deeper ocean blue (AA-safe). */
+	.control-btn.active,
 	.control-btn.primary {
-		background: var(--color-nocturnium-aurora-purple);
+		background: var(--ide-interactive-strong);
+		border-color: var(--ide-interactive-strong);
 		color: #fff;
 	}
 
 	.control-btn.primary:hover {
-		background: #9333ea;
+		background: color-mix(in srgb, var(--ide-interactive-strong) 85%, white 15%);
+		border-color: color-mix(in srgb, var(--ide-interactive-strong) 85%, white 15%);
+		color: #fff;
 	}
 
 	/* Blame demo */
@@ -667,26 +690,34 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.toggle-label {
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.mode-btn {
 		padding: 0.25rem 0.75rem;
-		background: rgba(255, 255, 255, 0.1);
+		background: color-mix(in srgb, var(--ide-text-primary) 10%, transparent);
 		border: none;
 		border-radius: 4px;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		font-size: 0.75rem;
 		cursor: pointer;
+		transition: all 0.15s ease;
 	}
 
 	.mode-btn:hover {
-		background: rgba(255, 255, 255, 0.15);
+		background: color-mix(in srgb, var(--ide-text-primary) 15%, transparent);
+		color: var(--ide-text-primary);
 	}
 
+	.mode-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	/* Filled active toggle: white text on the deeper ocean blue (AA-safe). */
 	.mode-btn.active {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
-		color: var(--color-nocturnium-aurora-purple);
+		background: var(--ide-interactive-strong);
+		color: #fff;
 	}
 
 	.editor-preview {
@@ -713,21 +744,21 @@ export function DataComponent({ userId }: { userId: string }) {
 		width: 40px;
 		padding-right: 8px;
 		text-align: right;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 		user-select: none;
 	}
 
 	.line-content {
 		flex: 1;
 		white-space: pre;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.blame-info,
 	.snippets-info,
 	.diff-info {
 		padding: 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 10%, transparent);
 		border-radius: 8px;
 	}
 
@@ -736,7 +767,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.diff-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.blame-info ul,
@@ -744,7 +775,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		margin: 0;
 		padding-left: 1.25rem;
 		font-size: 0.85rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	.blame-info li,
@@ -766,7 +797,7 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.shortcut-hint {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.snippets-content {
@@ -784,7 +815,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.snippet-preview-area h4 {
 		margin: 0 0 1rem;
 		font-size: 0.9rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	.selected-snippet {
@@ -803,19 +834,19 @@ export function DataComponent({ userId }: { userId: string }) {
 		font-family: monospace;
 		font-size: 12px;
 		padding: 2px 6px;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
 		border-radius: 4px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.snippet-name {
 		font-weight: 500;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.snippet-desc {
 		font-size: 0.85rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.snippet-body,
@@ -830,14 +861,14 @@ export function DataComponent({ userId }: { userId: string }) {
 		margin: 0;
 		font-family: 'JetBrains Mono', monospace;
 		font-size: 12px;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 		white-space: pre-wrap;
 	}
 
 	.expanded-preview h5 {
 		margin: 0 0 0.5rem;
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.no-snippet {
@@ -845,24 +876,24 @@ export function DataComponent({ userId }: { userId: string }) {
 		flex-direction: column;
 		align-items: center;
 		gap: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 		font-size: 0.9rem;
 		text-align: center;
 		padding: 2rem 1.5rem;
-		border: 1px dashed color-mix(in srgb, var(--color-nocturnium-aurora-purple) 35%, transparent);
+		border: 1px dashed color-mix(in srgb, var(--ide-interactive) 35%, transparent);
 		border-radius: 8px;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 4%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 4%, transparent);
 	}
 
 	.no-snippet-text {
 		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		font-weight: 500;
 	}
 
 	.no-snippet-hint {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.snippet-categories {
@@ -874,7 +905,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.category h5 {
 		margin: 0 0 0.5rem;
 		font-size: 0.85rem;
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 	}
 
 	.category ul {
@@ -885,16 +916,16 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.category li {
 		font-size: 0.8rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		margin: 0.25rem 0;
 	}
 
 	.category code {
 		font-family: monospace;
-		background: rgba(255, 255, 255, 0.1);
+		background: color-mix(in srgb, var(--ide-text-primary) 10%, transparent);
 		padding: 1px 4px;
 		border-radius: 2px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	/* Diff demo */
@@ -920,7 +951,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.8rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	.legend-color {
@@ -929,10 +960,18 @@ export function DataComponent({ userId }: { userId: string }) {
 		border-radius: 3px;
 	}
 
+	.legend-color--added {
+		background: var(--ide-success);
+	}
+
+	.legend-color--modified {
+		background: var(--ide-info);
+	}
+
 	.legend-color--removed {
 		width: 0;
 		height: 0;
-		border-left: 10px solid #ef4444;
+		border-left: 10px solid var(--ide-error);
 		border-top: 5px solid transparent;
 		border-bottom: 5px solid transparent;
 		border-radius: 0;
@@ -941,13 +980,13 @@ export function DataComponent({ userId }: { userId: string }) {
 	.diff-summary {
 		margin-top: 1rem;
 		padding-top: 1rem;
-		border-top: 1px solid rgba(255, 255, 255, 0.1);
+		border-top: 1px solid var(--ide-border);
 	}
 
 	.diff-summary h5 {
 		margin: 0 0 0.5rem;
 		font-size: 0.85rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 	}
 
 	.summary-stats {
@@ -962,18 +1001,18 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.stat--add {
-		background: rgba(34, 197, 94, 0.2);
-		color: #22c55e;
+		background: color-mix(in srgb, var(--ide-success) 20%, transparent);
+		color: var(--ide-success);
 	}
 
 	.stat--mod {
-		background: rgba(59, 130, 246, 0.2);
-		color: #3b82f6;
+		background: color-mix(in srgb, var(--ide-info) 20%, transparent);
+		color: var(--ide-info);
 	}
 
 	.stat--del {
-		background: rgba(239, 68, 68, 0.2);
-		color: #ef4444;
+		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
+		color: var(--ide-error);
 	}
 
 	/* Selected commit / change detail panels (populated by the click handlers) */
@@ -982,7 +1021,7 @@ export function DataComponent({ userId }: { userId: string }) {
 		margin-top: 1rem;
 		padding: 0.75rem;
 		background: rgba(0, 0, 0, 0.25);
-		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 25%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 25%, transparent);
 		border-radius: 8px;
 	}
 
@@ -990,7 +1029,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.selected-change h5 {
 		margin: 0 0 0.5rem;
 		font-size: 0.8rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.commit-row,
@@ -1004,23 +1043,23 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.commit-sha {
 		font-family: 'JetBrains Mono', monospace;
-		color: var(--ide-interactive, #4f8cc9);
+		color: var(--ide-interactive);
 	}
 
 	.commit-author {
-		color: var(--ide-text-primary, #e8e8f0);
+		color: var(--ide-text-primary);
 		font-weight: 500;
 	}
 
 	.commit-date,
 	.change-line {
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 	}
 
 	.commit-message {
 		margin: 0.5rem 0 0;
 		font-size: 0.85rem;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		line-height: 1.4;
 	}
 
@@ -1032,18 +1071,18 @@ export function DataComponent({ userId }: { userId: string }) {
 	}
 
 	.change-type--added {
-		background: rgba(34, 197, 94, 0.2);
-		color: #22c55e;
+		background: color-mix(in srgb, var(--ide-success) 20%, transparent);
+		color: var(--ide-success);
 	}
 
 	.change-type--modified {
-		background: rgba(59, 130, 246, 0.2);
-		color: #3b82f6;
+		background: color-mix(in srgb, var(--ide-info) 20%, transparent);
+		color: var(--ide-info);
 	}
 
 	.change-type--removed {
-		background: rgba(239, 68, 68, 0.2);
-		color: #ef4444;
+		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
+		color: var(--ide-error);
 	}
 
 	.change-original {
@@ -1053,7 +1092,7 @@ export function DataComponent({ userId }: { userId: string }) {
 	.change-original-label {
 		display: block;
 		font-size: 0.7rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 		margin-bottom: 0.25rem;
 	}
 
@@ -1065,20 +1104,20 @@ export function DataComponent({ userId }: { userId: string }) {
 
 	.change-original pre {
 		font-family: 'JetBrains Mono', monospace;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-secondary);
 		white-space: pre-wrap;
 		word-break: break-all;
 	}
 
 	.change-note {
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 		line-height: 1.4;
 	}
 
 	.blame-hint {
 		margin: 0.75rem 0 0;
 		font-size: 0.78rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary);
 		font-style: italic;
 	}
 

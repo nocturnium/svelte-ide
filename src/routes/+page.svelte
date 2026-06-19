@@ -547,11 +547,17 @@ export function triageLoad(
 		margin: 0 0 var(--ide-spacing-md);
 	}
 	.grad {
+		/* Keep BOTH words of the highlighted phrase vivid. The old terminal stop was
+		   --ide-accent-strong (the warm flame tone), which landed the second word on a
+		   muted grey-tan that read as dimmed/disabled. Run the phrase along the brand's
+		   saturated aurora ramp instead (blue -> vivid blue -> aurora purple) with the
+		   stops compressed inward so there's no low-saturation tail. The interactive
+		   accent stays blue; only the headline flourish picks up the purple terminal. */
 		background: linear-gradient(
 			120deg,
 			var(--ide-accent) 0%,
-			var(--color-nocturnium-aurora-blue) 45%,
-			var(--ide-accent-strong) 100%
+			var(--color-nocturnium-aurora-blue) 35%,
+			var(--color-nocturnium-aurora-purple) 75%
 		);
 		-webkit-background-clip: text;
 		background-clip: text;
@@ -710,6 +716,13 @@ export function triageLoad(
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 		gap: var(--ide-spacing-lg);
+		/* Size each card to its own content rather than the row's tallest card.
+		   Equalizing heights (the grid default align-items: stretch) sank the
+		   title/body of shorter-copy cards toward the bottom, opening a dead gap
+		   below the top-pinned icon and breaking the icon-to-heading rhythm. With
+		   start alignment the icon's margin-bottom is the single source of that
+		   spacing, so it's exactly --ide-spacing-md on every card. */
+		align-items: start;
 	}
 	.feature-card {
 		padding: var(--ide-spacing-xl);

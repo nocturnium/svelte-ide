@@ -642,6 +642,8 @@ export const capitalize = (str: string): string =>
 	}
 
 	.region-group {
+		display: flex;
+		flex-direction: column;
 		background: var(--ide-bg-secondary);
 		border: 1px solid var(--ide-border);
 		border-radius: 8px;
@@ -677,10 +679,12 @@ export const capitalize = (str: string): string =>
 		background: rgba(255, 255, 255, 0.1);
 		border-radius: 10px;
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		/* 0.75rem digits carry real data (counts) — keep them >=4.5:1 AA */
+		color: var(--ide-text-secondary);
 	}
 
 	.region-group__list {
+		flex: 1;
 		list-style: none;
 		padding: 8px;
 		margin: 0;
@@ -705,15 +709,21 @@ export const capitalize = (str: string): string =>
 		color: var(--ide-text-primary);
 	}
 
+	.region-item:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.region-item__lines {
-		color: var(--ide-text-muted);
+		/* The L-range labels are the actual data on each card — keep them >=4.5:1 AA */
+		color: var(--ide-text-secondary);
 		font-family: var(--ide-font-mono);
 	}
 
 	.region-more {
 		padding: 4px 8px;
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 		font-style: italic;
 	}
 
@@ -742,7 +752,7 @@ export const capitalize = (str: string): string =>
 
 	.preset-card--active {
 		border-color: var(--ide-interactive);
-		background: rgba(74, 158, 255, 0.1);
+		background: color-mix(in srgb, var(--ide-interactive) 12%, transparent);
 	}
 
 	.preset-card__apply {
@@ -757,6 +767,12 @@ export const capitalize = (str: string): string =>
 		color: inherit;
 		cursor: pointer;
 		text-align: left;
+	}
+
+	/* Full-bleed apply button: inset the ring so it hugs inside the card's rounded edge. */
+	.preset-card__apply:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: -2px;
 	}
 
 	.preset-card__icon {
@@ -778,7 +794,8 @@ export const capitalize = (str: string): string =>
 	.preset-card__desc {
 		display: block;
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		/* 0.75rem description text — keep readable at >=4.5:1 AA */
+		color: var(--ide-text-secondary);
 	}
 
 	/* Keep room for the clear button so the name/description never slide under it. */
@@ -809,10 +826,15 @@ export const capitalize = (str: string): string =>
 		color: var(--ide-text-primary);
 	}
 
+	.preset-card__clear:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.active-preset-info {
 		padding: 12px 16px;
-		background: rgba(74, 158, 255, 0.1);
-		border: 1px solid rgba(74, 158, 255, 0.3);
+		background: color-mix(in srgb, var(--ide-interactive) 12%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 30%, transparent);
 		border-radius: 6px;
 		font-size: 0.875rem;
 		color: var(--ide-text-secondary);
@@ -929,6 +951,11 @@ export const capitalize = (str: string): string =>
 			background: var(--ide-bg-hover);
 		}
 
+		.structure-accordion__toggle:focus-visible {
+			outline: 2px solid var(--ide-interactive-focus);
+			outline-offset: -2px;
+		}
+
 		.structure-accordion__icon {
 			flex-shrink: 0;
 			color: var(--ide-interactive);
@@ -960,7 +987,12 @@ export const capitalize = (str: string): string =>
 		}
 
 		.structure-accordion__scroll {
-			overflow-x: auto;
+			/* StructureMap renders into a near-zero-height box unless its parent has a
+			   definite height — give the scroll body a real, scrollable height so all
+			   nodes render and scroll (matches the desktop pane). */
+			height: 320px;
+			max-height: 320px;
+			overflow: auto;
 			padding: 8px 0;
 		}
 	}

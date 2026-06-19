@@ -73,25 +73,32 @@ renderStatus(status);`);
 
 	// Plugin sandbox demo
 	let sandboxVisible = $state(false);
-	let sandboxCode = $state(`// Inert sample source for the plugin preview.
-function formatPrice(value) {
-	const rounded = Math.round(value * 100) / 100;
-	return '$' + rounded.toFixed(2);
-}
-
-function summarize(items) {
-	const total = items.reduce((sum, item) => sum + item.price, 0);
-	const count = items.length;
-	const name = "cart";
-
-	return {
-		name,
-		count,
-		total: formatPrice(total)
-	};
-}
-
-export { formatPrice, summarize };`);
+	// Deliberately loose sample: several lines carry trailing whitespace so the
+	// Prettier preview yields a real, satisfying diff (it trims line ends) instead
+	// of a silent +0 -0 no-op.
+	let sandboxCode = $state(
+		[
+			'// Inert sample source for the plugin preview.   ',
+			'function formatPrice(value) {   ',
+			'\tconst rounded = Math.round(value * 100) / 100;  ',
+			"\treturn '$' + rounded.toFixed(2);",
+			'}',
+			'',
+			'function summarize(items) {  ',
+			'\tconst total = items.reduce((sum, item) => sum + item.price, 0);   ',
+			'\tconst count = items.length;',
+			'\tconst name = "cart";  ',
+			'',
+			'\treturn {',
+			'\t\tname,',
+			'\t\tcount,   ',
+			'\t\ttotal: formatPrice(total)',
+			'\t};',
+			'}',
+			'',
+			'export { formatPrice, summarize };'
+		].join('\n')
+	);
 
 	// Line height for visualizations
 	const lineHeight = 20;
@@ -451,7 +458,9 @@ export { formatPrice, summarize };`);
 										>
 										<span
 											class="ghost-confidence"
-											style="color: {ghost.confidence > 0.8 ? '#22c55e' : '#eab308'}"
+											style="color: {ghost.confidence > 0.8
+												? 'var(--ide-success)'
+												: 'var(--ide-warning)'}"
 										>
 											{Math.round(ghost.confidence * 100)}%
 										</span>
@@ -589,14 +598,14 @@ export { formatPrice, summarize };`);
 	}
 
 	.tab:focus-visible {
-		outline: 2px solid var(--ide-interactive-focus, var(--color-nocturnium-aurora-purple));
+		outline: 2px solid var(--ide-interactive-focus);
 		outline-offset: 2px;
 	}
 
 	.tab.active {
-		color: var(--color-nocturnium-aurora-purple);
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
-		border-bottom-color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
+		background: color-mix(in srgb, var(--ide-interactive) 12%, transparent);
+		border-bottom-color: var(--ide-interactive);
 	}
 
 	/* Section */
@@ -637,32 +646,39 @@ export { formatPrice, summarize };`);
 
 	.control-btn {
 		padding: 0.5rem 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 20%, transparent);
-		border: 1px solid color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 20%, transparent);
+		border: 1px solid color-mix(in srgb, var(--ide-interactive) 30%, transparent);
 		border-radius: 6px;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 		font-size: 0.875rem;
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
 	.control-btn:hover {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 30%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 30%, transparent);
 	}
 
+	.control-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	/* Filled active pill: deeper blue so white text clears AA (~5.3:1). */
 	.control-btn.active {
-		background: var(--color-nocturnium-aurora-purple);
+		background: var(--ide-interactive-strong);
+		border-color: var(--ide-interactive-strong);
 		color: #fff;
 	}
 
 	.control-btn--danger {
-		background: rgba(239, 68, 68, 0.2);
-		border-color: rgba(239, 68, 68, 0.3);
-		color: #ef4444;
+		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
+		border-color: color-mix(in srgb, var(--ide-error) 35%, transparent);
+		color: var(--ide-error);
 	}
 
 	.control-btn--danger:hover {
-		background: rgba(239, 68, 68, 0.3);
+		background: color-mix(in srgb, var(--ide-error) 30%, transparent);
 	}
 
 	.echo-actions,
@@ -696,9 +712,17 @@ export { formatPrice, summarize };`);
 		resize: vertical;
 	}
 
+	/* Brand focus ring (blue) instead of the default browser blue outline. */
+	.echo-source textarea:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+		border-color: var(--ide-interactive);
+	}
+
 	.action-label {
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #9b9bb0);
+		/* Functional UI label: secondary (not muted) so it clears AA on the card. */
+		color: var(--ide-text-secondary, #aaa);
 	}
 
 	.small-btn {
@@ -716,15 +740,26 @@ export { formatPrice, summarize };`);
 		color: var(--ide-text-primary, #e8e8f0);
 	}
 
+	.small-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.echo-visualization {
 		display: grid;
 		grid-template-columns: 1fr 250px;
 		gap: 1rem;
+		/* Keep both columns top-aligned; the left column carries its own min-height
+		   so a short mirror buffer no longer collapses below the log card. */
+		align-items: start;
 	}
 
 	.editor-mock-wrap {
 		/* Allow the 1fr grid column to shrink instead of forcing overflow. */
 		min-width: 0;
+		/* Match the Keystroke Log card's height so the two columns stay vertically
+		   aligned regardless of how many lines the mirror buffer has. */
+		min-height: 140px;
 	}
 
 	.editor-mock {
@@ -890,19 +925,19 @@ export { formatPrice, summarize };`);
 		font-family: monospace;
 		font-size: 0.75rem;
 		padding: 0.25rem 0;
-		color: #22c55e;
+		color: var(--ide-success);
 	}
 
 	.echo-info {
 		padding: 1rem;
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 10%, transparent);
 		border-radius: 8px;
 	}
 
 	.echo-info h4 {
 		margin: 0 0 0.5rem;
 		font-size: 0.9rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.echo-info ul {
@@ -949,13 +984,13 @@ export { formatPrice, summarize };`);
 	}
 
 	.mismatch-count--error {
-		background: rgba(239, 68, 68, 0.2);
-		color: #ef4444;
+		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
+		color: var(--ide-error);
 	}
 
 	.mismatch-count--warning {
-		background: rgba(245, 158, 11, 0.2);
-		color: #f59e0b;
+		background: color-mix(in srgb, var(--ide-warning) 20%, transparent);
+		color: var(--ide-warning);
 	}
 
 	.code-input {
@@ -1012,7 +1047,7 @@ export { formatPrice, summarize };`);
 
 	.ghost-suggestion {
 		padding: 0.75rem;
-		background: rgba(34, 197, 94, 0.1);
+		background: color-mix(in srgb, var(--ide-success) 12%, transparent);
 		border-radius: 6px;
 		margin-bottom: 0.5rem;
 	}
@@ -1027,7 +1062,7 @@ export { formatPrice, summarize };`);
 	.ghost-char {
 		font-family: monospace;
 		font-weight: bold;
-		color: #22c55e;
+		color: var(--ide-success);
 	}
 
 	.ghost-pos {
@@ -1049,16 +1084,21 @@ export { formatPrice, summarize };`);
 
 	.accept-btn {
 		padding: 0.25rem 0.75rem;
-		background: rgba(34, 197, 94, 0.2);
+		background: color-mix(in srgb, var(--ide-success) 20%, transparent);
 		border: none;
 		border-radius: 4px;
-		color: #22c55e;
+		color: var(--ide-success);
 		font-size: 0.75rem;
 		cursor: pointer;
 	}
 
 	.accept-btn:hover {
-		background: rgba(34, 197, 94, 0.3);
+		background: color-mix(in srgb, var(--ide-success) 30%, transparent);
+	}
+
+	.accept-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.mismatch-item {
@@ -1072,11 +1112,11 @@ export { formatPrice, summarize };`);
 	}
 
 	.mismatch-item--error {
-		background: rgba(239, 68, 68, 0.1);
+		background: color-mix(in srgb, var(--ide-error) 12%, transparent);
 	}
 
 	.mismatch-item--warning {
-		background: rgba(245, 158, 11, 0.1);
+		background: color-mix(in srgb, var(--ide-warning) 12%, transparent);
 	}
 
 	.mm-icon {
@@ -1084,11 +1124,11 @@ export { formatPrice, summarize };`);
 	}
 
 	.mismatch-item--error .mm-icon {
-		color: #ef4444;
+		color: var(--ide-error);
 	}
 
 	.mismatch-item--warning .mm-icon {
-		color: #f59e0b;
+		color: var(--ide-warning);
 	}
 
 	.mm-char {
@@ -1124,7 +1164,8 @@ export { formatPrice, summarize };`);
 
 	.open-sandbox-btn {
 		padding: 0.375rem 1rem;
-		background: var(--color-nocturnium-aurora-purple);
+		/* Filled primary: deeper blue so white text clears AA (~5.3:1). */
+		background: var(--ide-interactive-strong);
 		border: none;
 		border-radius: 4px;
 		color: #fff;
@@ -1134,7 +1175,12 @@ export { formatPrice, summarize };`);
 	}
 
 	.open-sandbox-btn:hover {
-		background: #9333ea;
+		background: var(--ide-interactive);
+	}
+
+	.open-sandbox-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 
 	.code-preview {
@@ -1161,7 +1207,7 @@ export { formatPrice, summarize };`);
 	}
 
 	.plugin-info {
-		background: color-mix(in srgb, var(--color-nocturnium-aurora-purple) 10%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 10%, transparent);
 		border-radius: 8px;
 		padding: 1rem;
 	}
@@ -1169,7 +1215,7 @@ export { formatPrice, summarize };`);
 	.plugin-info h4 {
 		margin: 0 0 0.75rem;
 		font-size: 0.9rem;
-		color: var(--color-nocturnium-aurora-purple);
+		color: var(--ide-interactive);
 	}
 
 	.plugin-info ul {

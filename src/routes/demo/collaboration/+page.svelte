@@ -359,7 +359,7 @@ class CollaborationSession {
 			<div class="session-actions">
 				{#if sessionActive}
 					<Button variant="primary" size="sm" onclick={acceptAll}>Accept All</Button>
-					<Button variant="ghost" size="sm" onclick={reviewNext}>Review Next</Button>
+					<Button variant="secondary" size="sm" onclick={reviewNext}>Review Next</Button>
 					<Button variant="danger" size="sm" onclick={cancelSession}>Cancel Session</Button>
 				{:else}
 					<Button variant="secondary" size="sm" onclick={restartSession}>Restart Session</Button>
@@ -763,7 +763,11 @@ proposeAIChange(sessionId, {
 		gap: 0.5rem;
 		margin-bottom: 1rem;
 		padding: 0.75rem;
-		background: var(--ide-bg-tertiary);
+		/* Demote the nested panel: a near-black tint + subtle border instead of the
+		   bright ocean (--ide-bg-tertiary), so it reads as a quiet nested list rather
+		   than the brightest surface on the card, and the change labels clear AA. */
+		background: var(--ide-bg-primary);
+		border: 1px solid var(--ide-border);
 		border-radius: 6px;
 	}
 
@@ -772,7 +776,8 @@ proposeAIChange(sessionId, {
 		align-items: center;
 		gap: 0.75rem;
 		font-size: 0.8125rem;
-		color: var(--ide-text-secondary);
+		/* Primary text so labels clear WCAG AA on the nested panel. */
+		color: var(--ide-text-primary);
 	}
 
 	.session-actions {
@@ -795,7 +800,7 @@ proposeAIChange(sessionId, {
 	}
 
 	.feature-icon {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-interactive);
 		font-size: 1.25rem;
 	}
 

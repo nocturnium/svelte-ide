@@ -2,9 +2,11 @@
 	/**
 	 * Sample proposals served to the embedded <PluginPanel> on a static host.
 	 * Shaped to satisfy the wire contract `fetchProposals()` expects from
-	 * `GET /api/plugins/proposals` (`{ proposals: [...] }`). Covers the
-	 * draft → reviewing → testing → deployed lifecycle so the panel's tabs and
-	 * status badges all render populated content.
+	 * `GET /api/plugins/proposals` (`{ proposals: [...] }`). Every proposal carries
+	 * an IN-FLIGHT status (draft → submitted → reviewing → approved → testing) and
+	 * never 'deployed': a proposal under review can't already be shipped, and the
+	 * Install CTA / 'Available' tab are reserved for deployed plugins only — so the
+	 * panel never shows a 'deployed' badge beside an 'Install' button.
 	 */
 	const SAMPLE_PROPOSALS = [
 		{
@@ -14,7 +16,7 @@
 			category: 'transform',
 			tags: ['formatting', 'productivity'],
 			version: 1,
-			status: 'deployed',
+			status: 'approved',
 			author: 'Alice',
 			parameters: { type: 'object', properties: {} },
 			implementation: { type: 'module', entryPoint: 'format' },
@@ -31,7 +33,7 @@
 			category: 'validation',
 			tags: ['linting', 'quality'],
 			version: 2,
-			status: 'deployed',
+			status: 'submitted',
 			author: 'Bob',
 			parameters: { type: 'object', properties: {} },
 			implementation: { type: 'module', entryPoint: 'check' },
@@ -459,7 +461,9 @@ unloadPlugin('prettier-format');`}</code
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		color: var(--ide-text-muted);
+		/* Small (11px) section label — use the AA-safe secondary token, not the
+		   ~3:1 muted token, so the group headings stay legible. */
+		color: var(--ide-text-secondary);
 	}
 
 	.status-grid {
@@ -502,7 +506,7 @@ unloadPlugin('prettier-format');`}</code
 	}
 
 	.category-card:hover {
-		border-color: var(--color-nocturnium-wave);
+		border-color: var(--ide-interactive);
 		background: var(--ide-bg-tertiary);
 	}
 
@@ -510,7 +514,7 @@ unloadPlugin('prettier-format');`}</code
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-interactive);
 		margin-bottom: 0.625rem;
 	}
 
@@ -523,7 +527,9 @@ unloadPlugin('prettier-format');`}</code
 
 	.category-card p {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		/* 12px description carries real taxonomy copy — keep it >=AA with the
+		   secondary token rather than the washed-out muted token. */
+		color: var(--ide-text-secondary);
 		margin: 0;
 	}
 
@@ -553,7 +559,10 @@ unloadPlugin('prettier-format');`}</code
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--color-nocturnium-wave);
+		/* Filled accent disc with DARK (night) text — dark-on-wave passes AA, so
+		   the standard interactive token is correct here (no -strong needed, which
+		   is reserved for white-on-accent fills). */
+		background: var(--ide-interactive);
 		color: var(--color-nocturnium-night);
 		border-radius: 50%;
 		font-weight: 600;
@@ -568,7 +577,8 @@ unloadPlugin('prettier-format');`}</code
 
 	.step-content p {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		/* 12px lifecycle description — AA-safe secondary, not muted. */
+		color: var(--ide-text-secondary);
 		margin: 0;
 	}
 

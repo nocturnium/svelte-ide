@@ -94,16 +94,22 @@ export function applyDiscount(order: Order, percent: number): Order {
 }
 `;
 
+	// User accent colors are concrete hex strings because they're handed to the
+	// CRDT awareness layer and editor cursor rendering (not just CSS), so they
+	// can't be var(--ide-*). These mirror the real design tokens: the brand
+	// interactive blue (--ide-interactive / --color-nocturnium-wave) for the
+	// local user — the accent stays BLUE by owner decision — and the aurora
+	// green (--ide-success / --color-nocturnium-aurora-green) for the reviewer.
 	const primaryUser = {
 		id: 'local-user',
 		name: 'You',
-		color: '#4a9eff'
+		color: '#4a8db7'
 	};
 
 	const secondaryUser = {
 		id: 'reviewer-user',
 		name: 'Reviewer',
-		color: '#22c55e'
+		color: '#4ade80'
 	};
 
 	const sharedDoc = new Y.Doc();
@@ -448,27 +454,39 @@ export function applyDiscount(order: Order, percent: number): Order {
 							<span class="user-line">Line {user.cursorLine + 1}</span>
 						</div>
 					</div>
+				{:else}
+					<p class="collab-empty">
+						Move your cursor in either editor below to join the document. Active participants and
+						their cursor lines appear here as soon as they start editing.
+					</p>
 				{/each}
 			</div>
 
-			{#if conflictZones.length > 0}
-				<div class="conflict-summary">
-					<h3>Active Conflict Zones</h3>
-					{#each conflictZones as zone (zone.id)}
-						<div class="conflict-card conflict-card--{zone.severity}">
-							<div class="conflict-probability">{Math.round(zone.probability * 100)}%</div>
-							<div class="conflict-details">
-								<div class="conflict-region">{zone.semanticUnit}</div>
-								<div class="conflict-participants">
-									{zone.participants.map((p) => p.userName).join(', ')}
+			{#if awarenessUsers.length > 0}
+				{#if conflictZones.length > 0}
+					<div class="conflict-summary">
+						<h3>Active Conflict Zones</h3>
+						{#each conflictZones as zone (zone.id)}
+							<div class="conflict-card conflict-card--{zone.severity}">
+								<div class="conflict-probability">{Math.round(zone.probability * 100)}%</div>
+								<div class="conflict-details">
+									<div class="conflict-region">{zone.semanticUnit}</div>
+									<div class="conflict-participants">
+										{zone.participants.map((p) => p.userName).join(', ')}
+									</div>
+									{#if zone.suggestion}
+										<div class="conflict-suggestion">{zone.suggestion}</div>
+									{/if}
 								</div>
-								{#if zone.suggestion}
-									<div class="conflict-suggestion">{zone.suggestion}</div>
-								{/if}
 							</div>
-						</div>
-					{/each}
-				</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="collab-empty collab-empty--quiet">
+						No conflict zones predicted. Place both cursors on nearby lines and edit to see a
+						conflict band form here and over the editor.
+					</p>
+				{/if}
 			{/if}
 		</section>
 
@@ -564,7 +582,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.demo-header p {
 		margin: 0;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 	}
 
 	.demo-content {
@@ -589,7 +607,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.demo-description {
 		margin: 0 0 1rem 0;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 		font-size: 0.875rem;
 	}
 
@@ -613,7 +631,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.stat-label {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
@@ -624,7 +642,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 	}
 
 	.stat-value.playback {
-		color: #f59e0b;
+		color: var(--ide-warning);
 	}
 
 	.timeline-legend {
@@ -637,7 +655,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 		align-items: center;
 		gap: 0.5rem;
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 	}
 
 	.legend-dot {
@@ -666,6 +684,26 @@ export function applyDiscount(order: Order, percent: number): Order {
 		min-width: 200px;
 	}
 
+	/* Empty-state copy so the titled "Conflict Theater" card never renders to
+	   zero elements before any cursor has moved. */
+	.collab-empty {
+		margin: 0;
+		padding: 0.875rem 1rem;
+		background: var(--ide-bg-elevated);
+		border: 1px dashed var(--ide-border);
+		border-radius: 6px;
+		color: var(--ide-text-secondary);
+		font-size: 0.8125rem;
+		line-height: 1.5;
+	}
+
+	.collab-empty--quiet {
+		margin-top: 1rem;
+		background: transparent;
+		border-style: solid;
+		border-color: var(--ide-border-light);
+	}
+
 	.user-avatar {
 		width: 32px;
 		height: 32px;
@@ -692,7 +730,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.user-line {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 	}
 
 	.ai-badge {
@@ -756,7 +794,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	.conflict-participants {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 	}
 
 	.conflict-suggestion {
@@ -813,6 +851,19 @@ export function applyDiscount(order: Order, percent: number): Order {
 		z-index: 10;
 	}
 
+	/* Keyboard-focus affordance: make it obvious when focus lands inside an
+	   editor pane, and give any focusable control rendered by the embedded
+	   components (scrubber handle, editor textbox) a consistent --ide ring. */
+	.editor-container:focus-within {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	.demo-content :global(:focus-visible) {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	/* ── Responsive: tablet → mobile ─────────────────────────────── */
 	@media (max-width: 860px) {
 		.demo-header,
@@ -820,8 +871,17 @@ export function applyDiscount(order: Order, percent: number): Order {
 			padding: 1.5rem;
 		}
 
+		/* The shared demo shell shows a sticky "Nocturnium IDE" bar (~56px) at the
+		   top of every page below 860px. Reserve that height so the first section
+		   heading + description never tuck under the bar, and let in-page anchor
+		   jumps land below it. */
+		.demo-content {
+			padding-top: calc(1.5rem + 56px);
+		}
+
 		.demo-section {
 			min-width: 0;
+			scroll-margin-top: 64px;
 		}
 
 		.collab-editor-grid {
@@ -844,6 +904,12 @@ export function applyDiscount(order: Order, percent: number): Order {
 		.demo-header,
 		.demo-content {
 			padding: 1.25rem;
+		}
+
+		/* Keep the sticky-bar offset (re-declared because the rule above resets
+		   .demo-content padding on phones). */
+		.demo-content {
+			padding-top: calc(1.25rem + 56px);
 		}
 
 		.demo-header h1 {

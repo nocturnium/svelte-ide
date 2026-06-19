@@ -764,6 +764,11 @@ function privateHelper(value) {
 		background: rgba(255, 255, 255, 0.05);
 	}
 
+	.tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.tab.active {
 		color: var(--ide-accent, #4a8db7);
 		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 14%, transparent);
@@ -853,14 +858,27 @@ function privateHelper(value) {
 		background: color-mix(in srgb, var(--ide-accent, #4a8db7) 28%, transparent);
 	}
 
+	.control-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	/* Filled active state: white text needs the deeper blue to clear WCAG AA
+	   (white on --ide-interactive #4a8db7 is only ~3.4:1; --ide-interactive-strong
+	   pushes white to ~5.3:1). */
 	.control-btn.active {
-		background: var(--ide-accent, #4a8db7);
+		background: var(--ide-interactive-strong);
+		border-color: var(--ide-interactive-strong);
 		color: #fff;
+	}
+
+	.control-btn.active:hover {
+		background: color-mix(in srgb, var(--ide-interactive-strong) 88%, #fff);
 	}
 
 	.hint {
 		font-size: 0.8rem;
-		color: var(--ide-text-muted, #888);
+		color: var(--ide-text-secondary, #aaa);
 	}
 
 	/* Legend */

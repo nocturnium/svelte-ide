@@ -190,7 +190,11 @@ class TaskManager:
   "peerDependencies": {
     "svelte": "^5.0.0"
   },
-  "dependencies": {
+  "peerDependenciesMeta": {
+    "yjs": { "optional": true },
+    "y-websocket": { "optional": true }
+  },
+  "optionalDependencies": {
     "yjs": "^13.6.20",
     "y-websocket": "^2.0.4"
   },
@@ -360,7 +364,7 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 				<span class="toggle-dot" aria-hidden="true"></span> Line numbers
 			</button>
 			<button
-				class="toggle"
+				class="toggle toggle--mode"
 				class:on={readonly}
 				aria-pressed={readonly}
 				onclick={() => (readonly = !readonly)}
@@ -402,7 +406,12 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 
 		<div class="editor-pane">
 			<EditorTabs {tabs} activeTabId={activeId} onSelect={selectFile} onClose={closeTab} />
-			<div class="editor-host">
+			<div class="editor-host" class:editor-host--readonly={readonly}>
+				{#if readonly && openIds.length > 0}
+					<span class="readonly-chip" aria-hidden="true">
+						<span class="readonly-chip-lock">🔒</span> Read-only
+					</span>
+				{/if}
 				{#if openIds.length > 0}
 					{#key activeId}
 						<CustomEditor
@@ -567,7 +576,9 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 	}
 	.control-label {
 		font-size: var(--ide-font-size-xs);
-		color: var(--ide-text-muted);
+		/* AA: this xs uppercase label carries real meaning ("LANGUAGE"); --ide-text-muted
+		   (~3.97:1 on bg-secondary) fails the 4.5:1 floor, so use the full-opacity secondary. */
+		color: var(--ide-text-secondary);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
 	}
@@ -625,6 +636,18 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 		background: var(--ide-accent);
 		box-shadow: 0 0 8px color-mix(in srgb, var(--ide-accent) 70%, transparent);
 	}
+	/* Read-only is a mode change, not a benign feature flag, so its on-state reads in
+	   warning amber instead of the accent so enabling it is unmistakable at a glance —
+	   not a same-looking pill confirmed only by a one-word status swap. */
+	.toggle--mode.on {
+		border-color: color-mix(in srgb, var(--ide-warning) 60%, var(--ide-border));
+		background: color-mix(in srgb, var(--ide-warning) 16%, transparent);
+		color: var(--ide-text-primary);
+	}
+	.toggle--mode.on .toggle-dot {
+		background: var(--ide-warning);
+		box-shadow: 0 0 8px color-mix(in srgb, var(--ide-warning) 70%, transparent);
+	}
 
 	/* IDE shell */
 	.ide {
@@ -649,7 +672,8 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 		font-size: var(--ide-font-size-xs);
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--ide-text-muted);
+		/* AA: "EXPLORER" heading must read as a real section label, not decorative grey. */
+		color: var(--ide-text-secondary);
 		border-bottom: 1px solid var(--ide-border);
 	}
 	.file-list {
@@ -718,6 +742,46 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 		   CustomEditor (which scrolls internally) owns the overflow, not the pane. */
 		min-height: 0;
 		overflow: hidden;
+		/* Positioning context for the read-only lock chip overlay. */
+		position: relative;
+	}
+	/* When read-only is active, a faint amber inset ring on the surface reinforces the
+	   mode beyond the toolbar toggle + status word — the editor itself looks locked. */
+	.editor-host--readonly {
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ide-warning) 32%, transparent);
+	}
+	.readonly-chip {
+		position: absolute;
+		top: var(--ide-spacing-sm);
+		right: var(--ide-spacing-sm);
+		z-index: 2;
+		display: inline-flex;
+		align-items: center;
+		gap: var(--ide-spacing-xs);
+		padding: 2px var(--ide-spacing-sm);
+		border-radius: var(--ide-radius-full);
+		background: color-mix(in srgb, var(--ide-warning) 18%, var(--ide-bg-secondary));
+		border: 1px solid color-mix(in srgb, var(--ide-warning) 50%, transparent);
+		color: var(--ide-text-primary);
+		font-size: var(--ide-font-size-xs);
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		pointer-events: none;
+	}
+	.readonly-chip-lock {
+		font-size: 0.7em;
+		line-height: 1;
+	}
+	/* Source-fidelity: kill programming ligatures on the editor surface so Go's
+	   directional-channel operators `<-chan` / `chan<-` (and `->`, `<=`, `!=`)
+	   render as their literal two-character source, not a collapsed arrow glyph.
+	   Scoped to this page's editor instance via :global() under .editor-host. */
+	.editor-host :global(.custom-editor),
+	.editor-host :global(.custom-editor__measure) {
+		font-variant-ligatures: none;
+		font-feature-settings:
+			'liga' 0,
+			'calt' 0;
 	}
 	.editor-empty {
 		display: flex;
@@ -745,7 +809,9 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 		background: var(--ide-bg-secondary);
 		border-top: 1px solid var(--ide-border);
 		font-size: var(--ide-font-size-xs);
-		color: var(--ide-text-muted);
+		/* AA: the secondary metrics (Ln/Col, line count, UTF-8) inherit this base color and
+		   carry real data, so it must clear 4.5:1 — full-opacity secondary, not muted. */
+		color: var(--ide-text-secondary);
 		font-family: var(--ide-font-mono);
 		min-height: 1.75rem;
 		/* Pinned to the bottom of the editor pane — never shrink or scroll away. */

@@ -363,9 +363,11 @@ MIT License - see LICENSE file for details
 		rightPanelOpen = false;
 	}
 
-	// Resizable panel state
+	// Resizable panel state. The AI panel defaults a touch narrower (320, not 350)
+	// so on a standard ~1440px laptop the editor + tab strip keep breathing room
+	// with all three panels open, instead of crushing the tabs to scroll on load.
 	let leftPanelWidth = $state(240);
-	let rightPanelWidth = $state(350);
+	let rightPanelWidth = $state(320);
 	let isResizingLeft = $state(false);
 	let isResizingRight = $state(false);
 	let isResizing = $derived(isResizingLeft || isResizingRight);
@@ -769,11 +771,18 @@ MIT License - see LICENSE file for details
 		background: var(--ide-bg-hover);
 	}
 
+	.activity-btn:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
 	.activity-btn.active {
 		opacity: 1;
-		/* Dark glyph on the wave-blue fill for AA contrast */
-		color: var(--color-nocturnium-night);
-		background: var(--color-nocturnium-wave);
+		/* Filled active state with white glyph: use the deeper blue token
+		   (--ide-interactive-strong, ocean) — white on it is ~5.3:1, clearing AA;
+		   white on plain --ide-interactive (#4a8db7) is only ~3.4:1. */
+		color: #fff;
+		background: var(--ide-interactive-strong);
 	}
 
 	/* First-run hint: a few soft wave-tinted pulses draw the eye to the rail on
@@ -790,7 +799,7 @@ MIT License - see LICENSE file for details
 			box-shadow: 0 0 0 0 transparent;
 		}
 		50% {
-			box-shadow: 0 0 8px 1px color-mix(in srgb, var(--color-nocturnium-wave) 55%, transparent);
+			box-shadow: 0 0 8px 1px color-mix(in srgb, var(--ide-interactive) 55%, transparent);
 		}
 	}
 
@@ -825,7 +834,8 @@ MIT License - see LICENSE file for details
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--ide-text-muted);
+		/* Secondary (not muted) so the 0.75rem uppercase label clears AA */
+		color: var(--ide-text-secondary);
 		border-bottom: 1px solid var(--ide-border);
 	}
 
@@ -867,9 +877,16 @@ MIT License - see LICENSE file for details
 		background: var(--ide-bg-hover);
 	}
 
+	.tree-file:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: -2px;
+	}
+
 	.tree-file.active {
-		background: var(--color-nocturnium-wave);
-		color: var(--color-nocturnium-night);
+		/* Filled selected row carries white text, so use the deeper blue token
+		   (--ide-interactive-strong) for AA — see activity-btn.active above. */
+		background: var(--ide-interactive-strong);
+		color: #fff;
 	}
 
 	/* Main Content */
@@ -921,13 +938,19 @@ MIT License - see LICENSE file for details
 		background: transparent;
 		border: none;
 		font-size: 0.8125rem;
-		color: var(--ide-text-muted);
+		/* Secondary (not muted) so the inactive tab labels clear AA as small text */
+		color: var(--ide-text-secondary);
 		cursor: pointer;
+	}
+
+	.panel-tab:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: -2px;
 	}
 
 	.panel-tab.active {
 		color: var(--ide-text-primary);
-		border-bottom: 2px solid var(--color-nocturnium-wave);
+		border-bottom: 2px solid var(--ide-interactive);
 	}
 
 	.terminal {
@@ -945,7 +968,7 @@ MIT License - see LICENSE file for details
 	}
 
 	.prompt {
-		color: var(--color-nocturnium-wave);
+		color: var(--ide-interactive);
 	}
 
 	.terminal-output {
@@ -954,7 +977,8 @@ MIT License - see LICENSE file for details
 	}
 
 	.terminal-output .info {
-		color: var(--ide-text-muted);
+		/* Secondary (not muted) so log lines clear AA as small mono text */
+		color: var(--ide-text-secondary);
 	}
 
 	.terminal-output .success {

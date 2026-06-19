@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import Button from '$lib/components/core/Button.svelte';
 	import Input from '$lib/components/core/Input.svelte';
 	import Textarea from '$lib/components/core/Textarea.svelte';
@@ -323,6 +324,24 @@
 			</div>
 		</div>
 	</section>
+
+	<!-- Closing band: gives the page a deliberate end instead of a dead void -->
+	<footer class="page-footer">
+		<a class="footer-next" href={`${base}/demo/resize`}>
+			<span class="footer-next__label">Next</span>
+			<span class="footer-next__title">Resizable Panes</span>
+			<span class="footer-next__arrow" aria-hidden="true">&rarr;</span>
+		</a>
+		<a
+			class="footer-source"
+			href="https://github.com/nocturnium/svelte-ide"
+			target="_blank"
+			rel="noopener"
+		>
+			<span aria-hidden="true">&#9733;</span>
+			<span>View source</span>
+		</a>
+	</footer>
 </div>
 
 <style>
@@ -377,7 +396,7 @@
 	.demo-group h3 {
 		font-size: 0.875rem;
 		font-weight: 500;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		margin-bottom: 0.75rem;
@@ -392,6 +411,8 @@
 
 	.tooltip-row {
 		gap: 1.5rem;
+		/* Clear the 'POSITIONS' label so a top-positioned tooltip doesn't overlap it. */
+		margin-top: 2rem;
 	}
 
 	.group-note {
@@ -431,7 +452,7 @@
 
 	.field__helper {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 	}
 
 	.input-success :global(.ide-input) {
@@ -456,5 +477,72 @@
 		color: var(--ide-text-secondary);
 		font-size: 0.875rem;
 		margin-left: 0.5rem;
+	}
+
+	.page-footer {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-top: 1rem;
+		padding-top: 1.5rem;
+		border-top: 1px solid var(--ide-border);
+	}
+
+	.footer-next {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		border: 1px solid var(--ide-border);
+		border-radius: var(--ide-radius-md);
+		text-decoration: none;
+		transition:
+			border-color var(--ide-transition-fast),
+			background var(--ide-transition-fast);
+	}
+
+	.footer-next:hover {
+		border-color: var(--ide-interactive);
+		background: var(--ide-bg-secondary);
+	}
+
+	.footer-next__label {
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--ide-text-secondary);
+	}
+
+	.footer-next__title {
+		font-size: 0.9375rem;
+		font-weight: 600;
+		color: var(--ide-text-primary);
+	}
+
+	.footer-next__arrow {
+		color: var(--ide-interactive);
+		font-weight: 600;
+	}
+
+	.footer-source {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.875rem;
+		color: var(--ide-text-secondary);
+		text-decoration: none;
+		transition: color var(--ide-transition-fast);
+	}
+
+	.footer-source:hover {
+		color: var(--ide-text-primary);
+	}
+
+	.footer-next:focus-visible,
+	.footer-source:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
 	}
 </style>

@@ -64,6 +64,10 @@
 	--ide-interactive-focus: var(--color-nocturnium-aurora-blue);
 	--ide-interactive-muted: color-mix(in srgb, var(--ide-interactive) 70%, transparent);
 	--ide-interactive-rgb: 74, 141, 183;
+	/* Deeper blue for FILLED active/selected states paired with white text:
+	   white on --ide-interactive (#4a8db7) is only ~3.4:1, below WCAG AA; white on
+	   this ocean blue (#2d5a7b) is ~5.3:1. Use for active pills/toggles/tabs. */
+	--ide-interactive-strong: var(--color-nocturnium-ocean);
 
 	/* Primary action — the signature warm ember accent, shared as a single
 	   source of truth by primary buttons and badges so "primary" reads the

@@ -13,6 +13,13 @@
 
 	// Track if any resize is happening
 	let isResizing = $derived(isResizingLeft || isResizingRight || isResizingTop);
+
+	// Live-derived readout so the bottom panel proves the feature is real too,
+	// not just the two side panels with bound state. The Vertical Split container
+	// is a fixed 400px tall with a 6px ResizeHandle, so the bottom panel's height
+	// is genuinely derivable (no DOM measurement / fabricated number).
+	const HANDLE = 6;
+	let bottomHeight = $derived(Math.max(0, 400 - topPanelHeight - HANDLE));
 </script>
 
 <div class="demo-page">
@@ -65,8 +72,10 @@
 			<div class="panel panel--center">
 				<div class="panel__header">Main Content</div>
 				<div class="panel__content panel__content--centered">
-					<p>This panel fills the remaining space</p>
-					<p>Left: {leftPanelWidth}px | Right: {rightPanelWidth}px</p>
+					<p class="panel__static">Fills the remaining space between the side panels</p>
+					<p>
+						Left: {leftPanelWidth}px <span class="panel__divider">|</span> Right: {rightPanelWidth}px
+					</p>
 					<div class="panel__skeleton" aria-hidden="true">
 						<span></span>
 						<span></span>
@@ -133,12 +142,9 @@
 			<div class="panel panel--bottom">
 				<div class="panel__header">Bottom Panel</div>
 				<div class="panel__content panel__content--centered">
-					<p>This panel fills the remaining vertical space</p>
-					<div class="panel__skeleton" aria-hidden="true">
-						<span></span>
-						<span></span>
-						<span></span>
-					</div>
+					<p>Height: {bottomHeight}px <span class="panel__derived">(derived live)</span></p>
+					<p>Fills the remaining vertical space as the top panel resizes</p>
+					<div class="panel__readout" aria-hidden="true">{bottomHeight}<span>px</span></div>
 				</div>
 			</div>
 		</div>
@@ -181,7 +187,7 @@
 		margin-bottom: 2rem;
 		padding: 0.75rem 1rem;
 		border: 1px solid var(--ide-border);
-		border-left: 3px solid var(--ide-interactive, #4a8db7);
+		border-left: 3px solid var(--ide-interactive);
 		border-radius: var(--ide-radius-md);
 		background: var(--ide-bg-secondary);
 		color: var(--ide-text-secondary);
@@ -325,8 +331,26 @@
 	}
 
 	.panel__hint {
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 		font-style: italic;
+	}
+
+	/* De-emphasize static descriptive copy so the live numbers read as the hero */
+	.panel__static {
+		color: var(--ide-text-muted);
+		font-size: 0.8125rem;
+	}
+
+	/* "(derived live)" tag — quiet but clearly marks the computed readout */
+	.panel__derived {
+		color: var(--ide-text-muted);
+		font-size: 0.75rem;
+		font-style: italic;
+	}
+
+	.panel__divider {
+		color: var(--ide-text-muted);
+		margin: 0 0.15em;
 	}
 
 	/* Centered filler so tall panels read as a deliberate canvas, not a placeholder */
@@ -343,8 +367,9 @@
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 		line-height: 1;
-		color: var(--ide-text-primary);
-		opacity: 0.18;
+		/* Deliberate, confident watermark (~28% of primary) rather than a
+		   ghost-faint 0.18 that reads as a half-failed render. */
+		color: color-mix(in srgb, var(--ide-text-primary) 28%, transparent);
 		user-select: none;
 	}
 
@@ -475,8 +500,6 @@
 		/* Tighten the empty-space ratio now that panels are full-width */
 		.panel__readout {
 			font-size: 1.875rem;
-			/* Lift the watermark off the legibility floor on the darkest panels */
-			opacity: 0.26;
 		}
 
 		.vertical-split-demo {

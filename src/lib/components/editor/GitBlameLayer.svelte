@@ -174,7 +174,8 @@
 					onclick={() => handleClick(info)}
 					onkeydown={(e) => e.key === 'Enter' && handleClick(info)}
 					role="button"
-					tabindex={-1}
+					tabindex={onCommitClick ? 0 : -1}
+					aria-label={onCommitClick ? `View commit ${info.commitSha} by ${info.author}` : undefined}
 				>
 					<!-- Color indicator bar -->
 					<div class="git-blame-bar"></div>
@@ -240,7 +241,9 @@
 				<div class="tooltip-uncommitted-badge">Uncommitted changes</div>
 			{/if}
 
-			<div class="tooltip-hint">Click to view full commit</div>
+			{#if onCommitClick}
+				<div class="tooltip-hint">Click to view full commit</div>
+			{/if}
 		</div>
 	{/if}
 {/if}

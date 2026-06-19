@@ -175,7 +175,10 @@
 				onclick={() => handleClick(group.changes[0])}
 				onkeydown={(e) => e.key === 'Enter' && handleClick(group.changes[0])}
 				role="button"
-				tabindex={-1}
+				tabindex={onChangeClick ? 0 : -1}
+				aria-label={onChangeClick
+					? `${getLabel(group.type)}: ${group.changes.length} line${group.changes.length !== 1 ? 's' : ''} — view full diff`
+					: undefined}
 				title="{getLabel(group.type)}: {group.changes.length} line{group.changes.length !== 1
 					? 's'
 					: ''}"
