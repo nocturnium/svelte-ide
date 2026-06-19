@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/nocturnium/svelte-ide/compare/v1.6.0...v1.7.0) (2026-06-19)
+
+
+### Features
+
+* **brand:** new vial logo — the glowing "Nocturnium" reagent ([c731f6f](https://github.com/nocturnium/svelte-ide/commit/c731f6f693dee324d639eb0732f954d5af44e5c0)), closes [#e8eefc](https://github.com/nocturnium/svelte-ide/issues/e8eefc) [#4a8db7](https://github.com/nocturnium/svelte-ide/issues/4a8db7) [#a78bfa](https://github.com/nocturnium/svelte-ide/issues/a78bfa)
+
 # [1.6.0](https://github.com/nocturnium/svelte-ide/compare/v1.5.0...v1.6.0) (2026-06-19)
 
 
