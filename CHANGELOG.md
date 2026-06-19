@@ -1,3 +1,20 @@
+# [1.3.0](https://github.com/nocturnium/svelte-ide/compare/v1.2.1...v1.3.0) (2026-06-19)
+
+
+### Bug Fixes
+
+* **editor:** close the sibling safe-or-refuse holes + add a parser gate (Track H ph2) ([d0f02c1](https://github.com/nocturnium/svelte-ide/commit/d0f02c10e16e92864bc1af0307989e6f3ea880e4))
+* **editor:** close two safe-or-refuse holes in wired extract-function (Track H ph2) ([b32231f](https://github.com/nocturnium/svelte-ide/commit/b32231f1404aba25a461e671fa4056724dd5b39c))
+* **editor:** harden extract-function planner before wiring (Track H ph2 prep) ([e22d9ff](https://github.com/nocturnium/svelte-ide/commit/e22d9ffa4c2a6bb2d1d373a0b31585d11f1f7bda))
+
+
+### Features
+
+* **demo:** extract button uses the interactive accent + a success pill ([3e052aa](https://github.com/nocturnium/svelte-ide/commit/3e052aa34d49879854ce11357a4bc58f37e4f8b1))
+* **editor:** add EditorState.transact for single-undo multi-edit (Track H ph2) ([c162530](https://github.com/nocturnium/svelte-ide/commit/c16253024dab10d1558e4e91d454754e1ce73003))
+* **editor:** extract-function applier + orchestration (Track H ph2) ([7757d75](https://github.com/nocturnium/svelte-ide/commit/7757d75e1149f0d83d4520c7228f2cc07c80a34b))
+* **editor:** wire extract-function into CustomEditor + cognitive-load demo (Track H ph2) ([742f19a](https://github.com/nocturnium/svelte-ide/commit/742f19aea0d2335de336378e2a563c0cbc03f0c2))
+
 ## [1.2.1](https://github.com/nocturnium/svelte-ide/compare/v1.2.0...v1.2.1) (2026-06-18)
 
 
