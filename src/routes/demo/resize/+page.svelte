@@ -55,6 +55,8 @@
 				size={leftPanelWidth}
 				min={150}
 				max={400}
+				defaultSize={250}
+				ariaLabel="Resize left panel"
 				onResize={(size) => (leftPanelWidth = size)}
 				onResizeStart={() => (isResizingLeft = true)}
 				onResizeEnd={() => (isResizingLeft = false)}
@@ -79,6 +81,8 @@
 				size={rightPanelWidth}
 				min={150}
 				max={500}
+				defaultSize={300}
+				ariaLabel="Resize right panel"
 				onResize={(size) => (rightPanelWidth = size)}
 				onResizeStart={() => (isResizingRight = true)}
 				onResizeEnd={() => (isResizingRight = false)}
@@ -119,6 +123,8 @@
 				size={topPanelHeight}
 				min={100}
 				max={350}
+				defaultSize={200}
+				ariaLabel="Resize top panel"
 				onResize={(size) => (topPanelHeight = size)}
 				onResizeStart={() => (isResizingTop = true)}
 				onResizeEnd={() => (isResizingTop = false)}
@@ -149,8 +155,8 @@
 			<li><strong>Content Fade:</strong> Panel content fades during resize to hide text reflow</li>
 			<li><strong>Min/Max Constraints:</strong> Panels respect minimum and maximum size limits</li>
 			<li>
-				<strong>Double-click Snap:</strong> Double-click the handle to snap to the midpoint of its min/max
-				range
+				<strong>Double-click Reset:</strong> Double-click the handle to reset the panel to its default
+				size
 			</li>
 		</ul>
 	</section>

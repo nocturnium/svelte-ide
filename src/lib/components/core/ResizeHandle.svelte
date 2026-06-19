@@ -18,6 +18,12 @@
 		max?: number;
 		/** Current size in pixels */
 		size: number;
+		/** Step (px) for keyboard arrow adjustment (default 10; Shift = 5x) */
+		step?: number;
+		/** Size to snap to on double-click (defaults to the midpoint of min/max) */
+		defaultSize?: number;
+		/** Accessible name for the slider (e.g. "Resize left panel") */
+		ariaLabel?: string;
 		/** Callback when size changes */
 		onResize?: (size: number) => void;
 		/** Callback when drag starts */
@@ -34,6 +40,9 @@
 		min = 100,
 		max = 800,
 		size,
+		step = 10,
+		defaultSize,
+		ariaLabel,
 		onResize,
 		onResizeStart,
 		onResizeEnd,
@@ -102,9 +111,37 @@
 	}
 
 	function handleDoubleClick() {
-		// Reset to default size on double-click
-		const defaultSize = Math.round((min + max) / 2);
-		onResize?.(defaultSize);
+		// Reset to the configured default (or the midpoint of min/max).
+		onResize?.(defaultSize ?? Math.round((min + max) / 2));
+	}
+
+	// Keyboard operation for the slider role: arrows adjust the size, Home/End jump
+	// to min/max. Without this the role="slider" + aria-value* attributes promise
+	// an adjustable control that a keyboard/SR user cannot actually move.
+	function handleKeyDown(e: KeyboardEvent) {
+		const amount = e.shiftKey ? step * 5 : step;
+		let next: number;
+		switch (e.key) {
+			case 'ArrowRight':
+			case 'ArrowUp':
+				next = size + amount;
+				break;
+			case 'ArrowLeft':
+			case 'ArrowDown':
+				next = size - amount;
+				break;
+			case 'Home':
+				next = min;
+				break;
+			case 'End':
+				next = max;
+				break;
+			default:
+				return;
+		}
+		e.preventDefault();
+		const clamped = Math.max(min, Math.min(max, next));
+		if (clamped !== size) onResize?.(clamped);
 	}
 
 	// Cleanup on destroy
@@ -123,7 +160,9 @@
 	class:resize-handle--dragging={isDragging}
 	onmousedown={handleMouseDown}
 	ondblclick={handleDoubleClick}
+	onkeydown={handleKeyDown}
 	role="slider"
+	aria-label={ariaLabel}
 	aria-orientation={direction}
 	aria-valuenow={size}
 	aria-valuemin={min}
