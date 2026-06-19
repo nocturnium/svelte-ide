@@ -139,7 +139,7 @@ function privateHelper(value) {
 			fixes: [{ title: "Add type annotation 'Error'", isPreferred: true, edits: [] }]
 		},
 		{
-			range: { start: { line: 43, column: 25 }, end: { line: 43, column: 26 } },
+			range: { start: { line: 44, column: 23 }, end: { line: 44, column: 24 } },
 			severity: 'warning',
 			message: "Parameter 'x' implicitly has an 'any' type",
 			source: 'typescript',
@@ -289,7 +289,10 @@ function privateHelper(value) {
 		<section class="demo-section">
 			<div class="section-header">
 				<h2>Inline Diagnostics</h2>
-				<p>Squiggly underlines and gutter icons for errors, warnings, and hints.</p>
+				<p>
+					The message rides at the end of its line — always visible, no pixel-hunting for a
+					squiggle. Hover, focus, or click anywhere on the line for the full detail and quick fixes.
+				</p>
 			</div>
 
 			<div class="diagnostics-demo">
@@ -305,6 +308,8 @@ function privateHelper(value) {
 								enabled={diagnosticsEnabled}
 								showSquiggles={true}
 								showGutterIcons={true}
+								showInlineMessages={true}
+								onDiagnosticClick={(d) => handleDiagnosticNavigate(filePath, d)}
 							/>
 						{/if}
 
@@ -360,11 +365,11 @@ function privateHelper(value) {
 				<div class="feature-info">
 					<h4>Features</h4>
 					<ul>
-						<li>Squiggly underlines with severity colors</li>
-						<li>Gutter icons with diagnostic count</li>
-						<li>Hover for details and quick fixes</li>
-						<li>Click to apply fixes</li>
-						<li>Support for deprecated/unnecessary tags</li>
+						<li>Always-visible inline messages (Error Lens style)</li>
+						<li>Full-line hover/focus/click target — no squiggle-hunting</li>
+						<li>Squiggly underlines + gutter icons with diagnostic count</li>
+						<li>Detailed tooltip with related info and quick fixes</li>
+						<li>Severity-colored via shared band tokens; keyboard accessible</li>
 					</ul>
 				</div>
 			</div>
