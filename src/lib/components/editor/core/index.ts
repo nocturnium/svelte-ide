@@ -24,6 +24,8 @@ export * from './diagnostics';
 export * from './breakpoints';
 export * from './extract-function';
 export * from './apply-extract-plan';
+export * from './extract-variable';
+export * from './organize-imports';
 
 // Explicit re-exports to disambiguate names declared in multiple modules.
 // Explicit named exports take precedence over `export *`, resolving ambiguity.

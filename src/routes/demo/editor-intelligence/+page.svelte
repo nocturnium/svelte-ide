@@ -250,13 +250,20 @@ export const formatSession = (session: UserSession): string => {
 	let quickActionsEnabled = $state(true);
 
 	// Quick Actions tab: a REAL editor so the advertised actions actually run.
-	const qaSampleCode = `function renderInvoice(order) {
+	// The leading imports are intentionally unsorted + duplicated so "Organize
+	// imports" has a real change to make; the body gives "Extract to variable"
+	// (an expression) and "Extract to function" (the const block) real targets.
+	const qaSampleCode = `import { formatCurrency } from './money';
+import { printLine } from './io';
+import { formatCurrency } from './money';
+
+function renderInvoice(order) {
 	const subtotal = order.items.reduce((sum, item) => sum + item.price, 0);
 	const tax = subtotal * order.taxRate;
 	const total = subtotal + tax;
-	printLine(\`Subtotal: \${subtotal}\`);
-	printLine(\`Tax: \${tax}\`);
-	printLine(\`Total: \${total}\`);
+	printLine(\`Subtotal: \${formatCurrency(subtotal)}\`);
+	printLine(\`Tax: \${formatCurrency(tax)}\`);
+	printLine(\`Total: \${formatCurrency(total)}\`);
 }`;
 	let qaEditorRef = $state<CustomEditor | null>(null);
 	let qaContent = $state(qaSampleCode);
@@ -478,19 +485,44 @@ export const formatSession = (session: UserSession): string => {
 
 	function handleQuickActionExecute(action: CodeAction) {
 		clearTimeout(qaActionTimer);
-		if (action.command?.command === 'refactor.extractFunction') {
-			const result = qaEditorRef?.extractFunction();
-			qaActionResult = result
-				? { text: result.ok ? 'Extracted into a new function' : result.reason, ok: result.ok }
-				: null;
-		} else {
-			qaActionResult = {
-				text: `${action.title} — preview only; Extract to function is the wired action in this build.`,
-				ok: false
-			};
-		}
+		qaActionResult = runQuickAction(action);
 		const ok = qaActionResult?.ok ?? false;
 		qaActionTimer = setTimeout(() => (qaActionResult = null), ok ? 2600 : 4200);
+	}
+
+	// Route each advertised action to its real editor method or to an HONEST,
+	// specific refusal. Extract-variable/-function and organize-imports apply real
+	// single-undo edits (and refuse loudly when unsafe). Rename and fix-all cannot
+	// be done safely in a self-contained demo, so they say exactly why rather than
+	// fake an "Executed" toast; everything else is labeled preview-only.
+	function runQuickAction(action: CodeAction): { text: string; ok: boolean } | null {
+		const editor = qaEditorRef;
+		switch (action.command?.command) {
+			case 'refactor.extractFunction': {
+				const result = editor?.extractFunction();
+				if (!result) return null;
+				return { text: result.ok ? 'Extracted into a new function' : result.reason, ok: result.ok };
+			}
+			case 'refactor.extractVariable': {
+				const result = editor?.extractVariable();
+				if (!result) return null;
+				return { text: result.ok ? 'Extracted into a new variable' : result.reason, ok: result.ok };
+			}
+			case 'source.organizeImports': {
+				const result = editor?.organizeImports();
+				if (!result) return null;
+				return { text: result.ok ? 'Imports organized' : result.reason, ok: result.ok };
+			}
+			case 'refactor.rename':
+				return {
+					text: 'Rename needs project-wide symbol resolution — not wired in this build.',
+					ok: false
+				};
+			case 'source.fixAll':
+				return { text: 'No live diagnostics in this demo, so there is nothing to fix.', ok: false };
+			default:
+				return { text: `${action.title} — preview only in this build.`, ok: false };
+		}
 	}
 
 	function handleSymbolNavigate(symbol: DocumentSymbol) {
@@ -855,9 +887,12 @@ export const formatSession = (session: UserSession): string => {
 					</div>
 
 					<p class="qa-hint">
-						Select a block of statements (e.g. the three <code>const</code> lines), open the
-						lightbulb, and run <strong>Extract to function</strong> — it applies a real, single-undo refactor
-						right here.
+						Three actions here apply a <strong>real, single-undo edit</strong> (green = done, amber
+						= safely refused): select <code>subtotal * order.taxRate</code> →
+						<strong>Extract to variable</strong>; select the three <code>const</code> lines →
+						<strong>Extract to function</strong>; click into the imports →
+						<strong>Organize imports</strong> (it removes the duplicate). Other menu items are preview-only
+						and say so.
 					</p>
 				</div>
 
@@ -876,39 +911,31 @@ export const formatSession = (session: UserSession): string => {
 				</div>
 
 				<div class="feature-info">
-					<h4>Available Actions</h4>
+					<h4>What actually runs here</h4>
 					<div class="action-categories">
 						<div class="category">
-							<h5>Quick Fixes</h5>
-							<ul>
-								<li>Add missing semicolon</li>
-								<li>Remove unused variables</li>
-							</ul>
-						</div>
-						<div class="category">
-							<h5>Refactoring</h5>
-							<ul>
+							<h5 class="category-title category-title--real">Wired — genuinely applied</h5>
+							<ul class="action-list action-list--real">
 								<li>Extract to variable</li>
 								<li>Extract to function</li>
-								<li>Rename symbol</li>
-								<li>Convert to arrow function</li>
-							</ul>
-						</div>
-						<div class="category">
-							<h5>Source Actions</h5>
-							<ul>
 								<li>Organize imports</li>
-								<li>Fix all problems</li>
 							</ul>
 						</div>
 						<div class="category">
-							<h5>Generate</h5>
-							<ul>
-								<li>Generate JSDoc</li>
-								<li>Generate getter/setter</li>
+							<h5 class="category-title category-title--preview">Preview only — not wired</h5>
+							<ul class="action-list action-list--preview">
+								<li>Rename symbol — needs project-wide resolution</li>
+								<li>Fix all problems — needs live diagnostics</li>
+								<li>Add semicolon / remove unused</li>
+								<li>Convert to arrow, generate JSDoc</li>
 							</ul>
 						</div>
 					</div>
+					<p class="qa-honesty">
+						Wired actions apply a real, single-undo edit and refuse (amber) when the selection isn't
+						safe. Preview-only items show the menu surface but don't modify code in this build —
+						they say so when chosen rather than faking success.
+					</p>
 				</div>
 			</div>
 		</div>
@@ -1542,6 +1569,31 @@ export const formatSession = (session: UserSession): string => {
 		position: absolute;
 		left: 0;
 		color: var(--color-nocturnium-aurora-purple);
+	}
+
+	h5.category-title--real {
+		color: var(--ide-success);
+	}
+
+	h5.category-title--preview {
+		color: var(--ide-text-muted);
+	}
+
+	.action-list--real li::before {
+		content: '✓';
+		color: var(--ide-success);
+	}
+
+	.action-list--preview li::before {
+		content: '◦';
+		color: var(--ide-text-muted);
+	}
+
+	.qa-honesty {
+		margin: 0.85rem 0 0;
+		font-size: 0.8rem;
+		line-height: 1.5;
+		color: var(--ide-text-secondary, #c4c4d4);
 	}
 
 	/* Outline demo */
