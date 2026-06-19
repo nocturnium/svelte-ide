@@ -8,8 +8,12 @@
 		createDefaultKeybindings,
 		createFoldManager,
 		extractFunctionAt,
+		extractVariableAt,
+		organizeImportsAt,
 		type EditorState,
 		type ExtractFunctionResult,
+		type ExtractVariableResult,
+		type OrganizeImportsResult,
 		type Selection,
 		type SearchMatch,
 		type FoldManager,
@@ -605,6 +609,36 @@
 		const result = extractFunctionAt(editorState, metrics);
 		announce(result.ok ? 'Extracted function' : result.reason);
 		return result;
+	}
+
+	/**
+	 * Extract the current selection into a hoisted `const` (Track H). Single undo
+	 * step; on refusal the editor is untouched and the reason is returned.
+	 */
+	export function extractVariable(): ExtractVariableResult {
+		const result = extractVariableAt(editorState);
+		announce(result.ok ? 'Extracted variable' : result.reason);
+		return result;
+	}
+
+	/**
+	 * Sort, de-duplicate, and tidy the leading import block (Track H). Single undo
+	 * step; on refusal the editor is untouched and the reason is returned.
+	 */
+	export function organizeImports(): OrganizeImportsResult {
+		const result = organizeImportsAt(editorState);
+		announce(result.ok ? 'Organized imports' : result.reason);
+		return result;
+	}
+
+	/** Current primary selection (anchor/head), for callers driving code actions. */
+	export function getSelection(): Selection {
+		return editorState.selection;
+	}
+
+	/** Text covered by the current primary selection ('' when collapsed). */
+	export function getSelectedText(): string {
+		return editorState.getSelectedText();
 	}
 
 	function handleFoldIndicatorClick(lineNumber: number, e: MouseEvent) {

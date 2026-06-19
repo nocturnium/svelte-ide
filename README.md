@@ -8,9 +8,10 @@ framework.
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![svelte](https://img.shields.io/badge/Svelte-5-ff3e00.svg)](https://svelte.dev)
 
-Built from scratch with Svelte 5 runes and zero runtime UI dependencies. Use a
-single `<CustomEditor>` for a textarea-grade upgrade, or compose the editor,
-LSP, collaboration, AI, and plugin pieces into a full IDE experience.
+Built from scratch with Svelte 5 runes and **zero required runtime dependencies
+beyond the Svelte 5 peer**. Use a single `<CustomEditor>` for a textarea-grade
+upgrade, or compose the editor, LSP, collaboration, AI, and plugin pieces into a
+full IDE experience.
 
 ---
 
@@ -26,7 +27,9 @@ LSP, collaboration, AI, and plugin pieces into a full IDE experience.
 - **AI panel & agent presence** layers for assistant UI and presence patterns.
 - **Plugin system** with a proposal-based lifecycle (bring your own backend).
 - **Themeable** — every color/size is a CSS custom property you can override.
-- **Zero external UI dependencies**; collaboration deps are optional peers.
+- **Minimal footprint** — no required runtime dependencies beyond the Svelte 5
+  peer; styling is plain CSS variables (no CSS framework). The Yjs collaboration
+  stack is the only other runtime dependency, and it's an optional peer.
 
 ## Install
 
@@ -42,6 +45,25 @@ Collaboration is optional and tree-shakeable — install these only if you use t
 ```bash
 npm install yjs y-websocket y-protocols
 ```
+
+## Dependencies
+
+The published package carries **no top-level `dependencies`** — it ships with
+zero required runtime dependencies beyond the Svelte 5 peer.
+
+- **`svelte` `^5.0.0`** — the one required peer. Your app already has it.
+- **`yjs`, `y-protocols`, `y-websocket`** — _optional_ peers, marked
+  `optional: true`. They are imported only by the realtime-collaboration code
+  (`<CollaborativeEditor>` and the `./crdt` entry), so they're pulled in only if
+  you actually use collaboration. The rest of the library never touches them.
+- **No CSS framework at runtime.** Styling is plain CSS custom properties
+  shipped in `@nocturnium/svelte-ide/theme.css` — no Tailwind, no `@apply`, no
+  utility-class runtime. (Tailwind is used only to build this repo's demo site.)
+
+Everything else in `package.json` — Vite, ESLint, TypeScript, Vitest,
+Playwright, semantic-release, Tailwind, Prettier, and the rest — is a
+`devDependency` used to build, test, and lint the library. None of it is
+published: only the `dist/` folder ships (`"files": ["dist"]`).
 
 ## Quick start
 

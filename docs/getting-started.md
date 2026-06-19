@@ -10,7 +10,7 @@ This library targets **Svelte 5 only**. It is built on runes (`$state`, `$derive
 - **Node.js `>=18`** — required for the tooling.
 - A Svelte build setup (SvelteKit or plain Vite + `@sveltejs/vite-plugin-svelte`).
 
-The package itself ships with **zero runtime dependencies**. The collaboration extras (`yjs`, `y-websocket`, `y-protocols`) are _optional_ peer dependencies you only install if you use the CRDT module — see [Optional features](#optional-features) below.
+Beyond that Svelte 5 peer, the package ships with **zero required runtime dependencies** — `package.json` declares no top-level `dependencies`, and styling is plain CSS custom properties with no CSS framework. The collaboration extras (`yjs`, `y-websocket`, `y-protocols`) are the only other runtime dependency: they're _optional_ peer dependencies you install only if you use the CRDT module — see [Optional features](#optional-features) below.
 
 ## Installation
 

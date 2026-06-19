@@ -13,6 +13,7 @@
 	import EchoCursorLayer from '$lib/components/editor/EchoCursorLayer.svelte';
 	import GhostBracketLayer from '$lib/components/editor/GhostBracketLayer.svelte';
 	import ContextLens from '$lib/components/editor/ContextLens.svelte';
+	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import {
 		createQuickActionsManager,
 		type QuickActionsManager,
@@ -247,7 +248,28 @@ export const formatSession = (session: UserSession): string => {
 	// Quick Actions state
 	let quickActionsManager = $state<QuickActionsManager>(null!);
 	let quickActionsEnabled = $state(true);
-	let lastAction = $state<string | null>(null);
+
+	// Quick Actions tab: a REAL editor so the advertised actions actually run.
+	// The leading imports are intentionally unsorted + duplicated so "Organize
+	// imports" has a real change to make; the body gives "Extract to variable"
+	// (an expression) and "Extract to function" (the const block) real targets.
+	const qaSampleCode = `import { formatCurrency } from './money';
+import { printLine } from './io';
+import { formatCurrency } from './money';
+
+function renderInvoice(order) {
+	const subtotal = order.items.reduce((sum, item) => sum + item.price, 0);
+	const tax = subtotal * order.taxRate;
+	const total = subtotal + tax;
+	printLine(\`Subtotal: \${formatCurrency(subtotal)}\`);
+	printLine(\`Tax: \${formatCurrency(tax)}\`);
+	printLine(\`Total: \${formatCurrency(total)}\`);
+}`;
+	let qaEditorRef = $state<CustomEditor | null>(null);
+	let qaContent = $state(qaSampleCode);
+	let qaCursorLine = $state(0);
+	let qaActionResult = $state<{ text: string; ok: boolean } | null>(null);
+	let qaActionTimer: ReturnType<typeof setTimeout> | undefined;
 
 	// Overlay state
 	let echoCursorManager = $state<EchoCursorManager | null>(null);
@@ -400,11 +422,11 @@ export const formatSession = (session: UserSession): string => {
 
 		// Set initial context
 		quickActionsManager.updateContext({
-			position: { line: cursorLine, column: 10 },
+			position: { line: 0, column: 0 },
 			diagnostics: [],
-			lineContent: sampleLines[cursorLine] || '',
+			lineContent: qaContent.split('\n')[0] ?? '',
 			language: 'typescript',
-			content: sampleCode
+			content: qaContent
 		});
 
 		const echoManager = createEchoCursorManager({ defaultDelay: 220 });
@@ -440,9 +462,67 @@ export const formatSession = (session: UserSession): string => {
 		cursorLine = symbol.line;
 	}
 
+	function syncQuickActions() {
+		const editor = qaEditorRef;
+		if (!editor || !quickActionsManager) return;
+		const sel = editor.getSelection();
+		const startLine = Math.min(sel.anchor.line, sel.head.line);
+		const endLine = Math.max(sel.anchor.line, sel.head.line);
+		qaCursorLine = startLine;
+		quickActionsManager.updateContext({
+			position: { line: sel.head.line, column: sel.head.column },
+			selection: {
+				start: { line: startLine, column: 0 },
+				end: { line: endLine, column: 0 }
+			},
+			selectedText: editor.getSelectedText(),
+			diagnostics: [],
+			lineContent: qaContent.split('\n')[sel.head.line] ?? '',
+			language: 'typescript',
+			content: qaContent
+		});
+	}
+
 	function handleQuickActionExecute(action: CodeAction) {
-		lastAction = action.title;
-		setTimeout(() => (lastAction = null), 2000);
+		clearTimeout(qaActionTimer);
+		qaActionResult = runQuickAction(action);
+		const ok = qaActionResult?.ok ?? false;
+		qaActionTimer = setTimeout(() => (qaActionResult = null), ok ? 2600 : 4200);
+	}
+
+	// Route each advertised action to its real editor method or to an HONEST,
+	// specific refusal. Extract-variable/-function and organize-imports apply real
+	// single-undo edits (and refuse loudly when unsafe). Rename and fix-all cannot
+	// be done safely in a self-contained demo, so they say exactly why rather than
+	// fake an "Executed" toast; everything else is labeled preview-only.
+	function runQuickAction(action: CodeAction): { text: string; ok: boolean } | null {
+		const editor = qaEditorRef;
+		switch (action.command?.command) {
+			case 'refactor.extractFunction': {
+				const result = editor?.extractFunction();
+				if (!result) return null;
+				return { text: result.ok ? 'Extracted into a new function' : result.reason, ok: result.ok };
+			}
+			case 'refactor.extractVariable': {
+				const result = editor?.extractVariable();
+				if (!result) return null;
+				return { text: result.ok ? 'Extracted into a new variable' : result.reason, ok: result.ok };
+			}
+			case 'source.organizeImports': {
+				const result = editor?.organizeImports();
+				if (!result) return null;
+				return { text: result.ok ? 'Imports organized' : result.reason, ok: result.ok };
+			}
+			case 'refactor.rename':
+				return {
+					text: 'Rename needs project-wide symbol resolution — not wired in this build.',
+					ok: false
+				};
+			case 'source.fixAll':
+				return { text: 'No live diagnostics in this demo, so there is nothing to fix.', ok: false };
+			default:
+				return { text: `${action.title} — preview only in this build.`, ok: false };
+		}
 	}
 
 	function handleSymbolNavigate(symbol: DocumentSymbol) {
@@ -777,52 +857,43 @@ export const formatSession = (session: UserSession): string => {
 
 			<div class="quickactions-demo">
 				<div class="quickactions-editor">
-					<div class="editor-preview-small" style="position: relative;">
-						{#if quickActionsManager}
-							<QuickActionsMenu
-								manager={quickActionsManager}
-								{lineHeight}
-								{cursorLine}
-								gutterWidth={50}
-								showLightbulb={quickActionsEnabled}
-								onExecute={handleQuickActionExecute}
-							/>
+					<div class="qa-editor-wrap">
+						<CustomEditor
+							bind:this={qaEditorRef}
+							bind:content={qaContent}
+							language="typescript"
+							complexityHighlighting={false}
+							onCursorChange={syncQuickActions}
+							onChange={syncQuickActions}
+						/>
+						{#if quickActionsManager && quickActionsEnabled}
+							<div class="qa-menu-layer">
+								<QuickActionsMenu
+									manager={quickActionsManager}
+									lineHeight={20}
+									cursorLine={qaCursorLine}
+									gutterWidth={50}
+									showLightbulb={true}
+									onExecute={handleQuickActionExecute}
+								/>
+							</div>
 						{/if}
 
-						{#each sampleLines.slice(20, 50) as line, i (i)}
-							<div
-								class="code-line"
-								role="button"
-								tabindex={-1}
-								class:code-line--current={i + 20 === cursorLine}
-								style="height: {lineHeight}px;"
-								onclick={() => {
-									cursorLine = i + 20;
-									quickActionsManager?.updateContext({
-										position: { line: cursorLine, column: 10 },
-										diagnostics: [],
-										lineContent: sampleLines[cursorLine] || '',
-										language: 'typescript',
-										content: sampleCode
-									});
-								}}
-								onkeydown={(e) => {
-									if (e.key === 'Enter') {
-										cursorLine = i + 20;
-									}
-								}}
-							>
-								<span class="line-num">{i + 21}</span>
-								<span class="line-content">{line || ' '}</span>
+						{#if qaActionResult}
+							<div class="action-toast" class:action-toast--ok={qaActionResult.ok}>
+								{qaActionResult.text}
 							</div>
-						{/each}
+						{/if}
 					</div>
 
-					{#if lastAction}
-						<div class="action-toast">
-							Executed: {lastAction}
-						</div>
-					{/if}
+					<p class="qa-hint">
+						Three actions here apply a <strong>real, single-undo edit</strong> (green = done, amber
+						= safely refused): select <code>subtotal * order.taxRate</code> →
+						<strong>Extract to variable</strong>; select the three <code>const</code> lines →
+						<strong>Extract to function</strong>; click into the imports →
+						<strong>Organize imports</strong> (it removes the duplicate). Other menu items are preview-only
+						and say so.
+					</p>
 				</div>
 
 				<div class="quickactions-controls">
@@ -840,39 +911,31 @@ export const formatSession = (session: UserSession): string => {
 				</div>
 
 				<div class="feature-info">
-					<h4>Available Actions</h4>
+					<h4>What actually runs here</h4>
 					<div class="action-categories">
 						<div class="category">
-							<h5>Quick Fixes</h5>
-							<ul>
-								<li>Add missing semicolon</li>
-								<li>Remove unused variables</li>
-							</ul>
-						</div>
-						<div class="category">
-							<h5>Refactoring</h5>
-							<ul>
+							<h5 class="category-title category-title--real">Wired — genuinely applied</h5>
+							<ul class="action-list action-list--real">
 								<li>Extract to variable</li>
 								<li>Extract to function</li>
-								<li>Rename symbol</li>
-								<li>Convert to arrow function</li>
-							</ul>
-						</div>
-						<div class="category">
-							<h5>Source Actions</h5>
-							<ul>
 								<li>Organize imports</li>
-								<li>Fix all problems</li>
 							</ul>
 						</div>
 						<div class="category">
-							<h5>Generate</h5>
-							<ul>
-								<li>Generate JSDoc</li>
-								<li>Generate getter/setter</li>
+							<h5 class="category-title category-title--preview">Preview only — not wired</h5>
+							<ul class="action-list action-list--preview">
+								<li>Rename symbol — needs project-wide resolution</li>
+								<li>Fix all problems — needs live diagnostics</li>
+								<li>Add semicolon / remove unused</li>
+								<li>Convert to arrow, generate JSDoc</li>
 							</ul>
 						</div>
 					</div>
+					<p class="qa-honesty">
+						Wired actions apply a real, single-undo edit and refuse (amber) when the selection isn't
+						safe. Preview-only items show the menu surface but don't modify code in this build —
+						they say so when chosen rather than faking success.
+					</p>
 				</div>
 			</div>
 		</div>
@@ -1244,6 +1307,33 @@ export const formatSession = (session: UserSession): string => {
 		position: relative;
 	}
 
+	/* Quick Actions tab: real editor + overlaid lightbulb menu */
+	.qa-editor-wrap {
+		position: relative;
+		height: 264px;
+		border: 1px solid var(--ide-border);
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.qa-menu-layer {
+		position: absolute;
+		inset: 8px 0 0 0; /* offset by the editor's top content padding so the bulb sits on its row */
+		pointer-events: none;
+		z-index: 30;
+	}
+
+	.qa-menu-layer :global(.quick-actions) {
+		pointer-events: auto;
+	}
+
+	.qa-hint {
+		margin: 0.75rem 0 0;
+		font-size: 0.8125rem;
+		line-height: 1.5;
+		color: var(--ide-text-muted);
+	}
+
 	.code-viewport {
 		transition: transform 0.1s ease;
 	}
@@ -1420,12 +1510,21 @@ export const formatSession = (session: UserSession): string => {
 		position: absolute;
 		bottom: 12px;
 		right: 12px;
+		max-width: 80%;
 		padding: 8px 16px;
-		background: #22c55e;
-		color: #fff;
+		background: color-mix(in srgb, var(--ide-warning) 16%, var(--ide-bg-elevated, #252536));
+		color: var(--ide-warning);
+		border: 1px solid color-mix(in srgb, var(--ide-warning) 40%, transparent);
 		border-radius: 6px;
 		font-size: 0.85rem;
 		animation: fadeIn 0.2s ease;
+		z-index: 40;
+	}
+
+	.action-toast--ok {
+		background: color-mix(in srgb, var(--ide-success) 16%, var(--ide-bg-elevated, #252536));
+		color: var(--ide-success);
+		border-color: color-mix(in srgb, var(--ide-success) 40%, transparent);
 	}
 
 	@keyframes fadeIn {
@@ -1470,6 +1569,31 @@ export const formatSession = (session: UserSession): string => {
 		position: absolute;
 		left: 0;
 		color: var(--color-nocturnium-aurora-purple);
+	}
+
+	h5.category-title--real {
+		color: var(--ide-success);
+	}
+
+	h5.category-title--preview {
+		color: var(--ide-text-muted);
+	}
+
+	.action-list--real li::before {
+		content: '✓';
+		color: var(--ide-success);
+	}
+
+	.action-list--preview li::before {
+		content: '◦';
+		color: var(--ide-text-muted);
+	}
+
+	.qa-honesty {
+		margin: 0.85rem 0 0;
+		font-size: 0.8rem;
+		line-height: 1.5;
+		color: var(--ide-text-secondary, #c4c4d4);
 	}
 
 	/* Outline demo */
