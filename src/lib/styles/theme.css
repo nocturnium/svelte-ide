@@ -73,7 +73,10 @@
 	   source of truth by primary buttons and badges so "primary" reads the
 	   same everywhere. */
 	--ide-primary: var(--ide-interactive-active);
-	--ide-primary-hover: var(--ide-interactive-hover);
+	/* Primary hover is a controlled lift of the SAME ember (one deliberate primary),
+	   not a jump to the separate flame hue — keeps the action color cohesive and
+	   keeps dark-ink (--ide-text-inverse) label contrast comfortably above AA. */
+	--ide-primary-hover: color-mix(in srgb, var(--ide-primary) 85%, white);
 
 	/* IDE Accent Colors */
 	--ide-accent: var(--color-nocturnium-wave);
