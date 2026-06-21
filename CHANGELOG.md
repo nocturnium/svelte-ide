@@ -1,3 +1,15 @@
+# [1.11.0](https://github.com/nocturnium/svelte-ide/compare/v1.10.0...v1.11.0) (2026-06-21)
+
+
+### Bug Fixes
+
+* **demo:** guard the props playground against non-object JSON ([c4a7a4a](https://github.com/nocturnium/svelte-ide/commit/c4a7a4a9fa62c37fa5479707faef2610e7381169))
+
+
+### Features
+
+* **demo:** live-editable props playground (Button + Badge pilot) ([2f88c04](https://github.com/nocturnium/svelte-ide/commit/2f88c042981906c5f1fa2bd7ace820d979523bf4))
+
 # [1.10.0](https://github.com/nocturnium/svelte-ide/compare/v1.9.0...v1.10.0) (2026-06-21)
 
 
