@@ -160,6 +160,12 @@
 		position: relative;
 		overflow: hidden;
 	}
+	/* Announce focus on the editor as a whole (the inner caret/active-line shows
+	   where you are, but a keyboard user needs to know the control itself is live). */
+	.props-playground__editor:focus-within {
+		outline: 1px solid var(--ide-interactive, #4a8db7);
+		outline-offset: -1px;
+	}
 
 	.props-playground__fallback {
 		margin: 0;
@@ -192,13 +198,23 @@
 		gap: 12px;
 		padding: 24px;
 		flex: 1;
+		/* A subtle dot-grid canvas so the rendered component is framed and pops,
+		   instead of floating in an empty void. */
+		background-color: var(--ide-bg-primary, #0d1421);
+		background-image: radial-gradient(
+			circle,
+			var(--ide-border-subtle, #233148) 1px,
+			transparent 1px
+		);
+		background-size: 16px 16px;
+		background-position: center;
 	}
 
 	.props-playground__usage {
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 10px 12px;
+		padding: 10px 16px 10px 12px;
 		border-top: 1px solid var(--ide-border-subtle, #233148);
 		background: var(--ide-bg-primary, #0d1421);
 		overflow-x: auto;
@@ -215,6 +231,15 @@
 		font-size: 12.5px;
 		color: var(--ide-text-secondary, #c4d2ec);
 		white-space: pre;
+	}
+
+	/* In the cramped two-column regime the usage line would scroll its closing tag
+	   out of view with no affordance — let it wrap instead of silently truncating. */
+	@media (max-width: 1000px) {
+		.props-playground__usage code {
+			white-space: pre-wrap;
+			word-break: break-word;
+		}
 	}
 
 	@media (max-width: 720px) {
