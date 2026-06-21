@@ -23,14 +23,15 @@ export function absoluteUrl(pathname: string): string {
 }
 
 /**
- * Every public route, for the sitemap. Keep in sync when adding a demo page
- * (the demo nav lives in src/routes/demo/+layout.svelte).
+ * Routes for the sitemap. ONLY prerendered routes belong here — the editor,
+ * playground, and collaboration demos opt out of prerendering (ssr=false in their
+ * +page.ts) and are served via the SPA fallback, which returns HTTP 404 to
+ * crawlers; listing them would advertise soft-404s. They stay discoverable via
+ * the demo hub's links. Keep in sync when adding/changing a prerendered demo page.
  */
 export const SITEMAP_ROUTES: { path: string; priority: number; changefreq: string }[] = [
 	{ path: '/', priority: 1.0, changefreq: 'weekly' },
 	{ path: '/demo', priority: 0.9, changefreq: 'weekly' },
-	{ path: '/demo/editor', priority: 0.8, changefreq: 'monthly' },
-	{ path: '/demo/playground', priority: 0.8, changefreq: 'monthly' },
 	{ path: '/demo/editor-basic', priority: 0.7, changefreq: 'monthly' },
 	{ path: '/demo/folding', priority: 0.7, changefreq: 'monthly' },
 	{ path: '/demo/components', priority: 0.7, changefreq: 'monthly' },
@@ -42,8 +43,6 @@ export const SITEMAP_ROUTES: { path: string; priority: number; changefreq: strin
 	{ path: '/demo/debugging', priority: 0.7, changefreq: 'monthly' },
 	{ path: '/demo/devx-features', priority: 0.7, changefreq: 'monthly' },
 	{ path: '/demo/ai', priority: 0.7, changefreq: 'monthly' },
-	{ path: '/demo/collaboration', priority: 0.7, changefreq: 'monthly' },
-	{ path: '/demo/collaboration-features', priority: 0.7, changefreq: 'monthly' },
 	{ path: '/demo/plugins', priority: 0.7, changefreq: 'monthly' },
 	{ path: '/demo/power-features', priority: 0.7, changefreq: 'monthly' }
 ];

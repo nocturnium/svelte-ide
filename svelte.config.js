@@ -1,20 +1,17 @@
 import adapter from '@sveltejs/adapter-static';
-import { copyFile } from 'node:fs/promises';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
-
-const staticAdapter = adapter({ fallback: '404.html' });
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
-		adapter: {
-			name: staticAdapter.name,
-			async adapt(builder) {
-				await staticAdapter.adapt(builder);
-				await copyFile('build/404.html', 'build/index.html');
-			}
-		},
+		// SSR + prerender are on by default (see src/routes/+layout.ts). adapter-static
+		// prerenders every reachable route to its own HTML; the fallback shell
+		// (404.html) serves the client-only routes that opt out of prerendering.
+		// NOTE: we used to copy 404.html → index.html for the SPA root, but now that
+		// the homepage prerenders, that copy would clobber its real SEO HTML — so it's
+		// gone, and the prerendered build/index.html is shipped as-is.
+		adapter: adapter({ fallback: '404.html' }),
 		paths: {
 			base: process.env.BASE_PATH || ''
 		},
