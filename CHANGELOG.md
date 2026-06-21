@@ -1,3 +1,16 @@
+# [1.10.0](https://github.com/nocturnium/svelte-ide/compare/v1.9.0...v1.10.0) (2026-06-21)
+
+
+### Bug Fixes
+
+* **demo:** make both Time Machine authors visible on first paint ([37dfac8](https://github.com/nocturnium/svelte-ide/commit/37dfac874761441481603b774d5900c5fff1598a))
+
+
+### Features
+
+* **demo:** seed a real Time Machine history (collaboration-features) ([9cc296f](https://github.com/nocturnium/svelte-ide/commit/9cc296fc8c0e8a141a02f6aecfcf091cbff6bde3))
+* **demo:** show Git Blame on first paint (devx-features) ([84eb6d1](https://github.com/nocturnium/svelte-ide/commit/84eb6d1c3f4bf9e51453f8661b8caf7db8ccac87))
+
 # [1.9.0](https://github.com/nocturnium/svelte-ide/compare/v1.8.0...v1.9.0) (2026-06-21)
 
 
