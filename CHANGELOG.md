@@ -1,3 +1,21 @@
+# [1.8.0](https://github.com/nocturnium/svelte-ide/compare/v1.7.0...v1.8.0) (2026-06-21)
+
+
+### Bug Fixes
+
+* **demo:** de-emoji + de-inert conceptual pages ([08a80c0](https://github.com/nocturnium/svelte-ide/commit/08a80c0682bb2795804eb0e8283800accce622c7))
+* **demo:** remove exhibit double-frame + register missing icon glyphs ([a29099e](https://github.com/nocturnium/svelte-ide/commit/a29099ed93d51295310f0bd642bd226596a174d9))
+* **demo:** robust copy in DemoExhibit (optimistic feedback + execCommand fallback) ([05f11dc](https://github.com/nocturnium/svelte-ide/commit/05f11dc42d3eddf516e71a382b8164ceb89ee4a9))
+* **demo:** time machine empty-state hint (CTO follow-up) ([93e051a](https://github.com/nocturnium/svelte-ide/commit/93e051a10726f118284ba28d9d40d4876c13b376))
+
+
+### Features
+
+* **demo:** adopt DemoPage + Preview/Code exhibit across the 9 conceptual pages ([744198a](https://github.com/nocturnium/svelte-ide/commit/744198ac5c5cb54356a60e01210b786bb61610a5))
+* **demo:** preview/code exhibit + DemoPage template, wired on editor-basic ([8e02d2e](https://github.com/nocturnium/svelte-ide/commit/8e02d2e118389fd54157b483ed118713e385cd30))
+* **demo:** promote the Playground + full-bleed page titles ([ac4f471](https://github.com/nocturnium/svelte-ide/commit/ac4f471f3e35fb2ed7f05cab328e1d6a9acf3072))
+* **demo:** roll out Preview/Code exhibit to folding, resize, components ([a50d6c5](https://github.com/nocturnium/svelte-ide/commit/a50d6c5668f37667aafa60456ef1e59433206948))
+
 # [1.7.0](https://github.com/nocturnium/svelte-ide/compare/v1.6.0...v1.7.0) (2026-06-19)
 
 
