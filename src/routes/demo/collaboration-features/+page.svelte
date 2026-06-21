@@ -521,9 +521,8 @@ export function applyDiscount(order: Order, percent: number): Order {
 			<h2>Shared Editors with Conflict Zones</h2>
 			<p class="demo-description">
 				Both editors below write to the same in-page document. The conflict band is rendered over
-				the primary (left) editor; it marks the lines where both cursors are predicted to collide.
-				The overlay is anchored to the top of the editor, so it stays accurate near the top of the
-				file and may drift once you scroll the code past the first viewport.
+				the primary (left) editor, marking the lines where both cursors are predicted to collide as
+				you edit.
 			</p>
 			<DemoExhibit code={sharedEditorsCode} language="svelte" filename="SharedEditors.svelte">
 				<div class="collab-editor-grid">

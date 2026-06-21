@@ -154,6 +154,20 @@ renderStatus(status);`);
 			}
 		});
 
+		// Seed the echo demo so it is populated on first paint instead of an empty
+		// log: enable echo, drop two echo points, then replay a short sample of REAL
+		// recorded keystrokes (the manager replays them into the echo mirror buffers —
+		// honest, not faked log lines). The user can keep typing from here.
+		echoManager.enable();
+		echoEnabled = true;
+		echoManager.addEchoPoint({ line: 2, column: 0 }, { delay: 220, label: 'Echo 3' });
+		echoManager.addEchoPoint({ line: 5, column: 0 }, { delay: 420, label: 'Echo 6' });
+		for (const ch of 'const total = sum(items);') {
+			echoManager.recordInsert(ch);
+		}
+		echoCursors = echoManager.getEchoCursors();
+		refreshEchoMirrors();
+
 		// Initialize bracket healer
 		bracketHealer = createBracketHealer();
 		bracketHealer.subscribe((state) => {

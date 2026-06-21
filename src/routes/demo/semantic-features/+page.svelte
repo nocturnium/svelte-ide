@@ -13,6 +13,7 @@
 	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import StructureMap from '$lib/components/editor/StructureMap.svelte';
+	import Icon from '$lib/components/core/Icon.svelte';
 	import {
 		type ComplexityMetrics,
 		type SemanticRegion,
@@ -20,6 +21,18 @@
 		DEFAULT_FOLD_PRESETS,
 		type FoldPreset
 	} from '$lib/components/editor/core';
+
+	// Map each shipped preset to a line-icon from the core Icon set, so the preset
+	// cards use the same crafted glyph language as the rest of the site instead of
+	// the library's default emoji.
+	const PRESET_ICONS: Record<string, string> = {
+		'code-review': 'search',
+		'api-surface': 'code',
+		debugging: 'terminal',
+		'tests-only': 'check',
+		minimal: 'minimize',
+		documentation: 'file'
+	};
 
 	// Sample TypeScript code with various semantic regions
 	const sampleCode = `// Import statements
@@ -394,7 +407,9 @@ export const capitalize = (str: string): string =>
 						onclick={() => applyPreset(preset)}
 						aria-pressed={activePreset?.id === preset.id}
 					>
-						<span class="preset-card__icon">{preset.icon}</span>
+						<span class="preset-card__icon"
+							><Icon name={PRESET_ICONS[preset.id] ?? 'sparkles'} size={18} /></span
+						>
 						<div class="preset-card__content">
 							<span class="preset-card__name">{preset.name}</span>
 							<span class="preset-card__desc">{preset.description}</span>
@@ -794,7 +809,10 @@ export const capitalize = (str: string): string =>
 	}
 
 	.preset-card__icon {
-		font-size: 1.5rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--ide-accent);
 		line-height: 1;
 	}
 

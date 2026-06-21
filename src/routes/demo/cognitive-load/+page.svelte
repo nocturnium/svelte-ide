@@ -491,15 +491,6 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					<span class="ai-dot" style="background: {claudeAgent.color}"></span>
 					<span class="ai-name">{claudeAgent.agentName}</span>
 					<span class="ai-activity">
-						<span class="ai-emoji" aria-hidden="true">
-							{claudeAgent.attentionType === 'reading'
-								? '\u{1F440}'
-								: claudeAgent.attentionType === 'thinking'
-									? '\u{1F4AD}'
-									: claudeAgent.attentionType === 'writing'
-										? '\u{270D}\u{FE0F}'
-										: '\u{1F50D}'}
-						</span>
 						<span class="sr-only">{claudeAgent.attentionType}:</span>
 						{claudeAgent.activity}
 					</span>
