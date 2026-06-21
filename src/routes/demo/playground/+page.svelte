@@ -453,6 +453,10 @@ MIT License - see LICENSE file for details
 	}
 </script>
 
+<svelte:head>
+	<title>Playground | Nocturnium Svelte IDE</title>
+</svelte:head>
+
 <div class="playground" class:playground--resizing={isResizing}>
 	<!-- Activity Bar -->
 	<div class="activity-bar">
