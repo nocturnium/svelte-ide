@@ -163,10 +163,17 @@ export class TimelineManager {
 	}
 
 	/**
-	 * Capture a snapshot
+	 * Capture a snapshot.
+	 *
+	 * `timestamp` defaults to now; pass an explicit value to seed/import historical
+	 * snapshots (e.g. reconstructing a prior editing session) so the timeline spreads
+	 * over real time and each marker has a distinct key.
 	 */
-	captureSnapshot(content: string, metadata: SnapshotMetadata): TimelineSnapshot {
-		const now = Date.now();
+	captureSnapshot(
+		content: string,
+		metadata: SnapshotMetadata,
+		timestamp: number = Date.now()
+	): TimelineSnapshot {
 		const lineCount = content.split('\n').length;
 
 		// Calculate diff from previous
@@ -177,8 +184,8 @@ export class TimelineManager {
 		}
 
 		const snapshot: TimelineSnapshot = {
-			id: `snapshot-${now}-${Math.random().toString(36).substr(2, 9)}`,
-			timestamp: now,
+			id: `snapshot-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
+			timestamp,
 			content,
 			metadata,
 			lineCount,
@@ -186,7 +193,7 @@ export class TimelineManager {
 		};
 
 		this.snapshots.push(snapshot);
-		this.lastSnapshotTime = now;
+		this.lastSnapshotTime = timestamp;
 		this.lastContent = content;
 
 		// Prune old snapshots if needed

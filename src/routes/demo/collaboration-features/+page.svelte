@@ -195,6 +195,42 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	// Initialize timeline
 	onMount(() => {
+		// Seed a short build-up session with spread-out timestamps so the Time Machine
+		// has real, scrubbable history on first paint: two earlier drafts (minutes ago)
+		// leading up to the present SAMPLE_CODE. Distinct timestamps also give each
+		// scrubber marker a unique key.
+		const i1 = SAMPLE_CODE.indexOf('export function createOrder');
+		const i2 = SAMPLE_CODE.indexOf('export function applyDiscount');
+		const draftOne = i1 > 0 ? SAMPLE_CODE.slice(0, i1).trimEnd() + '\n' : SAMPLE_CODE;
+		const draftTwo = i2 > 0 ? SAMPLE_CODE.slice(0, i2).trimEnd() + '\n' : SAMPLE_CODE;
+		const t0 = Date.now();
+		if (draftOne !== SAMPLE_CODE) {
+			timelineManager.captureSnapshot(
+				draftOne,
+				{
+					author: primaryUser.id,
+					authorColor: primaryUser.color,
+					isAI: false,
+					description: 'Draft order builder',
+					changeType: 'edit'
+				},
+				t0 - 1000 * 60 * 6
+			);
+		}
+		if (draftTwo !== draftOne) {
+			timelineManager.captureSnapshot(
+				draftTwo,
+				{
+					author: secondaryUser.id,
+					authorColor: secondaryUser.color,
+					isAI: false,
+					description: 'Add createOrder()',
+					changeType: 'edit'
+				},
+				t0 - 1000 * 60 * 3
+			);
+		}
+		// Present snapshot (now) + live tracking for subsequent real edits.
 		timelineManager.start(SAMPLE_CODE);
 		primaryAwareness.setLocalStateField('user', primaryUser);
 		secondaryAwareness.setLocalStateField('user', secondaryUser);
