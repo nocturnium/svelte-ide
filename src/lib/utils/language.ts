@@ -208,6 +208,9 @@ export function getLanguageDisplayName(language: string): string {
 		powershell: 'PowerShell',
 		dockerfile: 'Dockerfile',
 		makefile: 'Makefile',
+		cmake: 'CMake',
+		toml: 'TOML',
+		groovy: 'Groovy',
 		svelte: 'Svelte',
 		vue: 'Vue',
 		plaintext: 'Plain Text'

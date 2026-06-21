@@ -235,6 +235,260 @@ const languages: Record<string, LanguageConfig> = {
 			["'", "'"]
 		]
 	},
+	rust: {
+		id: 'rust',
+		name: 'Rust',
+		extensions: ['rs'],
+		mimeTypes: ['text/x-rust'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"']
+		]
+	},
+	java: {
+		id: 'java',
+		name: 'Java',
+		extensions: ['java'],
+		mimeTypes: ['text/x-java'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	cpp: {
+		id: 'cpp',
+		name: 'C++',
+		extensions: ['c', 'cpp', 'cc', 'cxx', 'h', 'hpp', 'hxx'],
+		mimeTypes: ['text/x-c++src', 'text/x-csrc'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	csharp: {
+		id: 'csharp',
+		name: 'C#',
+		extensions: ['cs'],
+		mimeTypes: ['text/x-csharp'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	kotlin: {
+		id: 'kotlin',
+		name: 'Kotlin',
+		extensions: ['kt', 'kts'],
+		mimeTypes: ['text/x-kotlin'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	scala: {
+		id: 'scala',
+		name: 'Scala',
+		extensions: ['scala', 'sc'],
+		mimeTypes: ['text/x-scala'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	swift: {
+		id: 'swift',
+		name: 'Swift',
+		extensions: ['swift'],
+		mimeTypes: ['text/x-swift'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"']
+		]
+	},
+	ruby: {
+		id: 'ruby',
+		name: 'Ruby',
+		extensions: ['rb'],
+		mimeTypes: ['text/x-ruby'],
+		lineComment: '#',
+		blockComment: ['=begin', '=end'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	php: {
+		id: 'php',
+		name: 'PHP',
+		extensions: ['php', 'phtml'],
+		mimeTypes: ['application/x-httpd-php', 'text/x-php'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	groovy: {
+		id: 'groovy',
+		name: 'Groovy',
+		extensions: ['groovy', 'gradle'],
+		mimeTypes: ['text/x-groovy'],
+		lineComment: '//',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	shell: {
+		id: 'shell',
+		name: 'Shell',
+		extensions: ['sh', 'bash', 'zsh', 'fish', 'ksh'],
+		mimeTypes: ['text/x-sh', 'application/x-sh'],
+		lineComment: '#',
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	powershell: {
+		id: 'powershell',
+		name: 'PowerShell',
+		extensions: ['ps1', 'psm1', 'psd1'],
+		mimeTypes: ['application/x-powershell'],
+		lineComment: '#',
+		blockComment: ['<#', '#>'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	sql: {
+		id: 'sql',
+		name: 'SQL',
+		extensions: ['sql', 'psql', 'mysql', 'pgsql'],
+		mimeTypes: ['text/x-sql', 'application/sql'],
+		lineComment: '--',
+		blockComment: ['/*', '*/'],
+		autoClosingPairs: [
+			['(', ')'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	toml: {
+		id: 'toml',
+		name: 'TOML',
+		extensions: ['toml'],
+		mimeTypes: ['application/toml'],
+		lineComment: '#',
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	dockerfile: {
+		id: 'dockerfile',
+		name: 'Dockerfile',
+		extensions: ['dockerfile', 'containerfile'],
+		mimeTypes: ['text/x-dockerfile'],
+		lineComment: '#',
+		autoClosingPairs: [
+			['[', ']'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	makefile: {
+		id: 'makefile',
+		name: 'Makefile',
+		extensions: ['makefile', 'mk', 'mak'],
+		mimeTypes: ['text/x-makefile'],
+		lineComment: '#',
+		autoClosingPairs: [
+			['(', ')'],
+			['{', '}'],
+			['"', '"'],
+			["'", "'"]
+		]
+	},
+	cmake: {
+		id: 'cmake',
+		name: 'CMake',
+		extensions: ['cmake'],
+		mimeTypes: ['text/x-cmake'],
+		lineComment: '#',
+		autoClosingPairs: [
+			['(', ')'],
+			['"', '"']
+		]
+	},
+	vue: {
+		id: 'vue',
+		name: 'Vue',
+		extensions: ['vue'],
+		mimeTypes: ['text/x-vue'],
+		blockComment: ['<!--', '-->'],
+		autoClosingPairs: [
+			['{', '}'],
+			['[', ']'],
+			['(', ')'],
+			['"', '"'],
+			["'", "'"],
+			['<', '>']
+		]
+	},
 	plaintext: {
 		id: 'plaintext',
 		name: 'Plain Text',
