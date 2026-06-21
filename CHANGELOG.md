@@ -1,3 +1,16 @@
+# [1.12.0](https://github.com/nocturnium/svelte-ide/compare/v1.11.0...v1.12.0) (2026-06-21)
+
+
+### Bug Fixes
+
+* **editor:** repair tokenizer defects found by adversarial verification ([ebdb8c4](https://github.com/nocturnium/svelte-ide/commit/ebdb8c483819a8e7cb285e453979662f090eb95b))
+
+
+### Features
+
+* **demo:** language gallery showcasing all 28 highlighted languages ([2a1f26d](https://github.com/nocturnium/svelte-ide/commit/2a1f26d8899a5c72e544a43688270fcfea19fba4))
+* **editor:** syntax highlighting for 19 more languages ([29ec9fd](https://github.com/nocturnium/svelte-ide/commit/29ec9fd9d07862d1fae3c8e0d1d65e028804ef8c))
+
 # [1.11.0](https://github.com/nocturnium/svelte-ide/compare/v1.10.0...v1.11.0) (2026-06-21)
 
 
