@@ -15,7 +15,9 @@ const notFound = await readFile(path.join(build, '404.html'), 'utf8');
 
 // 1. The homepage must be the prerendered page, not the empty SPA fallback.
 if (index === notFound) {
-	errors.push('build/index.html is identical to build/404.html — the prerendered homepage was clobbered.');
+	errors.push(
+		'build/index.html is identical to build/404.html — the prerendered homepage was clobbered.'
+	);
 }
 if (!/<title>[^<]+<\/title>/.test(index)) {
 	errors.push('build/index.html has no <title> — homepage SEO is missing.');
@@ -39,4 +41,6 @@ if (errors.length) {
 	console.error('✗ prerender verification failed:\n  - ' + errors.join('\n  - '));
 	process.exit(1);
 }
-console.log(`✓ prerender verification passed (homepage SEO present; ${locs.length} sitemap URLs all prerendered).`);
+console.log(
+	`✓ prerender verification passed (homepage SEO present; ${locs.length} sitemap URLs all prerendered).`
+);
