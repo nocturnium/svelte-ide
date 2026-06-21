@@ -152,7 +152,31 @@ interface CSharpTokenizerState extends TokenizerState {
 	inVerbatimString?: boolean;
 	/** The verbatim string carrying through is interpolated ($@"...") */
 	verbatimInterpolated?: boolean;
+	/** Inside a multi-line raw string literal ("""...""") */
+	inRawString?: boolean;
+	/** The number of quotes that closes the carrying raw string */
+	rawQuoteCount?: number;
+	/** The carrying raw string is interpolated ($"""...) */
+	rawInterpolated?: boolean;
 }
+
+/** Preprocessor directive names (`#` already consumed). */
+const preprocessorDirectives = new Set([
+	'if',
+	'elif',
+	'else',
+	'endif',
+	'define',
+	'undef',
+	'warning',
+	'error',
+	'line',
+	'region',
+	'endregion',
+	'pragma',
+	'nullable',
+	'checksum'
+]);
 
 export class CSharpTokenizer {
 	language = 'csharp';
@@ -175,6 +199,24 @@ export class CSharpTokenizer {
 				state.inBlockComment = false;
 			} else {
 				tokens.push(createToken('comment.block', line, 0));
+				return { lineNumber, tokens, text: line, state };
+			}
+		}
+
+		// Handle raw string continuation ("""..."""  spanning multiple lines)
+		if (state.inRawString) {
+			const type: TokenType = state.rawInterpolated ? 'string.template' : 'string';
+			const quoteCount = state.rawQuoteCount ?? 3;
+			const closeIdx = this.findRawStringClose(line, 0, quoteCount);
+			if (closeIdx !== -1) {
+				const end = closeIdx + quoteCount;
+				tokens.push(createToken(type, line.slice(0, end), 0));
+				pos = end;
+				state.inRawString = false;
+				state.rawQuoteCount = undefined;
+				state.rawInterpolated = false;
+			} else {
+				tokens.push(createToken(type, line, 0));
 				return { lineNumber, tokens, text: line, state };
 			}
 		}
@@ -221,6 +263,17 @@ export class CSharpTokenizer {
 			return createToken('text', wsMatch[0], pos);
 		}
 
+		// Preprocessor directives (#region, #if, #nullable, #pragma, ...). These are
+		// only valid at the start of a line (after whitespace, already consumed), and
+		// `#` has no other meaning in C#, so consume the whole rest of the line as one
+		// directive token. The directive word must be a recognized directive.
+		if (text[0] === '#') {
+			const dirMatch = text.match(/^#\s*([a-zA-Z]+)/);
+			if (dirMatch && preprocessorDirectives.has(dirMatch[1])) {
+				return createToken('keyword', text, pos);
+			}
+		}
+
 		// XML doc comments (/// ...) — must be checked before line comments
 		if (text.startsWith('///')) {
 			return createToken('comment.doc', text, pos);
@@ -239,6 +292,30 @@ export class CSharpTokenizer {
 			}
 			state.inBlockComment = true;
 			return createToken('comment.block', text, pos);
+		}
+
+		// Raw string literals: """..."""  and interpolated raw $"""...""" / $$"""...
+		// The opening delimiter is an optional run of `$` followed by a run of >= 3
+		// double-quotes. The literal closes on the first run of the SAME number of
+		// quotes; shorter runs inside are content (this is what lets a raw string
+		// contain "" or """). Checked before the @/$ string handlers below so the
+		// triple-quote run is not mistaken for an empty "" string.
+		const rawMatch = text.match(/^(\$*)("{3,})/);
+		if (rawMatch) {
+			const dollars = rawMatch[1];
+			const interpolated = dollars.length > 0;
+			const quoteCount = rawMatch[2].length;
+			const type: TokenType = interpolated ? 'string.template' : 'string';
+			const contentStart = dollars.length + quoteCount;
+			const closeIdx = this.findRawStringClose(text, contentStart, quoteCount);
+			if (closeIdx !== -1) {
+				const end = closeIdx + quoteCount;
+				return createToken(type, text.slice(0, end), pos);
+			}
+			state.inRawString = true;
+			state.rawQuoteCount = quoteCount;
+			state.rawInterpolated = interpolated;
+			return createToken(type, text, pos);
 		}
 
 		// Verbatim / interpolated-verbatim strings: @"...", $@"...", @$"..."
@@ -408,6 +485,35 @@ export class CSharpTokenizer {
 			i++;
 		}
 		return createToken('string.template', text.slice(0, i), pos);
+	}
+
+	/**
+	 * Find the start index of the closing delimiter of a raw string literal — the
+	 * first maximal run of double-quotes whose length is exactly `quoteCount`. A run
+	 * shorter than `quoteCount` is content; a run longer would itself be malformed,
+	 * so we require an exact match. Scanning starts at `from`. Returns -1 if no
+	 * closing run is found on this slice (the literal continues to the next line).
+	 */
+	private findRawStringClose(text: string, from: number, quoteCount: number): number {
+		let i = from;
+		while (i < text.length) {
+			if (text[i] === '"') {
+				const runStart = i;
+				let run = 0;
+				while (i < text.length && text[i] === '"') {
+					run++;
+					i++;
+				}
+				// A run of >= quoteCount quotes closes the literal; its first
+				// `quoteCount` quotes are the delimiter. A shorter run is content.
+				if (run >= quoteCount) {
+					return runStart;
+				}
+			} else {
+				i++;
+			}
+		}
+		return -1;
 	}
 
 	/**

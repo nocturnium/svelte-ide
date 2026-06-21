@@ -239,6 +239,91 @@ describe('VueTokenizer', () => {
 		});
 	});
 
+	describe('multi-line constructs (state threading)', () => {
+		// Regression: a start-tag whose `>` lands on a LATER line (one-attribute-per-
+		// line formatting is idiomatic Vue) must keep parsing attributes/directives on
+		// the continuation lines. A prior bug emitted only `<button` on the opener and
+		// bled `type="submit"` / `@click="go"` out as plain template `text`, with the
+		// closing `>` never recognized.
+		it('threads an open start-tag across lines, keeping attributes highlighted', () => {
+			const lines = tokLines(createVueTokenizer(), [
+				'<button',
+				'  type="submit"',
+				'  @click="go">Go</button>'
+			]);
+			expectToken(lines[0], 'tag.name', 'button');
+			expectToken(lines[1], 'tag.attribute', 'type');
+			expectToken(lines[1], 'tag.attribute.value', '"submit"');
+			// Continuation directive stays a directive, not bled-out text.
+			expectToken(lines[2], 'tag.attribute', '@click');
+			expectToken(lines[2], 'tag.punctuation', '>');
+			expectToken(lines[2], 'tag.name', 'button');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+
+		it('threads a multi-line self-closing component tag', () => {
+			const lines = tokLines(createVueTokenizer(), ['<MyComp', '  :a="1"', '/>']);
+			expectToken(lines[1], 'tag.attribute', ':a');
+			expectToken(lines[2], 'tag.punctuation', '/>');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+
+		// A `>` inside a quoted attribute value on a continuation line must NOT be
+		// mistaken for the tag's closing bracket.
+		it('does not close a multi-line tag on a `>` inside a quoted value', () => {
+			const lines = tokLines(createVueTokenizer(), ['<div', '  :x="a > b"', '>ok</div>']);
+			expectToken(lines[1], 'tag.attribute', ':x');
+			expectToken(lines[1], 'tag.attribute.value', '"a > b"');
+			// The real close is on line 2.
+			expectToken(lines[2], 'tag.punctuation', '>');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+
+		// Regression: mustache interpolation that opens on one line and closes on a
+		// later line must thread the open-interpolation state. A prior bug rendered the
+		// opener's tail and ALL continuation lines as plain `text`, and never emitted
+		// the closing `}}` as a brace.
+		it('threads a multi-line mustache interpolation across lines', () => {
+			const lines = tokLines(createVueTokenizer(), ['<p>{{ user', '  .name }}</p>']);
+			expectToken(lines[0], 'punctuation.brace', '{{');
+			// Continuation interior is tokenized as an expression and the close is a brace.
+			expectToken(lines[1], 'operator', '.');
+			expectToken(lines[1], 'variable', 'name');
+			expectToken(lines[1], 'punctuation.brace', '}}');
+			expectToken(lines[1], 'tag.name', 'p');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+
+		it('threads a three-line mustache with a method chain', () => {
+			const lines = tokLines(createVueTokenizer(), [
+				'{{ items',
+				'  .filter(i => i.ok)',
+				'  .length }}'
+			]);
+			expectToken(lines[0], 'punctuation.brace', '{{');
+			expectTokenType(lines[1], 'function.call');
+			expectToken(lines[2], 'punctuation.brace', '}}');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+
+		// A self-closing tag's `/>` must be tag.punctuation, not plain text.
+		it('emits a self-closing `/>` as tag punctuation', () => {
+			const line = tok(createVueTokenizer(), '<div/>');
+			expectToken(line, 'tag.punctuation', '/>');
+			expectLossless(line, '<div/>');
+		});
+	});
+
 	describe('realistic component', () => {
 		it('tokenizes a representative SFC end to end without dropping characters', () => {
 			const src = [

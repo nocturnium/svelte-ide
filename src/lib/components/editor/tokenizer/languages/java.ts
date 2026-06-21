@@ -218,6 +218,14 @@ export class JavaTokenizer implements LanguageTokenizer {
 		}
 
 		// Numbers: hex, binary, decimal/float with underscores, exponents, type suffixes.
+		// Hex floating-point: 0x1.8p1, 0x1p-4, 0xA.Bp2f. The binary exponent `p` is
+		// mandatory, so match this BEFORE the plain-hex rule (which would stop at the dot).
+		const hexFloatMatch = text.match(
+			/^0[xX](?:[0-9a-fA-F_]+\.?[0-9a-fA-F_]*|\.[0-9a-fA-F_]+)[pP][+-]?\d[\d_]*[fFdD]?/
+		);
+		if (hexFloatMatch) {
+			return createToken('number.float', hexFloatMatch[0], pos);
+		}
 		const hexMatch = text.match(/^0[xX][0-9a-fA-F_]+[lL]?/);
 		if (hexMatch) {
 			return createToken('number.hex', hexMatch[0], pos);
@@ -234,6 +242,13 @@ export class JavaTokenizer implements LanguageTokenizer {
 			const type: TokenType =
 				word.includes('.') || /[eEfF]/.test(word) ? 'number.float' : 'number.integer';
 			return createToken(type, word, pos);
+		}
+
+		// Contextual modifier keyword `non-sealed` (a single hyphenated keyword in
+		// the grammar; without this it would split into `non` / `-` / `sealed`).
+		// Require a word boundary after it so it doesn't swallow `non-sealedness`.
+		if (text.startsWith('non-sealed') && !/^non-sealed[a-zA-Z0-9_$]/.test(text)) {
+			return createToken('keyword.storage', 'non-sealed', pos);
 		}
 
 		// Identifiers and keywords

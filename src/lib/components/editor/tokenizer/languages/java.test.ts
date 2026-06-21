@@ -69,6 +69,18 @@ describe('JavaTokenizer', () => {
 			expectToken(tok(java, 'const int X = 1;'), 'keyword', 'const');
 			expectToken(tok(java, 'goto label;'), 'keyword', 'goto');
 		});
+
+		it('classifies the hyphenated non-sealed modifier as a single keyword', () => {
+			const line = tok(java, 'public non-sealed class Circle implements Shape {}');
+			expectToken(line, 'keyword.storage', 'non-sealed');
+			expectLossless(line, 'public non-sealed class Circle implements Shape {}');
+		});
+
+		it('does not mistake a camelCase identifier for the non-sealed keyword', () => {
+			const line = tok(java, 'int nonSealed = 1;');
+			expectToken(line, 'variable', 'nonSealed');
+			expectLossless(line, 'int nonSealed = 1;');
+		});
 	});
 
 	describe('types and constants', () => {
@@ -145,6 +157,16 @@ describe('JavaTokenizer', () => {
 			expectToken(tok(java, 'double d = 3.14;'), 'number.float', '3.14');
 			expectToken(tok(java, 'float f = 2.0f;'), 'number.float', '2.0f');
 			expectToken(tok(java, 'double e = 1.5e10;'), 'number.float', '1.5e10');
+		});
+
+		it('tokenizes hex floating-point literals as a single float (not hex + dot + ident)', () => {
+			expectToken(tok(java, 'double a = 0x1.8p1;'), 'number.float', '0x1.8p1');
+			expectToken(tok(java, 'double b = 0x1p-4;'), 'number.float', '0x1p-4');
+			expectToken(tok(java, 'float c = 0xA.Bp2f;'), 'number.float', '0xA.Bp2f');
+		});
+
+		it('still classifies plain hex with an L suffix as hex, not float', () => {
+			expectToken(tok(java, 'long hl = 0xFFL;'), 'number.hex', '0xFFL');
 		});
 	});
 

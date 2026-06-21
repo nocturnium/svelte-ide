@@ -65,6 +65,51 @@ const builtinCommands = new Set([
 // Boolean constants (CMake treats these case-insensitively).
 const booleanConstants = new Set(['on', 'off', 'true', 'false', 'yes', 'no']);
 
+// Operators of the if()/elseif()/while() conditional sub-language. CMake reserves
+// these as boolean/comparison/test operators (they are NOT ordinary argument
+// words — `if(A AND B)` parses AND as an operator). They are matched
+// case-insensitively, like CMake itself. We classify the unambiguous reserved
+// operator words globally; with the sole exception of the logical word operators
+// (AND/OR/NOT) which only act as operators inside a conditional command, every
+// member here is an `if`-only reserved word that does not appear as a plain
+// argument value elsewhere, so a context-free match is safe.
+const conditionOperators = new Set([
+	// logical
+	'and',
+	'or',
+	'not',
+	// existence / type tests
+	'exists',
+	'command',
+	'defined',
+	'policy',
+	'target',
+	'test',
+	'in_list',
+	'is_newer_than',
+	'is_directory',
+	'is_symlink',
+	'is_absolute',
+	// numeric / string / version / path comparisons
+	'equal',
+	'less',
+	'less_equal',
+	'greater',
+	'greater_equal',
+	'strequal',
+	'strless',
+	'strless_equal',
+	'strgreater',
+	'strgreater_equal',
+	'version_equal',
+	'version_less',
+	'version_less_equal',
+	'version_greater',
+	'version_greater_equal',
+	'path_equal',
+	'matches'
+]);
+
 interface CMakeTokenizerState extends TokenizerState {
 	/** Inside a multi-line double-quoted string. */
 	inString?: boolean;
@@ -72,6 +117,15 @@ interface CMakeTokenizerState extends TokenizerState {
 	bracketCommentLevel?: number;
 	/** Inside a multi-line bracket argument [==[ ... ]==]; holds the `=` count. */
 	bracketArgLevel?: number;
+	/**
+	 * Paren-nesting depth inside an if()/elseif()/while() argument list. Operator
+	 * words (AND/OR/EXISTS/...) are only reserved operators within these, so we
+	 * only reclassify them while this is > 0. 0/undefined means "not in a
+	 * conditional"; threaded across lines so wrapped conditions still work.
+	 */
+	condParenDepth?: number;
+	/** A conditional control keyword was just seen; the next `(` opens its list. */
+	condArmed?: boolean;
 }
 
 export class CMakeTokenizer implements LanguageTokenizer {
@@ -133,6 +187,7 @@ export class CMakeTokenizer implements LanguageTokenizer {
 			if (token) {
 				tokens.push(token);
 				pos = token.end;
+				this.trackConditionContext(token, state);
 			} else {
 				tokens.push(createToken('text', remaining[0], pos));
 				pos += 1;
@@ -225,7 +280,8 @@ export class CMakeTokenizer implements LanguageTokenizer {
 		const identMatch = text.match(/^[A-Za-z_][A-Za-z0-9_]*/);
 		if (identMatch) {
 			const word = identMatch[0];
-			return createToken(this.classifyIdentifier(word, text, word.length), word, pos);
+			const inCondition = (state.condParenDepth ?? 0) > 0;
+			return createToken(this.classifyIdentifier(word, text, word.length, inCondition), word, pos);
 		}
 
 		// Operators (assignment / comparison-ish characters appearing bare)
@@ -249,6 +305,36 @@ export class CMakeTokenizer implements LanguageTokenizer {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Maintain the if()/elseif()/while() condition context as tokens are emitted.
+	 * Seeing one of those control keywords arms the next `(` to open a condition;
+	 * parens are then counted so wrapped/nested conditions track correctly, and the
+	 * matching `)` closes it. Threaded via state so conditions wrapped across lines
+	 * keep their operator classification.
+	 */
+	private trackConditionContext(token: Token, state: CMakeTokenizerState): void {
+		if (token.type === 'keyword.control') {
+			const lower = token.text.toLowerCase();
+			if (lower === 'if' || lower === 'elseif' || lower === 'while') {
+				state.condArmed = true;
+			}
+			return;
+		}
+		if (token.type !== 'punctuation.paren') {
+			return;
+		}
+		if (token.text === '(') {
+			if (state.condArmed) {
+				state.condParenDepth = 1;
+				state.condArmed = false;
+			} else if ((state.condParenDepth ?? 0) > 0) {
+				state.condParenDepth = (state.condParenDepth ?? 0) + 1;
+			}
+		} else if (token.text === ')' && (state.condParenDepth ?? 0) > 0) {
+			state.condParenDepth = (state.condParenDepth ?? 0) - 1;
+		}
 	}
 
 	/**
@@ -303,7 +389,12 @@ export class CMakeTokenizer implements LanguageTokenizer {
 		return createToken('constant.builtin', text, pos);
 	}
 
-	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {
+	private classifyIdentifier(
+		word: string,
+		context: string,
+		wordLength: number,
+		inCondition: boolean
+	): TokenType {
 		const lower = word.toLowerCase();
 
 		// Boolean constants (case-insensitive)
@@ -317,6 +408,19 @@ export class CMakeTokenizer implements LanguageTokenizer {
 			return 'keyword.control';
 		}
 
+		const after = context.slice(wordLength);
+
+		// Conditional operators (AND/OR/NOT, comparisons, EXISTS/DEFINED/...): these
+		// are reserved operator words of the if()/while() sub-language, not argument
+		// values. They are ONLY operators inside an if()/elseif()/while() argument
+		// list — `set_property(TARGET t ...)` uses TARGET as a scope keyword, not an
+		// operator — so we gate on `inCondition`. A word glued to `(` is a command
+		// call, never an operator, so we also require it not be immediately followed
+		// by `(`.
+		if (inCondition && conditionOperators.has(lower) && !after.startsWith('(')) {
+			return 'keyword.operator';
+		}
+
 		// CMake's grammar permits whitespace between a command name and its
 		// opening paren — `set (X 1)` is identical to `set(X 1)`. For a KNOWN
 		// builtin we therefore look past leading blanks to find the `(`; this is
@@ -324,7 +428,6 @@ export class CMakeTokenizer implements LanguageTokenizer {
 		// word we require the paren to be glued on, so a bare argument word that
 		// happens to precede a parenthesized sub-group (`set(FOO bar (baz))`) is
 		// not mistaken for a call.
-		const after = context.slice(wordLength);
 		if (builtinCommands.has(lower)) {
 			if (after.replace(/^[ \t]+/, '').startsWith('(')) {
 				return 'keyword.module';

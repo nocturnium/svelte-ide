@@ -219,6 +219,136 @@ describe('SqlTokenizer', () => {
 		});
 	});
 
+	describe('PostgreSQL dollar-quoted strings', () => {
+		it('tokenizes a plain $$...$$ dollar-quoted string as one string', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT $$dollar quoted$$ AS d');
+			expectToken(line, 'string', '$$dollar quoted$$');
+			expectToken(line, 'keyword', 'AS');
+			expectLossless(line, 'SELECT $$dollar quoted$$ AS d');
+		});
+
+		it('tokenizes a tagged $body$...$body$ string as one string', () => {
+			const line = tok(
+				createSqlTokenizer(),
+				'AS $body$ BEGIN RETURN 1; END $body$ LANGUAGE plpgsql'
+			);
+			expectToken(line, 'string', '$body$ BEGIN RETURN 1; END $body$');
+			expectLossless(line, 'AS $body$ BEGIN RETURN 1; END $body$ LANGUAGE plpgsql');
+		});
+
+		it('threads a multi-line dollar-quoted body across lines via state', () => {
+			const lines = tokLines(createSqlTokenizer(), [
+				'SELECT $tag$ line one',
+				'still inside; SELECT not-a-keyword',
+				'end of body $tag$ AS x'
+			]);
+			expectToken(lines[0], 'string', '$tag$ line one');
+			// Interior line is wholly the string — no keyword/operator leakage.
+			expectToken(lines[1], 'string', 'still inside; SELECT not-a-keyword');
+			expectToken(lines[2], 'string', 'end of body $tag$');
+			expectToken(lines[2], 'keyword', 'AS');
+			for (let i = 0; i < 3; i++) {
+				expectLossless(
+					lines[i],
+					['SELECT $tag$ line one', 'still inside; SELECT not-a-keyword', 'end of body $tag$ AS x'][
+						i
+					]
+				);
+			}
+		});
+
+		it('does not confuse a $1 bind parameter with a dollar-quote opener', () => {
+			const line = tok(createSqlTokenizer(), 'WHERE id = $1');
+			expectToken(line, 'number', '1');
+			expectLossless(line, 'WHERE id = $1');
+		});
+	});
+
+	describe('PostgreSQL :: cast operator', () => {
+		it('classifies :: as an operator (not two stray characters)', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT price::numeric, n::int4');
+			expectToken(line, 'operator', '::');
+			expectToken(line, 'type.builtin', 'numeric');
+			expectLossless(line, 'SELECT price::numeric, n::int4');
+		});
+	});
+
+	describe('escape strings', () => {
+		it('honours a backslash-escaped quote inside a string (MySQL / E-string)', () => {
+			const line = tok(createSqlTokenizer(), "SELECT 'quote\\'inside' FROM t");
+			expectToken(line, 'string', "'quote\\'inside'");
+			expectToken(line, 'keyword.control', 'FROM');
+			expectLossless(line, "SELECT 'quote\\'inside' FROM t");
+		});
+
+		it('folds an E-prefix into the string literal', () => {
+			const line = tok(createSqlTokenizer(), "SELECT E'it\\'s escaped' AS v");
+			expectToken(line, 'string', "E'it\\'s escaped'");
+			expectToken(line, 'keyword', 'AS');
+			expectLossless(line, "SELECT E'it\\'s escaped' AS v");
+		});
+
+		it('folds an N-prefix (T-SQL unicode) into the string literal', () => {
+			const line = tok(createSqlTokenizer(), "SELECT N'unicode literal'");
+			expectToken(line, 'string', "N'unicode literal'");
+		});
+	});
+
+	describe('T-SQL bracket identifiers and variables', () => {
+		it('emits a bracket-quoted identifier as a single variable', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT [Order Details].[Qty] FROM [Order Details]');
+			expectToken(line, 'variable', '[Order Details]');
+			expectToken(line, 'variable', '[Qty]');
+			expectLossless(line, 'SELECT [Order Details].[Qty] FROM [Order Details]');
+		});
+
+		it('does not treat an array subscript [] as a bracket identifier', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT arr::int[]');
+			expectToken(line, 'operator', '::');
+			// [] stays as plain text, not a variable.
+			const brackets = line.tokens.filter((t) => t.type === 'variable' && t.text.includes('['));
+			if (brackets.length !== 0) throw new Error('array subscript misread as identifier');
+			expectLossless(line, 'SELECT arr::int[]');
+		});
+
+		it('classifies @local and @@global as variables', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT @@ROWCOUNT, @count');
+			expectToken(line, 'variable', '@@ROWCOUNT');
+			expectToken(line, 'variable', '@count');
+			expectLossless(line, 'SELECT @@ROWCOUNT, @count');
+		});
+	});
+
+	describe('nested block comments (PostgreSQL)', () => {
+		it('closes a nested block comment at the OUTER */, not the inner one', () => {
+			const lines = tokLines(createSqlTokenizer(), [
+				'/* block start',
+				'  nested /* inner */ still going',
+				'   end */ SELECT 99'
+			]);
+			// The interior line must NOT leak code after the inner */.
+			expectToken(lines[1], 'comment.block', '  nested /* inner */ still going');
+			expectToken(lines[2], 'comment.block', '   end */');
+			expectToken(lines[2], 'keyword.control', 'SELECT');
+			expectToken(lines[2], 'number', '99');
+		});
+
+		it('closes a single-line nested block comment at the outer */', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT /* a /* b */ c */ 1');
+			expectToken(line, 'comment.block', '/* a /* b */ c */');
+			expectToken(line, 'number', '1');
+			expectLossless(line, 'SELECT /* a /* b */ c */ 1');
+		});
+	});
+
+	describe('window keywords', () => {
+		it('classifies OVER and PARTITION as control keywords', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT COUNT(*) OVER (PARTITION BY dept) FROM emp');
+			expectToken(line, 'keyword.control', 'OVER');
+			expectToken(line, 'keyword.control', 'PARTITION');
+		});
+	});
+
 	describe('realistic statements', () => {
 		it('tokenizes a multi-token JOIN query', () => {
 			const line = tok(

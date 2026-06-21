@@ -122,6 +122,8 @@ interface GroovyTokenizerState extends TokenizerState {
 	inTripleSingle?: boolean;
 	/** Inside a triple-double-quoted multi-line GString */
 	inTripleDouble?: boolean;
+	/** Inside a multi-line dollar-slashy string ($/ ... /$) */
+	inDollarSlashy?: boolean;
 }
 
 export class GroovyTokenizer {
@@ -171,6 +173,19 @@ export class GroovyTokenizer {
 				state.inTripleDouble = false;
 			} else {
 				tokens.push(createToken('string.template', line, 0));
+				return { lineNumber, tokens, text: line, state };
+			}
+		}
+
+		// Resume a multi-line dollar-slashy string ($/ ... /$)
+		if (state.inDollarSlashy) {
+			const endIdx = line.indexOf('/$');
+			if (endIdx !== -1) {
+				tokens.push(createToken('string.regex', line.slice(0, endIdx + 2), 0));
+				pos = endIdx + 2;
+				state.inDollarSlashy = false;
+			} else {
+				tokens.push(createToken('string.regex', line, 0));
 				return { lineNumber, tokens, text: line, state };
 			}
 		}
@@ -247,12 +262,18 @@ export class GroovyTokenizer {
 
 		// Double-quoted GString (interpolated) => string.template
 		if (text.startsWith('"')) {
-			return this.tokenizeString(text, pos, '"', 'string.template');
+			return this.tokenizeGString(text, pos);
 		}
 
 		// Single-quoted literal string
 		if (text.startsWith("'")) {
 			return this.tokenizeString(text, pos, "'", 'string');
+		}
+
+		// Dollar-slashy string: $/ ... /$ (may span multiple lines). Inside,
+		// only `$$`, `$/` and `/$` are special; bare `/` and `$` are literal.
+		if (text.startsWith('$/')) {
+			return this.tokenizeDollarSlashy(text, pos, state);
 		}
 
 		// Slashy regex strings — only after =, (, comma, or `return` (avoids
@@ -264,9 +285,11 @@ export class GroovyTokenizer {
 			}
 		}
 
-		// Numbers — decimal, hex, underscores, floats, and Groovy suffixes (G/L/I/f/d/g)
+		// Numbers — decimal, hex, binary, underscores, floats, and Groovy type
+		// suffixes (g/G, l/L, i/I, f/F, d/D). Per the Groovy spec, suffixes apply
+		// to hex/binary/octal literals too (e.g. 0xFFi, 0b1111L).
 		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[gGlLiIfFdD]?)/
+			/^(?:0[xX][0-9a-fA-F_]+[gGlLiI]?|0[bB][01_]+[gGlLiI]?|(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[gGlLiIfFdD]?)/
 		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
@@ -410,6 +433,68 @@ export class GroovyTokenizer {
 		}
 		// Unterminated on this line — treat as not-a-regex (likely division).
 		return null;
+	}
+
+	/**
+	 * Tokenize a multi-line dollar-slashy string ($/ ... /$). Inside the body the
+	 * only escape sequences are `$$` (literal $) and `$/` (literal /); the string
+	 * terminates at the first `/$`. Threads across lines via state.inDollarSlashy.
+	 */
+	private tokenizeDollarSlashy(text: string, pos: number, state: GroovyTokenizerState): Token {
+		let i = 2; // skip the opening `$/`
+		while (i < text.length) {
+			if (text[i] === '$' && i + 1 < text.length && (text[i + 1] === '$' || text[i + 1] === '/')) {
+				i += 2; // `$$` or `$/` escape
+				continue;
+			}
+			if (text[i] === '/' && text[i + 1] === '$') {
+				return createToken('string.regex', text.slice(0, i + 2), pos);
+			}
+			i++;
+		}
+		// Unterminated on this line — continue on the next.
+		state.inDollarSlashy = true;
+		return createToken('string.regex', text, pos);
+	}
+
+	/**
+	 * Tokenize a double-quoted GString as a single string.template token,
+	 * skipping over `${ ... }` interpolation blocks (with nested-brace tracking)
+	 * so that a `"` or `}` appearing inside interpolation does not end the string
+	 * early. Falls back to literal scanning for `$ident` interpolation.
+	 */
+	private tokenizeGString(text: string, pos: number): Token {
+		let i = 1; // skip opening quote
+		while (i < text.length) {
+			const ch = text[i];
+			if (ch === '\\' && i + 1 < text.length) {
+				i += 2;
+				continue;
+			}
+			// `${ ... }` interpolation: consume to the matching close brace,
+			// honoring nested braces so inner closures/maps don't end it early.
+			if (ch === '$' && text[i + 1] === '{') {
+				let depth = 1;
+				i += 2;
+				while (i < text.length && depth > 0) {
+					const c = text[i];
+					if (c === '\\' && i + 1 < text.length) {
+						i += 2;
+						continue;
+					}
+					if (c === '{') depth++;
+					else if (c === '}') depth--;
+					i++;
+				}
+				continue;
+			}
+			if (ch === '"') {
+				return createToken('string.template', text.slice(0, i + 1), pos);
+			}
+			i++;
+		}
+		// Unterminated single-line GString — emit what we have (stays lossless).
+		return createToken('string.template', text.slice(0, i), pos);
 	}
 
 	private tokenizeString(text: string, pos: number, delimiter: string, type: TokenType): Token {

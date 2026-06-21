@@ -107,11 +107,40 @@ const builtinTypes = new Set([
 	'AnyObject'
 ]);
 
+// Swift compiler / build-configuration directives. These are single lexemes
+// beginning with `#` (e.g. `#if`, `#available`, `#selector`), NOT a `#` token
+// followed by an ordinary keyword/identifier.
+const compilerDirectives = new Set([
+	'if',
+	'elseif',
+	'else',
+	'endif',
+	'available',
+	'unavailable',
+	'selector',
+	'keyPath',
+	'warning',
+	'error',
+	'sourceLocation',
+	'file',
+	'fileID',
+	'filePath',
+	'line',
+	'column',
+	'function',
+	'dsohandle',
+	'colorLiteral',
+	'imageLiteral',
+	'fileLiteral'
+]);
+
 interface SwiftTokenizerState extends TokenizerState {
 	/** Depth of nested block comments (0 = not in a block comment). */
 	blockCommentDepth?: number;
 	/** Inside a triple-quoted multi-line string. */
 	inMultilineString?: boolean;
+	/** Number of `#` signs delimiting an open multi-line raw string (0/undef = none). */
+	rawMultilinePounds?: number;
 }
 
 export class SwiftTokenizer {
@@ -138,6 +167,15 @@ export class SwiftTokenizer {
 		// Resume a triple-quoted multi-line string from a previous line.
 		if (state.inMultilineString) {
 			pos = this.continueMultilineString(line, tokens, state);
+			if (pos >= line.length) {
+				if (tokens.length === 0) tokens.push(createToken('text', '', 0));
+				return { lineNumber, tokens, text: line, state };
+			}
+		}
+
+		// Resume a multi-line raw string (#"""..."""#) from a previous line.
+		if (state.rawMultilinePounds && state.rawMultilinePounds > 0) {
+			pos = this.continueRawMultilineString(line, tokens, state);
 			if (pos >= line.length) {
 				if (tokens.length === 0) tokens.push(createToken('text', '', 0));
 				return { lineNumber, tokens, text: line, state };
@@ -188,6 +226,25 @@ export class SwiftTokenizer {
 		// Block comments (nestable)
 		if (text.startsWith('/*')) {
 			return this.tokenizeBlockComment(text, pos, state);
+		}
+
+		// Raw strings: one or more `#`, then `"` (single-line) or `"""` (multi-line),
+		// closing on a `"`/`"""` followed by the SAME number of `#`. Must be checked
+		// before compiler directives so `#"..."#` isn't read as a `#`-directive.
+		if (text[0] === '#') {
+			const poundMatch = text.match(/^#+/);
+			const pounds = poundMatch![0].length;
+			if (text[pounds] === '"') {
+				return this.tokenizeRawString(text, pos, pounds, state);
+			}
+		}
+
+		// Compiler / build directives: #if, #available, #selector, #warning, ...
+		if (text[0] === '#') {
+			const dirMatch = text.match(/^#[a-zA-Z_][a-zA-Z0-9_]*/);
+			if (dirMatch && compilerDirectives.has(dirMatch[0].slice(1))) {
+				return createToken('keyword', dirMatch[0], pos);
+			}
 		}
 
 		// Triple-quoted multi-line strings
@@ -468,6 +525,59 @@ export class SwiftTokenizer {
 		}
 		state.inMultilineString = true;
 		return createToken('string', text, pos);
+	}
+
+	/**
+	 * Tokenize a raw string opening with `pounds` `#` signs. Handles both single-line
+	 * (`#"..."#`) and multi-line (`#"""..."""#`) forms. The closing delimiter is the
+	 * matching quote run followed by exactly `pounds` `#` signs. Raw strings do not
+	 * process escapes, so the whole literal is emitted as one `string` token; an open
+	 * multi-line raw string threads to the next line via state.
+	 */
+	private tokenizeRawString(
+		text: string,
+		pos: number,
+		pounds: number,
+		state: SwiftTokenizerState
+	): Token {
+		const hashes = '#'.repeat(pounds);
+		const isMultiline = text.slice(pounds, pounds + 3) === '"""';
+		if (isMultiline) {
+			const closeMarker = '"""' + hashes;
+			const endIdx = text.indexOf(closeMarker, pounds + 3);
+			if (endIdx !== -1) {
+				return createToken('string', text.slice(0, endIdx + closeMarker.length), pos);
+			}
+			state.rawMultilinePounds = pounds;
+			return createToken('string', text, pos);
+		}
+		// Single-line raw string: scan for `"` followed by `pounds` `#`.
+		const closeMarker = '"' + hashes;
+		const endIdx = text.indexOf(closeMarker, pounds + 1);
+		if (endIdx !== -1) {
+			return createToken('string', text.slice(0, endIdx + closeMarker.length), pos);
+		}
+		// Unterminated on this line — Swift requires single-line raw strings to close on
+		// the same line, so consume the rest as string and recover on the next line.
+		return createToken('string', text, pos);
+	}
+
+	/** Continue a multi-line raw string opened on a previous line. Returns new pos. */
+	private continueRawMultilineString(
+		line: string,
+		tokens: Token[],
+		state: SwiftTokenizerState
+	): number {
+		const pounds = state.rawMultilinePounds ?? 1;
+		const closeMarker = '"""' + '#'.repeat(pounds);
+		const endIdx = line.indexOf(closeMarker);
+		if (endIdx !== -1) {
+			tokens.push(createToken('string', line.slice(0, endIdx + closeMarker.length), 0));
+			state.rawMultilinePounds = 0;
+			return endIdx + closeMarker.length;
+		}
+		tokens.push(createToken('string', line, 0));
+		return line.length;
 	}
 
 	/** Continue a triple-quoted string opened on a previous line. Returns new pos. */

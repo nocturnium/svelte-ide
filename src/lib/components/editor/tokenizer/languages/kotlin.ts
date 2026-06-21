@@ -223,6 +223,18 @@ export class KotlinTokenizer {
 			return this.classifyNumber(numMatch[0], pos);
 		}
 
+		// Backtick-escaped identifiers (e.g. `class`, `is`, `test that it works`).
+		// The backticks turn the contents into a plain identifier, so any keyword
+		// inside must NOT be classified as a keyword. The whole span is one name.
+		if (text.startsWith('`')) {
+			const btMatch = text.match(/^`[^`\r\n]*`/);
+			if (btMatch) {
+				const after = text.slice(btMatch[0].length);
+				const type: TokenType = after.startsWith('(') ? 'function.call' : 'variable';
+				return createToken(type, btMatch[0], pos);
+			}
+		}
+
 		// Identifiers and keywords
 		const identMatch = text.match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
 		if (identMatch) {
@@ -341,11 +353,13 @@ export class KotlinTokenizer {
 		while (i < text.length) {
 			const ch = text[i];
 
-			// Escape sequence
+			// Escape sequence (\uXXXX unicode escape, or \<char>)
 			if (ch === '\\' && i + 1 < text.length) {
 				flushSegment(i);
-				tokens.push(createToken('string.escape', text.slice(i, i + 2), pos + i));
-				i += 2;
+				const uniMatch = text.slice(i).match(/^\\u[0-9a-fA-F]{4}/);
+				const escLen = uniMatch ? uniMatch[0].length : 2;
+				tokens.push(createToken('string.escape', text.slice(i, i + escLen), pos + i));
+				i += escLen;
 				segStart = i;
 				continue;
 			}

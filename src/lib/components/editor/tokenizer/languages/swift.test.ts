@@ -221,6 +221,50 @@ describe('SwiftTokenizer - multi-line constructs', () => {
 	});
 });
 
+describe('SwiftTokenizer - compiler directives', () => {
+	it('classifies #if / #endif as single keyword lexemes, not split # + control', () => {
+		// Regression: `#if` was emitted as a bare `#` text token followed by the
+		// control keyword `if`, and `#endif` as `#` + variable `endif`.
+		const a = tok(swift, '#if DEBUG');
+		expectToken(a, 'keyword', '#if');
+		expectLossless(a, '#if DEBUG');
+		const b = tok(swift, '#endif');
+		expectToken(b, 'keyword', '#endif');
+		expectLossless(b, '#endif');
+	});
+
+	it('classifies #available / #selector / #warning as directive keywords', () => {
+		// Regression: these were emitted as `#` text + a `function.call` token.
+		expectToken(tok(swift, '#available(iOS 15, *)'), 'keyword', '#available');
+		expectToken(tok(swift, '#selector(MyClass.method)'), 'keyword', '#selector');
+		expectToken(tok(swift, '#warning("nope")'), 'keyword', '#warning');
+	});
+});
+
+describe('SwiftTokenizer - raw strings', () => {
+	it('keeps a single-pound raw string as one string token', () => {
+		const line = tok(swift, 'let r = #"no \\(interp) here"#');
+		expectToken(line, 'string', '#"no \\(interp) here"#');
+		expectLossless(line, 'let r = #"no \\(interp) here"#');
+	});
+
+	it('does not let an embedded "# close a two-pound raw string early', () => {
+		// Regression: `##"... "# ..."##` ended at the first plain `"`, leaking the
+		// remainder back into code (the inner `"#` is NOT the closing delimiter).
+		const line = tok(swift, 'let r2 = ##"two pounds "# inside"##');
+		expectToken(line, 'string', '##"two pounds "# inside"##');
+		expectLossless(line, 'let r2 = ##"two pounds "# inside"##');
+	});
+
+	it('threads a multi-line raw string and closes on the pounded delimiter', () => {
+		const lines = tokLines(swift, ['let rb = #"""', '    raw block', '    """#']);
+		expectToken(lines[0], 'string', '#"""');
+		expectToken(lines[1], 'string', '    raw block');
+		expectToken(lines[2], 'string', '    """#');
+		expectLossless(lines[1], '    raw block');
+	});
+});
+
 describe('SwiftTokenizer - realistic lines', () => {
 	it('tokenizes a guard-let with multiple token kinds', () => {
 		const line = tok(swift, '    guard let value = optional else { return nil }');

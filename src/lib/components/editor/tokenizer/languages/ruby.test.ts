@@ -100,6 +100,51 @@ describe('ruby: strings', () => {
 	});
 });
 
+describe('ruby: percent-literals beyond %w/%i', () => {
+	it('tokenizes %q and %Q string literals as a single string token', () => {
+		expectToken(tok(rb, 'a = %q{single quoted}'), 'string', '%q{single quoted}');
+		// Regression: the inner `#{x}` must NOT bleed into a line comment.
+		const dq = tok(rb, 'b = %Q<double #{x} quoted>');
+		expectToken(dq, 'string', '%Q<double #{x} quoted>');
+		expectLossless(dq, 'b = %Q<double #{x} quoted>');
+	});
+
+	it('tokenizes %r regex literals (with flags) as string.regex', () => {
+		expectToken(tok(rb, 'e = %r{[a-z]+}i'), 'string.regex', '%r{[a-z]+}i');
+	});
+
+	it('tokenizes %x command literals as a string', () => {
+		expectToken(tok(rb, 'f = %x(ls -la)'), 'string', '%x(ls -la)');
+	});
+});
+
+describe('ruby: regex vs division', () => {
+	it('treats a slash literal in value position as a regex', () => {
+		expectToken(tok(rb, 'r = /foo.*bar/i'), 'string.regex', '/foo.*bar/i');
+	});
+
+	it('does not let a # inside a regex bleed into a line comment', () => {
+		// Before the fix `#/` was tokenized as a `comment.line`, swallowing the close.
+		const line = tok(rb, 'if line =~ /^\\s*#/');
+		expectToken(line, 'string.regex', '/^\\s*#/');
+		expectLossless(line, 'if line =~ /^\\s*#/');
+	});
+
+	it('recognizes a regex argument right after an opening paren or comma', () => {
+		const line = tok(rb, 'gsub(/\\d+/, "N")');
+		expectToken(line, 'string.regex', '/\\d+/');
+	});
+
+	it('keeps a slash between two values as the division operator', () => {
+		const div = tok(rb, 'x = 10 / 2');
+		expectToken(div, 'operator', '/');
+		const chain = tok(rb, 'y = a / b / c');
+		// Two division operators, no regex swallowing `b / c`.
+		expectToken(chain, 'operator', '/');
+		expectLossless(chain, 'y = a / b / c');
+	});
+});
+
 describe('ruby: symbols', () => {
 	it('tokenizes plain symbols as constant.builtin', () => {
 		const line = tok(rb, 'h = { key: 1, other: :name }');

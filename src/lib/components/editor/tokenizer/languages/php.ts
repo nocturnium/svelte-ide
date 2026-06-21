@@ -119,6 +119,13 @@ interface PhpTokenizerState extends TokenizerState {
 	heredocNowdoc?: boolean;
 	/** Whether the active multi-line block comment was opened as a /** doc comment */
 	inDocComment?: boolean;
+	/**
+	 * Currently in inline-HTML mode (outside PHP tags). PHP scripts re-enter this
+	 * mode after every `?>` close tag and leave it on the next `<?php`/`<?=`/`<?`.
+	 * The tokenizer treats bare snippets as already in PHP mode (initial state),
+	 * so this only flips on once a close tag is actually seen.
+	 */
+	inHtml?: boolean;
 }
 
 export class PhpTokenizer {
@@ -173,6 +180,26 @@ export class PhpTokenizer {
 
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
+
+			// Inline-HTML mode: everything outside PHP tags is literal text. Emit the
+			// run up to the next open tag as a single `text` token, then let the open
+			// tag be tokenized as a keyword (flipping us back into PHP mode).
+			if (state.inHtml) {
+				const openMatch = remaining.match(/<\?(?:php\b|=|(?![a-zA-Z]))/);
+				if (!openMatch || openMatch.index === undefined) {
+					// No open tag on this line: the whole remainder is inline HTML.
+					tokens.push(createToken('text', remaining, pos));
+					pos = line.length;
+					break;
+				}
+				if (openMatch.index > 0) {
+					tokens.push(createToken('text', remaining.slice(0, openMatch.index), pos));
+					pos += openMatch.index;
+				}
+				state.inHtml = false;
+				continue;
+			}
+
 			const token = this.getNextToken(remaining, pos, state);
 
 			if (token) {
@@ -202,7 +229,8 @@ export class PhpTokenizer {
 			return createToken('text', wsMatch[0], pos);
 		}
 
-		// PHP open/close tags
+		// PHP open/close tags. The close tag returns control to inline-HTML mode;
+		// the open tags leave it (handled where HTML mode is entered).
 		if (text.startsWith('<?php')) {
 			return createToken('keyword', '<?php', pos);
 		}
@@ -213,6 +241,7 @@ export class PhpTokenizer {
 			return createToken('keyword', '<?', pos);
 		}
 		if (text.startsWith('?>')) {
+			state.inHtml = true;
 			return createToken('keyword', '?>', pos);
 		}
 

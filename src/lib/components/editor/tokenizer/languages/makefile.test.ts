@@ -269,6 +269,84 @@ describe('makefile: numbers vs version-like words', () => {
 	});
 });
 
+describe('makefile: escaped hash is a literal, not a comment', () => {
+	it('treats \\# in an assignment value as a literal hash, not a comment', () => {
+		// Regression: `\#literal` was tokenized as variable "\" + comment.line "#literal".
+		// GNU make strips the backslash and keeps the hash as a value character, so the
+		// remainder must NOT bleed into a comment.
+		const line = tok(t, 'HASH := \\#literal-hash');
+		expectToken(line, 'string.escape', '\\#');
+		expectToken(line, 'variable', 'literal-hash');
+		expectLossless(line, 'HASH := \\#literal-hash');
+		const comments = line.tokens.filter((tk) => tk.type === 'comment.line');
+		if (comments.length !== 0) {
+			throw new Error(`escaped hash must not start a comment, got ${JSON.stringify(comments)}`);
+		}
+	});
+
+	it('keeps a \\# in the middle of a value from starting a comment', () => {
+		const line = tok(t, 'CFLAGS += -DTAG=\\#dev');
+		expectToken(line, 'string.escape', '\\#');
+		expectToken(line, 'variable', 'dev');
+		expectLossless(line, 'CFLAGS += -DTAG=\\#dev');
+	});
+
+	it('still treats an unescaped # as a comment', () => {
+		const line = tok(t, 'VAR = value # real comment');
+		expectToken(line, 'comment.line', '# real comment');
+	});
+
+	it('a backslash-escaped backslash before # still allows a comment (\\\\#)', () => {
+		// `\\` is a literal backslash; the following `#` is a genuine comment.
+		const line = tok(t, 'P = a\\\\#c');
+		expectToken(line, 'comment.line', '#c');
+		expectLossless(line, 'P = a\\\\#c');
+	});
+});
+
+describe('makefile: backslash-continued line context', () => {
+	it('keeps value highlighting on a continued assignment line', () => {
+		// Regression: continuation lines were always scanned as raw recipe text, flattening
+		// a multi-line variable assignment to a single plain `text` token.
+		const lines = tokLines(t, ['SRCS = main.c \\', '\tutil.c \\', '\thelper.c']);
+		expectToken(lines[1], 'variable', 'util.c');
+		expectToken(lines[2], 'variable', 'helper.c');
+		expectLossless(lines[1], '\tutil.c \\');
+		expectLossless(lines[2], '\thelper.c');
+	});
+
+	it('keeps prerequisites highlighted across a continued target line', () => {
+		const lines = tokLines(t, ['build: a.o \\', '       b.o']);
+		expectToken(lines[1], 'variable', 'b.o');
+		expectLossless(lines[1], '       b.o');
+	});
+
+	it('does not treat a directive-named value on a continuation line as a keyword', () => {
+		// `include.mk` / `export.c` on a continuation line are plain values, not directives.
+		const lines = tokLines(t, ['FILES = a.c \\', '\tinclude.mk \\', '\texport.c']);
+		expectToken(lines[1], 'variable', 'include.mk');
+		expectToken(lines[2], 'variable', 'export.c');
+		const kw = lines[1].tokens
+			.concat(lines[2].tokens)
+			.filter((tk) => tk.type === 'keyword.control');
+		if (kw.length !== 0) {
+			throw new Error(`continuation values must not be keywords, got ${JSON.stringify(kw)}`);
+		}
+	});
+
+	it('still keeps a continued RECIPE line as raw shell text', () => {
+		// A real recipe continuation must stay plain (a hash there is not a comment, words
+		// are not make values).
+		const lines = tokLines(t, ['build:', '\tgcc -o app \\', '\t\tmain.c util.c']);
+		expectLossless(lines[2], '\t\tmain.c util.c');
+		// The continued recipe stays plain text, not carved into make `variable` words.
+		const vars = lines[2].tokens.filter((tk) => tk.type === 'variable');
+		if (vars.length !== 0) {
+			throw new Error(`recipe continuation must stay raw, got ${JSON.stringify(vars)}`);
+		}
+	});
+});
+
 describe('makefile: lossless reconstruction', () => {
 	it('is lossless on an indented target line', () => {
 		const src = '   build: main.o util.o';

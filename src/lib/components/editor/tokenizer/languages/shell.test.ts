@@ -161,6 +161,37 @@ describe('shell: comments', () => {
 	});
 });
 
+describe('shell: keyword word boundaries', () => {
+	it('does NOT treat a keyword glued to a non-metacharacter as a keyword', () => {
+		// `done#notcomment` is a single literal word; `done` is NOT the loop keyword.
+		const line = tok(sh, 'echo done#notcomment');
+		expectToken(line, 'variable', 'done');
+		const kw = line.tokens.filter((t) => t.type.startsWith('keyword') && t.text === 'done');
+		if (kw.length > 0) {
+			throw new Error('keyword glued to a word (done#...) must not highlight as a keyword');
+		}
+		expectLossless(line, 'echo done#notcomment');
+	});
+
+	it('does NOT treat a keyword glued by a dot as a keyword', () => {
+		// `for.x` is one word in shell ('.' is not a metacharacter); `for` is not a keyword.
+		const line = tok(sh, 'for.x');
+		expectToken(line, 'variable', 'for');
+		const kw = line.tokens.filter((t) => t.type.startsWith('keyword'));
+		if (kw.length > 0) {
+			throw new Error('for.x must not contain a keyword token');
+		}
+		expectLossless(line, 'for.x');
+	});
+
+	it('still recognizes genuine keywords at real word boundaries', () => {
+		const line = tok(sh, 'for i in 1; do done');
+		expectToken(line, 'keyword.control', 'for');
+		expectToken(line, 'keyword.control', 'do');
+		expectToken(line, 'keyword.control', 'done');
+	});
+});
+
 describe('shell: numbers', () => {
 	it('tokenizes integer literals', () => {
 		const line = tok(sh, 'exit 127');
@@ -170,6 +201,43 @@ describe('shell: numbers', () => {
 	it('tokenizes numbers in arithmetic context', () => {
 		const line = tok(sh, 'sleep 30');
 		expectToken(line, 'number', '30');
+	});
+
+	it('does NOT split a digit-led word into number + identifier', () => {
+		// `12ab` / `3rd` are single shell words, not a numeric literal then a word.
+		const line = tok(sh, 'echo 3rd 12ab');
+		expectToken(line, 'variable', '3rd');
+		expectToken(line, 'variable', '12ab');
+		const nums = line.tokens.filter((t) => t.type === 'number');
+		if (nums.length > 0) {
+			throw new Error('digit-led words must not produce a number token');
+		}
+		expectLossless(line, 'echo 3rd 12ab');
+	});
+
+	it('keeps a standalone digit run as a number', () => {
+		const line = tok(sh, 'arr[2]=val');
+		expectToken(line, 'number', '2');
+		expectLossless(line, 'arr[2]=val');
+	});
+});
+
+describe('shell: backslash escapes', () => {
+	it('treats an unquoted backslash-dollar as an escape, not a variable', () => {
+		// `\$notvar` is a literal '$'; `notvar` must not be a variable expansion.
+		const line = tok(sh, 'echo \\$notvar');
+		expectToken(line, 'string.escape', '\\$');
+		const vars = line.tokens.filter((t) => t.type === 'variable' && t.text.startsWith('$'));
+		if (vars.length > 0) {
+			throw new Error('escaped \\$ must not start a variable token');
+		}
+		expectLossless(line, 'echo \\$notvar');
+	});
+
+	it('treats an unquoted backslash-space as an escape and stays lossless', () => {
+		const line = tok(sh, 'echo a\\ b');
+		expectToken(line, 'string.escape', '\\ ');
+		expectLossless(line, 'echo a\\ b');
 	});
 });
 

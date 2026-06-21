@@ -167,6 +167,14 @@ export class ShellTokenizer {
 			return createToken('text', wsMatch[0], pos);
 		}
 
+		// Unquoted backslash escape: '\' protects the next character literally
+		// (e.g. \$ is a literal '$', not a variable; \# is a literal '#', not a
+		// comment). Consume the pair as one escape token so the escaped character
+		// cannot seed a variable, comment, or operator.
+		if (text[0] === '\\' && text.length > 1) {
+			return createToken('string.escape', text.slice(0, 2), pos);
+		}
+
 		// Shebang (only meaningful at column 0, but treat any leading #! as a doc comment)
 		if (pos === 0 && text.startsWith('#!')) {
 			return createToken('comment.line', text, pos);
@@ -275,17 +283,26 @@ export class ShellTokenizer {
 			}
 		}
 
-		// Numbers (integers; shell has no native floats).
+		// Numbers (integers; shell has no native floats). A digit run is only a
+		// number when it forms a complete word — if an identifier character glues
+		// onto it (`12ab`, `3rd`, the `0xFF`/`2#…` arithmetic bases), the whole run
+		// is a single shell word, not a numeric literal followed by an identifier.
 		const numMatch = text.match(/^\d+/);
-		if (numMatch) {
+		if (numMatch && !/^[A-Za-z_]/.test(text.slice(numMatch[0].length))) {
 			return createToken('number', numMatch[0], pos);
 		}
 
-		// Identifiers / words / keywords / builtins.
+		// Identifiers / words / keywords / builtins. The leading character may be a
+		// digit (a bare word such as `12ab`), but such digit-led words are never
+		// keywords/builtins, so route them straight to a plain word classification.
 		const identMatch = text.match(/^[A-Za-z_][A-Za-z0-9_]*/);
 		if (identMatch) {
 			const word = identMatch[0];
 			return createToken(this.classifyIdentifier(word, text, word.length), word, pos);
+		}
+		const wordMatch = text.match(/^[A-Za-z0-9_]+/);
+		if (wordMatch) {
+			return createToken('variable', wordMatch[0], pos);
 		}
 
 		// Punctuation / brackets / parens / braces.
@@ -338,25 +355,37 @@ export class ShellTokenizer {
 	}
 
 	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {
-		// Boolean-ish constants
-		if (word === 'true' || word === 'false') {
-			return 'constant.boolean';
-		}
+		const afterWord = context.slice(wordLength);
 
-		// Control-flow keywords
-		if (controlKeywords.has(word)) {
-			if (word === 'function') return 'keyword.definition';
-			if (word === 'in') return 'keyword.operator';
-			return 'keyword.control';
-		}
+		// Reserved words (keywords, builtins, booleans) are only recognized when the
+		// run is a COMPLETE shell word — i.e. the next character is a word terminator:
+		// end of line, whitespace, or a shell metacharacter (; & | < > )). When a
+		// non-metacharacter such as '#' or '.' glues onto it (`done#tag`, `for.x`),
+		// the run is part of a larger literal word and must NOT highlight as a keyword.
+		// '(' is deliberately excluded so `name(` routes to function.call below.
+		const nextChar = afterWord[0] ?? '';
+		const isCompleteWord = nextChar === '' || /[ \t|&;)<>]/.test(nextChar);
 
-		// Builtins
-		if (builtins.has(word)) {
-			return 'function';
+		if (isCompleteWord) {
+			// Boolean-ish constants
+			if (word === 'true' || word === 'false') {
+				return 'constant.boolean';
+			}
+
+			// Control-flow keywords
+			if (controlKeywords.has(word)) {
+				if (word === 'function') return 'keyword.definition';
+				if (word === 'in') return 'keyword.operator';
+				return 'keyword.control';
+			}
+
+			// Builtins
+			if (builtins.has(word)) {
+				return 'function';
+			}
 		}
 
 		// Function call: word immediately followed by '('
-		const afterWord = context.slice(wordLength);
 		if (afterWord.startsWith('(')) {
 			return 'function.call';
 		}

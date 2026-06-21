@@ -66,6 +66,49 @@ describe('cmake: commands and keywords', () => {
 	});
 });
 
+describe('cmake: conditional operators', () => {
+	it('classifies AND/OR/NOT inside if() as keyword.operator', () => {
+		const line = tok(t, 'if(A AND B OR NOT C)');
+		expectToken(line, 'keyword.operator', 'AND');
+		expectToken(line, 'keyword.operator', 'OR');
+		expectToken(line, 'keyword.operator', 'NOT');
+		expectLossless(line, 'if(A AND B OR NOT C)');
+	});
+
+	it('classifies comparison/test operators inside if() as keyword.operator', () => {
+		expectToken(tok(t, 'if(DEFINED X)'), 'keyword.operator', 'DEFINED');
+		expectToken(tok(t, 'if(EXISTS "/p")'), 'keyword.operator', 'EXISTS');
+		expectToken(tok(t, 'if(X STREQUAL "y")'), 'keyword.operator', 'STREQUAL');
+		expectToken(tok(t, 'if(VERSION_LESS 1.2 1.3)'), 'keyword.operator', 'VERSION_LESS');
+		expectToken(tok(t, 'while(I LESS 10)'), 'keyword.operator', 'LESS');
+	});
+
+	it('does NOT treat operator-named scope keywords outside a condition as operators', () => {
+		// TARGET is a scope keyword to set_property, not an if() operator.
+		const sp = tok(t, 'set_property(TARGET t PROPERTY P V)');
+		expectToken(sp, 'variable', 'TARGET');
+		// COMMAND is an argument keyword to add_test, not an operator.
+		const at = tok(t, 'add_test(NAME t COMMAND exe)');
+		expectToken(at, 'variable', 'COMMAND');
+		// A bare AND outside any condition is just an argument word.
+		expectToken(tok(t, 'set(X AND)'), 'variable', 'AND');
+	});
+
+	it('tracks operator context across nested parens and wrapped lines', () => {
+		const nested = tok(t, 'if(NOT (A OR B) AND C)');
+		expectToken(nested, 'keyword.operator', 'NOT');
+		expectToken(nested, 'keyword.operator', 'OR');
+		expectToken(nested, 'keyword.operator', 'AND');
+
+		const lines = tokLines(t, ['if(A AND', '   B OR EXISTS x)', 'set(AND 1)']);
+		expectToken(lines[0], 'keyword.operator', 'AND');
+		expectToken(lines[1], 'keyword.operator', 'OR');
+		expectToken(lines[1], 'keyword.operator', 'EXISTS');
+		// Once the condition closes, AND is a plain argument again.
+		expectToken(lines[2], 'variable', 'AND');
+	});
+});
+
 describe('cmake: variables', () => {
 	it('tokenizes a ${VAR} reference', () => {
 		const line = tok(t, 'message(${PROJECT_NAME})');

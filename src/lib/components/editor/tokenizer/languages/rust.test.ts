@@ -269,6 +269,54 @@ describe('rust: realistic lines', () => {
 	});
 });
 
+describe('rust: raw identifiers, byte chars, shebang, reserved words', () => {
+	// Regression: `r#match` is ONE raw identifier that lets a keyword be used as a
+	// name. It must not split into `r` + `#` + the keyword `match` (which would
+	// paint keyword highlighting into the middle of an identifier).
+	it('treats a raw identifier as a single identifier, not a keyword', () => {
+		const line = tok(rust, 'let r#match = 5;');
+		expectToken(line, 'variable', 'r#match');
+		expect(findTokens(line, 'keyword.control').length).toBe(0);
+		expectLossless(line, 'let r#match = 5;');
+	});
+
+	it('treats a raw-identifier call as a function call (not split keyword)', () => {
+		const line = tok(rust, 'fn r#fn() {}');
+		expectToken(line, 'function.call', 'r#fn');
+		expectLossless(line, 'fn r#fn() {}');
+	});
+
+	// Regression: a byte-char literal `b'A'` is one literal; the `b` prefix must
+	// not split off as a separate identifier token.
+	it('keeps the b prefix on a byte-char literal', () => {
+		const line = tok(rust, "let b = b'A';");
+		expectToken(line, 'string', "b'A'");
+		expectLossless(line, "let b = b'A';");
+	});
+
+	it('keeps the b prefix on an escaped byte-char literal', () => {
+		const line = tok(rust, "let n = b'\\n';");
+		expectToken(line, 'string', "b'\\n'");
+	});
+
+	// Regression: a first-line shebang is ignored by Rust; it must render as a
+	// single comment, not get shredded into `!`, `/`, and identifier tokens.
+	it('renders a first-line shebang as a comment', () => {
+		const lines = tokLines(rust, ['#!/usr/bin/env run', 'fn main() {}']);
+		expectToken(lines[0], 'comment.line', '#!/usr/bin/env run');
+		expectLossless(lines[0], '#!/usr/bin/env run');
+		// Inner attributes on the first line must still be attributes, not a shebang.
+		expectToken(tok(rust, '#![no_std]'), 'keyword', '#![no_std]');
+	});
+
+	// Regression: reserved-for-future-use words must highlight as keywords, not
+	// fall through to plain identifiers.
+	it('classifies reserved words as keywords', () => {
+		expectToken(tok(rust, 'become x;'), 'keyword', 'become');
+		expectToken(tok(rust, 'box val;'), 'keyword', 'box');
+	});
+});
+
 describe('rust: lossless', () => {
 	it('is lossless on an indented line', () => {
 		const src = '        let mut count: usize = 0;';

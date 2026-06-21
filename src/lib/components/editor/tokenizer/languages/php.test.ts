@@ -282,6 +282,49 @@ describe('PHP tokenizer', () => {
 		});
 	});
 
+	describe('inline HTML (close-tag mode switch)', () => {
+		it('treats text after a ?> close tag as inline HTML, not PHP code', () => {
+			// Regression: after ?> the tokenizer kept lexing as PHP, so literal markup
+			// after the close tag was mis-read as comparison operators / bare identifiers.
+			// (Note: the snippet starts in PHP mode, so the close tag is what flips it.)
+			const line = tok(php, 'echo $x; ?> trailing <b>HTML</b>');
+			expectToken(line, 'keyword', '?>');
+			// Everything after ?> is a single inline-HTML text token, not < as comparison.
+			expectToken(line, 'text', ' trailing <b>HTML</b>');
+			expectLossless(line, 'echo $x; ?> trailing <b>HTML</b>');
+		});
+
+		it('re-enters PHP mode at <?= within an inline-HTML run', () => {
+			const lines = tokLines(php, ['?>', '<div>Static <?= $title ?> more</div>']);
+			// On line 2 we are already in HTML mode from the prior ?>.
+			expectToken(lines[1], 'text', '<div>Static ');
+			expectToken(lines[1], 'keyword', '<?=');
+			expectToken(lines[1], 'variable', '$title');
+			expectToken(lines[1], 'keyword', '?>');
+			expectToken(lines[1], 'text', ' more</div>');
+			expectLossless(lines[1], '<div>Static <?= $title ?> more</div>');
+		});
+
+		it('threads inline-HTML mode across lines until the next open tag', () => {
+			const lines = tokLines(php, ['echo "x"; ?>', '<ul><li>Item</li></ul>', '<?php $y = 1;']);
+			// The whole HTML line is one text token, not tokenized as PHP.
+			expectToken(lines[1], 'text', '<ul><li>Item</li></ul>');
+			// The open tag on the next line re-enters PHP mode.
+			expectToken(lines[2], 'keyword', '<?php');
+			expectToken(lines[2], 'variable', '$y');
+			lines.forEach((l, i) =>
+				expectLossless(l, ['echo "x"; ?>', '<ul><li>Item</li></ul>', '<?php $y = 1;'][i])
+			);
+		});
+
+		it('leaves an <?xml declaration inside inline HTML as text', () => {
+			// In HTML mode, <?xml ...?> is an XML declaration, not a PHP short open tag.
+			const lines = tokLines(php, ['?>', '<?xml version="1.0"?>']);
+			expectToken(lines[1], 'text', '<?xml version="1.0"?>');
+			expectLossless(lines[1], '<?xml version="1.0"?>');
+		});
+	});
+
 	describe('lossless reconstruction', () => {
 		it('reconstructs a line with leading indentation', () => {
 			const src = '        return $this->repository->find($id);';
