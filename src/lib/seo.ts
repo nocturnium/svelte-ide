@@ -32,6 +32,7 @@ export function absoluteUrl(pathname: string): string {
 export const SITEMAP_ROUTES: { path: string; priority: number; changefreq: string }[] = [
 	{ path: '/', priority: 1.0, changefreq: 'weekly' },
 	{ path: '/demo', priority: 0.9, changefreq: 'weekly' },
+	{ path: '/demo/languages', priority: 0.8, changefreq: 'monthly' },
 	{ path: '/demo/editor-basic', priority: 0.7, changefreq: 'monthly' },
 	{ path: '/demo/folding', priority: 0.7, changefreq: 'monthly' },
 	{ path: '/demo/components', priority: 0.7, changefreq: 'monthly' },

@@ -20,6 +20,7 @@
 			title: 'Core',
 			items: [
 				{ href: '/demo/editor', label: 'Editor', icon: '✎' },
+				{ href: '/demo/languages', label: 'Languages', icon: '⌗' },
 				{ href: '/demo/folding', label: 'Code Folding', icon: '⊟' },
 				{ href: '/demo/stress', label: 'Stress Test', icon: '▥' },
 				{ href: '/demo/components', label: 'Components', icon: '▢' },
