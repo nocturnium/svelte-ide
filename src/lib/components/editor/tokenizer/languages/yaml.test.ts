@@ -49,6 +49,22 @@ describe('yaml: comments', () => {
 		const line = tok(yaml, 'color: "#ff0000"');
 		expectToken(line, 'string', '"#ff0000"');
 	});
+
+	it('keeps a mid-word # as part of an unquoted scalar (not a comment, not split)', () => {
+		// Regression: "page#section" used to break into per-character text tokens
+		// because the scalar matcher excluded '#' entirely. A '#' only starts a
+		// comment when preceded by whitespace.
+		const line = tok(yaml, 'frag: page#section');
+		expectToken(line, 'string', 'page#section');
+		expectLossless(line, 'frag: page#section');
+	});
+
+	it('keeps a URL fragment in an unquoted scalar but still ends at a space-# comment', () => {
+		const line = tok(yaml, 'link: http://x.com/p#frag # see docs');
+		expectToken(line, 'string', 'http://x.com/p#frag');
+		expectToken(line, 'comment.line', '# see docs');
+		expectLossless(line, 'link: http://x.com/p#frag # see docs');
+	});
 });
 
 describe('yaml: strings', () => {
@@ -149,6 +165,15 @@ describe('yaml: anchors, aliases, tags, merge keys', () => {
 	it('tokenizes a tag as a type', () => {
 		const line = tok(yaml, 'count: !!int 5');
 		expectToken(line, 'type', '!!int');
+	});
+
+	it('tokenizes a verbatim tag containing commas/colons as a single type', () => {
+		// Regression: the general "!name" alternative used to match first and
+		// truncate "!<tag:yaml.org,2002:str>" at the comma.
+		const line = tok(yaml, 'v: !<tag:yaml.org,2002:str> hi');
+		expectToken(line, 'type', '!<tag:yaml.org,2002:str>');
+		expectToken(line, 'string', 'hi');
+		expectLossless(line, 'v: !<tag:yaml.org,2002:str> hi');
 	});
 
 	it('tokenizes a merge key', () => {

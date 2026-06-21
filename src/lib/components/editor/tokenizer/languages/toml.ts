@@ -63,6 +63,9 @@ export class TomlTokenizer {
 
 		// `=` separates key context from value context; flip once we pass it.
 		let valueMode = false;
+		// Depth of open inline tables (`{`). Inline tables re-open key context for
+		// their members, so keys inside `{ ... }` are keys, not bare values.
+		let inlineTableDepth = 0;
 		// A leading `[` (after optional whitespace) opens a table header — only at
 		// the very start of the line's meaningful content.
 		let sawNonWhitespace = pos > 0;
@@ -89,9 +92,20 @@ export class TomlTokenizer {
 				if (token.type !== 'text') {
 					sawNonWhitespace = true;
 				}
-				// The `=` separates key from value; everything after is value context.
+				// Track key/value context. `=` opens a value; inline-table braces and
+				// their member separators re-open key context for the next key.
 				if (token.type === 'operator.assignment') {
 					valueMode = true;
+				} else if (token.text === '{') {
+					inlineTableDepth += 1;
+					valueMode = false;
+				} else if (token.text === '}') {
+					if (inlineTableDepth > 0) inlineTableDepth -= 1;
+					// A closed inline table is itself a value.
+					valueMode = true;
+				} else if (token.type === 'punctuation.separator' && inlineTableDepth > 0) {
+					// `,` between inline-table members starts the next key.
+					valueMode = false;
 				}
 			} else {
 				tokens.push(createToken('text', remaining[0], pos));

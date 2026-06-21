@@ -266,7 +266,7 @@ export class GroovyTokenizer {
 
 		// Numbers — decimal, hex, underscores, floats, and Groovy suffixes (G/L/I/f/d/g)
 		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[gGlLiIfFdD]?)/
+			/^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[gGlLiIfFdD]?)/
 		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
@@ -384,6 +384,12 @@ export class GroovyTokenizer {
 			if (t.type === 'punctuation.paren' && t.text === '(') return true;
 			if (t.type === 'punctuation.separator' && t.text === ',') return true;
 			if (t.type === 'keyword.control' && t.text === 'return') return true;
+			// Groovy's regex-find/match operators (`=~`, `==~`) and the pattern
+			// operator (`~/.../`) are essentially always followed by a slashy regex.
+			// `==~` tokenizes as `==` then a standalone `~`, so allowing a trailing
+			// `~` operator covers both `==~` and the leading pattern operator.
+			if (t.type === 'operator.comparison' && t.text === '=~') return true;
+			if (t.type === 'operator' && t.text === '~') return true;
 			return false;
 		}
 		// Start of line: assume a statement context where a regex is plausible.

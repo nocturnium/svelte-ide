@@ -382,9 +382,13 @@ export class MakefileTokenizer {
 			return createToken('operator.assignment', assignMatch[0], pos);
 		}
 
-		// Numbers (rare in makefiles, but keep them styled where they occur).
+		// Numbers (rare in makefiles, but keep them styled where they occur). Only treat
+		// a numeric literal as a number when it spans a WHOLE bare word — i.e. it is not
+		// a leading digit run of a longer word such as a version string (`1.6.0`) or a
+		// flag value (`12abc`). Otherwise the word would be carved into a `number` plus a
+		// stray `variable`/word remainder.
 		const numMatch = text.match(/^(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)/);
-		if (numMatch && !this.isInsideWord(text, line, pos)) {
+		if (numMatch && !this.isInsideWord(text, line, pos) && this.isWholeWord(text, numMatch[0])) {
 			return createToken('number', numMatch[0], pos);
 		}
 
@@ -421,6 +425,19 @@ export class MakefileTokenizer {
 		if (pos === 0) return false;
 		const prev = line[pos - 1];
 		return /[A-Za-z_]/.test(prev) && /^\d/.test(text);
+	}
+
+	/**
+	 * Whether `match` (a leading numeric literal in `text`) is the entire bare word, i.e.
+	 * the very next character is a word boundary the bare-word scanner would not consume.
+	 * A trailing `.`, `-`, digit or letter means the digits are just a prefix of a longer
+	 * word (a version like `1.6.0`, a value like `12abc`) and must not become a number.
+	 */
+	private isWholeWord(text: string, match: string): boolean {
+		if (match.length >= text.length) return true;
+		const next = text[match.length];
+		// Same delimiter set as the bare-word identifier regex below.
+		return /[\s:=#$()'"`]/.test(next);
 	}
 
 	private classifyIdentifier(word: string): TokenType {

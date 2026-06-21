@@ -136,6 +136,40 @@ describe('ScalaTokenizer — numbers', () => {
 		const line = tok(scala, 'val m = 1_000_000');
 		expectToken(line, 'number', '1_000_000');
 	});
+
+	it('does not let an integer swallow a member-access dot', () => {
+		// `42.toString` is (42).toString — the dot is an accessor, not a decimal point.
+		const line = tok(scala, 'val a = 42.toString');
+		expectToken(line, 'number', '42');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'variable', 'toString');
+		expectLossless(line, 'val a = 42.toString');
+	});
+
+	it('treats a method call on an integer literal as accessor + call', () => {
+		const line = tok(scala, 'val r = 1.to(10)');
+		expectToken(line, 'number', '1');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'function.call', 'to');
+		expectLossless(line, 'val r = 1.to(10)');
+	});
+
+	it('still tokenizes a real float (dot followed by digits)', () => {
+		const line = tok(scala, 'val pi = 3.14');
+		expectToken(line, 'number', '3.14');
+	});
+
+	it('tokenizes a leading-dot float', () => {
+		const line = tok(scala, 'val half = .5');
+		expectToken(line, 'number', '.5');
+	});
+
+	it('keeps the dot as an accessor after a float method call', () => {
+		const line = tok(scala, 'val b = 3.14.round');
+		expectToken(line, 'number', '3.14');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'variable', 'round');
+	});
 });
 
 describe('ScalaTokenizer — operators', () => {
@@ -199,6 +233,19 @@ describe('ScalaTokenizer — identifiers & builtins', () => {
 	it('classifies lowercase identifiers as variables', () => {
 		const line = tok(scala, 'val total = items');
 		expectToken(line, 'variable', 'items');
+	});
+
+	it('treats a backtick-quoted reserved word as a plain identifier', () => {
+		// `type` is an escaped identifier, NOT the `type` keyword.
+		const line = tok(scala, 'val `type` = 5');
+		expectToken(line, 'variable', '`type`');
+		expectLossless(line, 'val `type` = 5');
+	});
+
+	it('treats a backticked Java method name as an identifier', () => {
+		const line = tok(scala, 'Thread.`yield`()');
+		expectToken(line, 'variable', '`yield`');
+		expectLossless(line, 'Thread.`yield`()');
 	});
 });
 

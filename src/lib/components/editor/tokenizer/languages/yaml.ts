@@ -167,8 +167,9 @@ export class YamlTokenizer {
 			return createToken('variable', aliasMatch[0], pos);
 		}
 
-		// Tags: !!str, !Custom, !<verbatim>
-		const tagMatch = text.match(/^!(?:!?[^\s,[\]{}]*|<[^>]*>)/);
+		// Tags: !!str, !Custom, !<verbatim>. The verbatim "<...>" form is tried
+		// first so its inner commas/brackets are not truncated by the general form.
+		const tagMatch = text.match(/^!(?:<[^>]*>|!?[^\s,[\]{}]*)/);
 		if (tagMatch) {
 			return createToken('type', tagMatch[0], pos);
 		}
@@ -227,15 +228,42 @@ export class YamlTokenizer {
 		}
 
 		// Bare/unquoted scalar value — emit up to a comment, comma, or flow close.
-		const scalarMatch = text.match(/^[^\s#,[\]{}][^#,[\]{}]*?(?=\s+#|[,[\]{}]|\s*$)/);
-		if (scalarMatch && scalarMatch[0].length > 0) {
-			const scalar = scalarMatch[0].replace(/\s+$/, '');
+		// A '#' only ends the scalar (starting a comment) when it is preceded by
+		// whitespace; a '#' embedded mid-word (e.g. page#section) is scalar content.
+		const scalarLen = this.scanBareScalar(text);
+		if (scalarLen > 0) {
+			const scalar = text.slice(0, scalarLen).replace(/\s+$/, '');
 			if (scalar.length > 0) {
 				return createToken(this.classifyScalar(scalar), scalar, pos);
 			}
 		}
 
 		return createToken('text', text[0], pos);
+	}
+
+	/**
+	 * Length of a bare (unquoted) plain scalar starting at the head of `text`.
+	 * Stops at a flow indicator (",[]{}"), or at a '#' that begins a comment
+	 * (i.e. preceded by whitespace), or at end of input. A '#' that is NOT
+	 * preceded by whitespace is treated as ordinary scalar content, so values
+	 * like "page#section" stay a single scalar. Returns 0 if the first
+	 * character cannot start a scalar.
+	 */
+	private scanBareScalar(text: string): number {
+		const first = text[0];
+		if (first === undefined || first === ' ' || first === '\t') return 0;
+		if (first === ',' || first === '[' || first === ']' || first === '{' || first === '}') {
+			return 0;
+		}
+		if (first === '#') return 0;
+		let i = 0;
+		while (i < text.length) {
+			const ch = text[i];
+			if (ch === ',' || ch === '[' || ch === ']' || ch === '{' || ch === '}') break;
+			if (ch === '#' && i > 0 && (text[i - 1] === ' ' || text[i - 1] === '\t')) break;
+			i++;
+		}
+		return i;
 	}
 
 	/** Number of leading spaces (significant indentation) on a line. */

@@ -117,6 +117,8 @@ interface PhpTokenizerState extends TokenizerState {
 	heredocLabel?: string;
 	/** Whether the active doc block is a nowdoc (single-quoted label, no interpolation) */
 	heredocNowdoc?: boolean;
+	/** Whether the active multi-line block comment was opened as a /** doc comment */
+	inDocComment?: boolean;
 }
 
 export class PhpTokenizer {
@@ -154,15 +156,17 @@ export class PhpTokenizer {
 			}
 		}
 
-		// Handle block comment continuation
+		// Handle block comment continuation (preserve doc-comment vs block-comment type)
 		if (state.inBlockComment) {
+			const commentType: TokenType = state.inDocComment ? 'comment.doc' : 'comment.block';
 			const endIdx = line.indexOf('*/');
 			if (endIdx !== -1) {
-				tokens.push(createToken('comment.block', line.slice(0, endIdx + 2), 0));
+				tokens.push(createToken(commentType, line.slice(0, endIdx + 2), 0));
 				pos = endIdx + 2;
 				state.inBlockComment = false;
+				state.inDocComment = undefined;
 			} else {
-				tokens.push(createToken('comment.block', line, 0));
+				tokens.push(createToken(commentType, line, 0));
 				return { lineNumber, tokens, text: line, state };
 			}
 		}
@@ -224,12 +228,14 @@ export class PhpTokenizer {
 		}
 
 		// Doc comment /** ... */
-		if (text.startsWith('/**')) {
+		// Note: `/**/` is an empty *block* comment, not a doc comment opener.
+		if (text.startsWith('/**') && !text.startsWith('/**/')) {
 			const endIdx = text.indexOf('*/', 3);
 			if (endIdx !== -1) {
 				return createToken('comment.doc', text.slice(0, endIdx + 2), pos);
 			}
 			state.inBlockComment = true;
+			state.inDocComment = true;
 			return createToken('comment.doc', text, pos);
 		}
 

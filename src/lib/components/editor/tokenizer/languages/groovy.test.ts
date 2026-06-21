@@ -88,6 +88,28 @@ describe('Groovy tokenizer', () => {
 			const line = tok(groovy, 'def r = a / b');
 			expectTokenType(line, 'operator.arithmetic');
 		});
+
+		it('tokenizes a slashy regex after the find operator =~', () => {
+			// Regression: the regex body bled into code (`/`, `\`, `d`, `+`, `/`)
+			// because `=~` was not a recognized regex-allowing context.
+			const line = tok(groovy, 'if (s =~ /\\d+/) {}');
+			expectToken(line, 'operator.comparison', '=~');
+			expectToken(line, 'string.regex', '/\\d+/');
+			expectLossless(line, 'if (s =~ /\\d+/) {}');
+		});
+
+		it('tokenizes a slashy regex after the match operator ==~', () => {
+			const line = tok(groovy, 'def m = s ==~ /^\\d+$/');
+			expectToken(line, 'string.regex', '/^\\d+$/');
+			expectLossless(line, 'def m = s ==~ /^\\d+$/');
+		});
+
+		it('tokenizes a slashy regex after the pattern operator ~', () => {
+			const line = tok(groovy, 'def p = ~/[a-z]+/');
+			expectToken(line, 'operator', '~');
+			expectToken(line, 'string.regex', '/[a-z]+/');
+			expectLossless(line, 'def p = ~/[a-z]+/');
+		});
 	});
 
 	describe('comments', () => {
@@ -124,6 +146,30 @@ describe('Groovy tokenizer', () => {
 			expectToken(tok(groovy, 'def f = 3.14'), 'number', '3.14');
 			expectToken(tok(groovy, 'def g = 100G'), 'number', '100G');
 			expectToken(tok(groovy, 'def l = 99L'), 'number', '99L');
+		});
+
+		it('does not swallow the range operator into a number', () => {
+			// Regression: `0..5` previously tokenized as number `0.` + number `.5`,
+			// erasing the `..` range operator. The decimal point must only be
+			// consumed when a digit follows it.
+			const line = tok(groovy, 'for (i in 0..5) {}');
+			expectToken(line, 'number', '0');
+			expectToken(line, 'operator', '..');
+			expectToken(line, 'number', '5');
+			expectLossless(line, 'for (i in 0..5) {}');
+		});
+
+		it('keeps the exclusive range operator distinct from numbers', () => {
+			const line = tok(groovy, 'def r = 1..<10');
+			expectToken(line, 'number', '1');
+			expectToken(line, 'operator', '..<');
+			expectToken(line, 'number', '10');
+			expectLossless(line, 'def r = 1..<10');
+		});
+
+		it('still tokenizes real floats with a fractional part', () => {
+			expectToken(tok(groovy, 'def d = 2.0'), 'number', '2.0');
+			expectToken(tok(groovy, 'def x = 0.5'), 'number', '0.5');
 		});
 	});
 

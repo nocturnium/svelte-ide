@@ -129,6 +129,13 @@ describe('C/C++ tokenizer', () => {
 			expectToken(brackets, 'punctuation.bracket', '[');
 			expectToken(brackets, 'punctuation.brace', '{');
 		});
+
+		it('keeps the three-way comparison <=> as one comparison operator', () => {
+			const line = tok(cpp, 'auto c = (a <=> b);');
+			// Regression: <=> must not be split into '<=' and '>'.
+			expectToken(line, 'operator.comparison', '<=>');
+			expectLossless(line, 'auto c = (a <=> b);');
+		});
 	});
 
 	describe('identifiers, functions and macros', () => {

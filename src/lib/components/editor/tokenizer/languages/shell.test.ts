@@ -204,6 +204,47 @@ describe('shell: operators and flags', () => {
 		expectToken(line, 'variable.parameter', '--color');
 	});
 
+	it('tokenizes a numeric short flag as one parameter, not minus + number', () => {
+		const line = tok(sh, 'kill -9 $pid');
+		// Regression: '-9' previously split into operator '-' and number '9'.
+		expectToken(line, 'variable.parameter', '-9');
+		const minus = line.tokens.filter((t) => t.type === 'operator' && t.text === '-');
+		if (minus.length > 0) {
+			throw new Error("numeric flag '-9' must not split off a '-' operator");
+		}
+		expectLossless(line, 'kill -9 $pid');
+	});
+
+	it('tokenizes multi-digit numeric flags (head -20, exit -1)', () => {
+		const head = tok(sh, 'head -20 file');
+		expectToken(head, 'variable.parameter', '-20');
+		const exit = tok(sh, 'exit -1');
+		expectToken(exit, 'variable.parameter', '-1');
+		expectLossless(head, 'head -20 file');
+		expectLossless(exit, 'exit -1');
+	});
+
+	it('tokenizes the -- end-of-options marker as a single parameter', () => {
+		const line = tok(sh, 'rm -- -file');
+		// Regression: '--' previously split into two '-' operator tokens.
+		expectToken(line, 'variable.parameter', '--');
+		expectToken(line, 'variable.parameter', '-file');
+		expectLossless(line, 'rm -- -file');
+	});
+
+	it('keeps arithmetic minus as an operator (not a numeric flag)', () => {
+		// '10-2' and 'a-1' are NOT word boundaries, so '-' stays an operator.
+		const lit = tok(sh, 'echo $((10-2))');
+		expectToken(lit, 'operator', '-');
+		expectToken(lit, 'number', '10');
+		expectToken(lit, 'number', '2');
+		const ident = tok(sh, 'echo $((a-1))');
+		expectToken(ident, 'operator', '-');
+		expectToken(ident, 'number', '1');
+		expectLossless(lit, 'echo $((10-2))');
+		expectLossless(ident, 'echo $((a-1))');
+	});
+
 	it('tokenizes test operators', () => {
 		const line = tok(sh, '[ -z "$x" -a $n -eq 0 ]');
 		expectToken(line, 'operator', '-z');

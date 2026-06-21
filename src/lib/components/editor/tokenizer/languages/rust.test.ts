@@ -1,6 +1,13 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createRustTokenizer } from './rust';
-import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
+import {
+	tok,
+	tokLines,
+	findTokens,
+	expectToken,
+	expectTokenType,
+	expectLossless
+} from '../test-helpers';
 
 const rust = createRustTokenizer();
 
@@ -133,6 +140,39 @@ describe('rust: numbers', () => {
 
 	it('tokenizes float exponents', () => {
 		expectToken(tok(rust, 'let n = 1.5e10;'), 'number', '1.5e10');
+	});
+
+	// Regression: a tuple-field accessor dot must NOT be swallowed into a
+	// leading-dot "float". Rust has no `.5` literals, so `tuple.0` is field
+	// access: the `.` is an accessor and `0` is an integer index. Previously the
+	// number matcher had a `\.\d` alternation that ate the dot, producing a bogus
+	// `.0` number token and dropping the accessor.
+	it('keeps the accessor dot in tuple-field access (no leading-dot float)', () => {
+		const line = tok(rust, 'self.0 = 1;');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'number', '0');
+		// No bogus float token containing the accessor dot.
+		expect(findTokens(line, 'number').some((t) => t.text.startsWith('.'))).toBe(false);
+		expectLossless(line, 'self.0 = 1;');
+	});
+
+	it('splits nested tuple-field access into separate index numbers', () => {
+		// `a.0.1.2` must read as a . 0 . 1 . 2 — not a . 0.1 . 2 (which would let
+		// `0.1` collapse into one float and swallow the second accessor dot).
+		const line = tok(rust, 'a.0.1.2');
+		const numbers = findTokens(line, 'number').map((t) => t.text);
+		expect(numbers).toEqual(['0', '1', '2']);
+		expect(findTokens(line, 'punctuation.accessor').length).toBe(3);
+		expectLossless(line, 'a.0.1.2');
+	});
+
+	it('still parses a genuine float method call (float, then accessor, then call)', () => {
+		const line = tok(rust, 'let y = 1.0.max(2.0);');
+		expectToken(line, 'number', '1.0');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'function.call', 'max');
+		expectToken(line, 'number', '2.0');
+		expectLossless(line, 'let y = 1.0.max(2.0);');
 	});
 });
 

@@ -159,6 +159,62 @@ describe('TOML: arrays and inline tables', () => {
 		expectToken(line, 'punctuation.brace', '}');
 		expectTokenType(line, 'number');
 	});
+
+	it('classifies inline-table keys as properties, not bare values', () => {
+		// Regression: once the outer `=` flips to value mode, keys inside `{ }`
+		// were mis-typed as `variable`. Inline-table members are real keys.
+		const line = tok(toml, 'point = { x = 1, y = 2 }');
+		expectToken(line, 'property', 'point');
+		expectToken(line, 'property', 'x');
+		expectToken(line, 'property', 'y');
+		expectToken(line, 'number', '1');
+		expectToken(line, 'number', '2');
+		expectLossless(line, 'point = { x = 1, y = 2 }');
+	});
+
+	it('classifies inline-table keys with string values as properties', () => {
+		// A realistic Cargo-style dependency spec.
+		const line = tok(toml, 'dep = { version = "1.0", features = ["derive"] }');
+		expectToken(line, 'property', 'dep');
+		expectToken(line, 'property', 'version');
+		expectToken(line, 'property', 'features');
+		expectToken(line, 'string', '"1.0"');
+		expectToken(line, 'string', '"derive"');
+		expectLossless(line, 'dep = { version = "1.0", features = ["derive"] }');
+	});
+
+	it('classifies dotted keys inside an inline table as properties', () => {
+		const line = tok(toml, 'a = { b.c = 1 }');
+		expectToken(line, 'property', 'a');
+		expectToken(line, 'property', 'b');
+		expectToken(line, 'property', 'c');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectLossless(line, 'a = { b.c = 1 }');
+	});
+
+	it('classifies a quoted key inside an inline table as a property', () => {
+		const line = tok(toml, 'a = { "ke y" = 1 }');
+		expectToken(line, 'property', '"ke y"');
+		expectLossless(line, 'a = { "ke y" = 1 }');
+	});
+
+	it('handles keys in nested inline tables', () => {
+		const line = tok(toml, 'nested = { a = { b = 1 } }');
+		expectToken(line, 'property', 'nested');
+		expectToken(line, 'property', 'a');
+		expectToken(line, 'property', 'b');
+		expectLossless(line, 'nested = { a = { b = 1 } }');
+	});
+
+	it('keeps array elements as values, not keys, across commas', () => {
+		// Guard against the inline-table fix leaking into array context: commas
+		// outside `{ }` must NOT re-open key context.
+		const line = tok(toml, 'mixed = [1, "two", true]');
+		expectToken(line, 'number', '1');
+		expectToken(line, 'string', '"two"');
+		expectToken(line, 'constant.boolean', 'true');
+		expectLossless(line, 'mixed = [1, "two", true]');
+	});
 });
 
 describe('TOML: multi-line strings', () => {

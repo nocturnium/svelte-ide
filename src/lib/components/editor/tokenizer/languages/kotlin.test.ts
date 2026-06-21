@@ -126,6 +126,26 @@ describe('Kotlin tokenizer', () => {
 			expectToken(tok(kotlin, 'val z = x?.length'), 'operator', '?.');
 			expectToken(tok(kotlin, 'val r = 0..9'), 'operator', '..');
 		});
+
+		it('tokenizes referential equality operators as a single comparison token', () => {
+			// `===` / `!==` must NOT be mis-split into `==`/`!=` plus a stray `=`
+			// that would otherwise read as an assignment operator.
+			const eq = tok(kotlin, 'val a = x === y');
+			expectToken(eq, 'operator.comparison', '===');
+			expectLossless(eq, 'val a = x === y');
+
+			const neq = tok(kotlin, 'val b = x !== y');
+			expectToken(neq, 'operator.comparison', '!==');
+			expectLossless(neq, 'val b = x !== y');
+
+			// The trailing `=` must not leak through as an assignment operator.
+			const assigns = eq.tokens.filter((t) => t.type === 'operator.assignment');
+			if (assigns.length !== 1 || assigns[0].text !== '=') {
+				throw new Error(
+					`Expected exactly one '=' assignment, got ${JSON.stringify(assigns.map((t) => t.text))}`
+				);
+			}
+		});
 	});
 
 	describe('identifiers, builtins, and annotations', () => {

@@ -221,7 +221,7 @@ export class PowerShellTokenizer {
 
 		// Numbers: hex, decimal/float with optional KB/MB/GB/TB/PB suffix.
 		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F]+|(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)(?:[kKmMgGtTpP][bB])?/
+			/^(?:0[xX][0-9a-fA-F]+|(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?:[kKmMgGtTpP][bB])?/
 		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
@@ -248,7 +248,7 @@ export class PowerShellTokenizer {
 
 		// Operators (symbolic). Pipeline | and redirection > >> handled here too.
 		const opMatch = text.match(
-			/^(?:\+\+|--|\*=|\/=|%=|\+=|-=|>>|::|\|\||&&|[-+*/%](?![a-zA-Z])|[=<>!]=?|[|&])/
+			/^(?:\.\.|\+\+|--|\*=|\/=|%=|\+=|-=|>>|::|\|\||&&|[-+*/%](?![a-zA-Z])|[=<>!]=?|[|&])/
 		);
 		if (opMatch) {
 			const op = opMatch[0];
@@ -261,7 +261,7 @@ export class PowerShellTokenizer {
 				}
 			} else if (op === '|' || op === '&' || op === '||' || op === '&&') {
 				type = 'operator.logical';
-			} else if (op === '>>') {
+			} else if (op === '>>' || op === '..' || op === '::') {
 				type = 'operator';
 			} else {
 				type = 'operator.arithmetic';

@@ -285,7 +285,15 @@ export class RubyTokenizer {
 		const identMatch = text.match(/^[a-zA-Z_][a-zA-Z0-9_]*[?!]?/);
 		if (identMatch) {
 			const word = identMatch[0];
-			return createToken(this.classifyIdentifier(word, text, word.length), word, pos);
+			// A method-call accessor immediately before the name (`obj.class`,
+			// `obj&.then`) means the word is a method, not a reserved word. Detect a
+			// preceding `.` or `&.` (but not a `..`/`...` range operator).
+			const afterAccessor = this.precededByMethodAccessor(fullLine, pos);
+			return createToken(
+				this.classifyIdentifier(word, text, word.length, afterAccessor),
+				word,
+				pos
+			);
 		}
 
 		// Operators
@@ -313,7 +321,42 @@ export class RubyTokenizer {
 		return createToken('text', fullLine[pos], pos);
 	}
 
-	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {
+	/**
+	 * True when the character(s) immediately before `pos` form a method-call
+	 * accessor (`.` or safe-nav `&.`), so the following name is a method invocation
+	 * — e.g. `obj.class`, `arr.then`, `node&.next`. A `..`/`...` range operator does
+	 * NOT count (its name, if any, is a fresh identifier, not a method).
+	 */
+	private precededByMethodAccessor(fullLine: string, pos: number): boolean {
+		let i = pos - 1;
+		while (i >= 0 && (fullLine[i] === ' ' || fullLine[i] === '\t')) {
+			i--;
+		}
+		if (i < 0 || fullLine[i] !== '.') {
+			return false;
+		}
+		// Reject range operators `..` and `...`.
+		if (fullLine[i - 1] === '.') {
+			return false;
+		}
+		return true;
+	}
+
+	private classifyIdentifier(
+		word: string,
+		context: string,
+		wordLength: number,
+		afterAccessor = false
+	): TokenType {
+		// A name right after a method-call accessor (`obj.class`, `x&.then`) is a
+		// method, never a reserved word / builtin. Reserved words used as method
+		// names are common in Ruby (`.class`, `.then`, `.send`, `.next`), so we must
+		// not mis-type them as keywords. Constants (Capitalized) are still resolved
+		// below since `Foo.Bar` would name a constant-like member.
+		if (afterAccessor && !/^[A-Z]/.test(word)) {
+			return context.slice(wordLength).startsWith('(') ? 'function.call' : 'variable';
+		}
+
 		// Boolean / null constants
 		if (word === 'true' || word === 'false') return 'constant.boolean';
 		if (word === 'nil') return 'constant.null';

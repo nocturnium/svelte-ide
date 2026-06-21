@@ -41,6 +41,29 @@ describe('cmake: commands and keywords', () => {
 		// `SOURCES` is an argument, not followed by `(`.
 		expectToken(line, 'variable', 'SOURCES');
 	});
+
+	it('classifies a builtin command with whitespace before the paren (valid grammar)', () => {
+		// CMake's grammar permits blanks between a command name and its `(`,
+		// so `set (X 1)` is identical to `set(X 1)`.
+		const line = tok(t, 'set (X 1)');
+		expectToken(line, 'keyword.module', 'set');
+		expectToken(line, 'punctuation.paren', '(');
+		expectLossless(line, 'set (X 1)');
+	});
+
+	it('classifies a control command with whitespace before the paren', () => {
+		const line = tok(t, 'if (WIN32)');
+		expectToken(line, 'keyword.control', 'if');
+		expectLossless(line, 'if (WIN32)');
+	});
+
+	it('does not mistake a bare argument word before a sub-group for a command', () => {
+		// `bar` precedes `(baz)` but is an argument, not a call — must stay a variable.
+		const line = tok(t, 'set(FOO bar (baz))');
+		expectToken(line, 'keyword.module', 'set');
+		expectToken(line, 'variable', 'bar');
+		expectLossless(line, 'set(FOO bar (baz))');
+	});
 });
 
 describe('cmake: variables', () => {

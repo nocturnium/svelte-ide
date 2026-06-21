@@ -46,6 +46,29 @@ describe('JavaTokenizer', () => {
 			expectToken(tok(java, 'x instanceof String'), 'keyword', 'instanceof');
 			expectToken(tok(java, 'var list = items;'), 'keyword', 'var');
 		});
+
+		it('classifies throws as a control keyword, not a variable', () => {
+			const line = tok(java, 'void read() throws IOException {');
+			expectToken(line, 'keyword.control', 'throws');
+			expectLossless(line, 'void read() throws IOException {');
+		});
+
+		it('classifies assert as a control keyword, not a variable', () => {
+			const line = tok(java, 'assert count > 0;');
+			expectToken(line, 'keyword.control', 'assert');
+			expectLossless(line, 'assert count > 0;');
+		});
+
+		it('classifies strictfp as a storage keyword', () => {
+			const line = tok(java, 'strictfp class Calc {');
+			expectToken(line, 'keyword.storage', 'strictfp');
+			expectLossless(line, 'strictfp class Calc {');
+		});
+
+		it('classifies reserved const and goto as keywords', () => {
+			expectToken(tok(java, 'const int X = 1;'), 'keyword', 'const');
+			expectToken(tok(java, 'goto label;'), 'keyword', 'goto');
+		});
 	});
 
 	describe('types and constants', () => {

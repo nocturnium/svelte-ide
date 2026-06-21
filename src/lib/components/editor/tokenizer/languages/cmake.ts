@@ -311,20 +311,27 @@ export class CMakeTokenizer implements LanguageTokenizer {
 			return 'constant.boolean';
 		}
 
-		// Is this word immediately followed by `(`? Then it's a command invocation.
-		const after = context.slice(wordLength);
-		const isCall = after.startsWith('(');
-
 		// Control-flow commands are keywords whether or not the `(` is glued on,
 		// but in practice they're always called as commands.
 		if (controlCommands.has(lower)) {
 			return 'keyword.control';
 		}
 
-		if (isCall) {
-			if (builtinCommands.has(lower)) {
+		// CMake's grammar permits whitespace between a command name and its
+		// opening paren — `set (X 1)` is identical to `set(X 1)`. For a KNOWN
+		// builtin we therefore look past leading blanks to find the `(`; this is
+		// unambiguous because builtins are reserved command names. For an UNKNOWN
+		// word we require the paren to be glued on, so a bare argument word that
+		// happens to precede a parenthesized sub-group (`set(FOO bar (baz))`) is
+		// not mistaken for a call.
+		const after = context.slice(wordLength);
+		if (builtinCommands.has(lower)) {
+			if (after.replace(/^[ \t]+/, '').startsWith('(')) {
 				return 'keyword.module';
 			}
+			return 'variable';
+		}
+		if (after.startsWith('(')) {
 			return 'function.call';
 		}
 

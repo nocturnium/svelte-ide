@@ -237,6 +237,38 @@ describe('makefile: realistic multi-token line', () => {
 	});
 });
 
+describe('makefile: numbers vs version-like words', () => {
+	it('keeps a dotted version value as a single word, not number + stray remainder', () => {
+		// Regression: `1.6.0` was carved into number "1.6" + variable ".0".
+		const line = tok(t, 'VERSION = 1.6.0');
+		expectToken(line, 'variable', '1.6.0');
+		expectLossless(line, 'VERSION = 1.6.0');
+		// And no number token leaks out of the dotted value.
+		expectTokenType(line, 'operator.assignment');
+		const numbers = line.tokens.filter((tk) => tk.type === 'number');
+		if (numbers.length !== 0) {
+			throw new Error(`expected no number tokens, got ${JSON.stringify(numbers)}`);
+		}
+	});
+
+	it('does not carve a number out of a digit-prefixed word', () => {
+		// Regression: `2.10.3-rc1` was split into number "2.10" + variable ".3-rc1".
+		const line = tok(t, 'TAG := 2.10.3-rc1');
+		expectToken(line, 'variable', '2.10.3-rc1');
+		expectLossless(line, 'TAG := 2.10.3-rc1');
+	});
+
+	it('still styles a standalone integer value as a number', () => {
+		const line = tok(t, 'PORT = 8080');
+		expectToken(line, 'number', '8080');
+	});
+
+	it('still styles a standalone decimal value as a number', () => {
+		const line = tok(t, 'RATIO = 3.14');
+		expectToken(line, 'number', '3.14');
+	});
+});
+
 describe('makefile: lossless reconstruction', () => {
 	it('is lossless on an indented target line', () => {
 		const src = '   build: main.o util.o';

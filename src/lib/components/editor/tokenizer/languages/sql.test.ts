@@ -42,6 +42,19 @@ describe('SqlTokenizer', () => {
 			expectToken(line, 'keyword', 'SET');
 			expectToken(line, 'keyword', 'AS');
 		});
+
+		it('classifies ASC/DESC sort-direction modifiers as keywords (not variables)', () => {
+			const line = tok(createSqlTokenizer(), 'ORDER BY created_at DESC, name ASC');
+			expectToken(line, 'keyword', 'DESC');
+			expectToken(line, 'keyword', 'ASC');
+			expectLossless(line, 'ORDER BY created_at DESC, name ASC');
+		});
+
+		it('matches ASC/DESC case-insensitively', () => {
+			const line = tok(createSqlTokenizer(), 'order by x asc, y desc');
+			expectToken(line, 'keyword', 'asc');
+			expectToken(line, 'keyword', 'desc');
+		});
 	});
 
 	describe('strings', () => {
@@ -116,6 +129,22 @@ describe('SqlTokenizer', () => {
 		it('tokenizes a leading-dot decimal', () => {
 			const line = tok(createSqlTokenizer(), 'SELECT .5');
 			expectToken(line, 'number', '.5');
+		});
+
+		it('does not let a leading-dot number swallow a member accessor', () => {
+			// After an identifier, `.5` is accessor `.` + number `5`, NOT a `.5` decimal.
+			const line = tok(createSqlTokenizer(), 'SELECT t1.5 FROM t1');
+			expectToken(line, 'variable', 't1');
+			expectToken(line, 'punctuation.accessor', '.');
+			expectToken(line, 'number', '5');
+			expectLossless(line, 'SELECT t1.5 FROM t1');
+		});
+
+		it('keeps a leading-dot decimal after a closing paren as an accessor', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT (a).5');
+			expectToken(line, 'punctuation.accessor', '.');
+			expectToken(line, 'number', '5');
+			expectLossless(line, 'SELECT (a).5');
 		});
 	});
 

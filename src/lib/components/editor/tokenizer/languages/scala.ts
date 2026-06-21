@@ -203,11 +203,23 @@ export class ScalaTokenizer {
 		}
 
 		// Numbers: hex, or decimal/float with optional underscores and L/f/F/d/D suffix.
+		// A trailing dot is only part of the number when followed by a fractional digit
+		// (e.g. 3.14); in `42.toString` the dot is a member accessor, so the integer form
+		// must NOT swallow it.
 		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F_]+[lL]?|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[lLfFdD]?)/
+			/^(?:0[xX][0-9a-fA-F_]+[lL]?|(?:\d[\d_]*\.\d[\d_]*|\.\d[\d_]*|\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[lLfFdD]?)/
 		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
+		}
+
+		// Backtick-quoted identifiers: `yield`, `type`, etc. The contents are always a plain
+		// identifier even when they spell a reserved word, so never classify as a keyword.
+		if (text.startsWith('`')) {
+			const backtickMatch = text.match(/^`[^`\n]+`/);
+			if (backtickMatch) {
+				return createToken('variable', backtickMatch[0], pos);
+			}
 		}
 
 		// Identifiers and keywords

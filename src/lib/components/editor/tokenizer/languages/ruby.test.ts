@@ -202,6 +202,47 @@ describe('ruby: identifiers, builtins, and variables', () => {
 	});
 });
 
+describe('ruby: keyword-named method calls (after an accessor)', () => {
+	it('treats a reserved word after a dot as a method, not a keyword', () => {
+		// `obj.class` is the Object#class method, NOT the `class` definition keyword.
+		const line = tok(rb, 'obj.class.name');
+		expectToken(line, 'variable', 'obj');
+		expectToken(line, 'variable', 'class');
+		expectToken(line, 'variable', 'name');
+		expectLossless(line, 'obj.class.name');
+	});
+
+	it('does not mark `.then`/`.begin`/`.end` after a dot as keywords', () => {
+		const line = tok(rb, 'value.then { |v| v }');
+		// `then` here is Object#then (yield_self), a method — must not be keyword.control.
+		expectToken(line, 'variable', 'then');
+		const ends = tok(rb, 'range.begin');
+		expectToken(ends, 'variable', 'begin');
+	});
+
+	it('keeps a builtin used as a method call after a dot a function call', () => {
+		const line = tok(rb, 'obj.send(:to_s)');
+		expectToken(line, 'function.call', 'send');
+	});
+
+	it('still classifies a leading def/class/module as a definition keyword', () => {
+		// Regression guard: the accessor rule must not swallow real definitions.
+		expectToken(tok(rb, 'def run'), 'keyword.definition', 'def');
+		expectToken(tok(rb, 'class Widget'), 'keyword.definition', 'class');
+	});
+
+	it('does not treat a range operator as a method accessor', () => {
+		// `1..end` is a range; `end` is the keyword here, not a method off `1.`.
+		const line = tok(rb, 'arr[0..self]');
+		expectToken(line, 'keyword', 'self');
+	});
+
+	it('still resolves a Capitalized member after a dot as a constant/type', () => {
+		const line = tok(rb, 'mod.CONST');
+		expectToken(line, 'type.class', 'CONST');
+	});
+});
+
 describe('ruby: multi-line constructs', () => {
 	it('threads =begin / =end block comments across lines', () => {
 		const lines = tokLines(rb, [

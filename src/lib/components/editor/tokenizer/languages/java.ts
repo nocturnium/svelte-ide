@@ -20,6 +20,7 @@ const storageKeywords = new Set([
 	'volatile',
 	'transient',
 	'native',
+	'strictfp',
 	'default'
 ]);
 
@@ -36,9 +37,11 @@ const controlKeywords = new Set([
 	'continue',
 	'return',
 	'throw',
+	'throws',
 	'try',
 	'catch',
-	'finally'
+	'finally',
+	'assert'
 ]);
 
 // Module / package keywords
@@ -55,7 +58,9 @@ const otherKeywords = new Set([
 	'var',
 	'sealed',
 	'permits',
-	'yield'
+	'yield',
+	'const',
+	'goto'
 ]);
 
 // Primitive / builtin types

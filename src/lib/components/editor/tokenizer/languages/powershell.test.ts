@@ -137,6 +137,51 @@ describe('PowerShell tokenizer', () => {
 		});
 	});
 
+	describe('range operator', () => {
+		it('does not let a number swallow the range operator dots', () => {
+			// Regression: `1..10` previously tokenized as `1.` + `.10` (two malformed
+			// numbers) because the float pattern ate the first dot of `..`.
+			const line = tok(ps, '1..10');
+			expectToken(line, 'number', '1');
+			expectToken(line, 'operator', '..');
+			expectToken(line, 'number', '10');
+			expectLossless(line, '1..10');
+		});
+
+		it('handles a range inside a pipeline expression', () => {
+			const line = tok(ps, '1..5 | ForEach-Object { $_ }');
+			expectToken(line, 'number', '1');
+			expectToken(line, 'operator', '..');
+			expectToken(line, 'number', '5');
+			expectToken(line, 'function.call', 'ForEach-Object');
+			expectLossless(line, '1..5 | ForEach-Object { $_ }');
+		});
+
+		it('keeps a range adjacent to a parenthesized bound intact', () => {
+			const line = tok(ps, '0..($n - 1)');
+			expectToken(line, 'number', '0');
+			expectToken(line, 'operator', '..');
+			expectToken(line, 'variable', '$n');
+			expectLossless(line, '0..($n - 1)');
+		});
+
+		it('still tokenizes ordinary floats and size suffixes correctly', () => {
+			expectToken(tok(ps, '$x = 3.14'), 'number', '3.14');
+			expectToken(tok(ps, '$x = .5'), 'number', '.5');
+			expectToken(tok(ps, '$x = 1.5e3'), 'number', '1.5e3');
+			expectToken(tok(ps, '$x = 5MB'), 'number', '5MB');
+		});
+	});
+
+	describe('member-access operator', () => {
+		it('tokenizes the static member operator :: as a plain operator', () => {
+			// Regression: `::` was previously classified as operator.arithmetic.
+			const line = tok(ps, '[System.Math]::Pi');
+			expectToken(line, 'operator', '::');
+			expectLossless(line, '[System.Math]::Pi');
+		});
+	});
+
 	describe('operators and parameters', () => {
 		it('detects named comparison operators', () => {
 			const line = tok(ps, 'if ($a -eq $b) { }');

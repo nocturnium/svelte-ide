@@ -61,6 +61,32 @@ describe('VueTokenizer', () => {
 			const line = tok(createVueTokenizer(), '<input v-model="name">');
 			expectToken(line, 'tag.attribute', 'v-model');
 		});
+
+		// Regression: a full directive with an argument (`v-bind:class`,
+		// `v-model:value`, `v-on:click`, `v-slot:header`) must stay ONE attribute
+		// token. A prior bug split it into `v-bind` + `:class`, where the `:class`
+		// tail re-read as a separate v-bind shorthand — a different attribute.
+		it('keeps v-bind:class as a single directive token', () => {
+			const line = tok(createVueTokenizer(), '<div v-bind:class="cls">');
+			expectToken(line, 'tag.attribute', 'v-bind:class');
+			expectLossless(line, '<div v-bind:class="cls">');
+		});
+
+		it('keeps v-model:value as a single directive token', () => {
+			const line = tok(createVueTokenizer(), '<input v-model:value="text">');
+			expectToken(line, 'tag.attribute', 'v-model:value');
+		});
+
+		it('keeps v-on:click.stop (argument + modifier) as a single token', () => {
+			const line = tok(createVueTokenizer(), '<button v-on:click.stop="go">');
+			expectToken(line, 'tag.attribute', 'v-on:click.stop');
+			expectLossless(line, '<button v-on:click.stop="go">');
+		});
+
+		it('keeps v-slot:header as a single directive token', () => {
+			const line = tok(createVueTokenizer(), '<template v-slot:header>');
+			expectToken(line, 'tag.attribute', 'v-slot:header');
+		});
 	});
 
 	describe('mustache interpolation', () => {
@@ -92,6 +118,39 @@ describe('VueTokenizer', () => {
 		it('keeps a comment line lossless', () => {
 			const line = tok(createVueTokenizer(), '  <!-- TODO: refactor -->');
 			expectLossless(line, '  <!-- TODO: refactor -->');
+		});
+
+		// Regression: an HTML comment that opens on one line and closes on a later
+		// line must stay a `comment` on EVERY line. A prior bug only highlighted the
+		// opening line; the body and `-->` of following lines bled out as live
+		// template `text`.
+		it('threads a multi-line HTML comment across lines', () => {
+			const lines = tokLines(createVueTokenizer(), [
+				'  <!-- a multi-line',
+				'       comment block',
+				'       still going -->',
+				'  <div>after</div>'
+			]);
+			// Opening line: comment recognized.
+			expectTokenType(lines[0], 'comment');
+			// Interior and closing lines must be comment, NOT bled-out text.
+			expectToken(lines[1], 'comment', '       comment block');
+			expectToken(lines[2], 'comment', '       still going -->');
+			// After the comment closes, real markup resumes.
+			expectToken(lines[3], 'tag.name', 'div');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+
+		it('resumes live markup after a multi-line comment closes mid-line', () => {
+			const lines = tokLines(createVueTokenizer(), [
+				'<!-- open',
+				'close --><span>hi</span>'
+			]);
+			expectToken(lines[1], 'comment', 'close -->');
+			expectToken(lines[1], 'tag.name', 'span');
+			expectLossless(lines[1], 'close --><span>hi</span>');
 		});
 	});
 

@@ -162,7 +162,8 @@ export class RustTokenizer implements LanguageTokenizer {
 
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
-			const subTokens = this.getNextToken(remaining, pos, state);
+			const prevToken = tokens.length > 0 ? tokens[tokens.length - 1] : undefined;
+			const subTokens = this.getNextToken(remaining, pos, state, prevToken);
 
 			if (subTokens && subTokens.length > 0) {
 				tokens.push(...subTokens);
@@ -180,7 +181,12 @@ export class RustTokenizer implements LanguageTokenizer {
 		return { lineNumber, tokens, text: line, state };
 	}
 
-	private getNextToken(text: string, pos: number, state: RustTokenizerState): Token[] | null {
+	private getNextToken(
+		text: string,
+		pos: number,
+		state: RustTokenizerState,
+		prevToken?: Token
+	): Token[] | null {
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {
@@ -239,11 +245,22 @@ export class RustTokenizer implements LanguageTokenizer {
 		}
 
 		// Numbers (with _ separators, 0x/0o/0b, exponents, and type suffixes).
-		// A fractional part requires a digit after the dot (\.\d...) so a trailing
-		// `..` range (e.g. 0..10) is not swallowed as a float.
-		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?[\d_]+)?)(?:[iuf](?:8|16|32|64|128|size))?/
-		);
+		// A number MUST begin with a digit: the fractional part requires a digit
+		// after the dot (\.\d...) so a trailing `..` range (e.g. 0..10) is not
+		// swallowed as a float. A number may NOT begin with a leading dot — Rust
+		// has no leading-dot floats (`.5` is invalid), and allowing one would eat
+		// the accessor dot in tuple-field access like `tuple.0` / `self.0.1`.
+		//
+		// Immediately after a field accessor (`.`), a number is a tuple-field
+		// INDEX and must be lexed as an integer only — never a float — so that a
+		// nested access like `a.0.1.2` reads as `a . 0 . 1 . 2` rather than letting
+		// `0.1` collapse into one float token and swallow the second accessor dot.
+		const afterAccessor = prevToken?.type === 'punctuation.accessor' && prevToken.text === '.';
+		const numMatch = afterAccessor
+			? text.match(/^\d[\d_]*/)
+			: text.match(
+					/^(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?[\d_]+)?)(?:[iuf](?:8|16|32|64|128|size))?/
+				);
 		if (numMatch) {
 			return [createToken('number', numMatch[0], pos)];
 		}

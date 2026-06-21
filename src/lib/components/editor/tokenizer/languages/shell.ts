@@ -256,6 +256,25 @@ export class ShellTokenizer {
 			return createToken('variable.parameter', word, pos);
 		}
 
+		// Dash-led options at a word boundary (the '-' begins a new word, not an
+		// arithmetic minus). Covers the end-of-options marker '--' and numeric
+		// short flags like `kill -9`, `head -20`, `exit -1`. These must NOT fire
+		// mid-expression (e.g. `$((10-2))`), where '-' is preceded by a value.
+		if (text.startsWith('-') && this.isWordStart(line, pos)) {
+			// End-of-options marker: '--' followed by whitespace or end of line.
+			const endOpts = text.match(/^--(?=[ \t]|$)/);
+			if (endOpts) {
+				return createToken('variable.parameter', '--', pos);
+			}
+			// Numeric short flag: '-' immediately followed by one or more digits,
+			// not continued by an identifier char (so `-9`, `-100`, but the
+			// alphanumeric `-l1` is already handled by the flag matcher above).
+			const numFlag = text.match(/^-\d+/);
+			if (numFlag) {
+				return createToken('variable.parameter', numFlag[0], pos);
+			}
+		}
+
 		// Numbers (integers; shell has no native floats).
 		const numMatch = text.match(/^\d+/);
 		if (numMatch) {
@@ -296,6 +315,26 @@ export class ShellTokenizer {
 		if (pos === 0) return true;
 		const prev = line[pos - 1];
 		return prev === ' ' || prev === '\t' || prev === ';' || prev === '&' || prev === '|';
+	}
+
+	/**
+	 * Whether `pos` begins a new shell word — i.e. the previous character is a
+	 * boundary (start of line, whitespace, or a command/grouping separator).
+	 * Used to tell a dash that starts an option (`-9`, `--`) apart from an
+	 * arithmetic minus that follows a value (`10-2`).
+	 */
+	private isWordStart(line: string, pos: number): boolean {
+		if (pos === 0) return true;
+		const prev = line[pos - 1];
+		return (
+			prev === ' ' ||
+			prev === '\t' ||
+			prev === ';' ||
+			prev === '&' ||
+			prev === '|' ||
+			prev === '(' ||
+			prev === '{'
+		);
 	}
 
 	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {

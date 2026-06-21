@@ -321,9 +321,10 @@ export class CppTokenizer {
 			return createToken(this.classifyIdentifier(word, text, word.length), word, pos);
 		}
 
-		// Operators (multi-char first)
+		// Operators (multi-char first). <=> (three-way comparison) must precede <=
+		// so the spaceship operator is not split into '<=' and '>'.
 		const opMatch = text.match(
-			/^(?:<<=|>>=|->\*|\.\.\.|::|->|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||\+=|-=|\*=|\/=|%=|&=|\|=|\^=|[+\-*/%&|^~!<>=])/
+			/^(?:<<=|>>=|<=>|->\*|\.\.\.|::|->|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||\+=|-=|\*=|\/=|%=|&=|\|=|\^=|[+\-*/%&|^~!<>=])/
 		);
 		if (opMatch) {
 			return createToken(this.classifyOperator(opMatch[0]), opMatch[0], pos);
@@ -349,7 +350,15 @@ export class CppTokenizer {
 	private classifyOperator(op: string): TokenType {
 		if (op === '::' || op === '->' || op === '.' || op === '->*') return 'punctuation.accessor';
 		if (op === '=' || /^[+\-*/%&|^]?=$|^<<=$|^>>=$/.test(op)) return 'operator.assignment';
-		if (op === '==' || op === '!=' || op === '<' || op === '>' || op === '<=' || op === '>=')
+		if (
+			op === '==' ||
+			op === '!=' ||
+			op === '<' ||
+			op === '>' ||
+			op === '<=' ||
+			op === '>=' ||
+			op === '<=>'
+		)
 			return 'operator.comparison';
 		if (op === '&&' || op === '||' || op === '!') return 'operator.logical';
 		if (op === '+' || op === '-' || op === '*' || op === '/' || op === '%')

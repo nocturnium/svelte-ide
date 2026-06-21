@@ -199,6 +199,42 @@ describe('dockerfile: realistic multi-token line', () => {
 	});
 });
 
+describe('dockerfile: contextual in-line keywords (as / none)', () => {
+	it('does not treat `as` as a keyword in a RUN shell command', () => {
+		const line = tok(t, 'RUN gcc -S -o out.s as input.c');
+		// `as` here is a shell argument (the assembler), not the FROM stage keyword.
+		expectToken(line, 'variable', 'as');
+	});
+
+	it('does not treat `none` as a keyword when it is a flag value', () => {
+		const line = tok(t, 'RUN --network=none pip install x');
+		// `none` here is the value of --network, not the HEALTHCHECK NONE keyword.
+		expectToken(line, 'variable', 'none');
+	});
+
+	it('does not treat a bare `none` in a RUN script as a keyword', () => {
+		const line = tok(t, 'RUN echo none here');
+		expectToken(line, 'variable', 'none');
+	});
+
+	it('still treats AS as a keyword inside a FROM stage', () => {
+		const line = tok(t, 'FROM golang:1.22 AS builder');
+		expectToken(line, 'keyword', 'AS');
+	});
+
+	it('still treats NONE as a keyword after HEALTHCHECK', () => {
+		const line = tok(t, 'HEALTHCHECK NONE');
+		expectToken(line, 'keyword', 'NONE');
+	});
+
+	it('keeps AS a keyword when FROM spills onto a continuation line', () => {
+		const lines = tokLines(t, ['FROM golang:1.22 \\', '    AS builder']);
+		// The instruction context (FROM) must thread across the `\` continuation.
+		expectToken(lines[1], 'keyword', 'AS');
+		expectToken(lines[1], 'variable', 'builder');
+	});
+});
+
 describe('dockerfile: lossless reconstruction', () => {
 	it('is lossless on an indented continuation line', () => {
 		const line = tok(t, '    apt-get install -y curl && \\');

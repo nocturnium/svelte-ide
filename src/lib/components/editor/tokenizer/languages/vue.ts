@@ -48,6 +48,8 @@ export interface VueTokenizerState extends TokenizerState {
 	scriptLang?: 'js' | 'ts';
 	/** Child (script/style) tokenizer state */
 	innerState?: TokenizerState;
+	/** Inside a multi-line HTML comment `<!-- ... -->` opened on a previous line */
+	inHtmlComment?: boolean;
 }
 
 /**
@@ -160,6 +162,22 @@ export class VueTokenizer implements LanguageTokenizer {
 		const tokens: RawToken[] = [];
 		let pos = 0;
 
+		// Resume a multi-line HTML comment opened on a previous line.
+		if (state.inHtmlComment) {
+			const closeIdx = line.indexOf('-->');
+			if (closeIdx === -1) {
+				// Whole line is still inside the comment.
+				if (line) {
+					tokens.push({ type: 'comment', text: line });
+				}
+				return tokens;
+			}
+			const commentPart = line.slice(0, closeIdx + 3);
+			tokens.push({ type: 'comment', text: commentPart });
+			state.inHtmlComment = false;
+			pos = closeIdx + 3;
+		}
+
 		while (pos < line.length) {
 			const rest = line.slice(pos);
 			const char = line[pos];
@@ -224,14 +242,21 @@ export class VueTokenizer implements LanguageTokenizer {
 				continue;
 			}
 
-			// HTML comments
+			// HTML comments (may span multiple lines)
 			if (rest.startsWith('<!--')) {
-				const commentMatch = rest.match(/^<!--.*?(?:-->|$)/);
-				if (commentMatch) {
-					tokens.push({ type: 'comment', text: commentMatch[0] });
-					pos += commentMatch[0].length;
-					continue;
+				const closeIdx = rest.indexOf('-->', 4);
+				if (closeIdx !== -1) {
+					const commentText = rest.slice(0, closeIdx + 3);
+					tokens.push({ type: 'comment', text: commentText });
+					pos += commentText.length;
+				} else {
+					// Unterminated on this line — consume the rest and thread the
+					// open-comment state so following lines resume as comment.
+					tokens.push({ type: 'comment', text: rest });
+					state.inHtmlComment = true;
+					pos = line.length;
 				}
+				continue;
 			}
 
 			// HTML tags (opening / closing / self-closing)
@@ -300,11 +325,18 @@ export class VueTokenizer implements LanguageTokenizer {
 				continue;
 			}
 
-			// Attribute name (incl. Vue directives & shorthands :, @, #, and modifiers).
 			// Attribute name, incl. Vue directives (v-if) and the shorthands
 			// `:` (v-bind), `@` (v-on) and `#` (v-slot), plus modifiers like
 			// `@click.stop` or `:class`. All render as tag.attribute.
-			const attrMatch = rest.match(/^([@:#]?[\w.[\]-]+|v-[\w-]+(?::[\w.[\]-]+)?)/);
+			//
+			// The `v-…` branch must come FIRST: a full directive with an argument
+			// like `v-bind:class` / `v-model:value` / `v-on:click.stop` must stay a
+			// single token. If the generic branch ran first it would match only the
+			// `v-bind` prefix and leave `:class` to re-parse as a *separate* v-bind
+			// shorthand — a different (wrong) attribute.
+			const attrMatch = rest.match(
+				/^(v-[\w-]+(?::[\w.[\]-]+)?(?:\.[\w-]+)*|[@:#]?[\w.[\]-]+)/
+			);
 			if (attrMatch) {
 				const attrName = attrMatch[0];
 				tokens.push({ type: 'tag.attribute', text: attrName });

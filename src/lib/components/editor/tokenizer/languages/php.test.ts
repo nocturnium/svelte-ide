@@ -162,6 +162,30 @@ describe('PHP tokenizer', () => {
 		it('doc comments use comment.doc', () => {
 			expectToken(tok(php, '/** @param int $x */'), 'comment.doc', '/** @param int $x */');
 		});
+
+		it('threads a multi-line doc comment as comment.doc on every line', () => {
+			// Regression: continuation lines of a /** ... */ docblock were mis-typed as
+			// comment.block, so a docblock rendered with two different colors.
+			const lines = tokLines(php, ['/**', ' * Summary', ' * @return int', ' */', 'function f() {}']);
+			expectToken(lines[0], 'comment.doc', '/**');
+			expectToken(lines[1], 'comment.doc', ' * Summary');
+			expectToken(lines[2], 'comment.doc', ' * @return int');
+			expectToken(lines[3], 'comment.doc', ' */');
+			expectToken(lines[4], 'keyword.definition', 'function');
+			lines.forEach((l, i) =>
+				expectLossless(l, ['/**', ' * Summary', ' * @return int', ' */', 'function f() {}'][i])
+			);
+		});
+
+		it('treats /**/ as an empty block comment, not an unterminated doc comment', () => {
+			// Regression: /**/ matched the /** doc-comment opener and bled into the rest
+			// of the file as an unterminated comment.
+			const line = tok(php, '$x = 1; /**/ $y = 2;');
+			expectToken(line, 'comment.block', '/**/');
+			// Code after the empty comment must still tokenize, not be swallowed.
+			expectToken(line, 'variable', '$y');
+			expectLossless(line, '$x = 1; /**/ $y = 2;');
+		});
 	});
 
 	describe('operators', () => {

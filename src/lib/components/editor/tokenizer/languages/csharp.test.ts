@@ -117,6 +117,35 @@ describe('csharp: numbers', () => {
 		expectToken(tok(cs, '64L'), 'number', '64L');
 		expectToken(tok(cs, '1_000_000'), 'number', '1_000_000');
 	});
+
+	it('does not let an integer swallow a trailing dot (member access on a literal)', () => {
+		// Regression: `\.?` in the number regex used to absorb the dot, producing the
+		// invalid float `1.` and stealing the `.` accessor from `1.ToString()`.
+		const line = tok(cs, '1.ToString()');
+		expectToken(line, 'number', '1');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'function.call', 'ToString');
+		expectLossless(line, '1.ToString()');
+	});
+
+	it('tokenizes the range operator without mangling the operands', () => {
+		// Regression: `1..5` used to tokenize as the two bogus numbers `1.` and `.5`,
+		// erasing the `..` range operator entirely.
+		const line = tok(cs, 'var r = 1..5;');
+		expectToken(line, 'number', '1');
+		expectToken(line, 'operator', '..');
+		expectToken(line, 'number', '5');
+		expectLossless(line, 'var r = 1..5;');
+	});
+
+	it('keeps float operands intact around a range operator', () => {
+		// Regression: `1.0..2.0` used to disintegrate into `1.0 . .2 .0`.
+		const line = tok(cs, 'var d = 1.0..2.0;');
+		expectToken(line, 'number', '1.0');
+		expectToken(line, 'operator', '..');
+		expectToken(line, 'number', '2.0');
+		expectLossless(line, 'var d = 1.0..2.0;');
+	});
 });
 
 describe('csharp: operators', () => {

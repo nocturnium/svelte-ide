@@ -31,14 +31,13 @@ const instructions = new Set([
 // Control-flow-flavored instructions get keyword.control; the rest keyword.
 const controlInstructions = new Set(['cmd', 'entrypoint', 'from', 'healthcheck', 'onbuild', 'run']);
 
-// In-line keywords that are not the leading instruction.
-const inlineKeywords = new Set(['as', 'none']);
-
 interface DockerfileTokenizerState extends TokenizerState {
 	/** Still inside the same logical line: a previous physical line ended with `\`. */
 	inContinuation?: boolean;
 	/** The leading instruction word of the current logical line has been consumed. */
 	afterInstruction?: boolean;
+	/** Lowercase leading instruction of the current logical line (threads across `\` continuations). */
+	instruction?: string;
 }
 
 export class DockerfileTokenizer {
@@ -62,6 +61,9 @@ export class DockerfileTokenizer {
 		const continued = state.inContinuation === true;
 		if (!continued) {
 			state.afterInstruction = false;
+			// A fresh logical line has no instruction context yet; `as`/`none` are
+			// only keywords in their own instruction (FROM/HEALTHCHECK), so clear it.
+			state.instruction = undefined;
 		}
 		// Clear continuation; it is re-set below if this line ends with `\`.
 		state.inContinuation = false;
@@ -128,6 +130,7 @@ export class DockerfileTokenizer {
 				if (instrMatch && instructions.has(instrMatch[0].toLowerCase())) {
 					state.afterInstruction = true;
 					const word = instrMatch[0];
+					state.instruction = word.toLowerCase();
 					const type: TokenType = controlInstructions.has(word.toLowerCase())
 						? 'keyword.control'
 						: 'keyword';
@@ -175,7 +178,7 @@ export class DockerfileTokenizer {
 		const identMatch = text.match(/^[A-Za-z_][A-Za-z0-9_]*/);
 		if (identMatch) {
 			const word = identMatch[0];
-			return createToken(this.classifyIdentifier(word), word, pos);
+			return createToken(this.classifyIdentifier(word, state), word, pos);
 		}
 
 		// Operators (assignment in ENV/ARG/LABEL key=value, &&/|| in RUN scripts).
@@ -210,8 +213,15 @@ export class DockerfileTokenizer {
 		return /[A-Za-z_]/.test(prev) && /^\d/.test(text);
 	}
 
-	private classifyIdentifier(word: string): TokenType {
-		if (inlineKeywords.has(word.toLowerCase())) {
+	private classifyIdentifier(word: string, state: DockerfileTokenizerState): TokenType {
+		// `as` and `none` are keywords ONLY in their own instruction context
+		// (FROM ... AS <name>; HEALTHCHECK NONE). Everywhere else — shell args,
+		// flag values like `--network=none`, image refs — they are bare words.
+		const lower = word.toLowerCase();
+		if (lower === 'as' && state.instruction === 'from') {
+			return 'keyword';
+		}
+		if (lower === 'none' && state.instruction === 'healthcheck') {
 			return 'keyword';
 		}
 		return 'variable';

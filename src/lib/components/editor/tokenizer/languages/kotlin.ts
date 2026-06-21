@@ -232,7 +232,7 @@ export class KotlinTokenizer {
 
 		// Operators
 		const opMatch = text.match(
-			/^(?:\?:|\?\.|!!|\.\.|->|::|==|!=|<=|>=|&&|\|\||\+\+|--|[+\-*/%]=|[+\-*/%<>=!&|]=?)/
+			/^(?:===|!==|\?:|\?\.|!!|\.\.|->|::|==|!=|<=|>=|&&|\|\||\+\+|--|[+\-*/%]=|[+\-*/%<>=!&|]=?)/
 		);
 		if (opMatch) {
 			return createToken(this.classifyOperator(opMatch[0]), opMatch[0], pos);
@@ -255,7 +255,16 @@ export class KotlinTokenizer {
 	}
 
 	private classifyOperator(op: string): TokenType {
-		if (op === '==' || op === '!=' || op === '<=' || op === '>=' || op === '<' || op === '>') {
+		if (
+			op === '==' ||
+			op === '!=' ||
+			op === '===' ||
+			op === '!==' ||
+			op === '<=' ||
+			op === '>=' ||
+			op === '<' ||
+			op === '>'
+		) {
 			return 'operator.comparison';
 		}
 		if (op === '&&' || op === '||' || op === '!') {

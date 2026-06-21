@@ -278,7 +278,7 @@ export class CSharpTokenizer {
 
 		// Numbers (hex, binary, decimal/float with underscores and suffixes)
 		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F_]+(?:[uUlL]+)?|0[bB][01_]+(?:[uUlL]+)?|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?(?:[fFdDmMuUlL]+)?)/
+			/^(?:0[xX][0-9a-fA-F_]+(?:[uUlL]+)?|0[bB][01_]+(?:[uUlL]+)?|(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?(?:[fFdDmMuUlL]+)?)/
 		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
@@ -293,7 +293,7 @@ export class CSharpTokenizer {
 
 		// Operators
 		const opMatch = text.match(
-			/^(?:\?\?=|>>=|<<=|=>|\?\?|\?\.|\+\+|--|&&|\|\||==|!=|<=|>=|->|<<|>>|[+\-*/%&|^!<>=]=?)/
+			/^(?:\?\?=|>>=|<<=|=>|\?\?|\?\.|\.\.|\+\+|--|&&|\|\||==|!=|<=|>=|->|<<|>>|[+\-*/%&|^!<>=]=?)/
 		);
 		if (opMatch) {
 			const op = opMatch[0];

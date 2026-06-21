@@ -14,7 +14,13 @@ const definitionKeywords = new Set([
 	'protocol',
 	'extension',
 	'typealias',
-	'associatedtype'
+	'associatedtype',
+	'actor',
+	'init',
+	'deinit',
+	'subscript',
+	'operator',
+	'precedencegroup'
 ]);
 
 // Swift keywords - storage / declaration modifiers
@@ -55,12 +61,15 @@ const controlKeywords = new Set([
 	'return',
 	'throw',
 	'throws',
+	'rethrows',
 	'do',
 	'try',
 	'catch',
 	'defer',
 	'fallthrough',
-	'where'
+	'where',
+	'async',
+	'await'
 ]);
 
 // Swift keywords - module / import

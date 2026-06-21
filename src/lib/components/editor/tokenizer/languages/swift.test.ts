@@ -42,6 +42,35 @@ describe('SwiftTokenizer - keywords', () => {
 		expectToken(tok(swift, 'x is String'), 'keyword', 'is');
 		expectToken(tok(swift, 'var body: some View'), 'keyword', 'some');
 	});
+
+	it('classifies concurrency keywords async / await / rethrows', () => {
+		// Regression: `async` and `await` previously fell through to `variable`,
+		// and `rethrows` (sibling of the handled `throws`) was also unrecognized.
+		expectToken(tok(swift, 'func f() async {}'), 'keyword.control', 'async');
+		expectToken(tok(swift, 'let r = await fetch()'), 'keyword.control', 'await');
+		expectToken(
+			tok(swift, 'func f(_ b: () throws -> Void) rethrows {}'),
+			'keyword.control',
+			'rethrows'
+		);
+		// `async let` is a concurrency binding; `async` must still be a keyword here.
+		const al = tok(swift, 'async let value = load()');
+		expectToken(al, 'keyword.control', 'async');
+		expectToken(al, 'keyword.storage', 'let');
+		expectLossless(al, 'async let value = load()');
+	});
+
+	it('classifies declaration keywords init / deinit / subscript / actor / operator', () => {
+		// Regression: `init` and `subscript` were mis-typed as function.call (they are
+		// followed by `(`), and `deinit` / `actor` / `operator` fell through to variable.
+		expectToken(tok(swift, 'init(x: Int) {}'), 'keyword.definition', 'init');
+		expectToken(tok(swift, 'deinit {}'), 'keyword.definition', 'deinit');
+		expectToken(tok(swift, 'subscript(i: Int) -> Int {}'), 'keyword.definition', 'subscript');
+		expectToken(tok(swift, 'actor BankAccount {}'), 'keyword.definition', 'actor');
+		const op = tok(swift, 'static func == (l: P, r: P) -> Bool {}');
+		expectLossless(op, 'static func == (l: P, r: P) -> Bool {}');
+		expectToken(tok(swift, 'infix operator +-: Additive'), 'keyword.definition', 'operator');
+	});
 });
 
 describe('SwiftTokenizer - constants', () => {

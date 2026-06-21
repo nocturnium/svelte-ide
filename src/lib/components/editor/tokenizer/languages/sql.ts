@@ -43,6 +43,8 @@ const keywords = new Set([
 	'GROUP',
 	'BY',
 	'ORDER',
+	'ASC',
+	'DESC',
 	'HAVING',
 	'UNION',
 	'ALL',
@@ -234,7 +236,8 @@ export class SqlTokenizer {
 
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
-			const token = this.getNextToken(remaining, pos, state);
+			const prev = tokens.length > 0 ? tokens[tokens.length - 1] : undefined;
+			const token = this.getNextToken(remaining, pos, state, prev);
 
 			if (token) {
 				tokens.push(token);
@@ -252,7 +255,12 @@ export class SqlTokenizer {
 		return { lineNumber, tokens, text: line, state };
 	}
 
-	private getNextToken(text: string, pos: number, state: SqlTokenizerState): Token | null {
+	private getNextToken(
+		text: string,
+		pos: number,
+		state: SqlTokenizerState,
+		prev?: Token
+	): Token | null {
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {
@@ -295,9 +303,20 @@ export class SqlTokenizer {
 			return this.tokenizeIdentifierQuote(text, pos, '`');
 		}
 
-		// Numbers: integer, decimal, scientific
-		const numMatch = text.match(/^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/);
-		if (numMatch) {
+		// Numbers: integer, decimal, scientific.
+		//
+		// A leading dot (".5") is only a number when the dot is NOT a member
+		// accessor. After an identifier-like token ("t1.5", "alias.5", `foo`.5)
+		// the dot is an accessor and the digits are a separate number, so the
+		// leading-dot form is suppressed and the dot falls through to
+		// punctuation below.
+		const dotIsAccessor =
+			text[0] === '.' && prev !== undefined && this.endsLikeQualifier(prev.text);
+		const numPattern = dotIsAccessor
+			? /^(?:\d+\.?\d*)(?:[eE][+-]?\d+)?/
+			: /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/;
+		const numMatch = text.match(numPattern);
+		if (numMatch && numMatch[0].length > 0) {
 			return createToken('number', numMatch[0], pos);
 		}
 
@@ -343,6 +362,18 @@ export class SqlTokenizer {
 		}
 
 		return createToken('text', text[0], pos);
+	}
+
+	/**
+	 * True when the previous token's trailing character makes a following `.`
+	 * read as a member accessor (so `.<digits>` is NOT a leading-dot decimal):
+	 * an identifier character, a closing paren, or a closing quoted-identifier
+	 * delimiter.
+	 */
+	private endsLikeQualifier(text: string): boolean {
+		const last = text[text.length - 1];
+		if (last === undefined) return false;
+		return /[A-Za-z0-9_)"`]/.test(last);
 	}
 
 	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {
