@@ -445,6 +445,13 @@ export function applyDiscount(order: Order, percent: number): Order {
 						<span>{secondaryUser.name}</span>
 					</div>
 				</div>
+
+				{#if markers.length <= 1}
+					<p class="collab-empty collab-empty--quiet">
+						Edit either editor below to record snapshots, then scrub the timeline to move back
+						through the document's history.
+					</p>
+				{/if}
 			</div>
 		</section>
 
