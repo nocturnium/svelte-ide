@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/nocturnium/svelte-ide/compare/v1.12.1...v1.13.0) (2026-06-21)
+
+
+### Features
+
+* **brand:** new moon logo ([a140525](https://github.com/nocturnium/svelte-ide/commit/a14052566990df63e772b1c8e93a7b87996cf68b)), closes [#6a92e8](https://github.com/nocturnium/svelte-ide/issues/6a92e8) [#030655](https://github.com/nocturnium/svelte-ide/issues/030655)
+
 ## [1.12.1](https://github.com/nocturnium/svelte-ide/compare/v1.12.0...v1.12.1) (2026-06-21)
 
 
