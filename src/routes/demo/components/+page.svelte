@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import Button from '$lib/components/core/Button.svelte';
 	import Input from '$lib/components/core/Input.svelte';
 	import Textarea from '$lib/components/core/Textarea.svelte';
@@ -17,6 +19,74 @@
 		isLoading = true;
 		setTimeout(() => (isLoading = false), 2000);
 	}
+
+	const buttonCode = `<script lang="ts">
+  import { Button } from '@nocturnium/svelte-ide';
+<${'/'}script>
+
+<Button variant="primary">Primary</Button>
+<Button variant="secondary">Secondary</Button>
+<Button variant="ghost">Ghost</Button>
+<Button variant="danger">Danger</Button>
+
+<Button size="sm">Small</Button>
+<Button size="md">Medium</Button>
+<Button size="lg">Large</Button>
+
+<Button disabled>Disabled</Button>
+<Button loading>Loading</Button>
+<Button icon={iconPlus}>Add</Button>`;
+
+	const inputCode = `<script lang="ts">
+  import { Input } from '@nocturnium/svelte-ide';
+  let value = $state('');
+<${'/'}script>
+
+<Input placeholder="Enter text..." bind:value />
+<Input placeholder="Disabled" disabled />
+
+<!-- error is a first-class prop -->
+<Input placeholder="Error state" error="This field is required" />
+<Input type="password" placeholder="Password" />`;
+
+	const textareaCode = `<script lang="ts">
+  import { Textarea } from '@nocturnium/svelte-ide';
+  let value = $state('');
+<${'/'}script>
+
+<Textarea placeholder="Enter your message..." bind:value rows={4} />
+<Textarea placeholder="Disabled" disabled rows={3} />`;
+
+	const badgeCode = `<Badge>Default</Badge>
+<Badge variant="primary">Primary</Badge>
+<Badge variant="success">Deployed</Badge>
+<Badge variant="warning">Pending</Badge>
+<Badge variant="danger">Failed</Badge>
+<Badge variant="info">v1.2.3</Badge>`;
+
+	const spinnerCode = `<Spinner size="sm" />
+<Spinner size="md" />
+<Spinner size="lg" />`;
+
+	const kbdCode = `<Kbd keys={['Ctrl', 'S']} />
+<Kbd keys={['Ctrl', 'Shift', 'P']} />
+<Kbd keys={['Esc']} />`;
+
+	const avatarCode = `<Avatar name="Alice" size="sm" />
+<Avatar name="Bob" size="md" />
+<Avatar name="Charlie" size="lg" />
+
+<Avatar name="Alice" color="var(--ide-collab-cursor-1)" />
+
+<!-- AI participant -->
+<Avatar name="Claude" isAI />`;
+
+	const tooltipCode = `<Tooltip content="Tooltip on top" position="top">
+  <Button variant="ghost">Top</Button>
+</Tooltip>
+<Tooltip content="Tooltip on right" position="right">
+  <Button variant="ghost">Right</Button>
+</Tooltip>`;
 </script>
 
 {#snippet iconPlus()}
@@ -72,119 +142,115 @@
 	</svg>
 {/snippet}
 
-<div class="demo-page">
-	<header class="page-header">
-		<h1>Core Components</h1>
-		<p>Essential UI building blocks for the IDE</p>
-	</header>
-
-	<!-- Buttons Section -->
+<DemoPage
+	eyebrow="Core UI"
+	title="Core Components"
+	description="The essential UI primitives — buttons, inputs, badges, and more. Every example pairs the live component with its copy-paste source."
+>
+	<!-- Button -->
 	<section class="component-section">
 		<h2>Button</h2>
 		<p class="section-desc">Versatile button component with multiple variants and states</p>
-
-		<div class="demo-group">
-			<h3>Variants</h3>
-			<div class="demo-row">
-				<Button variant="primary">Primary</Button>
-				<Button variant="secondary">Secondary</Button>
-				<Button variant="ghost">Ghost</Button>
-				<Button variant="danger">Danger</Button>
+		<DemoExhibit code={buttonCode} language="svelte">
+			<div class="gallery">
+				<div class="demo-group">
+					<h3>Variants</h3>
+					<div class="demo-row">
+						<Button variant="primary">Primary</Button>
+						<Button variant="secondary">Secondary</Button>
+						<Button variant="ghost">Ghost</Button>
+						<Button variant="danger">Danger</Button>
+					</div>
+				</div>
+				<div class="demo-group">
+					<h3>Sizes</h3>
+					<div class="demo-row">
+						<Button size="sm">Small</Button>
+						<Button size="md">Medium</Button>
+						<Button size="lg">Large</Button>
+					</div>
+				</div>
+				<div class="demo-group">
+					<h3>States</h3>
+					<div class="demo-row">
+						<Button disabled>Disabled</Button>
+						<Button loading>Loading</Button>
+						<Button onclick={simulateLoading} loading={isLoading}>
+							{isLoading ? 'Working...' : 'Click Me'}
+						</Button>
+					</div>
+				</div>
+				<div class="demo-group">
+					<h3>Icon Buttons</h3>
+					<div class="demo-row">
+						<Button variant="ghost" size="sm" icon={iconPlus}>Add</Button>
+						<Button variant="ghost" size="sm" icon={iconCheck}>Save</Button>
+						<Button variant="danger" size="sm" icon={iconX}>Delete</Button>
+					</div>
+				</div>
 			</div>
-		</div>
-
-		<div class="demo-group">
-			<h3>Sizes</h3>
-			<div class="demo-row">
-				<Button size="sm">Small</Button>
-				<Button size="md">Medium</Button>
-				<Button size="lg">Large</Button>
-			</div>
-		</div>
-
-		<div class="demo-group">
-			<h3>States</h3>
-			<div class="demo-row">
-				<Button disabled>Disabled</Button>
-				<Button loading>Loading</Button>
-				<Button onclick={simulateLoading} loading={isLoading}>
-					{isLoading ? 'Working...' : 'Click Me'}
-				</Button>
-			</div>
-		</div>
-
-		<div class="demo-group">
-			<h3>Icon Buttons</h3>
-			<div class="demo-row">
-				<Button variant="ghost" size="sm" icon={iconPlus}>Add</Button>
-				<Button variant="ghost" size="sm" icon={iconCheck}>Save</Button>
-				<Button variant="danger" size="sm" icon={iconX}>Delete</Button>
-			</div>
-		</div>
+		</DemoExhibit>
 	</section>
 
-	<!-- Input Section -->
+	<!-- Input -->
 	<section class="component-section">
 		<h2>Input</h2>
 		<p class="section-desc">Text input fields with validation states</p>
-
-		<div class="demo-group">
-			<h3>Basic</h3>
-			<div class="input-demos">
-				<Input placeholder="Enter text..." bind:value={inputValue} />
-				<label class="field">
-					<span class="field__label">Username</span>
-					<Input placeholder="With label" />
-				</label>
-				<Input placeholder="Disabled" disabled />
+		<DemoExhibit code={inputCode} language="svelte">
+			<div class="gallery">
+				<div class="demo-group">
+					<h3>Basic</h3>
+					<div class="input-demos">
+						<Input placeholder="Enter text..." bind:value={inputValue} />
+						<label class="field">
+							<span class="field__label">Username</span>
+							<Input placeholder="With label" />
+						</label>
+						<Input placeholder="Disabled" disabled />
+					</div>
+				</div>
+				<div class="demo-group">
+					<h3>States</h3>
+					<div class="input-demos">
+						<Input placeholder="Error state" error="This field is required" />
+						<label class="field input-success">
+							<Input placeholder="Composed success styling" />
+							<span class="field__success"
+								>{@render iconCheck()} Looks good (composed, not a prop)</span
+							>
+						</label>
+						<label class="field">
+							<Input placeholder="With helper" />
+							<span class="field__helper">Must be at least 8 characters</span>
+						</label>
+					</div>
+				</div>
+				<div class="demo-group">
+					<h3>Types</h3>
+					<div class="input-demos">
+						<label class="field">
+							<span class="field__label">Password</span>
+							<Input type="password" placeholder="Password" />
+						</label>
+						<label class="field">
+							<span class="field__label">Email</span>
+							<Input type="email" placeholder="email@example.com" />
+						</label>
+						<label class="field">
+							<span class="field__label">Count</span>
+							<Input type="number" placeholder="0" />
+						</label>
+					</div>
+				</div>
 			</div>
-		</div>
-
-		<div class="demo-group">
-			<h3>States</h3>
-			<p class="group-note">
-				<code>error</code> is a first-class prop on <code>Input</code>. Success styling has no prop
-				— it's composed at the call site (a wrapper border override plus your own checkmark span).
-			</p>
-			<div class="input-demos">
-				<Input placeholder="Error state" error="This field is required" />
-				<label class="field input-success">
-					<Input placeholder="Composed success styling" />
-					<span class="field__success">{@render iconCheck()} Looks good (composed, not a prop)</span
-					>
-				</label>
-				<label class="field">
-					<Input placeholder="With helper" />
-					<span class="field__helper">Must be at least 8 characters</span>
-				</label>
-			</div>
-		</div>
-
-		<div class="demo-group">
-			<h3>Types</h3>
-			<div class="input-demos">
-				<label class="field">
-					<span class="field__label">Password</span>
-					<Input type="password" placeholder="Password" />
-				</label>
-				<label class="field">
-					<span class="field__label">Email</span>
-					<Input type="email" placeholder="email@example.com" />
-				</label>
-				<label class="field">
-					<span class="field__label">Count</span>
-					<Input type="number" placeholder="0" />
-				</label>
-			</div>
-		</div>
+		</DemoExhibit>
 	</section>
 
-	<!-- Textarea Section -->
+	<!-- Textarea -->
 	<section class="component-section">
 		<h2>Textarea</h2>
 		<p class="section-desc">Multi-line text input</p>
-
-		<div class="demo-group">
+		<DemoExhibit code={textareaCode} language="svelte">
 			<div class="input-demos">
 				<Textarea placeholder="Enter your message..." bind:value={textareaValue} rows={4} />
 				<label class="field">
@@ -193,115 +259,108 @@
 				</label>
 				<Textarea placeholder="Disabled" disabled rows={3} />
 			</div>
-		</div>
+		</DemoExhibit>
 	</section>
 
-	<!-- Badge Section -->
+	<!-- Badge -->
 	<section class="component-section">
 		<h2>Badge</h2>
 		<p class="section-desc">Status indicators and labels</p>
-
-		<div class="demo-group">
-			<h3>Variants</h3>
-			<div class="demo-row">
-				<Badge>Default</Badge>
-				<Badge variant="primary">Primary</Badge>
-				<Badge variant="success">Success</Badge>
-				<Badge variant="warning">Warning</Badge>
-				<Badge variant="danger">Danger</Badge>
-				<Badge variant="info">Info</Badge>
+		<DemoExhibit code={badgeCode} language="svelte">
+			<div class="gallery">
+				<div class="demo-group">
+					<h3>Variants</h3>
+					<div class="demo-row">
+						<Badge>Default</Badge>
+						<Badge variant="primary">Primary</Badge>
+						<Badge variant="success">Success</Badge>
+						<Badge variant="warning">Warning</Badge>
+						<Badge variant="danger">Danger</Badge>
+						<Badge variant="info">Info</Badge>
+					</div>
+				</div>
+				<div class="demo-group">
+					<h3>Use Cases</h3>
+					<div class="demo-row">
+						<Badge variant="success">Deployed</Badge>
+						<Badge variant="warning">Pending</Badge>
+						<Badge variant="danger">Failed</Badge>
+						<Badge variant="info">v1.2.3</Badge>
+						<Badge variant="primary">New</Badge>
+					</div>
+				</div>
 			</div>
-		</div>
-
-		<div class="demo-group">
-			<h3>Use Cases</h3>
-			<div class="demo-row">
-				<Badge variant="success">Deployed</Badge>
-				<Badge variant="warning">Pending</Badge>
-				<Badge variant="danger">Failed</Badge>
-				<Badge variant="info">v1.2.3</Badge>
-				<Badge variant="primary">New</Badge>
-			</div>
-		</div>
+		</DemoExhibit>
 	</section>
 
-	<!-- Spinner Section -->
+	<!-- Spinner -->
 	<section class="component-section">
 		<h2>Spinner</h2>
 		<p class="section-desc">Loading indicators</p>
-
-		<div class="demo-group">
-			<h3>Sizes</h3>
+		<DemoExhibit code={spinnerCode} language="svelte">
 			<div class="demo-row">
 				<Spinner size="sm" />
 				<Spinner size="md" />
 				<Spinner size="lg" />
 			</div>
-		</div>
+		</DemoExhibit>
 	</section>
 
-	<!-- Kbd Section -->
+	<!-- Kbd -->
 	<section class="component-section">
 		<h2>Keyboard Shortcuts</h2>
 		<p class="section-desc">Display keyboard shortcuts and key combinations</p>
-
-		<div class="demo-group">
-			<div class="demo-row">
-				<Kbd keys={['Ctrl', 'S']} />
-				<span class="kbd-label">Save</span>
+		<DemoExhibit code={kbdCode} language="svelte">
+			<div class="kbd-stack">
+				<div class="demo-row"><Kbd keys={['Ctrl', 'S']} /><span class="kbd-label">Save</span></div>
+				<div class="demo-row">
+					<Kbd keys={['Ctrl', 'Shift', 'P']} /><span class="kbd-label">Command Palette</span>
+				</div>
+				<div class="demo-row"><Kbd keys={['Esc']} /><span class="kbd-label">Close Panel</span></div>
 			</div>
-			<div class="demo-row">
-				<Kbd keys={['Ctrl', 'Shift', 'P']} />
-				<span class="kbd-label">Command Palette</span>
-			</div>
-			<div class="demo-row">
-				<Kbd keys={['Esc']} />
-				<span class="kbd-label">Close Panel</span>
-			</div>
-		</div>
+		</DemoExhibit>
 	</section>
 
-	<!-- Avatar Section -->
+	<!-- Avatar -->
 	<section class="component-section">
 		<h2>Avatar</h2>
 		<p class="section-desc">User avatars for collaboration</p>
-
-		<div class="demo-group">
-			<h3>Sizes</h3>
-			<div class="demo-row">
-				<Avatar name="Alice" size="sm" />
-				<Avatar name="Bob" size="md" />
-				<Avatar name="Charlie" size="lg" />
+		<DemoExhibit code={avatarCode} language="svelte">
+			<div class="gallery">
+				<div class="demo-group">
+					<h3>Sizes</h3>
+					<div class="demo-row">
+						<Avatar name="Alice" size="sm" />
+						<Avatar name="Bob" size="md" />
+						<Avatar name="Charlie" size="lg" />
+					</div>
+				</div>
+				<div class="demo-group">
+					<h3>With Colors</h3>
+					<div class="demo-row">
+						<Avatar name="Alice" color="var(--ide-collab-cursor-1)" />
+						<Avatar name="Bob" color="var(--ide-collab-cursor-3)" />
+						<Avatar name="Charlie" color="var(--ide-collab-cursor-5)" />
+						<Avatar name="Diana" color="var(--ide-collab-cursor-4)" />
+						<Avatar name="Eve" color="var(--ide-collab-cursor-2)" />
+					</div>
+				</div>
+				<div class="demo-group">
+					<h3>AI User</h3>
+					<div class="demo-row">
+						<Avatar name="Claude" isAI />
+						<span class="avatar-label">AI Assistant</span>
+					</div>
+				</div>
 			</div>
-		</div>
-
-		<div class="demo-group">
-			<h3>With Colors</h3>
-			<div class="demo-row">
-				<Avatar name="Alice" color="var(--ide-collab-cursor-1)" />
-				<Avatar name="Bob" color="var(--ide-collab-cursor-3)" />
-				<Avatar name="Charlie" color="var(--ide-collab-cursor-5)" />
-				<Avatar name="Diana" color="var(--ide-collab-cursor-4)" />
-				<Avatar name="Eve" color="var(--ide-collab-cursor-2)" />
-			</div>
-		</div>
-
-		<div class="demo-group">
-			<h3>AI User</h3>
-			<div class="demo-row">
-				<Avatar name="Claude" isAI />
-				<span class="avatar-label">AI Assistant</span>
-			</div>
-		</div>
+		</DemoExhibit>
 	</section>
 
-	<!-- Tooltip Section -->
+	<!-- Tooltip -->
 	<section class="component-section">
 		<h2>Tooltip</h2>
 		<p class="section-desc">Contextual information on hover</p>
-
-		<div class="demo-group">
-			<h3>Positions</h3>
+		<DemoExhibit code={tooltipCode} language="svelte">
 			<div class="demo-row tooltip-row">
 				<Tooltip content="Tooltip on top" position="top">
 					<Button variant="ghost" aria-label="Hover to show a tooltip above the button">Top</Button>
@@ -322,10 +381,9 @@
 					</Button>
 				</Tooltip>
 			</div>
-		</div>
+		</DemoExhibit>
 	</section>
 
-	<!-- Closing band: gives the page a deliberate end instead of a dead void -->
 	<footer class="page-footer">
 		<a class="footer-next" href={`${base}/demo/resize`}>
 			<span class="footer-next__label">Next</span>
@@ -339,67 +397,38 @@
 			rel="noopener"
 		>
 			<span aria-hidden="true">&#9733;</span>
-			<span>View source</span>
+			<span>Full source on GitHub</span>
 		</a>
 	</footer>
-</div>
+</DemoPage>
 
 <style>
-	.demo-page {
-		padding: 2rem 3rem;
-		max-width: 1000px;
-		margin-inline: auto;
-	}
-
-	.page-header {
-		margin-bottom: 2.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: var(--ide-text-primary);
-		margin-bottom: 0.5rem;
-	}
-
-	.page-header p {
-		color: var(--ide-text-secondary);
-	}
-
-	.component-section {
-		margin-bottom: 3rem;
-		padding-bottom: 2rem;
-		border-bottom: 1px solid var(--ide-border);
-	}
-
-	.component-section:last-child {
-		border-bottom: none;
-	}
-
 	.component-section h2 {
-		font-size: 1.5rem;
+		font-size: var(--ide-font-size-xl);
 		font-weight: 600;
 		color: var(--ide-text-primary);
-		margin-bottom: 0.25rem;
+		margin: 0 0 0.25rem;
 	}
 
 	.section-desc {
 		color: var(--ide-text-secondary);
 		font-size: 0.875rem;
-		margin-bottom: 1.5rem;
+		margin: 0 0 1rem;
 	}
 
-	.demo-group {
-		margin-bottom: 1.5rem;
+	.gallery {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
 	}
 
 	.demo-group h3 {
-		font-size: 0.875rem;
+		font-size: 0.75rem;
 		font-weight: 500;
-		color: var(--ide-text-secondary);
+		color: var(--ide-text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		margin-bottom: 0.75rem;
+		margin: 0 0 0.75rem;
 	}
 
 	.demo-row {
@@ -411,25 +440,7 @@
 
 	.tooltip-row {
 		gap: 1.5rem;
-		/* Clear the 'POSITIONS' label so a top-positioned tooltip doesn't overlap it. */
 		margin-top: 2rem;
-	}
-
-	.group-note {
-		font-size: 0.8125rem;
-		color: var(--ide-text-secondary);
-		margin-bottom: 1rem;
-		max-width: 480px;
-		line-height: 1.5;
-	}
-
-	.group-note code {
-		font-family: var(--ide-font-mono);
-		font-size: 0.8125em;
-		padding: 0.05rem 0.3rem;
-		border-radius: var(--ide-radius-sm);
-		background: var(--ide-bg-secondary);
-		color: var(--ide-text-primary);
 	}
 
 	.input-demos {
@@ -437,6 +448,12 @@
 		flex-direction: column;
 		gap: 1rem;
 		max-width: 400px;
+	}
+
+	.kbd-stack {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
 	}
 
 	.field {
@@ -485,7 +502,6 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
-		margin-top: 1rem;
 		padding-top: 1.5rem;
 		border-top: 1px solid var(--ide-border);
 	}

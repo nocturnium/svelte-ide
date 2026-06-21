@@ -1,3 +1,9 @@
+<script module lang="ts">
+	// Per-instance counter so multiple exhibits on one page get unique element
+	// ids (the ARIA tab/panel relationships require document-unique ids).
+	let exhibitCount = 0;
+</script>
+
 <script lang="ts">
 	/**
 	 * DemoExhibit — a live demo paired with the exact source that produces it.
@@ -39,6 +45,9 @@
 		{ id: 'code', label: 'Code' }
 	] as const;
 	type TabId = (typeof TABS)[number]['id'];
+
+	// Document-unique id prefix for this exhibit's tab/panel pairs.
+	const uid = `dx${(exhibitCount += 1)}`;
 
 	let view = $state<TabId>('preview');
 
@@ -94,9 +103,9 @@
 					class="exhibit__tab"
 					class:active={view === tab.id}
 					role="tab"
-					id={`ex-tab-${tab.id}`}
+					id={`${uid}-tab-${tab.id}`}
 					aria-selected={view === tab.id}
-					aria-controls={`ex-panel-${tab.id}`}
+					aria-controls={`${uid}-panel-${tab.id}`}
 					tabindex={view === tab.id ? 0 : -1}
 					bind:this={tabButtons[tab.id]}
 					onclick={() => (view = tab.id)}
@@ -127,8 +136,8 @@
 		class="exhibit__preview"
 		class:exhibit__preview--padded={padded}
 		role="tabpanel"
-		id="ex-panel-preview"
-		aria-labelledby="ex-tab-preview"
+		id={`${uid}-panel-preview`}
+		aria-labelledby={`${uid}-tab-preview`}
 		hidden={view !== 'preview'}
 	>
 		{@render children()}
@@ -137,8 +146,8 @@
 	<div
 		class="exhibit__codepanel"
 		role="tabpanel"
-		id="ex-panel-code"
-		aria-labelledby="ex-tab-code"
+		id={`${uid}-panel-code`}
+		aria-labelledby={`${uid}-tab-code`}
 		hidden={view !== 'code'}
 		tabindex="0"
 	>
