@@ -594,10 +594,12 @@ proposeAIChange(sessionId, {
 		justify-content: space-between;
 		align-items: center;
 		padding: 0.75rem 1rem;
-		background: var(--ide-bg-secondary);
-		border: 1px solid var(--ide-border);
-		border-bottom: none;
-		border-radius: 8px 8px 0 0;
+		/* The exhibit already frames this content; keep only a divider beneath the
+		   header so it doesn't draw a second rounded card inside the exhibit. */
+		background: transparent;
+		border: none;
+		border-bottom: 1px solid var(--ide-border);
+		border-radius: 0;
 	}
 
 	.file-info {
@@ -642,8 +644,7 @@ proposeAIChange(sessionId, {
 
 	.editor-container {
 		height: 350px;
-		border: 1px solid var(--ide-border);
-		border-radius: 0 0 8px 8px;
+		/* No frame of its own — the exhibit is the only window. */
 		overflow: hidden;
 	}
 

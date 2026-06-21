@@ -606,11 +606,12 @@ renderStatus(status);`);
 		border-bottom-color: var(--ide-interactive);
 	}
 
-	/* Section */
+	/* Section — frameless grouping container; the DemoExhibit (or inner cards)
+	   supplies the only frame, so this no longer draws its own card chrome. */
 	.demo-section {
-		background: var(--ide-bg-secondary, #1e1e2e);
-		border-radius: 12px;
-		padding: 1.5rem;
+		background: transparent;
+		border-radius: 0;
+		padding: 0;
 	}
 
 	.section-header {
@@ -1285,10 +1286,6 @@ renderStatus(status);`);
 
 	/* ===== Responsive: phones ===== */
 	@media (max-width: 640px) {
-		.demo-section {
-			padding: 1.25rem 1rem;
-		}
-
 		/* Tighter tab padding so all three short labels are more likely to fit
 		   without scrolling, plus a wider right-edge fade so the third demo
 		   ("Plugin Preview") stays discoverable when the strip does scroll. */

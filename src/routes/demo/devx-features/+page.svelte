@@ -590,11 +590,13 @@ ${'<'}/script>
 		border-bottom-color: var(--ide-interactive);
 	}
 
-	/* Section */
+	/* Section — frameless: the DemoExhibit (Git Blame) is the sole window frame,
+	   so the wrapper drops its own card chrome to avoid a card-on-card. Vertical
+	   rhythm comes from the section-header margin and inner grid gaps. */
 	.demo-section {
-		background: var(--ide-bg-secondary, #1e1e2e);
-		border-radius: 12px;
-		padding: 1.5rem;
+		background: transparent;
+		border-radius: 0;
+		padding: 0;
 	}
 
 	.section-header {

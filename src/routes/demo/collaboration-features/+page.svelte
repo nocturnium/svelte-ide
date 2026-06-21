@@ -817,6 +817,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 	.demo-section--frameless {
 		background: transparent;
 		border: none;
+		border-radius: 0;
 		padding: 0;
 	}
 

@@ -782,11 +782,13 @@ function privateHelper(value) {
 		box-shadow: inset 0 -2px 0 var(--ide-accent, #4a8db7);
 	}
 
-	/* Section */
+	/* Section — frameless: the DemoExhibit (and the demo content) is the only frame */
 	.demo-section {
-		background: var(--ide-bg-secondary, #1e1e2e);
-		border-radius: 12px;
-		padding: 1.5rem;
+		background: transparent;
+		border: none;
+		border-radius: 0;
+		box-shadow: none;
+		padding: 0;
 	}
 
 	.section-header {
@@ -1047,11 +1049,6 @@ function privateHelper(value) {
 
 	/* ===== Responsive: phones ===== */
 	@media (max-width: 640px) {
-		.demo-section {
-			padding: 1rem;
-			border-radius: 10px;
-		}
-
 		/* Flatten nested cards to dividers to avoid box-in-a-box crowding */
 		.diagnostics-legend,
 		.breakpoints-legend,

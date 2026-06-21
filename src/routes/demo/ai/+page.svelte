@@ -854,11 +854,13 @@ registerTool({
 	.panel-container {
 		/* position: relative + overflow: hidden makes this the containing block and
 		   clip region for <AIPanel>'s absolutely-positioned conversation rail at
-		   small widths, so the rail can never escape and overlap the page heading. */
+		   small widths, so the rail can never escape and overlap the page heading.
+		   Frameless: the enclosing <DemoExhibit> supplies the only window frame, so
+		   this container drops its own border/radius to avoid a concentric
+		   card-on-card. position/height/overflow stay — they are load-bearing for
+		   the rail clip, not chrome. */
 		position: relative;
 		height: 500px;
-		border: 1px solid var(--ide-border);
-		border-radius: 8px;
 		overflow: hidden;
 	}
 

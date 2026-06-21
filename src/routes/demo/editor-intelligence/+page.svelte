@@ -1290,11 +1290,15 @@ function renderInvoice(order) {
 		background: color-mix(in srgb, var(--ide-interactive) 14%, transparent);
 	}
 
-	/* Section */
+	/* Section: a flat grouping container — the DemoExhibit (and each panel's own
+	   inner cards) supply the only frame, so the wrapper stays frameless to avoid
+	   a card-on-card double frame. */
 	.demo-section {
-		background: var(--ide-bg-secondary, #1e1e2e);
-		border-radius: 12px;
-		padding: 1.5rem;
+		background: transparent;
+		border: none;
+		border-radius: 0;
+		box-shadow: none;
+		padding: 0;
 	}
 
 	.section-header {
@@ -1960,10 +1964,6 @@ function renderInvoice(order) {
 			font-size: 0.85rem;
 			/* keep a comfortable tap target */
 			min-height: 44px;
-		}
-
-		.demo-section {
-			padding: 1.25rem 1rem;
 		}
 
 		/* Let the minimap editor scroll horizontally with a fade cue
