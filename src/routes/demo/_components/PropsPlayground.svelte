@@ -41,10 +41,18 @@
 	function handleEdit(text: string) {
 		source = text;
 		try {
-			current = JSON.parse(text) as T;
+			// Parse into a local and validate the SHAPE before touching `current`:
+			// `null`, `42`, `[]` are all valid JSON but would make the preview snippet
+			// read props off a non-object and crash. Assigning only on success means an
+			// invalid edit genuinely holds the last valid render.
+			const parsed: unknown = JSON.parse(text);
+			if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+				throw new Error('Expected a JSON object of props');
+			}
+			current = parsed as T;
 			error = null;
 		} catch (e) {
-			// Keep rendering the last valid props; just surface the parse error.
+			// Keep rendering the last valid props; just surface the error.
 			error = e instanceof Error ? e.message.replace(/^JSON\.parse:\s*/, '') : 'Invalid JSON';
 		}
 	}
