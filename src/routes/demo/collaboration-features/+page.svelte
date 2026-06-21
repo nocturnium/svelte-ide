@@ -195,6 +195,55 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	// Initialize timeline
 	onMount(() => {
+		// Seed a short build-up session with spread-out timestamps so the Time Machine
+		// has real, scrubbable history on first paint: three earlier drafts (minutes
+		// ago) by ALTERNATING authors, leading up to the present SAMPLE_CODE. Distinct,
+		// spread-out timestamps give every marker a unique key AND land a marker for
+		// BOTH authors in the visible middle of the track — the earliest marker sits at
+		// position 0 (tucked under the rewind control), so a single-author history would
+		// hide one collaborator on first paint.
+		const sliceTo = (marker: string) => {
+			const i = SAMPLE_CODE.indexOf(marker);
+			return i > 0 ? SAMPLE_CODE.slice(0, i).trimEnd() + '\n' : SAMPLE_CODE;
+		};
+		const t0 = Date.now();
+		const drafts = [
+			{
+				content: sliceTo('export function calculateSubtotal'),
+				author: primaryUser,
+				description: 'Draft order types',
+				agoMin: 8
+			},
+			{
+				content: sliceTo('export function createOrder'),
+				author: secondaryUser,
+				description: 'Add calculateSubtotal()',
+				agoMin: 5
+			},
+			{
+				content: sliceTo('export function applyDiscount'),
+				author: primaryUser,
+				description: 'Add createOrder()',
+				agoMin: 2
+			}
+		];
+		let prevContent = '';
+		for (const d of drafts) {
+			if (d.content === prevContent || d.content === SAMPLE_CODE) continue;
+			timelineManager.captureSnapshot(
+				d.content,
+				{
+					author: d.author.id,
+					authorColor: d.author.color,
+					isAI: false,
+					description: d.description,
+					changeType: 'edit'
+				},
+				t0 - 1000 * 60 * d.agoMin
+			);
+			prevContent = d.content;
+		}
+		// Present snapshot (now) + live tracking for subsequent real edits.
 		timelineManager.start(SAMPLE_CODE);
 		primaryAwareness.setLocalStateField('user', primaryUser);
 		secondaryAwareness.setLocalStateField('user', secondaryUser);

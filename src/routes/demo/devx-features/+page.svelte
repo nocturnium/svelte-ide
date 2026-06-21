@@ -136,10 +136,15 @@ ${'<'}/script>
 		};
 		window.addEventListener('keydown', handleKeydown);
 
-		// Initialize blame manager
+		// Initialize blame manager, and turn blame ON from the start (enable the
+		// manager AND flip the layer flag, exactly as toggleBlame does) so the Git
+		// Blame demo shows its author-coloured gutter on first paint rather than an
+		// empty editor behind a "Show Blame" button.
 		blameManager = createGitBlameManager();
 		const mockBlame = generateMockBlameData(sampleLines.length);
 		blameManager.setBlameData(mockBlame);
+		blameManager.enable();
+		blameEnabled = blameManager.isEnabled();
 
 		// Initialize snippet manager
 		snippetManager = createSnippetManager();

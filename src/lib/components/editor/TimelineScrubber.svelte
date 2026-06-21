@@ -362,10 +362,16 @@
 
 	.timeline-scrubber__marker-dot {
 		display: block;
-		width: 6px;
-		height: 6px;
+		width: 8px;
+		height: 8px;
 		background: var(--marker-color, #4a9eff);
 		border-radius: 50%;
+		/* Contrasting ring so author-coloured markers stay visible even on top of the
+		   same-hue progress fill — a blue "You" marker otherwise vanishes against the
+		   blue fill at high timeline positions, hiding half the multi-author story. */
+		box-shadow:
+			0 0 0 1.5px rgba(13, 20, 33, 0.75),
+			0 0 0 2.5px rgba(255, 255, 255, 0.35);
 		transition: transform 0.15s ease;
 	}
 
@@ -376,7 +382,10 @@
 	.timeline-scrubber__marker--ai-suggestion .timeline-scrubber__marker-dot {
 		width: 8px;
 		height: 8px;
-		box-shadow: 0 0 4px var(--marker-color);
+		box-shadow:
+			0 0 0 1.5px rgba(13, 20, 33, 0.75),
+			0 0 0 2.5px rgba(255, 255, 255, 0.35),
+			0 0 5px var(--marker-color);
 	}
 
 	.timeline-scrubber__marker--commit .timeline-scrubber__marker-dot,
