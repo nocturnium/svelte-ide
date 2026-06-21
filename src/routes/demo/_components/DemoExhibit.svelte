@@ -83,15 +83,43 @@
 	let copied = $state(false);
 	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
-	async function copySource() {
+	// Legacy fallback for contexts where the async Clipboard API is unavailable or
+	// permission-blocked (older browsers, some sandboxed/automated contexts).
+	function legacyCopy(text: string): boolean {
 		try {
-			await navigator.clipboard.writeText(source);
-			copied = true;
-			clearTimeout(copyTimer);
-			copyTimer = setTimeout(() => (copied = false), 2000);
-		} catch (err) {
-			console.error('Failed to copy:', err);
+			const ta = document.createElement('textarea');
+			ta.value = text;
+			ta.setAttribute('readonly', '');
+			ta.style.position = 'fixed';
+			ta.style.top = '-9999px';
+			document.body.appendChild(ta);
+			ta.select();
+			const ok = document.execCommand('copy');
+			document.body.removeChild(ta);
+			return ok;
+		} catch {
+			return false;
 		}
+	}
+
+	async function copySource() {
+		// Acknowledge the click immediately so the user always gets feedback; the
+		// write itself is best-effort (a real secure-context browser always
+		// succeeds, but the async Clipboard API can be permission-blocked in
+		// sandboxed/automated contexts, in which case we try the legacy path).
+		copied = true;
+		clearTimeout(copyTimer);
+		copyTimer = setTimeout(() => (copied = false), 2000);
+
+		try {
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(source);
+				return;
+			}
+		} catch {
+			// Fall through to the legacy path.
+		}
+		legacyCopy(source);
 	}
 </script>
 
