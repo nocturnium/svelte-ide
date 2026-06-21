@@ -231,53 +231,56 @@ export const formatSession = (session: UserSession): string => {
 	]);
 
 	// Breadcrumbs state
-	let breadcrumbPath = $state<BreadcrumbSymbol[]>([
-		{
-			id: 'class-usermanager',
-			name: 'UserManager',
-			type: 'class',
-			line: 17,
-			siblings: [
-				{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 17 },
-				{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 65 }
-			]
-		},
+	// The file's two top-level symbols and getUser's sibling methods, defined ONCE
+	// so navigation can rebuild the trail (and keep the sibling dropdowns working)
+	// as you jump around — see handleBreadcrumbNavigate.
+	const classSiblings: BreadcrumbSymbol[] = [
+		{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 17 },
+		{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 65 }
+	];
+	const methodSiblings: BreadcrumbSymbol[] = [
 		{
 			id: 'method-getuser',
 			name: 'getUser',
 			type: 'method',
 			line: 25,
-			detail: '(id: string): Promise<User | null>',
-			siblings: [
-				{
-					id: 'method-getuser',
-					name: 'getUser',
-					type: 'method',
-					line: 25,
-					detail: '(id: string): Promise<User | null>'
-				},
-				{
-					id: 'method-updateprofile',
-					name: 'updateProfile',
-					type: 'method',
-					line: 43,
-					detail: '(id, updates): Promise<boolean>'
-				},
-				{
-					id: 'method-clearcache',
-					name: 'clearCache',
-					type: 'method',
-					line: 59,
-					detail: '(): void'
-				}
-			]
-		}
+			detail: '(id: string): Promise<User | null>'
+		},
+		{
+			id: 'method-updateprofile',
+			name: 'updateProfile',
+			type: 'method',
+			line: 43,
+			detail: '(id, updates): Promise<boolean>'
+		},
+		{ id: 'method-clearcache', name: 'clearCache', type: 'method', line: 59, detail: '(): void' }
+	];
+	const withSiblings = (s: BreadcrumbSymbol, sibs: BreadcrumbSymbol[]): BreadcrumbSymbol => ({
+		...s,
+		siblings: sibs
+	});
+	let breadcrumbPath = $state<BreadcrumbSymbol[]>([
+		withSiblings(classSiblings[0], classSiblings),
+		withSiblings(methodSiblings[0], methodSiblings)
 	]);
 	// Seed the cursor on the active breadcrumb's definition line (getUser, line
 	// index 25) so the breadcrumb "Ln" chip, the "Current: Line N" label, and the
 	// editor highlight all agree on one answer to "where am I" — the page's whole
 	// theme is navigation precision, so the indicators must not contradict.
 	let cursorLine = $state(25);
+
+	// Breadcrumbs demo: a ref to the code preview so navigating a breadcrumb visibly
+	// SCROLLS the clicked symbol into view (the entire point of breadcrumbs). The
+	// effect re-runs whenever cursorLine changes; it no-ops on the other tabs where
+	// the ref is unset.
+	let bcPreviewEl = $state<HTMLDivElement | undefined>(undefined);
+	$effect(() => {
+		const line = cursorLine;
+		const el = bcPreviewEl;
+		if (!el) return;
+		const target = line * lineHeight - el.clientHeight / 2 + lineHeight / 2;
+		el.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+	});
 
 	// Quick Actions state
 	let quickActionsManager = $state<QuickActionsManager>(null!);
@@ -494,6 +497,19 @@ function renderInvoice(order) {
 
 	function handleBreadcrumbNavigate(symbol: BreadcrumbSymbol) {
 		cursorLine = symbol.line;
+		// Rebuild the trail so the breadcrumb path AND its "Ln" chip follow the jump —
+		// otherwise clicking a sibling moves the cursor but the trail keeps lying about
+		// where you are. Keep the sibling lists attached so the dropdowns still work.
+		if (symbol.type === 'file') return; // file root → scroll to top, trail unchanged
+		if (symbol.type === 'class' || symbol.type === 'function') {
+			breadcrumbPath = [withSiblings(symbol, classSiblings)];
+		} else {
+			const root =
+				breadcrumbPath[0]?.type === 'class' || breadcrumbPath[0]?.type === 'function'
+					? breadcrumbPath[0]
+					: withSiblings(classSiblings[0], classSiblings);
+			breadcrumbPath = [root, withSiblings(symbol, methodSiblings)];
+		}
 	}
 
 	function syncQuickActions() {
@@ -836,14 +852,14 @@ function renderInvoice(order) {
 					/>
 				</div>
 
-				<div class="editor-preview-small">
-					{#each sampleLines.slice(15, 45) as line, i (i)}
+				<div class="editor-preview-small" bind:this={bcPreviewEl}>
+					{#each sampleLines as line, i (i)}
 						<div
 							class="code-line"
-							class:code-line--current={i + 15 === cursorLine}
+							class:code-line--current={i === cursorLine}
 							style="height: {lineHeight}px;"
 						>
-							<span class="line-num">{i + 16}</span>
+							<span class="line-num">{i + 1}</span>
 							<span class="line-content">{line || ' '}</span>
 						</div>
 					{/each}
@@ -1501,7 +1517,8 @@ function renderInvoice(order) {
 	}
 
 	.code-line--current {
-		background: color-mix(in srgb, var(--ide-interactive) 15%, transparent);
+		background: color-mix(in srgb, var(--ide-interactive) 18%, transparent);
+		box-shadow: inset 3px 0 0 var(--ide-interactive);
 	}
 
 	.line-num {
