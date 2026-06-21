@@ -17,6 +17,7 @@
 	 * The tablist mirrors the landing-page quick-start (WAI-ARIA tabs + roving
 	 * tabindex); copy-to-clipboard mirrors AIMessageContent.
 	 */
+	import { browser } from '$app/environment';
 	import { tokenize } from '$components/editor/tokenizer';
 	import TokenRenderer from '$components/editor/TokenRenderer.svelte';
 	import Icon from '$components/core/Icon.svelte';
@@ -34,11 +35,25 @@
 		 * edge-to-edge (their own frame supplies the height) pass `false`.
 		 */
 		padded?: boolean;
+		/**
+		 * Reserved height for the live preview before it hydrates. The preview only
+		 * instantiates in the browser (the live editors aren't SSR-renderable), so on
+		 * the prerendered/server pass we render a placeholder of this height to avoid
+		 * layout shift when the demo mounts.
+		 */
+		previewMinHeight?: string;
 		/** The live demo. */
 		children: Snippet;
 	}
 
-	let { code, language = 'svelte', filename, padded = true, children }: Props = $props();
+	let {
+		code,
+		language = 'svelte',
+		filename,
+		padded = true,
+		previewMinHeight = '460px',
+		children
+	}: Props = $props();
 
 	const TABS = [
 		{ id: 'preview', label: 'Preview' },
@@ -168,7 +183,16 @@
 		aria-labelledby={`${uid}-tab-preview`}
 		hidden={view !== 'preview'}
 	>
-		{@render children()}
+		{#if browser}
+			{@render children()}
+		{:else}
+			<!-- Prerender placeholder: the live demo (often an editor) mounts client-side. -->
+			<div
+				class="exhibit__skeleton"
+				style="min-height: {previewMinHeight}"
+				aria-hidden="true"
+			></div>
+		{/if}
 	</div>
 
 	<div
@@ -274,6 +298,14 @@
 	}
 	.exhibit__preview--padded {
 		padding: var(--ide-spacing-lg);
+	}
+	/* Reserved space shown on the prerendered pass until the live demo hydrates.
+	   A calm fill (the editor's own surface colour) rather than a busy pattern, so
+	   the swap to the real demo is near-seamless. */
+	.exhibit__skeleton {
+		width: 100%;
+		border-radius: var(--ide-radius-md);
+		background: var(--ide-bg-primary);
 	}
 
 	/* Code face */

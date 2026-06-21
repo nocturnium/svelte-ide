@@ -53,6 +53,9 @@ jobs:
       - name: Build demo site
         run: npm run build
 
+      - name: Verify prerendered output (homepage SEO + sitemap)
+        run: node scripts/verify-prerender.mjs
+
       - name: Build + validate library (svelte-package + publint)
         run: npm run package
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
+	import Seo from '../../_components/Seo.svelte';
 	import EditorTabs from '$lib/components/editor/EditorTabs.svelte';
 	import AIPanel from '$lib/components/ai/AIPanel.svelte';
 	import PluginPanel from '$lib/components/plugins/PluginPanel.svelte';
@@ -453,9 +454,10 @@ MIT License - see LICENSE file for details
 	}
 </script>
 
-<svelte:head>
-	<title>Playground | Nocturnium Svelte IDE</title>
-</svelte:head>
+<Seo
+	title="Playground"
+	description="The full Nocturnium IDE composed from the library — file explorer, tabbed editors, an AI panel, and a live status bar — all in pure Svelte 5."
+/>
 
 <div class="playground" class:playground--resizing={isResizing}>
 	<!-- Activity Bar -->

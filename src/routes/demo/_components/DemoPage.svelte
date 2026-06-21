@@ -8,28 +8,30 @@
 	 * routes (the editor / playground) do NOT use this — they render their own chrome.
 	 */
 	import type { Snippet } from 'svelte';
+	import Seo from '../../_components/Seo.svelte';
 
 	interface Props {
 		/** Small uppercase kicker above the title. */
 		eyebrow?: string;
 		/** Page H1 (also the default document title base). */
 		title: string;
-		/** One-line description under the title. */
+		/** One-line description under the title (also the default meta description). */
 		description?: string;
 		/** Document `<title>` base, when it should differ from the H1. */
 		docTitle?: string;
+		/** Meta description override, when the on-page description isn't ideal for SEO. */
+		metaDescription?: string;
 		/** Optional header-right slot (badges, links). */
 		actions?: Snippet;
 		/** Page body. */
 		children: Snippet;
 	}
 
-	let { eyebrow, title, description, docTitle, actions, children }: Props = $props();
+	let { eyebrow, title, description, docTitle, metaDescription, actions, children }: Props =
+		$props();
 </script>
 
-<svelte:head>
-	<title>{docTitle ?? title} | Nocturnium Svelte IDE</title>
-</svelte:head>
+<Seo title={docTitle ?? title} description={metaDescription ?? description} />
 
 <div class="demo-page">
 	<header class="demo-page__head">

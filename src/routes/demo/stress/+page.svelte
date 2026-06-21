@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import type { EditorPreferences } from '$types';
+	import Seo from '../../_components/Seo.svelte';
 
 	type SizeOption = {
 		label: string;
@@ -123,9 +124,10 @@
 	});
 </script>
 
-<svelte:head>
-	<title>Stress Demo | Nocturnium Svelte IDE</title>
-</svelte:head>
+<Seo
+	title="Stress Demo"
+	description="A real Nocturnium CustomEditor rendering a generated 50,000-line file — proof that virtualized rendering stays smooth, with live DOM-node and FPS counters."
+/>
 
 <main class="stress-demo">
 	<header class="stress-hero">

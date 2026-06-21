@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import '../app.css';
+	import Seo from './_components/Seo.svelte';
 	import Badge from '$lib/components/core/Badge.svelte';
 	import Button from '$lib/components/core/Button.svelte';
 	import Icon from '$lib/components/core/Icon.svelte';
@@ -239,6 +240,8 @@ export function triageLoad(
 		}
 	}
 </script>
+
+<Seo />
 
 <div class="landing">
 	<a class="skip-link" href="#main">Skip to content</a>
