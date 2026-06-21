@@ -80,6 +80,13 @@
 			</div>
 		</section>
 	{/each}
+
+	<p class="scope-note">
+		Every language here gets full syntax highlighting, file-type detection, and comment-toggle.
+		Structural editing (folding, bracket matching) works across the brace-based languages; the
+		deeper refactoring tools — extract function, organize imports — are currently tuned for
+		JavaScript &amp; TypeScript.
+	</p>
 </DemoPage>
 
 <style>
@@ -206,6 +213,16 @@
 	.lang-card__copy--done {
 		color: var(--ide-success, #6ee7b7);
 		border-color: var(--ide-success, #6ee7b7);
+	}
+
+	.scope-note {
+		margin: 40px 0 0;
+		max-width: 70ch;
+		padding-top: 16px;
+		border-top: 1px solid var(--ide-border-subtle, #233148);
+		font-size: 13px;
+		line-height: 1.6;
+		color: var(--ide-text-muted, #93a4c3);
 	}
 
 	@media (max-width: 720px) {
