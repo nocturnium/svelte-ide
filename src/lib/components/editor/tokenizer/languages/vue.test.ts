@@ -144,10 +144,7 @@ describe('VueTokenizer', () => {
 		});
 
 		it('resumes live markup after a multi-line comment closes mid-line', () => {
-			const lines = tokLines(createVueTokenizer(), [
-				'<!-- open',
-				'close --><span>hi</span>'
-			]);
+			const lines = tokLines(createVueTokenizer(), ['<!-- open', 'close --><span>hi</span>']);
 			expectToken(lines[1], 'comment', 'close -->');
 			expectToken(lines[1], 'tag.name', 'span');
 			expectLossless(lines[1], 'close --><span>hi</span>');

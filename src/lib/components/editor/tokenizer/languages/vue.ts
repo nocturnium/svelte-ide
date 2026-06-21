@@ -334,9 +334,7 @@ export class VueTokenizer implements LanguageTokenizer {
 			// single token. If the generic branch ran first it would match only the
 			// `v-bind` prefix and leave `:class` to re-parse as a *separate* v-bind
 			// shorthand — a different (wrong) attribute.
-			const attrMatch = rest.match(
-				/^(v-[\w-]+(?::[\w.[\]-]+)?(?:\.[\w-]+)*|[@:#]?[\w.[\]-]+)/
-			);
+			const attrMatch = rest.match(/^(v-[\w-]+(?::[\w.[\]-]+)?(?:\.[\w-]+)*|[@:#]?[\w.[\]-]+)/);
 			if (attrMatch) {
 				const attrName = attrMatch[0];
 				tokens.push({ type: 'tag.attribute', text: attrName });

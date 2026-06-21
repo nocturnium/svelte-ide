@@ -166,7 +166,13 @@ describe('PHP tokenizer', () => {
 		it('threads a multi-line doc comment as comment.doc on every line', () => {
 			// Regression: continuation lines of a /** ... */ docblock were mis-typed as
 			// comment.block, so a docblock rendered with two different colors.
-			const lines = tokLines(php, ['/**', ' * Summary', ' * @return int', ' */', 'function f() {}']);
+			const lines = tokLines(php, [
+				'/**',
+				' * Summary',
+				' * @return int',
+				' */',
+				'function f() {}'
+			]);
 			expectToken(lines[0], 'comment.doc', '/**');
 			expectToken(lines[1], 'comment.doc', ' * Summary');
 			expectToken(lines[2], 'comment.doc', ' * @return int');
