@@ -3,6 +3,7 @@
 	import Badge from '$lib/components/core/Badge.svelte';
 	import Icon from '$lib/components/core/Icon.svelte';
 	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
+	import Seo from '../_components/Seo.svelte';
 
 	type Demo = {
 		title: string;
@@ -182,9 +183,10 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 	}
 </script>
 
-<svelte:head>
-	<title>Demos | Nocturnium Svelte IDE</title>
-</svelte:head>
+<Seo
+	title="Demos"
+	description="Explore every surface of the Nocturnium Svelte IDE library — the editor core, code intelligence, debugging, real-time collaboration, and AI — each as a live, interactive demo."
+/>
 
 <div class="demo-hub">
 	<header class="hub-hero">

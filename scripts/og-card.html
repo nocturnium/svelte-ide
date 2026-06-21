@@ -1,0 +1,231 @@
+<!doctype html>
+<!--
+  Source for the 1200×630 social share card (static/og.png).
+  Regenerate with: node scripts/render-og.mjs
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+			html,
+			body {
+				width: 1200px;
+				height: 630px;
+			}
+			:root {
+				--bg: #0d1421;
+				--bg2: #131c2e;
+				--text: #e8eefc;
+				--muted: #93a4c3;
+				--blue: #4a8db7;
+				--purple: #a78bfa;
+				--green: #6ee7b7;
+				--amber: #fbbf24;
+				--border: #233148;
+			}
+			body {
+				font-family:
+					'Inter', system-ui, -apple-system, 'Segoe UI', 'Liberation Sans', sans-serif;
+				background:
+					radial-gradient(
+						ellipse 70% 60% at 100% 0%,
+						rgba(167, 139, 250, 0.22),
+						transparent 60%
+					),
+					radial-gradient(ellipse 60% 50% at 0% 100%, rgba(74, 141, 183, 0.18), transparent 60%),
+					var(--bg);
+				color: var(--text);
+				display: grid;
+				grid-template-columns: 1.05fr 0.95fr;
+				align-items: center;
+				gap: 56px;
+				padding: 72px 80px;
+			}
+			.left {
+				display: flex;
+				flex-direction: column;
+				gap: 26px;
+			}
+			.brand {
+				display: flex;
+				align-items: center;
+				gap: 20px;
+			}
+			.brand svg {
+				width: 76px;
+				height: 76px;
+			}
+			.wordmark {
+				display: flex;
+				flex-direction: column;
+				line-height: 1;
+			}
+			.wordmark .name {
+				font-size: 40px;
+				font-weight: 800;
+				letter-spacing: -0.02em;
+			}
+			.wordmark .sub {
+				margin-top: 8px;
+				font-size: 20px;
+				font-weight: 500;
+				color: var(--muted);
+			}
+			h1 {
+				font-size: 52px;
+				font-weight: 800;
+				line-height: 1.08;
+				letter-spacing: -0.025em;
+			}
+			h1 .grad {
+				background: linear-gradient(120deg, var(--blue), var(--purple) 80%);
+				-webkit-background-clip: text;
+				background-clip: text;
+				-webkit-text-fill-color: transparent;
+			}
+			.features {
+				font-size: 22px;
+				color: var(--muted);
+				font-weight: 500;
+			}
+			.url {
+				margin-top: 6px;
+				font-family: 'JetBrains Mono', ui-monospace, 'Liberation Mono', monospace;
+				font-size: 22px;
+				color: var(--blue);
+				font-weight: 600;
+			}
+			/* Code window motif */
+			.window {
+				border: 1px solid var(--border);
+				border-radius: 18px;
+				overflow: hidden;
+				background: var(--bg2);
+				box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+			}
+			.window-bar {
+				display: flex;
+				align-items: center;
+				gap: 9px;
+				padding: 16px 20px;
+				background: var(--bg);
+				border-bottom: 1px solid var(--border);
+			}
+			.dot {
+				width: 13px;
+				height: 13px;
+				border-radius: 50%;
+			}
+			.dot.r {
+				background: #ff5f57;
+			}
+			.dot.a {
+				background: var(--amber);
+			}
+			.dot.g {
+				background: var(--green);
+			}
+			.file {
+				margin-left: 12px;
+				font-family: 'JetBrains Mono', ui-monospace, monospace;
+				font-size: 16px;
+				color: var(--muted);
+			}
+			pre {
+				margin: 0;
+				padding: 26px 28px;
+				font-family: 'JetBrains Mono', ui-monospace, 'Liberation Mono', monospace;
+				font-size: 19px;
+				line-height: 1.7;
+				color: var(--text);
+				white-space: pre;
+			}
+			.k {
+				color: var(--purple);
+			}
+			.f {
+				color: #60a5fa;
+			}
+			.t {
+				color: var(--amber);
+			}
+			.s {
+				color: var(--green);
+			}
+			.c {
+				color: #64748b;
+				font-style: italic;
+			}
+			.hot {
+				background: rgba(239, 68, 68, 0.16);
+				box-shadow: inset 3px 0 0 #ef4444;
+				border-radius: 2px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="left">
+			<div class="brand">
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+					<defs>
+						<linearGradient id="v" x1="16" y1="24" x2="32" y2="24" gradientUnits="userSpaceOnUse">
+							<stop offset="0" stop-color="#4a8db7" />
+							<stop offset="1" stop-color="#a78bfa" />
+						</linearGradient>
+						<clipPath id="c">
+							<path
+								d="M21 9 L21 15 C21 17 16 18 16 23 L16 37 Q16 41 20 41 L28 41 Q32 41 32 37 L32 23 C32 18 27 17 27 15 L27 9 Z"
+							/>
+						</clipPath>
+					</defs>
+					<rect width="64" height="64" rx="15" fill="#0d1421" />
+					<g transform="translate(8,8)">
+						<rect x="14" y="25.5" width="20" height="17" fill="url(#v)" clip-path="url(#c)" />
+						<path
+							d="M21 9 L21 15 C21 17 16 18 16 23 L16 37 Q16 41 20 41 L28 41 Q32 41 32 37 L32 23 C32 18 27 17 27 15 L27 9 Z"
+							fill="none"
+							stroke="#e8eefc"
+							stroke-width="2.4"
+							stroke-linejoin="round"
+						/>
+						<rect x="19.5" y="5.6" width="9" height="3.8" rx="1.9" fill="#e8eefc" />
+					</g>
+				</svg>
+				<div class="wordmark">
+					<span class="name">Nocturnium</span>
+					<span class="sub">Svelte IDE</span>
+				</div>
+			</div>
+
+			<h1>A zero-dependency <span class="grad">code editor</span> for Svelte 5.</h1>
+
+			<div class="features">
+				Editor · Syntax highlighting · Folding · Multi-cursor · LSP · CRDT · AI
+			</div>
+			<div class="url">ide.nocturnium.ai</div>
+		</div>
+
+		<div class="window">
+			<div class="window-bar">
+				<span class="dot r"></span><span class="dot a"></span><span class="dot g"></span>
+				<span class="file">cognitive-load.ts</span>
+			</div>
+			<pre><span class="k">export function</span> <span class="f">triageLoad</span>(
+  signals: <span class="t">Signal</span>[],
+  queueDepth: <span class="t">number</span>
+): <span class="t">string</span> {
+  <span class="k">let</span> score = <span class="t">0</span>;
+<span class="hot">  <span class="k">for</span> (<span class="k">const</span> s <span class="k">of</span> signals) {</span>
+<span class="hot">    <span class="k">if</span> (s.kind === <span class="s">'error'</span> && s.count > <span class="t">3</span>)</span>
+      score += s.count * <span class="t">6</span>;
+  }
+  <span class="k">return</span> score > <span class="t">80</span> ? <span class="s">'critical'</span> : <span class="s">'clear'</span>;
+}</pre>
+		</div>
+	</body>
+</html>
