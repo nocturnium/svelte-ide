@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/nocturnium/svelte-ide/compare/v1.12.0...v1.12.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **demo:** make breadcrumb navigation actually prove itself ([94c3112](https://github.com/nocturnium/svelte-ide/commit/94c3112ebe877d69d516d468c88870854de84713))
+
 # [1.12.0](https://github.com/nocturnium/svelte-ide/compare/v1.11.0...v1.12.0) (2026-06-21)
 
 
