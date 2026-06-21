@@ -1,3 +1,10 @@
+## [1.13.1](https://github.com/nocturnium/svelte-ide/compare/v1.13.0...v1.13.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* **editor:** expert-audit hardening of all 19 tokenizers ([e8eef4a](https://github.com/nocturnium/svelte-ide/commit/e8eef4aaedb81cd83d5567f000c703ab3379d1e4)), closes [if/#region](https://github.com/nocturnium/svelte-ide/issues/region) [if/#available](https://github.com/nocturnium/svelte-ide/issues/available) [r#match](https://github.com/r/issues/match)
+
 # [1.13.0](https://github.com/nocturnium/svelte-ide/compare/v1.12.1...v1.13.0) (2026-06-21)
 
 
