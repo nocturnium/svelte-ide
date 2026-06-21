@@ -14,6 +14,8 @@ const definitionKeywords = new Set([
 	'namespace',
 	'template',
 	'typename',
+	'concept',
+	'requires',
 	'void'
 ]);
 
@@ -29,8 +31,11 @@ const storageKeywords = new Set([
 	'mutable',
 	'volatile',
 	'constexpr',
+	'consteval',
+	'constinit',
 	'register',
 	'thread_local',
+	'noexcept',
 	'public',
 	'private',
 	'protected'
@@ -52,7 +57,11 @@ const controlKeywords = new Set([
 	'goto',
 	'try',
 	'catch',
-	'throw'
+	'throw',
+	// Coroutines (C++20) — control-flow-like suspension points
+	'co_await',
+	'co_return',
+	'co_yield'
 ]);
 
 // Other keywords
@@ -65,7 +74,32 @@ const otherKeywords = new Set([
 	'operator',
 	'using',
 	'auto',
-	'decltype'
+	'decltype',
+	'static_assert',
+	'static_cast',
+	'dynamic_cast',
+	'reinterpret_cast',
+	'const_cast',
+	'alignas',
+	'alignof',
+	'export',
+	'module'
+]);
+
+// Alternative spellings for operators (C++ reserved keyword-operators).
+// These are real keywords, not identifiers, e.g. `a and b`, `not x`, `x bitand y`.
+const operatorKeywords = new Set([
+	'and',
+	'and_eq',
+	'bitand',
+	'bitor',
+	'compl',
+	'not',
+	'not_eq',
+	'or',
+	'or_eq',
+	'xor',
+	'xor_eq'
 ]);
 
 // Builtin types
@@ -306,9 +340,11 @@ export class CppTokenizer {
 			return this.tokenizeCharLiteral(text, pos, charPrefix[0].length);
 		}
 
-		// Numbers
+		// Numbers. Trailing [uUlLfFzZ]* covers standard suffixes; the final optional
+		// `_ident` group captures user-defined literal suffixes (e.g. 1.0_km, 42_kg) so
+		// the literal stays one token instead of splitting off a phantom identifier.
 		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F']+(?:\.[0-9a-fA-F']*)?(?:[pP][+-]?\d+)?|0[bB][01']+|(?:\d[\d']*\.?[\d']*|\.\d[\d']*)(?:[eE][+-]?\d+)?)[uUlLfFzZ]*/
+			/^(?:0[xX][0-9a-fA-F']+(?:\.[0-9a-fA-F']*)?(?:[pP][+-]?\d+)?|0[bB][01']+|(?:\d[\d']*\.?[\d']*|\.\d[\d']*)(?:[eE][+-]?\d+)?)[uUlLfFzZ]*(?:_[a-zA-Z_][a-zA-Z0-9_]*)?/
 		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);
@@ -322,9 +358,11 @@ export class CppTokenizer {
 		}
 
 		// Operators (multi-char first). <=> (three-way comparison) must precede <=
-		// so the spaceship operator is not split into '<=' and '>'.
+		// so the spaceship operator is not split into '<=' and '>'. ->* and .* are the
+		// pointer-to-member operators; .* must precede the '.' accessor punctuation and
+		// follow the number scan (so a float like `3.` is not mistaken for `.*`).
 		const opMatch = text.match(
-			/^(?:<<=|>>=|<=>|->\*|\.\.\.|::|->|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||\+=|-=|\*=|\/=|%=|&=|\|=|\^=|[+\-*/%&|^~!<>=])/
+			/^(?:<<=|>>=|<=>|->\*|\.\*|\.\.\.|::|->|\+\+|--|<<|>>|<=|>=|==|!=|&&|\|\||\+=|-=|\*=|\/=|%=|&=|\|=|\^=|[+\-*/%&|^~!<>=])/
 		);
 		if (opMatch) {
 			return createToken(this.classifyOperator(opMatch[0]), opMatch[0], pos);
@@ -348,7 +386,8 @@ export class CppTokenizer {
 	}
 
 	private classifyOperator(op: string): TokenType {
-		if (op === '::' || op === '->' || op === '.' || op === '->*') return 'punctuation.accessor';
+		if (op === '::' || op === '->' || op === '.' || op === '->*' || op === '.*')
+			return 'punctuation.accessor';
 		if (op === '=' || /^[+\-*/%&|^]?=$|^<<=$|^>>=$/.test(op)) return 'operator.assignment';
 		if (
 			op === '==' ||
@@ -376,8 +415,9 @@ export class CppTokenizer {
 		if (definitionKeywords.has(word)) return 'keyword.definition';
 		if (storageKeywords.has(word)) return 'keyword.storage';
 		if (controlKeywords.has(word)) return 'keyword.control';
+		if (operatorKeywords.has(word)) return 'keyword.operator';
 		if (otherKeywords.has(word)) {
-			if (word === 'using') return 'keyword.module';
+			if (word === 'using' || word === 'export' || word === 'module') return 'keyword.module';
 			return 'keyword';
 		}
 

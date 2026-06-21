@@ -123,6 +123,31 @@ describe('TOML: numbers', () => {
 		const nan = tok(toml, 'sentinel = nan');
 		expectToken(nan, 'number', 'nan');
 	});
+
+	it('does not fold a sign abutting a prior value into a second number', () => {
+		// Regression: `1+2` previously tokenized as [number "1"][number "+2"], the
+		// number regex eating the stray `+` as a leading sign. A sign is only a
+		// number's sign at a fresh value position; abutting a value it is a lone op.
+		const line = tok(toml, 'a = 1+2');
+		expectToken(line, 'number', '1');
+		expectToken(line, 'number', '2');
+		// The `+` must be a standalone text token, NOT folded into a number like `+2`.
+		expectToken(line, 'text', '+');
+		expectLossless(line, 'a = 1+2');
+	});
+
+	it('still attaches a leading sign to a genuine signed number', () => {
+		// Guard the regression fix: valid signed numbers (fresh value position,
+		// including inside arrays) must keep their sign as part of the number.
+		const pos = tok(toml, 'a = +1');
+		expectToken(pos, 'number', '+1');
+		const neg = tok(toml, 'b = -inf');
+		expectToken(neg, 'number', '-inf');
+		const arr = tok(toml, 'c = [-1, +2]');
+		expectToken(arr, 'number', '-1');
+		expectToken(arr, 'number', '+2');
+		expectLossless(arr, 'c = [-1, +2]');
+	});
 });
 
 describe('TOML: booleans and dates', () => {

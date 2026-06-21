@@ -37,6 +37,54 @@ describe('C/C++ tokenizer', () => {
 			expectToken(tok(cpp, 'auto p = new Node();'), 'keyword', 'new');
 			expectToken(tok(cpp, 'size_t n = sizeof buf;'), 'keyword', 'sizeof');
 		});
+
+		it('classifies C++20 coroutine keywords as control keywords', () => {
+			// Regression: co_await/co_return/co_yield were mis-classified as variables.
+			expectToken(tok(cpp, 'co_await task;'), 'keyword.control', 'co_await');
+			expectToken(tok(cpp, 'co_return value;'), 'keyword.control', 'co_return');
+			expectToken(tok(cpp, 'co_yield item;'), 'keyword.control', 'co_yield');
+		});
+
+		it('classifies concept/requires as definition keywords', () => {
+			// Regression: concept/requires were mis-classified as variables.
+			expectToken(
+				tok(cpp, 'concept Integral = is_integral_v<T>;'),
+				'keyword.definition',
+				'concept'
+			);
+			expectToken(tok(cpp, 'requires std::copyable<T>'), 'keyword.definition', 'requires');
+		});
+
+		it('classifies consteval/constinit/noexcept as storage keywords', () => {
+			// Regression: consteval/constinit were mis-classified as variables.
+			expectToken(tok(cpp, 'consteval int sq(int n);'), 'keyword.storage', 'consteval');
+			expectToken(tok(cpp, 'constinit int g;'), 'keyword.storage', 'constinit');
+			expectToken(tok(cpp, 'void f() noexcept(true) {'), 'keyword.storage', 'noexcept');
+		});
+
+		it('classifies cast/sizeof-family keywords (not as function calls)', () => {
+			// Regression: static_cast(...) and static_assert(...) were function.call/variable.
+			expectToken(tok(cpp, 'static_cast<int>(d);'), 'keyword', 'static_cast');
+			expectToken(tok(cpp, 'reinterpret_cast<T*>(p);'), 'keyword', 'reinterpret_cast');
+			expectToken(tok(cpp, 'static_assert(true);'), 'keyword', 'static_assert');
+			expectToken(tok(cpp, 'alignof(T);'), 'keyword', 'alignof');
+		});
+
+		it('classifies alternative operator keywords (and/or/not/bitand)', () => {
+			// Regression: and/or/not/and_eq/bitand were mis-classified as variables.
+			const line = tok(cpp, 'b = x and not y or z;');
+			expectToken(line, 'keyword.operator', 'and');
+			expectToken(line, 'keyword.operator', 'not');
+			expectToken(line, 'keyword.operator', 'or');
+			expectToken(tok(cpp, 'a and_eq bitand b;'), 'keyword.operator', 'and_eq');
+		});
+
+		it('classifies export/module as module keywords (C++20 modules)', () => {
+			const line = tok(cpp, 'export module foo;');
+			expectToken(line, 'keyword.module', 'export');
+			expectToken(line, 'keyword.module', 'module');
+			expectLossless(line, 'export module foo;');
+		});
 	});
 
 	describe('builtin types and constants', () => {
@@ -111,6 +159,18 @@ describe('C/C++ tokenizer', () => {
 			expectToken(tok(cpp, 'auto f = 1.5f;'), 'number', '1.5f');
 			expectToken(tok(cpp, "auto big = 1'000'000;"), 'number', "1'000'000");
 		});
+
+		it('keeps a user-defined literal suffix as part of the number', () => {
+			// Regression: 1.0_km / 42_kg split the underscore-suffix into a phantom variable.
+			expectToken(tok(cpp, 'auto dist = 1.0_km;'), 'number', '1.0_km');
+			expectToken(tok(cpp, 'auto mass = 42_kg;'), 'number', '42_kg');
+			expectToken(tok(cpp, "auto h = 0xFF'00_rgb;"), 'number', "0xFF'00_rgb");
+		});
+
+		it('keeps digit separators inside hex and binary literals', () => {
+			expectToken(tok(cpp, "auto x = 0xFF'EC'DE'12;"), 'number', "0xFF'EC'DE'12");
+			expectToken(tok(cpp, "auto b = 0b1010'1100;"), 'number', "0b1010'1100");
+		});
 	});
 
 	describe('operators and punctuation', () => {
@@ -128,6 +188,22 @@ describe('C/C++ tokenizer', () => {
 			const brackets = tok(cpp, 'arr[0] = {1};');
 			expectToken(brackets, 'punctuation.bracket', '[');
 			expectToken(brackets, 'punctuation.brace', '{');
+		});
+
+		it('treats ->* and .* as pointer-to-member accessors', () => {
+			// Regression: .* was split into '.' + '*'; ->* must stay one token.
+			expectToken(tok(cpp, 'ptr->*memfn();'), 'punctuation.accessor', '->*');
+			const dotStar = tok(cpp, 'obj.*field = 5;');
+			expectToken(dotStar, 'punctuation.accessor', '.*');
+			expectLossless(dotStar, 'obj.*field = 5;');
+		});
+
+		it('does not mistake a trailing-dot float times x for .*', () => {
+			// `3.*x` is the float `3.` followed by `* x`, not the `.*` operator.
+			const line = tok(cpp, 'auto y = 3.*x;');
+			expectToken(line, 'number', '3.');
+			expectToken(line, 'operator.arithmetic', '*');
+			expectLossless(line, 'auto y = 3.*x;');
 		});
 
 		it('keeps the three-way comparison <=> as one comparison operator', () => {

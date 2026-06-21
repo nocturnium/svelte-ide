@@ -81,6 +81,81 @@ describe('csharp: strings', () => {
 		const line = tok(cs, 'var s = $@"path {dir}";');
 		expectToken(line, 'string.template', '$@"path {dir}"');
 	});
+
+	it('tokenizes a single-line raw string literal without bleeding on interior quotes', () => {
+		// Regression: """She said "hi" to me.""" used to split into an empty "" string,
+		// then "She said ", an exposed `hi` variable, " to me.", and another "" — with
+		// the interior quotes flipping the string boundaries. It must be ONE string.
+		const src = 'var raw = """She said "hi" to me.""";';
+		const line = tok(cs, src);
+		expectToken(line, 'string', '"""She said "hi" to me."""');
+		expectLossless(line, src);
+	});
+
+	it('tokenizes an interpolated raw string ($"""...""") as one string.template', () => {
+		const src = 'var s = $"""Value is {x} here.""";';
+		const line = tok(cs, src);
+		expectToken(line, 'string.template', '$"""Value is {x} here."""');
+		expectLossless(line, src);
+	});
+
+	it('tokenizes a raw string with extra interpolation dollars ($$"""...) as one token', () => {
+		// Regression: the leading $$ used to leave a stray ["text","$"] before the string.
+		const src = 'var s = $$"""Literal {{ and {x}.""";';
+		const line = tok(cs, src);
+		expectToken(line, 'string.template', '$$"""Literal {{ and {x}."""');
+		expectLossless(line, src);
+	});
+
+	it('threads a multi-line raw string literal across lines without bleeding', () => {
+		const lines = tokLines(cs, ['var json = """', '  { "key": "value" }', '  """;']);
+		expectToken(lines[0], 'string', '"""');
+		// The interior line is entirely string content even though it contains quotes.
+		expectToken(lines[1], 'string', '  { "key": "value" }');
+		expectToken(lines[2], 'string', '  """');
+		expectToken(lines[2], 'punctuation.separator', ';');
+		expectLossless(lines[0], 'var json = """');
+		expectLossless(lines[1], '  { "key": "value" }');
+		expectLossless(lines[2], '  """;');
+	});
+});
+
+describe('csharp: preprocessor directives', () => {
+	it('tokenizes #region as a single keyword token, not # + identifier', () => {
+		// Regression: #region used to split into ["text","#"] + ["variable","region"].
+		const line = tok(cs, '#region Helpers');
+		expectToken(line, 'keyword', '#region Helpers');
+		expectLossless(line, '#region Helpers');
+	});
+
+	it('tokenizes #if so DEBUG is not classified as a control keyword', () => {
+		// Regression: #if DEBUG split as # + control keyword `if` + type `DEBUG`.
+		const line = tok(cs, '#if DEBUG');
+		expectToken(line, 'keyword', '#if DEBUG');
+		expectLossless(line, '#if DEBUG');
+	});
+
+	it('tokenizes the nullable directive as a directive', () => {
+		const line = tok(cs, '#nullable enable');
+		expectToken(line, 'keyword', '#nullable enable');
+		expectLossless(line, '#nullable enable');
+	});
+
+	it('tokenizes #pragma and #endregion', () => {
+		expectToken(
+			tok(cs, '#pragma warning disable CS0168'),
+			'keyword',
+			'#pragma warning disable CS0168'
+		);
+		expectToken(tok(cs, '#endregion'), 'keyword', '#endregion');
+	});
+
+	it('does not treat a stray # in expression position as a directive', () => {
+		// `#unknown` is not a recognized directive, so the # falls through to text
+		// rather than swallowing the rest of the line.
+		const line = tok(cs, '#unknown');
+		expectLossless(line, '#unknown');
+	});
 });
 
 describe('csharp: comments', () => {

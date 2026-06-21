@@ -5,7 +5,7 @@
 import type { Token, TokenizedLine, TokenizerState, TokenType } from '../types';
 import { createToken } from '../base';
 
-// Definition keywords (def, class, etc.)
+// Definition keywords (def, class, etc.). Scala 3 adds `enum`, `given`, `extension`.
 const definitionKeywords = new Set([
 	'def',
 	'class',
@@ -14,10 +14,15 @@ const definitionKeywords = new Set([
 	'type',
 	'val',
 	'var',
-	'case'
+	'case',
+	'enum',
+	'given',
+	'extension'
 ]);
 
-// Storage / modifier keywords
+// Storage / modifier keywords. Includes Scala 3 soft modifiers (`inline`,
+// `opaque`, `transparent`, `open`, `infix`) which, while context-sensitive in
+// the grammar, are universally highlighted as modifiers by Scala editors.
 const storageKeywords = new Set([
 	'private',
 	'protected',
@@ -26,13 +31,19 @@ const storageKeywords = new Set([
 	'abstract',
 	'implicit',
 	'lazy',
-	'override'
+	'override',
+	'inline',
+	'opaque',
+	'transparent',
+	'open',
+	'infix'
 ]);
 
-// Control-flow keywords
+// Control-flow keywords (`then` is a Scala 3 control keyword)
 const controlKeywords = new Set([
 	'if',
 	'else',
+	'then',
 	'match',
 	'for',
 	'while',
@@ -45,11 +56,22 @@ const controlKeywords = new Set([
 	'finally'
 ]);
 
-// Module keywords
-const moduleKeywords = new Set(['import', 'package']);
+// Module keywords (`export` is the Scala 3 sibling of `import`)
+const moduleKeywords = new Set(['import', 'package', 'export']);
 
-// Other plain keywords
-const otherKeywords = new Set(['new', 'this', 'super', 'extends', 'with', 'forSome']);
+// Other plain keywords. Scala 3 soft keywords `using`, `derives`, `end` are
+// included here so they render as keywords rather than bare identifiers.
+const otherKeywords = new Set([
+	'new',
+	'this',
+	'super',
+	'extends',
+	'with',
+	'forSome',
+	'using',
+	'derives',
+	'end'
+]);
 
 // All keywords (union used for fast membership checks)
 const keywords = new Set<string>([
@@ -81,9 +103,6 @@ const builtinTypes = new Set([
 
 // Boolean / null literals
 const booleanLiterals = new Set(['true', 'false']);
-
-// String interpolator prefixes (s"...", f"...", raw"...")
-const interpolatorPrefixes = new Set(['s', 'f', 'raw']);
 
 interface ScalaTokenizerState extends TokenizerState {
 	/** Inside a triple-double-quoted multi-line string. */
@@ -172,21 +191,19 @@ export class ScalaTokenizer {
 		}
 
 		// Interpolated / triple / plain strings.
-		// A string may be prefixed by an interpolator identifier: s"...", f"...", raw"...".
+		// A string may be prefixed by an interpolator identifier glued to the opening
+		// quote: s"...", f"...", raw"...", and ARBITRARY custom interpolators such as
+		// json"...", sql"...", uri"...". Per the Scala grammar any identifier directly
+		// abutting a quote (no intervening whitespace) is an interpolator prefix, so the
+		// prefix is consumed as part of the string token rather than split off.
 		const strMatch = text.match(/^([A-Za-z_][A-Za-z0-9_]*)?"""|^([A-Za-z_][A-Za-z0-9_]*)?"/);
 		if (strMatch) {
 			const prefix = (strMatch[1] ?? strMatch[2] ?? '') as string;
-			// Only treat the leading identifier as an interpolator prefix; otherwise it is a
-			// separate identifier and the string starts at the quote.
-			if (prefix && !interpolatorPrefixes.has(prefix)) {
-				// Fall through to identifier handling below by not consuming the prefix here.
-			} else {
-				const afterPrefix = text.slice(prefix.length);
-				if (afterPrefix.startsWith('"""')) {
-					return this.tokenizeTripleString(text, pos, prefix.length, state);
-				}
-				return this.tokenizeString(text, pos, prefix.length);
+			const afterPrefix = text.slice(prefix.length);
+			if (afterPrefix.startsWith('"""')) {
+				return this.tokenizeTripleString(text, pos, prefix.length, state);
 			}
+			return this.tokenizeString(text, pos, prefix.length);
 		}
 
 		// Char literals vs. symbol literals.
@@ -207,7 +224,7 @@ export class ScalaTokenizer {
 		// (e.g. 3.14); in `42.toString` the dot is a member accessor, so the integer form
 		// must NOT swallow it.
 		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F_]+[lL]?|(?:\d[\d_]*\.\d[\d_]*|\.\d[\d_]*|\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[lLfFdD]?)/
+			/^(?:0[xX][0-9a-fA-F_]+[lL]?|0[bB][01_]+[lL]?|(?:\d[\d_]*\.\d[\d_]*|\.\d[\d_]*|\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[lLfFdD]?)/
 		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);

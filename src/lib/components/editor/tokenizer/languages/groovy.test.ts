@@ -110,6 +110,49 @@ describe('Groovy tokenizer', () => {
 			expectToken(line, 'string.regex', '/[a-z]+/');
 			expectLossless(line, 'def p = ~/[a-z]+/');
 		});
+
+		it('does not let a nested double-quote inside ${} interpolation end the GString early', () => {
+			// Regression: a `"` inside `${foo("...")}` previously terminated the
+			// GString early, leaking the interpolation body out as code and
+			// reopening a second string token. Brace-aware scanning keeps it whole.
+			const code = 'def x = "nested ${foo("${bar}")} end"';
+			const line = tok(groovy, code);
+			expectToken(line, 'string.template', '"nested ${foo("${bar}")} end"');
+			expectLossless(line, code);
+		});
+
+		it('keeps a nested closure/map inside ${} interpolation within one GString token', () => {
+			const code = 'def x = "deep ${ [a:1, b:[2,3]].collect { it } }"';
+			const line = tok(groovy, code);
+			expectToken(line, 'string.template', '"deep ${ [a:1, b:[2,3]].collect { it } }"');
+			expectLossless(line, code);
+		});
+
+		it('tokenizes a single-line dollar-slashy string', () => {
+			// Regression: `$/ ... /$` was previously shredded into `$`, `/`,
+			// identifiers and a division operator. It is one string token, and
+			// `$$` / `$/` inside are escapes that must not terminate it.
+			const code = 'def q = $/ a $$ b /$';
+			const line = tok(groovy, code);
+			expectToken(line, 'string.regex', '$/ a $$ b /$');
+			expectLossless(line, code);
+		});
+
+		it('does not terminate a dollar-slashy string at an escaped $/', () => {
+			const code = 'def p = $/path $/ literal slash/$';
+			const line = tok(groovy, code);
+			expectToken(line, 'string.regex', '$/path $/ literal slash/$');
+			expectLossless(line, code);
+		});
+
+		it('threads a multi-line dollar-slashy string across lines', () => {
+			const lines = tokLines(groovy, ['def q = $/', 'line two $x', 'end /$ + foo()']);
+			expectTokenType(lines[0], 'string.regex');
+			expectTokenType(lines[1], 'string.regex');
+			expectToken(lines[2], 'string.regex', 'end /$');
+			expectToken(lines[2], 'function.call', 'foo');
+			expectLossless(lines[1], 'line two $x');
+		});
 	});
 
 	describe('comments', () => {
@@ -170,6 +213,15 @@ describe('Groovy tokenizer', () => {
 		it('still tokenizes real floats with a fractional part', () => {
 			expectToken(tok(groovy, 'def d = 2.0'), 'number', '2.0');
 			expectToken(tok(groovy, 'def x = 0.5'), 'number', '0.5');
+		});
+
+		it('keeps an integer suffix on hex and binary literals', () => {
+			// Regression: `0xFFi` previously tokenized as number `0xFF` + variable
+			// `i`, dropping the valid Groovy `i`/`I` integer suffix from hex/binary
+			// literals (assert 0xFFi.class == Integer per the Groovy spec).
+			expectToken(tok(groovy, 'def e = 0xFFi'), 'number', '0xFFi');
+			expectToken(tok(groovy, 'def l = 0b1111L'), 'number', '0b1111L');
+			expectToken(tok(groovy, 'def g = 0xFFG'), 'number', '0xFFG');
 		});
 	});
 

@@ -87,7 +87,33 @@ const keywords = new Set([
 	'ROLLBACK',
 	'TRANSACTION',
 	'GRANT',
-	'REVOKE'
+	'REVOKE',
+	'OVER',
+	'PARTITION',
+	'WINDOW',
+	'FILTER',
+	'WITHIN',
+	'RECURSIVE',
+	'LATERAL',
+	'NATURAL',
+	'FUNCTION',
+	'PROCEDURE',
+	'TRIGGER',
+	'RETURNS',
+	'RETURN',
+	'DECLARE',
+	'LANGUAGE',
+	'NULLS',
+	'FIRST',
+	'LAST',
+	'ROWS',
+	'RANGE',
+	'GROUPS',
+	'PRECEDING',
+	'FOLLOWING',
+	'UNBOUNDED',
+	'CURRENT',
+	'ROW'
 ]);
 
 // Statement / clause keywords styled as control flow
@@ -128,7 +154,12 @@ const controlKeywords = new Set([
 	'END',
 	'BEGIN',
 	'COMMIT',
-	'ROLLBACK'
+	'ROLLBACK',
+	'OVER',
+	'PARTITION',
+	'WINDOW',
+	'WITHIN',
+	'FILTER'
 ]);
 
 // Logical / membership keywords styled as operator-keywords
@@ -154,7 +185,10 @@ const definitionKeywords = new Set([
 	'VIEW',
 	'DATABASE',
 	'SCHEMA',
-	'CONSTRAINT'
+	'CONSTRAINT',
+	'FUNCTION',
+	'PROCEDURE',
+	'TRIGGER'
 ]);
 
 // Built-in column types
@@ -207,6 +241,17 @@ const builtinFunctions = new Set([
 
 interface SqlTokenizerState extends TokenizerState {
 	inBlockComment?: boolean;
+	/**
+	 * Nesting depth of PostgreSQL block comments (they nest, unlike most SQL
+	 * dialects). 0/undefined means not inside a block comment.
+	 */
+	blockCommentDepth?: number;
+	/**
+	 * When inside a PostgreSQL dollar-quoted string, this holds the exact closing
+	 * delimiter we are waiting for (e.g. `$$` or `$body$`). Undefined when not in
+	 * a dollar-quoted body.
+	 */
+	dollarTag?: string;
 }
 
 export class SqlTokenizer {
@@ -221,15 +266,30 @@ export class SqlTokenizer {
 		let pos = 0;
 		const state: SqlTokenizerState = { ...prevState };
 
-		// Handle block comment continuation
-		if (state.inBlockComment) {
-			const endIdx = line.indexOf('*/');
+		// Handle dollar-quoted body continuation (PostgreSQL). The body runs until
+		// the exact matching tag is seen; nothing inside is interpreted as SQL.
+		if (state.dollarTag) {
+			const tag = state.dollarTag;
+			const endIdx = line.indexOf(tag);
 			if (endIdx !== -1) {
-				tokens.push(createToken('comment.block', line.slice(0, endIdx + 2), 0));
-				pos = endIdx + 2;
-				state.inBlockComment = false;
+				tokens.push(createToken('string', line.slice(0, endIdx + tag.length), 0));
+				pos = endIdx + tag.length;
+				state.dollarTag = undefined;
 			} else {
-				tokens.push(createToken('comment.block', line, 0));
+				tokens.push(createToken('string', line, 0));
+				return { lineNumber, tokens, text: line, state };
+			}
+		}
+
+		// Handle block comment continuation (PostgreSQL block comments nest).
+		if (pos === 0 && (state.inBlockComment || (state.blockCommentDepth ?? 0) > 0)) {
+			const consumed = this.continueBlockComment(line, state);
+			if (consumed > 0) {
+				tokens.push(createToken('comment.block', line.slice(0, consumed), 0));
+				pos = consumed;
+			}
+			if ((state.blockCommentDepth ?? 0) > 0) {
+				// Still open at end of line.
 				return { lineNumber, tokens, text: line, state };
 			}
 		}
@@ -277,18 +337,43 @@ export class SqlTokenizer {
 			return createToken('comment.line', text, pos);
 		}
 
-		// Block comments
+		// Block comments (PostgreSQL block comments nest, so we track depth rather
+		// than stopping at the first `*/`).
 		if (text.startsWith('/*')) {
-			const endIdx = text.indexOf('*/', 2);
-			if (endIdx !== -1) {
-				return createToken('comment.block', text.slice(0, endIdx + 2), pos);
-			} else {
-				state.inBlockComment = true;
-				return createToken('comment.block', text, pos);
+			let depth = 1;
+			let i = 2;
+			while (i < text.length && depth > 0) {
+				if (text[i] === '/' && text[i + 1] === '*') {
+					depth++;
+					i += 2;
+				} else if (text[i] === '*' && text[i + 1] === '/') {
+					depth--;
+					i += 2;
+				} else {
+					i++;
+				}
 			}
+			if (depth === 0) {
+				return createToken('comment.block', text.slice(0, i), pos);
+			}
+			state.inBlockComment = true;
+			state.blockCommentDepth = depth;
+			return createToken('comment.block', text, pos);
 		}
 
-		// Single-quoted string literals (doubled '' is an escaped quote)
+		// Prefixed string literals: E'...' (PostgreSQL escape string), N'...'
+		// (T-SQL unicode), B'...'/X'...' (bit/hex). The prefix is folded into the
+		// string token so `E'\n'` is one literal, not identifier + string. The
+		// prefix is a single ASCII letter immediately before the opening quote.
+		const prefixedString = text.match(/^([eEnNbBxX])'/);
+		if (prefixedString) {
+			const prefix = prefixedString[1];
+			const inner = this.tokenizeString(text.slice(1), pos + 1);
+			return createToken('string', prefix + inner.text, pos);
+		}
+
+		// Single-quoted string literals (doubled '' is an escaped quote;
+		// backslash escapes are honoured for MySQL / escape-string compatibility)
 		if (text.startsWith("'")) {
 			return this.tokenizeString(text, pos);
 		}
@@ -301,6 +386,33 @@ export class SqlTokenizer {
 		// Backtick-quoted identifier (MySQL)
 		if (text.startsWith('`')) {
 			return this.tokenizeIdentifierQuote(text, pos, '`');
+		}
+
+		// T-SQL bracket-quoted identifier: [Order Details]. A `]]` is an escaped
+		// closing bracket inside the identifier. A `[` glued to the end of a value
+		// (e.g. `int[]`, `arr[1]`) is an array subscript, not a delimited
+		// identifier, so it is suppressed when the previous token ends like a
+		// qualifier with no whitespace between.
+		if (text.startsWith('[')) {
+			const isSubscript = prev !== undefined && this.endsLikeQualifier(prev.text);
+			if (!isSubscript) {
+				return this.tokenizeBracketIdentifier(text, pos);
+			}
+		}
+
+		// PostgreSQL dollar-quoted string: $$...$$ or $tag$...$tag$. The opening
+		// delimiter is $<optional-tag>$ where tag is an identifier. We open the
+		// span here and thread the body across lines via state.dollarTag.
+		const dollarOpen = text.match(/^\$([A-Za-z_][A-Za-z0-9_]*)?\$/);
+		if (dollarOpen) {
+			const tag = dollarOpen[0];
+			const bodyStart = tag.length;
+			const closeIdx = text.indexOf(tag, bodyStart);
+			if (closeIdx !== -1) {
+				return createToken('string', text.slice(0, closeIdx + tag.length), pos);
+			}
+			state.dollarTag = tag;
+			return createToken('string', text, pos);
 		}
 
 		// Numbers: integer, decimal, scientific.
@@ -320,11 +432,23 @@ export class SqlTokenizer {
 			return createToken('number', numMatch[0], pos);
 		}
 
+		// T-SQL variables: @@global (system) and @local. Stops at the first
+		// non-identifier character.
+		const atMatch = text.match(/^@@?[A-Za-z_][A-Za-z0-9_]*/);
+		if (atMatch) {
+			return createToken('variable', atMatch[0], pos);
+		}
+
 		// Identifiers and keywords (allow leading _ and trailing digits/underscores)
 		const identMatch = text.match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
 		if (identMatch) {
 			const word = identMatch[0];
 			return createToken(this.classifyIdentifier(word, text, word.length), word, pos);
+		}
+
+		// PostgreSQL cast operator `::` (must be tested before single `:` / other ops).
+		if (text.startsWith('::')) {
+			return createToken('operator', '::', pos);
 		}
 
 		// Operators
@@ -416,9 +540,16 @@ export class SqlTokenizer {
 
 	private tokenizeString(text: string, pos: number): Token {
 		// Single-quoted literal. A doubled '' is an escaped quote and does NOT
-		// terminate the string; a lone ' does.
+		// terminate the string; a lone ' does. A backslash escapes the next
+		// character (MySQL default and PostgreSQL E'' escape strings), so `\'`
+		// does not terminate the literal either.
 		let i = 1;
 		while (i < text.length) {
+			if (text[i] === '\\') {
+				// Backslash escape: skip the escaped character (if any).
+				i += 2;
+				continue;
+			}
 			if (text[i] === "'") {
 				if (text[i + 1] === "'") {
 					i += 2;
@@ -429,7 +560,47 @@ export class SqlTokenizer {
 			i++;
 		}
 		// Unterminated on this line — emit the remainder as a string.
-		return createToken('string', text.slice(0, i), pos);
+		return createToken('string', text.slice(0, text.length), pos);
+	}
+
+	/**
+	 * Continue an already-open (possibly nested) block comment into `line`,
+	 * mutating `state.blockCommentDepth`. Returns the number of characters
+	 * consumed from the start of the line. PostgreSQL block comments nest.
+	 */
+	private continueBlockComment(line: string, state: SqlTokenizerState): number {
+		let depth = state.blockCommentDepth ?? 1;
+		let i = 0;
+		while (i < line.length && depth > 0) {
+			if (line[i] === '/' && line[i + 1] === '*') {
+				depth++;
+				i += 2;
+			} else if (line[i] === '*' && line[i + 1] === '/') {
+				depth--;
+				i += 2;
+			} else {
+				i++;
+			}
+		}
+		state.blockCommentDepth = depth;
+		state.inBlockComment = depth > 0;
+		return i;
+	}
+
+	private tokenizeBracketIdentifier(text: string, pos: number): Token {
+		// T-SQL [delimited identifier]. A doubled `]]` is an escaped bracket.
+		let i = 1;
+		while (i < text.length) {
+			if (text[i] === ']') {
+				if (text[i + 1] === ']') {
+					i += 2;
+					continue;
+				}
+				return createToken('variable', text.slice(0, i + 1), pos);
+			}
+			i++;
+		}
+		return createToken('variable', text.slice(0, text.length), pos);
 	}
 
 	private tokenizeIdentifierQuote(text: string, pos: number, delim: string): Token {

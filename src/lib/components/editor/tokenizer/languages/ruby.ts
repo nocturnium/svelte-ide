@@ -108,6 +108,36 @@ const storageKeywords = new Set([
 
 const specialKeywords = new Set(['self', 'super', '__method__', 'defined?']);
 
+// Keywords after which a `/` opens a regex (a value is expected), used to
+// disambiguate `when /x/` and `return /x/` from division.
+const regexKeywords = new Set([
+	'when',
+	'and',
+	'or',
+	'not',
+	'if',
+	'elsif',
+	'unless',
+	'while',
+	'until',
+	'return',
+	'case',
+	'then',
+	'in',
+	'do',
+	'begin',
+	'yield',
+	'puts',
+	'print',
+	'p',
+	'match',
+	'gsub',
+	'sub',
+	'scan',
+	'split',
+	'grep'
+]);
+
 const builtinFunctions = new Set([
 	'puts',
 	'print',
@@ -238,10 +268,20 @@ export class RubyTokenizer {
 			return createToken('string', heredocMatch[0], pos);
 		}
 
-		// Percent-literal word/symbol arrays: %w[...] %i[...] %W() %I{}
-		const percentMatch = text.match(/^%[wiWI]([([{<])/);
+		// Percent-literals. Word/symbol arrays (%w %i %W %I) and the string-like
+		// forms %q %Q %r %x %s with any of the bracket delimiters () [] {} <>. Routed
+		// through one delimiter-balanced scanner so the body — including any `#` that
+		// would otherwise read as a comment — is captured as a single literal token.
+		const percentMatch = text.match(/^%([wiWIqQrxs])([([{<])/);
 		if (percentMatch) {
-			return this.tokenizePercentLiteral(text, pos, percentMatch[1]);
+			// %r is a regex literal; the rest are string literals.
+			const type: TokenType = percentMatch[1] === 'r' ? 'string.regex' : 'string';
+			return this.tokenizePercentLiteral(text, pos, percentMatch[2], type);
+		}
+		// Bare `%(...)`, `%[...]`, `%{...}`, `%<...>` (no type letter) is a %Q string.
+		const barePercentMatch = text.match(/^%([([{<])/);
+		if (barePercentMatch && this.regexAllowedHere(fullLine, pos)) {
+			return this.tokenizePercentLiteral(text, pos, barePercentMatch[1], 'string', 2);
 		}
 
 		// Symbols: :name, :"...", :+ operator symbols
@@ -265,6 +305,18 @@ export class RubyTokenizer {
 		// Backtick command strings
 		if (text.startsWith('`')) {
 			return this.tokenizeSingleString(text, pos, '`');
+		}
+
+		// Regex literals: /.../flags. Ambiguous with division, so only treat a `/` as
+		// a regex opener in positions where a value (not a binary operator) is
+		// expected — start of expression, after an opening bracket/comma, after an
+		// operator, or after a keyword. Captures the whole literal as one token so an
+		// inner `#` cannot bleed into a line comment and the closing `/` is consumed.
+		if (text.startsWith('/') && this.regexAllowedHere(fullLine, pos)) {
+			const regexToken = this.tokenizeRegex(text, pos);
+			if (regexToken) {
+				return regexToken;
+			}
 		}
 
 		// Numbers
@@ -340,6 +392,63 @@ export class RubyTokenizer {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * Heuristic for the classic regex-vs-division ambiguity. A `/` (or bare `%(`)
+	 * begins a literal only where a *value* is expected: at the start of a line, or
+	 * after an opening delimiter, comma, semicolon, an operator, or a keyword that
+	 * takes an expression. After an identifier, number, closing bracket, or `)` a
+	 * `/` is division. We look back over whitespace to the previous significant char.
+	 */
+	private regexAllowedHere(fullLine: string, pos: number): boolean {
+		let i = pos - 1;
+		while (i >= 0 && (fullLine[i] === ' ' || fullLine[i] === '\t')) {
+			i--;
+		}
+		if (i < 0) {
+			return true; // start of line / only whitespace before
+		}
+		const ch = fullLine[i];
+		// A value or closing delimiter before `/` => division, not a regex.
+		if (/[A-Za-z0-9_)\]}"'`?]/.test(ch)) {
+			// But a keyword (when/and/or/not/return/if/unless/...) before it expects a
+			// value. Pull the trailing word and test it.
+			const before = fullLine.slice(0, i + 1);
+			const wordMatch = before.match(/([A-Za-z_][A-Za-z0-9_]*[?!]?)$/);
+			if (wordMatch && regexKeywords.has(wordMatch[1])) {
+				return true;
+			}
+			return false;
+		}
+		// After (, [, {, comma, operators, etc. => value position => regex allowed.
+		return true;
+	}
+
+	/** Scan a /.../ regex literal with escapes, then trailing flag letters. */
+	private tokenizeRegex(text: string, pos: number): Token | null {
+		let i = 1;
+		let inClass = false;
+		while (i < text.length) {
+			const c = text[i];
+			if (c === '\\' && i + 1 < text.length) {
+				i += 2;
+				continue;
+			}
+			if (c === '[') {
+				inClass = true;
+			} else if (c === ']') {
+				inClass = false;
+			} else if (c === '/' && !inClass) {
+				let j = i + 1;
+				while (j < text.length && /[a-z]/.test(text[j])) j++;
+				return createToken('string.regex', text.slice(0, j), pos);
+			}
+			i++;
+		}
+		// No closing delimiter on this line — treat the rest of the line as regex so a
+		// `#` cannot bleed into a comment. (Multi-line regex is not threaded.)
+		return createToken('string.regex', text.slice(0, i), pos);
 	}
 
 	private classifyIdentifier(
@@ -487,11 +596,20 @@ export class RubyTokenizer {
 		return createToken(type, text.slice(0, end), pos);
 	}
 
-	/** %w[...] / %i[...] etc. word & symbol array literals. Best effort, single line. */
-	private tokenizePercentLiteral(text: string, pos: number, open: string): Token {
+	/**
+	 * Percent-literals: %w[...] %i[...] %q{...} %Q<...> %r{...} %x(...) and bare
+	 * %(...). Best effort, single line, delimiter-balanced. `bodyStart` is the index
+	 * just past the opening delimiter (3 for `%X(`, 2 for the bare `%(`).
+	 */
+	private tokenizePercentLiteral(
+		text: string,
+		pos: number,
+		open: string,
+		type: TokenType = 'string',
+		bodyStart = 3
+	): Token {
 		const close = open === '(' ? ')' : open === '[' ? ']' : open === '{' ? '}' : '>';
-		// text[0]='%', text[1]=letter (w/i/W/I), text[2]=opener — scan body from index 3.
-		let i = 3;
+		let i = bodyStart;
 		let depth = 1;
 		while (i < text.length) {
 			if (text[i] === '\\' && i + 1 < text.length) {
@@ -503,12 +621,17 @@ export class RubyTokenizer {
 			} else if (text[i] === close) {
 				depth--;
 				if (depth === 0) {
-					return createToken('string', text.slice(0, i + 1), pos);
+					// %r and friends allow trailing flag letters (e.g. %r{..}imx).
+					let j = i + 1;
+					if (type === 'string.regex') {
+						while (j < text.length && /[a-z]/.test(text[j])) j++;
+					}
+					return createToken(type, text.slice(0, j), pos);
 				}
 			}
 			i++;
 		}
-		return createToken('string', text.slice(0, i), pos);
+		return createToken(type, text.slice(0, i), pos);
 	}
 }
 

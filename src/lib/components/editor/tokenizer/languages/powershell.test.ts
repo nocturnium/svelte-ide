@@ -79,6 +79,24 @@ describe('PowerShell tokenizer', () => {
 			const line = tok(ps, '$global:Config = 1');
 			expectToken(line, 'variable', '$global:Config');
 		});
+
+		it('treats a splatted @name as a single variable reference', () => {
+			// Regression: `@splat` previously tokenized as `@` punctuation + the
+			// identifier `splat`, losing the splat sigil. It is one variable ref.
+			const line = tok(ps, 'Get-ChildItem @splat');
+			expectToken(line, 'variable', '@splat');
+			expectLossless(line, 'Get-ChildItem @splat');
+		});
+
+		it('still tokenizes @{ and @( as hashtable / array literals, not splats', () => {
+			const hash = tok(ps, '$h = @{ A = 1 }');
+			expectToken(hash, 'punctuation', '@');
+			expectToken(hash, 'punctuation.brace', '{');
+			expectLossless(hash, '$h = @{ A = 1 }');
+			const arr = tok(ps, '$a = @(1, 2)');
+			expectToken(arr, 'punctuation', '@');
+			expectToken(arr, 'punctuation.paren', '(');
+		});
 	});
 
 	describe('strings', () => {
@@ -134,6 +152,33 @@ describe('PowerShell tokenizer', () => {
 		it('detects size-suffixed numbers', () => {
 			const line = tok(ps, '$size = 5MB');
 			expectToken(line, 'number', '5MB');
+		});
+
+		it('detects binary literals as a single number', () => {
+			// Regression: `0b1010` previously tokenized as `0` + the identifier
+			// `b1010`, because the number pattern only understood the `0x` prefix.
+			const line = tok(ps, '$mask = 0b1010');
+			expectToken(line, 'number', '0b1010');
+			expectLossless(line, '$mask = 0b1010');
+		});
+
+		it('keeps numeric type suffixes attached to the number', () => {
+			// Regression: `100L`, `1.5d`, `10ul`, `0xFFL` previously split the type
+			// suffix off as a bogus trailing identifier.
+			expectToken(tok(ps, '$l = 100L'), 'number', '100L');
+			expectToken(tok(ps, '$d = 1.5d'), 'number', '1.5d');
+			expectToken(tok(ps, '$u = 10ul'), 'number', '10ul');
+			expectToken(tok(ps, '$h = 0xFFL'), 'number', '0xFFL');
+			expectLossless(tok(ps, '$l = 100L'), '$l = 100L');
+		});
+
+		it('does not break ordinary numbers or the range operator', () => {
+			expectToken(tok(ps, '$x = 5MB'), 'number', '5MB');
+			expectToken(tok(ps, '$x = 1kb'), 'number', '1kb');
+			const range = tok(ps, '1..10');
+			expectToken(range, 'number', '1');
+			expectToken(range, 'operator', '..');
+			expectToken(range, 'number', '10');
 		});
 	});
 

@@ -55,6 +55,49 @@ describe('ScalaTokenizer — keywords', () => {
 		expectToken(line, 'keyword', 'extends');
 		expectToken(line, 'keyword', 'with');
 	});
+
+	it('classifies Scala 3 enum/given/extension as definition keywords', () => {
+		const e = tok(scala, 'enum Color { case Red, Green, Blue }');
+		expectToken(e, 'keyword.definition', 'enum');
+
+		const g = tok(scala, 'given ordInt: Ord[Int] with');
+		expectToken(g, 'keyword.definition', 'given');
+
+		// `extension` is glued to `(` but must still be a keyword, not a function call.
+		const x = tok(scala, 'extension (s: String) def shout = s');
+		expectToken(x, 'keyword.definition', 'extension');
+	});
+
+	it('classifies Scala 3 then as a control keyword', () => {
+		const line = tok(scala, 'if x > 0 then a else b');
+		expectToken(line, 'keyword.control', 'then');
+	});
+
+	it('classifies Scala 3 soft modifiers as storage keywords', () => {
+		const line = tok(scala, 'transparent inline def f = 1');
+		expectToken(line, 'keyword.storage', 'transparent');
+		expectToken(line, 'keyword.storage', 'inline');
+	});
+
+	it('classifies opaque type as a storage + definition keyword pair', () => {
+		const line = tok(scala, 'opaque type Logarithm = Double');
+		expectToken(line, 'keyword.storage', 'opaque');
+		expectToken(line, 'keyword.definition', 'type');
+	});
+
+	it('classifies using/derives/end/export as keywords, not identifiers', () => {
+		const u = tok(scala, 'def max[T](x: T)(using ord: Ord[T]) = x');
+		expectToken(u, 'keyword', 'using');
+
+		const d = tok(scala, 'class C derives Eq');
+		expectToken(d, 'keyword', 'derives');
+
+		const en = tok(scala, 'end Main');
+		expectToken(en, 'keyword', 'end');
+
+		const ex = tok(scala, 'export foo.bar');
+		expectToken(ex, 'keyword.module', 'export');
+	});
 });
 
 describe('ScalaTokenizer — strings', () => {
@@ -97,6 +140,24 @@ describe('ScalaTokenizer — strings', () => {
 		const line = tok(scala, "val sym = 'mySymbol");
 		expectToken(line, 'constant.builtin', "'mySymbol");
 	});
+
+	it('keeps an arbitrary custom interpolator prefix attached to the string', () => {
+		// `json"..."`, `sql"..."`, `uri"..."` are valid custom interpolators; the prefix
+		// is part of the string token, not a detached identifier.
+		const j = tok(scala, 'val q = sql"SELECT * FROM t WHERE id = $id"');
+		expectToken(j, 'string', 'sql"SELECT * FROM t WHERE id = $id"');
+		expectLossless(j, 'val q = sql"SELECT * FROM t WHERE id = $id"');
+
+		const u = tok(scala, 'val g = uri"http://$host/path"');
+		expectToken(u, 'string', 'uri"http://$host/path"');
+		expectLossless(u, 'val g = uri"http://$host/path"');
+	});
+
+	it('keeps a custom triple-quoted interpolator prefix attached', () => {
+		const line = tok(scala, 'val e = json"""{ "k": 1 }"""');
+		expectToken(line, 'string', 'json"""{ "k": 1 }"""');
+		expectLossless(line, 'val e = json"""{ "k": 1 }"""');
+	});
 });
 
 describe('ScalaTokenizer — comments', () => {
@@ -135,6 +196,13 @@ describe('ScalaTokenizer — numbers', () => {
 	it('tokenizes a number with underscores', () => {
 		const line = tok(scala, 'val m = 1_000_000');
 		expectToken(line, 'number', '1_000_000');
+	});
+
+	it('tokenizes a binary literal as a single number', () => {
+		// Regression: `0b1010` must not split into number `0` + identifier `b1010`.
+		const line = tok(scala, 'val bin = 0b1010');
+		expectToken(line, 'number', '0b1010');
+		expectLossless(line, 'val bin = 0b1010');
 	});
 
 	it('does not let an integer swallow a member-access dot', () => {

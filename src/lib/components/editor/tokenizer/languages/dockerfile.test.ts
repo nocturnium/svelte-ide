@@ -184,6 +184,68 @@ describe('dockerfile: multi-line constructs', () => {
 	});
 });
 
+describe('dockerfile: BuildKit heredocs', () => {
+	it('does not lex a heredoc body line as an instruction', () => {
+		const lines = tokLines(t, ['RUN <<EOF', 'RUN apt-get update', 'FROM here is text', 'EOF']);
+		// The opener line is a real RUN instruction with the `<<` operator + delimiter.
+		expectToken(lines[0], 'keyword.control', 'RUN');
+		// Body lines are verbatim content, NOT Dockerfile instructions: the leading
+		// `RUN`/`FROM` here must NOT be highlighted as keywords.
+		expectToken(lines[1], 'text', 'RUN apt-get update');
+		expectToken(lines[2], 'text', 'FROM here is text');
+		expectToken(lines[3], 'text', 'EOF');
+	});
+
+	it('resumes Dockerfile lexing after the heredoc closes', () => {
+		const lines = tokLines(t, ['RUN <<EOF', 'echo hi', 'EOF', 'FROM alpine']);
+		expectToken(lines[2], 'text', 'EOF');
+		// The line after the closing delimiter is a fresh instruction again.
+		expectToken(lines[3], 'keyword.control', 'FROM');
+	});
+
+	it('threads multiple heredocs opened on one line, in order', () => {
+		const lines = tokLines(t, [
+			'COPY <<f1 <<f2 /dest',
+			'content one',
+			'f1',
+			'content two',
+			'f2',
+			'RUN x'
+		]);
+		expectToken(lines[1], 'text', 'content one');
+		expectToken(lines[2], 'text', 'f1');
+		expectToken(lines[3], 'text', 'content two');
+		expectToken(lines[4], 'text', 'f2');
+		// Only after BOTH delimiters close does normal lexing resume.
+		expectToken(lines[5], 'keyword.control', 'RUN');
+	});
+
+	it('closes a <<- heredoc whose terminator is tab-indented', () => {
+		const lines = tokLines(t, ['RUN <<-EOT', '\tbody line', '\tEOT', 'WORKDIR /app']);
+		expectToken(lines[1], 'text', '\tbody line');
+		expectToken(lines[2], 'text', '\tEOT');
+		expectToken(lines[3], 'keyword', 'WORKDIR');
+	});
+
+	it('treats a quoted heredoc delimiter and closes on the bare word', () => {
+		const lines = tokLines(t, ['RUN <<"EOF"', 'literal $NOEXPAND', 'EOF', 'FROM scratch']);
+		expectToken(lines[1], 'text', 'literal $NOEXPAND');
+		expectToken(lines[3], 'keyword.control', 'FROM');
+	});
+
+	it('does not start a heredoc for a plain redirection (2>&1, > file)', () => {
+		const lines = tokLines(t, ['RUN echo done > /tmp/x 2>&1', 'FROM alpine']);
+		// No heredoc opened, so the next line is still a real instruction.
+		expectToken(lines[1], 'keyword.control', 'FROM');
+	});
+
+	it('is lossless across a heredoc block', () => {
+		const src = ['RUN <<EOF', 'RUN apt-get update', '\techo "x"', 'EOF'];
+		const lines = tokLines(t, src);
+		lines.forEach((line, i) => expectLossless(line, src[i]));
+	});
+});
+
 describe('dockerfile: realistic multi-token line', () => {
 	it('tokenizes a HEALTHCHECK with flags, numbers and a JSON array', () => {
 		const line = tok(

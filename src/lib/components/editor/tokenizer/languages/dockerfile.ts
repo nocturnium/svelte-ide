@@ -38,6 +38,14 @@ interface DockerfileTokenizerState extends TokenizerState {
 	afterInstruction?: boolean;
 	/** Lowercase leading instruction of the current logical line (threads across `\` continuations). */
 	instruction?: string;
+	/**
+	 * Pending BuildKit heredoc closing delimiters, in order. While non-empty,
+	 * physical lines are heredoc *body* content (a shell script or file data) and
+	 * are emitted verbatim — they must NOT be lexed as Dockerfile instructions.
+	 * Each entry is the bare delimiter word; `tabStripped` mirrors a `<<-` start
+	 * (the closing line may be indented with leading tabs).
+	 */
+	heredocDelims?: { word: string; tabStripped: boolean }[];
 }
 
 export class DockerfileTokenizer {
@@ -55,6 +63,21 @@ export class DockerfileTokenizer {
 		const tokens: Token[] = [];
 		let pos = 0;
 		const state: DockerfileTokenizerState = { ...prevState };
+		// Copy the heredoc stack so we never mutate the previous line's state object.
+		if (state.heredocDelims) state.heredocDelims = state.heredocDelims.slice();
+
+		// Heredoc body: while delimiters are pending, this physical line is verbatim
+		// body content (shell script / file data), NOT a Dockerfile instruction.
+		if (state.heredocDelims && state.heredocDelims.length > 0) {
+			const next = state.heredocDelims[0];
+			// The closing line is the delimiter word alone (leading tabs allowed for `<<-`).
+			const candidate = next.tabStripped ? line.replace(/^\t+/, '') : line;
+			if (candidate === next.word) {
+				state.heredocDelims = state.heredocDelims.slice(1);
+			}
+			tokens.push(createToken('text', line.length > 0 ? line : '', 0));
+			return { lineNumber, tokens, text: line, state };
+		}
 
 		// A new logical line begins unless the previous physical line continued
 		// via a trailing backslash. Reset the per-logical-line instruction flag.
@@ -81,6 +104,22 @@ export class DockerfileTokenizer {
 			}
 		}
 
+		// BuildKit heredocs: `RUN <<EOF` / `COPY <<-EOT file` / `RUN <<"EOF"`.
+		// Collect every here-doc opener on this logical line, in order; the next
+		// physical line(s) are body content until each delimiter closes. A `\`
+		// continuation does not open the body early — body starts on the next line.
+		if (!this.endsInComment(tokens)) {
+			const openers = this.collectHeredocOpeners(line);
+			if (openers.length > 0) {
+				state.heredocDelims = [...(state.heredocDelims ?? []), ...openers];
+				// A heredoc body takes over the next line; cancel any `\` continuation
+				// so the body is not mis-read as a continued logical line.
+				state.inContinuation = false;
+				if (tokens.length === 0) tokens.push(createToken('text', '', 0));
+				return { lineNumber, tokens, text: line, state };
+			}
+		}
+
 		// Line continuation: a trailing backslash (only whitespace after it)
 		// keeps the logical line open into the next physical line.
 		if (/\\\s*$/.test(line) && !this.endsInComment(tokens)) {
@@ -102,6 +141,24 @@ export class DockerfileTokenizer {
 			return t.type === 'comment.line';
 		}
 		return false;
+	}
+
+	/**
+	 * Find BuildKit heredoc openers (`<<WORD`, `<<-WORD`, `<<"WORD"`, `<<'WORD'`)
+	 * on a logical line, in source order. A redirection like `2>&1` or `> file`
+	 * is single `<`/`>` and never matches. Quoted delimiters close on the bare
+	 * word (the quotes only suppress expansion in the body, which we don't lex).
+	 */
+	private collectHeredocOpeners(line: string): { word: string; tabStripped: boolean }[] {
+		const openers: { word: string; tabStripped: boolean }[] = [];
+		const re = /<<(-?)\s*(?:"([A-Za-z_][\w.-]*)"|'([A-Za-z_][\w.-]*)'|([A-Za-z_][\w.-]*))/g;
+		let m: RegExpExecArray | null;
+		while ((m = re.exec(line)) !== null) {
+			const word = m[2] ?? m[3] ?? m[4];
+			if (!word) continue;
+			openers.push({ word, tabStripped: m[1] === '-' });
+		}
+		return openers;
 	}
 
 	private getNextToken(

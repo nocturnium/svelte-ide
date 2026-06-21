@@ -69,6 +69,11 @@ export class TomlTokenizer {
 		// A leading `[` (after optional whitespace) opens a table header — only at
 		// the very start of the line's meaningful content.
 		let sawNonWhitespace = pos > 0;
+		// Whether the previous meaningful token already produced a value (number,
+		// string, date, boolean, or a closing `]`/`}`). A leading `+`/`-` is only a
+		// number's sign at a fresh value position — directly after another value it
+		// is a stray operator, so a regex must NOT fold it into a second number.
+		let prevWasValue = false;
 
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
@@ -80,17 +85,29 @@ export class TomlTokenizer {
 					for (const t of headerTokens) tokens.push(t);
 					pos = headerTokens[headerTokens.length - 1].end;
 					sawNonWhitespace = true;
+					prevWasValue = true;
 					continue;
 				}
 			}
 
-			const token = this.getNextToken(remaining, pos, state, valueMode);
+			const token = this.getNextToken(remaining, pos, state, valueMode, prevWasValue);
 
 			if (token) {
 				tokens.push(token);
 				pos = token.end;
 				if (token.type !== 'text') {
 					sawNonWhitespace = true;
+				}
+				// A sign abutting the next char is a fresh-value sign only when the
+				// previous meaningful token did NOT itself yield a value.
+				if (token.type !== 'text') {
+					prevWasValue =
+						token.type === 'number' ||
+						token.type === 'string' ||
+						token.type === 'constant.boolean' ||
+						token.type === 'constant.builtin' ||
+						token.text === ']' ||
+						token.text === '}';
 				}
 				// Track key/value context. `=` opens a value; inline-table braces and
 				// their member separators re-open key context for the next key.
@@ -111,6 +128,7 @@ export class TomlTokenizer {
 				tokens.push(createToken('text', remaining[0], pos));
 				pos += 1;
 				sawNonWhitespace = true;
+				prevWasValue = false;
 			}
 		}
 
@@ -208,7 +226,8 @@ export class TomlTokenizer {
 		text: string,
 		pos: number,
 		state: TomlTokenizerState,
-		valueMode: boolean
+		valueMode: boolean,
+		prevWasValue: boolean
 	): Token | null {
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
@@ -253,6 +272,13 @@ export class TomlTokenizer {
 
 		// In value context, recognize value literals before treating words as keys.
 		if (valueMode) {
+			// A `+`/`-` that abuts a value already emitted (e.g. the stray `+` in the
+			// invalid `1+2`) is a lone operator, not the sign of a fresh number. Emit
+			// it as text so the number regexes below don't fold it into `+2`.
+			if (prevWasValue && (text[0] === '+' || text[0] === '-')) {
+				return createToken('text', text[0], pos);
+			}
+
 			// Dates / times (RFC 3339)
 			const dateMatch = text.match(dateTimeRe);
 			if (dateMatch) {

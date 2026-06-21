@@ -44,7 +44,22 @@ const keywords = new Set([
 	'use',
 	'where',
 	'while',
-	'yield'
+	'yield',
+	// Reserved-for-future-use keywords. They have no current syntactic role but
+	// are reserved words, so they must highlight as keywords rather than fall
+	// through to plain identifiers.
+	'abstract',
+	'become',
+	'box',
+	'do',
+	'final',
+	'macro',
+	'override',
+	'priv',
+	'try',
+	'typeof',
+	'unsized',
+	'virtual'
 ]);
 
 // Definition keywords (introduce a named item)
@@ -131,6 +146,15 @@ export class RustTokenizer implements LanguageTokenizer {
 		const tokens: Token[] = [];
 		let pos = 0;
 		const state: RustTokenizerState = { ...prevState };
+
+		// Shebang: only valid as the very first line, and only when it is NOT an
+		// inner attribute (`#![...]`). `#!/usr/bin/env ...` is a shebang and Rust
+		// ignores the whole line; render it as a line comment so it does not get
+		// shredded into stray `!`, `/`, and identifier tokens.
+		if (lineNumber === 1 && line.startsWith('#!') && line[2] !== '[') {
+			tokens.push(createToken('comment.line', line, 0));
+			return { lineNumber, tokens, text: line, state };
+		}
 
 		// Handle block comment continuation
 		if (state.inBlockComment) {
@@ -223,15 +247,41 @@ export class RustTokenizer implements LanguageTokenizer {
 			return [createToken('keyword', text, pos)];
 		}
 
-		// Raw strings: r"...", r#"..."#, br"...", and more hashes
+		// Raw strings: r"...", r#"..."#, br"...", and more hashes.
+		// Must run BEFORE the raw-identifier check so `r#"..."#` is a string, not
+		// `r#` + identifier.
 		const rawMatch = text.match(/^(b?r)(#*)"/);
 		if (rawMatch) {
 			return [this.tokenizeRawString(text, pos, rawMatch[1].length, rawMatch[2].length, state)];
 		}
 
+		// Raw identifiers: `r#match`, `r#fn`, `r#async` — `r#` followed by an
+		// identifier (which may be a keyword). The whole thing is ONE identifier,
+		// so the keyword must NOT be highlighted as a keyword in the middle of it.
+		const rawIdentMatch = text.match(/^r#([a-zA-Z_][a-zA-Z0-9_]*)/);
+		if (rawIdentMatch) {
+			const word = rawIdentMatch[0];
+			const after = text.slice(word.length);
+			// A raw identifier can still be a macro (`r#try!`) or a call.
+			if (after.startsWith('!') && !after.startsWith('!=')) {
+				return [createToken('function.call', word + '!', pos)];
+			}
+			const type: TokenType = after.trimStart().startsWith('(') ? 'function.call' : 'variable';
+			return [createToken(type, word, pos)];
+		}
+
 		// Byte strings: b"..."
 		if (text.startsWith('b"')) {
 			return this.tokenizeString(text, pos, 1);
+		}
+
+		// Byte char literal: b'A', b'\n', b'\xFF'. The `b` prefix is part of the
+		// literal — it must not split off as a separate identifier token.
+		if (text.startsWith("b'")) {
+			const byteCharMatch = text.match(/^b'(?:\\(?:x[0-9a-fA-F]{2}|[nrt0\\'"])|[^'\\])'/);
+			if (byteCharMatch) {
+				return [createToken('string', byteCharMatch[0], pos)];
+			}
 		}
 
 		// Regular strings: "..."

@@ -87,6 +87,12 @@ const specialTargets = new Set([
 interface MakefileTokenizerState extends TokenizerState {
 	/** Previous physical line ended with a trailing backslash (logical line continues). */
 	inContinuation?: boolean;
+	/**
+	 * The continued logical line is a recipe (or define body): its continuation lines are
+	 * shell/raw text. False means the continued line is a make line (assignment / directive /
+	 * prerequisite list) whose continuation should keep value/variable highlighting.
+	 */
+	continuationIsRecipe?: boolean;
 	/** Currently inside a define ... endef block; body lines are treated as recipe-ish. */
 	inDefine?: boolean;
 }
@@ -119,7 +125,7 @@ export class MakefileTokenizer {
 				this.scanRecipeBody(line, 0, tokens);
 			}
 			if (tokens.length === 0) tokens.push(createToken('text', '', 0));
-			this.markContinuation(line, tokens, state);
+			this.markContinuation(line, tokens, state, true);
 			return { lineNumber, tokens, text: line, state };
 		}
 
@@ -129,16 +135,22 @@ export class MakefileTokenizer {
 			tokens.push(createToken('text', '\t', 0));
 			this.scanRecipeBody(line, 1, tokens);
 			if (tokens.length === 0) tokens.push(createToken('text', '', 0));
-			this.markContinuation(line, tokens, state);
+			this.markContinuation(line, tokens, state, true);
 			return { lineNumber, tokens, text: line, state };
 		}
 
-		// Continuation of a previous recipe/assignment line: scan as recipe body so a
-		// trailing-backslash command keeps its plain styling on the next physical line.
+		// Continuation of a previous logical line. A continued RECIPE stays raw shell text;
+		// a continued MAKE line (assignment / directive / prerequisite list) keeps its
+		// value/variable highlighting so multi-line assignments are not flattened to plain.
 		if (continued) {
-			this.scanRecipeBody(line, 0, tokens);
+			const isRecipe = state.continuationIsRecipe === true;
+			if (isRecipe) {
+				this.scanRecipeBody(line, 0, tokens);
+			} else {
+				this.scanMakeLine(line, 0, tokens, state, true);
+			}
 			if (tokens.length === 0) tokens.push(createToken('text', '', 0));
-			this.markContinuation(line, tokens, state);
+			this.markContinuation(line, tokens, state, isRecipe);
 			return { lineNumber, tokens, text: line, state };
 		}
 
@@ -151,14 +163,24 @@ export class MakefileTokenizer {
 		this.scanMakeLine(line, startPos, tokens, state);
 
 		if (tokens.length === 0) tokens.push(createToken('text', '', 0));
-		this.markContinuation(line, tokens, state);
+		this.markContinuation(line, tokens, state, false);
 		return { lineNumber, tokens, text: line, state };
 	}
 
-	/** Re-arm continuation state if the physical line ends with an unescaped `\`. */
-	private markContinuation(line: string, tokens: Token[], state: MakefileTokenizerState): void {
+	/**
+	 * Re-arm continuation state if the physical line ends with an unescaped `\`. `isRecipe`
+	 * records whether the continued logical line is recipe/shell text (raw) or a make line
+	 * (value-highlighted), so the next physical line is scanned in the right mode.
+	 */
+	private markContinuation(
+		line: string,
+		tokens: Token[],
+		state: MakefileTokenizerState,
+		isRecipe: boolean
+	): void {
 		if (/\\\s*$/.test(line) && !this.endsInComment(tokens)) {
 			state.inContinuation = true;
+			state.continuationIsRecipe = isRecipe;
 		}
 	}
 
@@ -272,16 +294,21 @@ export class MakefileTokenizer {
 		}
 	}
 
-	/** Scan a non-recipe make line (directives, assignments, prerequisites, comments). */
+	/**
+	 * Scan a non-recipe make line (directives, assignments, prerequisites, comments).
+	 * `suppressDirective` is set for continuation lines, where the first word can never
+	 * begin a new directive (e.g. a value `include.mk` must stay a plain word).
+	 */
 	private scanMakeLine(
 		line: string,
 		startPos: number,
 		tokens: Token[],
-		state: MakefileTokenizerState
+		state: MakefileTokenizerState,
+		suppressDirective = false
 	): void {
 		let pos = startPos;
 		// Whether the leading directive on this logical line has been consumed yet.
-		let sawLeadingWord = startPos > 0;
+		let sawLeadingWord = startPos > 0 || suppressDirective;
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
 			// Intercept variable expansions so $(shell ...) emits a function.call.
@@ -350,6 +377,13 @@ export class MakefileTokenizer {
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {
 			return createToken('text', wsMatch[0], pos);
+		}
+
+		// Escaped literal hash: `\#` is a literal `#`, NOT a comment (GNU make strips the
+		// backslash and keeps the hash as a value character). Consume the two-char escape
+		// atomically so the comment branch below never sees an escaped hash.
+		if (text.startsWith('\\#')) {
+			return createToken('string.escape', '\\#', pos);
 		}
 
 		// Comments run to end of line.

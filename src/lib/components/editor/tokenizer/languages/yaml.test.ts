@@ -198,6 +198,73 @@ describe('yaml: flow collections', () => {
 		expectToken(line, 'property', 'x');
 		expectToken(line, 'property', 'y');
 	});
+
+	it('does not mis-read a flow-sequence entry inside a mapping as a key', () => {
+		// Regression: a "," INSIDE a flow sequence "[...]" is an entry separator, not
+		// a key separator. The naive "after a comma ⇒ key" heuristic used to grab
+		// "2], map" as a single property, swallowing the closing "]" and the next
+		// real key. The innermost open flow delimiter ("[" here) must gate this.
+		const line = tok(yaml, 'e: {list: [1, 2], map: {x: 1}}');
+		expectToken(line, 'property', 'list');
+		expectToken(line, 'number', '2');
+		expectToken(line, 'punctuation.bracket', ']');
+		expectToken(line, 'property', 'map');
+		expectToken(line, 'property', 'x');
+		// The bogus merged "2], map" property must NOT appear.
+		const merged = line.tokens.filter((t) => t.type === 'property' && /\]/.test(t.text));
+		if (merged.length > 0) {
+			throw new Error(`flow seq entry mis-read as key: ${JSON.stringify(merged)}`);
+		}
+		expectLossless(line, 'e: {list: [1, 2], map: {x: 1}}');
+	});
+
+	it('keeps a seq value and the following mapping key distinct', () => {
+		const line = tok(yaml, 'g: {a: [x, y], b: z}');
+		expectToken(line, 'string', 'y');
+		expectToken(line, 'punctuation.bracket', ']');
+		expectToken(line, 'property', 'b');
+		expectLossless(line, 'g: {a: [x, y], b: z}');
+	});
+});
+
+describe('yaml: special floats (inf / nan)', () => {
+	it('tokenizes lowercase .inf / .nan as numbers', () => {
+		expectToken(tok(yaml, 'x: .inf'), 'number', '.inf');
+		expectToken(tok(yaml, 'x: .nan'), 'number', '.nan');
+		expectToken(tok(yaml, 'x: -.inf'), 'number', '-.inf');
+	});
+
+	it('tokenizes capitalized .Inf / .NaN / .INF as numbers (YAML 1.1)', () => {
+		// Regression: these capitalization variants are valid special floats but were
+		// classified as plain strings because the number regex only matched lowercase.
+		expectToken(tok(yaml, 'x: .Inf'), 'number', '.Inf');
+		expectToken(tok(yaml, 'x: .NaN'), 'number', '.NaN');
+		expectToken(tok(yaml, 'x: .INF'), 'number', '.INF');
+		expectToken(tok(yaml, 'x: .NAN'), 'number', '.NAN');
+	});
+});
+
+describe('yaml: explicit (complex) keys', () => {
+	it('tokenizes the "? " explicit-key indicator as punctuation', () => {
+		// Regression: "? explicit key" used to collapse into a single plain-scalar
+		// string. The "?" (when followed by whitespace) is a mapping-key indicator.
+		const line = tok(yaml, '? explicit key');
+		expectToken(line, 'punctuation', '?');
+		expectToken(line, 'string', 'explicit key');
+		expectLossless(line, '? explicit key');
+	});
+
+	it('tokenizes an explicit-key indicator at indentation', () => {
+		const line = tok(yaml, '  ? key in block');
+		expectToken(line, 'punctuation', '?');
+		expectLossless(line, '  ? key in block');
+	});
+
+	it('does not treat a "?" inside a key name as an indicator', () => {
+		const line = tok(yaml, 'val?: ok');
+		expectToken(line, 'property', 'val?');
+		expectLossless(line, 'val?: ok');
+	});
 });
 
 describe('yaml: multi-line block scalars', () => {

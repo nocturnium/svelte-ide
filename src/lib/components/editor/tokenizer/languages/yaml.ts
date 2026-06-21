@@ -139,6 +139,16 @@ export class YamlTokenizer {
 			}
 		}
 
+		// Explicit/complex key indicator "? " and explicit value indicator (a ":"
+		// at the start of a value position). The "?" only acts as an indicator when
+		// followed by whitespace or end of line; "?foo" is plain scalar content.
+		if (text[0] === '?' && (text.length === 1 || text[1] === ' ' || text[1] === '\t')) {
+			const before = line.slice(0, pos);
+			if (before.trim() === '' || /^[ ]*(?:-[ ]+)+$/.test(before)) {
+				return createToken('punctuation', '?', pos);
+			}
+		}
+
 		// Merge key "<<" (special mapping key) — detect before the generic key path,
 		// which would otherwise classify it as a property.
 		if (text.startsWith('<<') && this.atKeyPosition(line, pos)) {
@@ -196,7 +206,7 @@ export class YamlTokenizer {
 		// Numbers (integers, floats, and best-effort dates) — only when standing
 		// alone as a value, not embedded in a larger unquoted scalar.
 		const numMatch = text.match(
-			/^[-+]?(?:0[xX][0-9a-fA-F]+|0[oO][0-7]+|(?:\d[\d_]*\.?\d*|\.\d+)(?:[eE][+-]?\d+)?|\.inf|\.nan)/
+			/^[-+]?(?:0[xX][0-9a-fA-F]+|0[oO][0-7]+|(?:\d[\d_]*\.?\d*|\.\d+)(?:[eE][+-]?\d+)?|\.(?:inf|Inf|INF|nan|NaN|NAN))/
 		);
 		if (numMatch) {
 			const after = text[numMatch[0].length];
@@ -282,9 +292,64 @@ export class YamlTokenizer {
 		if (before.trim() === '') return true;
 		// After a list-item marker: indentation followed by one or more "- ".
 		if (/^[ ]*(?:-[ ]+)+$/.test(before)) return true;
-		// Inside a flow mapping, after "{" or "," (ignoring whitespace).
-		if (/[{,]\s*$/.test(before)) return true;
+		// Inside a flow collection, immediately after "{" or "," (ignoring
+		// whitespace). A "," is only a key separator when the innermost open flow
+		// delimiter is a mapping "{"; inside a flow sequence "[...]" a comma
+		// separates plain entries, NOT key/value pairs — so a scalar there must not
+		// be mis-read as a mapping key (which would swallow the closing "]").
+		if (/[{,]\s*$/.test(before)) {
+			const open = this.innermostFlowDelimiter(before);
+			// "{" preceding ⇒ start of a flow mapping ⇒ key position.
+			// "," preceding ⇒ key position only if we are inside a "{" mapping.
+			if (/\{\s*$/.test(before)) return true;
+			return open === '{';
+		}
 		return false;
+	}
+
+	/**
+	 * The innermost currently-open flow delimiter ("{" or "[") to the left of the
+	 * given prefix, or null if none is open. Quoted spans are skipped so brackets
+	 * inside strings do not affect nesting. Used to distinguish a flow mapping
+	 * (where "," precedes a key) from a flow sequence (where "," precedes an entry).
+	 */
+	private innermostFlowDelimiter(before: string): '{' | '[' | null {
+		const stack: ('{' | '[')[] = [];
+		let i = 0;
+		while (i < before.length) {
+			const ch = before[i];
+			if (ch === '"') {
+				i++;
+				while (i < before.length && before[i] !== '"') {
+					if (before[i] === '\\') i++;
+					i++;
+				}
+				i++;
+				continue;
+			}
+			if (ch === "'") {
+				i++;
+				while (i < before.length) {
+					if (before[i] === "'") {
+						if (before[i + 1] === "'") {
+							i += 2;
+							continue;
+						}
+						break;
+					}
+					i++;
+				}
+				i++;
+				continue;
+			}
+			if (ch === '{' || ch === '[') {
+				stack.push(ch);
+			} else if (ch === '}' || ch === ']') {
+				stack.pop();
+			}
+			i++;
+		}
+		return stack.length > 0 ? stack[stack.length - 1] : null;
 	}
 
 	/**

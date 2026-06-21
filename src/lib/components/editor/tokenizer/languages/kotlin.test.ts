@@ -72,6 +72,45 @@ describe('Kotlin tokenizer', () => {
 			expectToken(tok(kotlin, "val c = 'a'"), 'string', "'a'");
 			expectToken(tok(kotlin, "val n = '\\n'"), 'string', "'\\n'");
 		});
+
+		it('breaks out a \\uXXXX unicode escape as a single escape token', () => {
+			// Regression: the unicode escape must consume all 6 chars (é), not
+			// split into `\u` + a plain `00e9` string segment.
+			const line = tok(kotlin, 'val s = "caf\\u00e9"');
+			expectToken(line, 'string.escape', '\\u00e9');
+			expectLossless(line, 'val s = "caf\\u00e9"');
+		});
+	});
+
+	describe('backtick-escaped identifiers', () => {
+		it('does not classify a backticked keyword as a keyword', () => {
+			// `class` is an escaped identifier, NOT the `class` keyword.
+			const line = tok(kotlin, 'val `class` = 5');
+			expectToken(line, 'variable', '`class`');
+			const kws = line.tokens.filter((t) => t.type === 'keyword.definition');
+			if (kws.length !== 0) {
+				throw new Error(
+					`Backticked keyword leaked as keyword.definition: ${JSON.stringify(kws.map((t) => t.text))}`
+				);
+			}
+			expectLossless(line, 'val `class` = 5');
+		});
+
+		it('keeps a backticked identifier with spaces as one token', () => {
+			const line = tok(kotlin, 'fun `test that it works`() {}');
+			expectToken(line, 'function.call', '`test that it works`');
+			expectLossless(line, 'fun `test that it works`() {}');
+		});
+
+		it('does not classify a backticked `is` as the is keyword', () => {
+			const line = tok(kotlin, 'obj.`is`()');
+			expectToken(line, 'function.call', '`is`');
+			const kws = line.tokens.filter((t) => t.type === 'keyword');
+			if (kws.length !== 0) {
+				throw new Error(`Backticked keyword leaked: ${JSON.stringify(kws.map((t) => t.text))}`);
+			}
+			expectLossless(line, 'obj.`is`()');
+		});
 	});
 
 	describe('comments', () => {

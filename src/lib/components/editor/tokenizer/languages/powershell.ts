@@ -204,6 +204,15 @@ export class PowerShellTokenizer {
 			return createToken('string', text, pos);
 		}
 
+		// Splatting: @name (and @global:name) passes a hashtable/array of bound
+		// parameters. The @ is the splat sigil, so the whole @name is one variable
+		// reference — not standalone '@' punctuation followed by an identifier.
+		// (@{ , @( , @" , @' are hashtable/array/here-string and were handled above.)
+		const splatMatch = text.match(/^@(?:[a-zA-Z_][a-zA-Z0-9_]*:)?[a-zA-Z_][a-zA-Z0-9_]*/);
+		if (splatMatch) {
+			return createToken('variable', splatMatch[0], pos);
+		}
+
 		// Double-quoted (expandable) string with interpolation.
 		if (text.startsWith('"')) {
 			return this.tokenizeDoubleString(text, pos);
@@ -219,9 +228,14 @@ export class PowerShellTokenizer {
 			return this.tokenizeVariable(text, pos);
 		}
 
-		// Numbers: hex, decimal/float with optional KB/MB/GB/TB/PB suffix.
+		// Numbers. PowerShell numeric literals are:
+		//   base   = 0x<hex> | 0b<binary> | decimal/float (with optional exponent)
+		//   suffix = optional numeric-type suffix: l, d, u, ul/lu, y, uy, s, us, n
+		//   mult   = optional multiplier: kb|mb|gb|tb|pb
+		// e.g. 0xFFL, 0b1010, 100L, 1.5d, 10ul, 5MB, 2gb. The dot in `1..10` must
+		// not be eaten (the float branch only matches a dot when digits follow).
 		const numMatch = text.match(
-			/^(?:0[xX][0-9a-fA-F]+|(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?:[kKmMgGtTpP][bB])?/
+			/^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)(?:[uU][lLsy]|[lLdDuUyYsSnN])?(?:[kKmMgGtTpP][bB])?/
 		);
 		if (numMatch) {
 			return createToken('number', numMatch[0], pos);

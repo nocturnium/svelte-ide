@@ -50,6 +50,10 @@ export interface VueTokenizerState extends TokenizerState {
 	innerState?: TokenizerState;
 	/** Inside a multi-line HTML comment `<!-- ... -->` opened on a previous line */
 	inHtmlComment?: boolean;
+	/** Inside a multi-line mustache `{{ ... }}` opened on a previous line */
+	inMustache?: boolean;
+	/** Inside an open start-tag `<el ...` whose `>` lands on a later line */
+	inTag?: boolean;
 }
 
 /**
@@ -178,6 +182,43 @@ export class VueTokenizer implements LanguageTokenizer {
 			pos = closeIdx + 3;
 		}
 
+		// Resume a multi-line mustache `{{ ... }}` opened on a previous line.
+		if (state.inMustache) {
+			const closeIdx = line.indexOf('}}');
+			if (closeIdx === -1) {
+				// Whole line is still inside the interpolation expression.
+				if (line) {
+					tokens.push(...this.tokenizeJSExpression(line));
+				}
+				return tokens;
+			}
+			const expr = line.slice(0, closeIdx);
+			if (expr) {
+				tokens.push(...this.tokenizeJSExpression(expr));
+			}
+			tokens.push({ type: 'punctuation.brace', text: '}}' });
+			state.inMustache = false;
+			pos = closeIdx + 2;
+		}
+
+		// Resume an open start-tag whose `>` landed on a later line. Parse the
+		// attribute region (and the closing `>` / `/>`) here; everything after the
+		// close is handled by the main template loop below.
+		if (state.inTag) {
+			const endIdx = this.indexOfTagEnd(line);
+			if (endIdx === -1) {
+				// Still open — the whole line is attribute region; stay in-tag.
+				tokens.push(...this.tokenizeTagBody(line));
+				return tokens;
+			}
+			// Include the closing punctuation (`>` or the `/` of `/>`) so the body
+			// parser emits it as tag.punctuation.
+			const closeLen = line[endIdx] === '/' ? 2 : 1;
+			tokens.push(...this.tokenizeTagBody(line.slice(0, endIdx + closeLen)));
+			state.inTag = false;
+			pos = endIdx + closeLen;
+		}
+
 		while (pos < line.length) {
 			const rest = line.slice(pos);
 			const char = line[pos];
@@ -231,12 +272,15 @@ export class VueTokenizer implements LanguageTokenizer {
 					tokens.push({ type: 'punctuation.brace', text: '}}' });
 					pos += endIdx + 2;
 				} else {
-					// Unterminated mustache on this line — emit the opener and inner text.
+					// Unterminated mustache — emit opener + inner expr and thread the
+					// open-mustache state so following lines resume as interpolation
+					// until the closing `}}`.
 					tokens.push({ type: 'punctuation.brace', text: '{{' });
 					const expr = rest.slice(2);
 					if (expr) {
 						tokens.push(...this.tokenizeJSExpression(expr));
 					}
+					state.inMustache = true;
 					pos = line.length;
 				}
 				continue;
@@ -259,12 +303,24 @@ export class VueTokenizer implements LanguageTokenizer {
 				continue;
 			}
 
-			// HTML tags (opening / closing / self-closing)
+			// HTML tags (opening / closing / self-closing). The match may run to
+			// end-of-line when the `>` lands on a later line; in that case thread
+			// `inTag` so the following line(s) resume attribute parsing rather than
+			// bleeding the attributes out as plain template text.
 			if (char === '<' && /^<\/?[\w.-]/.test(rest)) {
-				const tagMatch = rest.match(/^<\/?[\w.-]+(?:\s+[^>]*)?>?/);
+				const tagMatch = rest.match(/^<\/?[\w.-]+(?:\s+[^>]*)?\/?>?/);
 				if (tagMatch) {
-					tokens.push(...this.tokenizeTag(tagMatch[0]));
-					pos += tagMatch[0].length;
+					const tag = tagMatch[0];
+					tokens.push(...this.tokenizeTag(tag));
+					pos += tag.length;
+					// An opening tag (not `</...`) that did not close on this line —
+					// no `>` and no self-closing `/>` terminator was consumed. Thread
+					// `inTag` so following lines resume attribute parsing instead of
+					// bleeding the attributes out as plain template text.
+					if (!tag.startsWith('</') && !/\/?>$/.test(tag)) {
+						state.inTag = true;
+						pos = line.length;
+					}
 					continue;
 				}
 			}
@@ -305,9 +361,23 @@ export class VueTokenizer implements LanguageTokenizer {
 			pos += nameMatch[0].length;
 		}
 
-		// Attributes / directives
-		while (pos < tag.length) {
-			const rest = tag.slice(pos);
+		// Attributes / directives / closing bracket(s).
+		tokens.push(...this.tokenizeTagBody(tag.slice(pos)));
+		return tokens;
+	}
+
+	/**
+	 * Tokenize the attribute region of a tag (everything after `<name`): whitespace,
+	 * attributes/directives with optional `=value`, and the closing `>` / `/>`. This
+	 * is split out so an opening tag whose `>` lands on a later line can resume here
+	 * line-by-line via the threaded `inTag` state.
+	 */
+	private tokenizeTagBody(body: string): RawToken[] {
+		const tokens: RawToken[] = [];
+		let pos = 0;
+
+		while (pos < body.length) {
+			const rest = body.slice(pos);
 
 			// Whitespace
 			const wsMatch = rest.match(/^\s+/);
@@ -341,12 +411,12 @@ export class VueTokenizer implements LanguageTokenizer {
 				pos += attrName.length;
 
 				// Optional `=value`
-				const afterName = tag.slice(pos);
+				const afterName = body.slice(pos);
 				if (afterName[0] === '=') {
 					tokens.push({ type: 'punctuation', text: '=' });
 					pos += 1;
 
-					const valueMatch = tag.slice(pos).match(/^(?:"[^"]*"|'[^']*'|[^\s>]+)/);
+					const valueMatch = body.slice(pos).match(/^(?:"[^"]*"|'[^']*'|[^\s>]+)/);
 					if (valueMatch) {
 						tokens.push({ type: 'tag.attribute.value', text: valueMatch[0] });
 						pos += valueMatch[0].length;
@@ -356,11 +426,36 @@ export class VueTokenizer implements LanguageTokenizer {
 			}
 
 			// Anything else — emit a single char to stay lossless.
-			tokens.push({ type: 'text', text: tag[pos] });
+			tokens.push({ type: 'text', text: body[pos] });
 			pos++;
 		}
 
 		return tokens;
+	}
+
+	/**
+	 * Find the index of the `>` (or `/>`) that ends an open start-tag on a resumed
+	 * line, skipping over `>` characters that sit inside quoted attribute values.
+	 * Returns the index of `>` (for `/>` the `/` is one before), or -1 if the tag
+	 * still does not close on this line.
+	 */
+	private indexOfTagEnd(line: string): number {
+		let quote: string | null = null;
+		for (let i = 0; i < line.length; i++) {
+			const ch = line[i];
+			if (quote) {
+				if (ch === quote) quote = null;
+				continue;
+			}
+			if (ch === '"' || ch === "'") {
+				quote = ch;
+				continue;
+			}
+			if (ch === '>') {
+				return line[i - 1] === '/' ? i - 1 : i;
+			}
+		}
+		return -1;
 	}
 
 	private tokenizeJSExpression(expression: string): RawToken[] {
