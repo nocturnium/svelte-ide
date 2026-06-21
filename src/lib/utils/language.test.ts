@@ -219,12 +219,31 @@ describe('isLanguageSupported', () => {
 		'xml',
 		'svelte',
 		'plaintext',
-		'vue'
+		'vue',
+		// Added in the language-support expansion
+		'rust',
+		'java',
+		'cpp',
+		'csharp',
+		'kotlin',
+		'scala',
+		'swift',
+		'ruby',
+		'php',
+		'groovy',
+		'shell',
+		'powershell',
+		'sql',
+		'yaml',
+		'toml',
+		'dockerfile',
+		'makefile',
+		'cmake'
 	])('should return true for supported language: %s', (language) => {
 		expect(isLanguageSupported(language)).toBe(true);
 	});
 
-	it.each(['rust', 'java', 'cpp', 'sql', 'yaml', 'php', 'kotlin', 'ruby', 'unknown'])(
+	it.each(['unknown', 'cobol', 'haskell', 'elixir', 'lua', 'perl', 'erlang'])(
 		'should return false for unsupported language: %s',
 		(language) => {
 			expect(isLanguageSupported(language)).toBe(false);

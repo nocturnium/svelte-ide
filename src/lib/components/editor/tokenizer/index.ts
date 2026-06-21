@@ -23,6 +23,25 @@ export { PythonTokenizer, createPythonTokenizer } from './languages/python';
 export { GoTokenizer, createGoTokenizer } from './languages/go';
 export { MarkdownTokenizer, createMarkdownTokenizer } from './languages/markdown';
 export { SvelteTokenizer, createSvelteTokenizer } from './languages/svelte';
+export { RustTokenizer, createRustTokenizer } from './languages/rust';
+export { JavaTokenizer, createJavaTokenizer } from './languages/java';
+export { CppTokenizer, createCppTokenizer } from './languages/cpp';
+export { CSharpTokenizer, createCSharpTokenizer } from './languages/csharp';
+export { KotlinTokenizer, createKotlinTokenizer } from './languages/kotlin';
+export { ScalaTokenizer, createScalaTokenizer } from './languages/scala';
+export { SwiftTokenizer, createSwiftTokenizer } from './languages/swift';
+export { RubyTokenizer, createRubyTokenizer } from './languages/ruby';
+export { PhpTokenizer, createPhpTokenizer } from './languages/php';
+export { GroovyTokenizer, createGroovyTokenizer } from './languages/groovy';
+export { ShellTokenizer, createShellTokenizer } from './languages/shell';
+export { PowerShellTokenizer, createPowerShellTokenizer } from './languages/powershell';
+export { SqlTokenizer, createSqlTokenizer } from './languages/sql';
+export { YamlTokenizer, createYamlTokenizer } from './languages/yaml';
+export { TomlTokenizer, createTomlTokenizer } from './languages/toml';
+export { DockerfileTokenizer, createDockerfileTokenizer } from './languages/dockerfile';
+export { MakefileTokenizer, createMakefileTokenizer } from './languages/makefile';
+export { CMakeTokenizer, createCMakeTokenizer } from './languages/cmake';
+export { VueTokenizer, createVueTokenizer } from './languages/vue';
 
 import type { LanguageTokenizer, Token, TokenizedLine, TokenizerState, TokenType } from './types';
 import { PlaintextTokenizer } from './base';
@@ -39,6 +58,25 @@ import { createPythonTokenizer } from './languages/python';
 import { createGoTokenizer } from './languages/go';
 import { createMarkdownTokenizer } from './languages/markdown';
 import { createSvelteTokenizer } from './languages/svelte';
+import { createRustTokenizer } from './languages/rust';
+import { createJavaTokenizer } from './languages/java';
+import { createCppTokenizer } from './languages/cpp';
+import { createCSharpTokenizer } from './languages/csharp';
+import { createKotlinTokenizer } from './languages/kotlin';
+import { createScalaTokenizer } from './languages/scala';
+import { createSwiftTokenizer } from './languages/swift';
+import { createRubyTokenizer } from './languages/ruby';
+import { createPhpTokenizer } from './languages/php';
+import { createGroovyTokenizer } from './languages/groovy';
+import { createShellTokenizer } from './languages/shell';
+import { createPowerShellTokenizer } from './languages/powershell';
+import { createSqlTokenizer } from './languages/sql';
+import { createYamlTokenizer } from './languages/yaml';
+import { createTomlTokenizer } from './languages/toml';
+import { createDockerfileTokenizer } from './languages/dockerfile';
+import { createMakefileTokenizer } from './languages/makefile';
+import { createCMakeTokenizer } from './languages/cmake';
+import { createVueTokenizer } from './languages/vue';
 
 /**
  * Language aliases mapping file extensions and common names to canonical language names
@@ -61,7 +99,6 @@ const languageAliases: Record<string, string> = {
 	// HTML
 	htm: 'html',
 	xhtml: 'html',
-	vue: 'html',
 
 	// Svelte
 	svelte: 'svelte',
@@ -98,6 +135,65 @@ const languageAliases: Record<string, string> = {
 	mdown: 'markdown',
 	markdown: 'markdown',
 
+	// Rust
+	rs: 'rust',
+
+	// C / C++
+	c: 'cpp',
+	cc: 'cpp',
+	cxx: 'cpp',
+	'c++': 'cpp',
+	h: 'cpp',
+	hpp: 'cpp',
+	hxx: 'cpp',
+
+	// C#
+	cs: 'csharp',
+
+	// Kotlin
+	kt: 'kotlin',
+	kts: 'kotlin',
+
+	// Scala
+	sc: 'scala',
+
+	// Ruby
+	rb: 'ruby',
+
+	// PHP
+	phtml: 'php',
+
+	// Groovy
+	gradle: 'groovy',
+	jenkinsfile: 'groovy',
+
+	// Shell
+	sh: 'shell',
+	bash: 'shell',
+	zsh: 'shell',
+	fish: 'shell',
+	ksh: 'shell',
+
+	// PowerShell
+	ps1: 'powershell',
+	psm1: 'powershell',
+	psd1: 'powershell',
+
+	// SQL
+	psql: 'sql',
+	mysql: 'sql',
+	pgsql: 'sql',
+
+	// YAML
+	yml: 'yaml',
+
+	// Dockerfile
+	containerfile: 'dockerfile',
+
+	// Makefile
+	mk: 'makefile',
+	mak: 'makefile',
+
 	// Plain text
 	txt: 'plaintext',
 	text: 'plaintext'
@@ -119,6 +215,25 @@ export const tokenizerFactories: Record<string, () => LanguageTokenizer> = {
 	go: createGoTokenizer,
 	markdown: createMarkdownTokenizer,
 	svelte: createSvelteTokenizer,
+	rust: createRustTokenizer,
+	java: createJavaTokenizer,
+	cpp: createCppTokenizer,
+	csharp: createCSharpTokenizer,
+	kotlin: createKotlinTokenizer,
+	scala: createScalaTokenizer,
+	swift: createSwiftTokenizer,
+	ruby: createRubyTokenizer,
+	php: createPhpTokenizer,
+	groovy: createGroovyTokenizer,
+	shell: createShellTokenizer,
+	powershell: createPowerShellTokenizer,
+	sql: createSqlTokenizer,
+	yaml: createYamlTokenizer,
+	toml: createTomlTokenizer,
+	dockerfile: createDockerfileTokenizer,
+	makefile: createMakefileTokenizer,
+	cmake: createCMakeTokenizer,
+	vue: createVueTokenizer,
 	plaintext: () => new PlaintextTokenizer()
 };
 
