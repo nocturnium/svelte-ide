@@ -1,3 +1,17 @@
+# [1.9.0](https://github.com/nocturnium/svelte-ide/compare/v1.8.0...v1.9.0) (2026-06-21)
+
+
+### Bug Fixes
+
+* **site:** app.html comment leaked into rendered HTML; calmer hydration skeleton ([82e6078](https://github.com/nocturnium/svelte-ide/commit/82e607882a09eb00996e8d647ddc0dc7f91ee5de))
+* **site:** keep OG card code lines complete (no right-edge clip) ([c4caa04](https://github.com/nocturnium/svelte-ide/commit/c4caa04df1d4be07e0fcc9bbebf61e30aa177872))
+* **site:** ship the prerendered homepage + reconcile sitemap (CTO blockers) ([42f308f](https://github.com/nocturnium/svelte-ide/commit/42f308fe3754789856cea6eaab97b8fe0ccbbb51))
+
+
+### Features
+
+* **site:** server-render + prerender, custom domain, and full SEO metadata ([1bd71b2](https://github.com/nocturnium/svelte-ide/commit/1bd71b22820ce7344adb897712114d8d8c7c0380)), closes [#if](https://github.com/nocturnium/svelte-ide/issues/if)
+
 # [1.8.0](https://github.com/nocturnium/svelte-ide/compare/v1.7.0...v1.8.0) (2026-06-21)
 
 
