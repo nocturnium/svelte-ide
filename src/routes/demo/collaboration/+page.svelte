@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import CollaborativeEditor from '$lib/components/editor/CollaborativeEditor.svelte';
 	import Avatar from '$lib/components/core/Avatar.svelte';
 	import Badge from '$lib/components/core/Badge.svelte';
@@ -105,6 +107,21 @@ class CollaborationSession {
   }
 }`;
 
+	const editorCode = `<script lang="ts">
+  import { CollaborativeEditor } from '@nocturnium/svelte-ide';
+
+  let cursor = $state({ line: 1, column: 1 });
+<${'/'}script>
+
+<CollaborativeEditor
+  documentId="demo-doc"
+  initialContent={sampleContent}
+  language="typescript"
+  onCursorChange={(line, column) => (cursor = { line, column })}
+/>
+
+<p>Caret: Ln {cursor.line}, Col {cursor.column}</p>`;
+
 	// --- AI Collaboration session, wired to the real collaboration store ---
 	// We drive an actual AICollaborationSession + AIProposedChanges through the
 	// store and reflect the store's reactive state back into the UI, so the
@@ -196,12 +213,12 @@ class CollaborationSession {
 	}
 </script>
 
-<div class="demo-page">
-	<header class="page-header">
-		<h1>Real-time Collaboration</h1>
-		<p>CRDT-based collaborative editing with Yjs</p>
-	</header>
-
+<DemoPage
+	eyebrow="Collaboration & AI"
+	title="Collaboration"
+	docTitle="Real-time Collaboration"
+	description="CRDT-based collaborative editing with Yjs — presence, cursor awareness, and AI sessions, all backed by the real collaboration store."
+>
 	<!-- Status Bar -->
 	<section class="component-section">
 		<h2>Connection Status</h2>
@@ -253,39 +270,41 @@ class CollaborationSession {
 			your own caret position underneath is genuinely live.
 		</p>
 
-		<div class="editor-header">
-			<div class="file-info">
-				<span class="file-name">collaboration.ts</span>
-				<Badge variant="default">Standalone</Badge>
+		<DemoExhibit code={editorCode} language="svelte" filename="collaboration.ts" padded={false}>
+			<div class="editor-header">
+				<div class="file-info">
+					<span class="file-name">collaboration.ts</span>
+					<Badge variant="default">Standalone</Badge>
+				</div>
+				<div class="active-users" aria-label="Sample collaborator presence">
+					{#each collaborators.slice(0, 3) as user (user.id)}
+						<div class="user-cursor" style="--cursor-color: {user.color}">
+							<Avatar name={user.name} color={user.color} isAI={user.isAI} size="sm" />
+							<span class="user-name">{user.name}</span>
+						</div>
+					{/each}
+					{#if collaborators.length > 3}
+						<span class="more-users">+{collaborators.length - 3}</span>
+					{/if}
+				</div>
 			</div>
-			<div class="active-users" aria-label="Sample collaborator presence">
-				{#each collaborators.slice(0, 3) as user (user.id)}
-					<div class="user-cursor" style="--cursor-color: {user.color}">
-						<Avatar name={user.name} color={user.color} isAI={user.isAI} size="sm" />
-						<span class="user-name">{user.name}</span>
-					</div>
-				{/each}
-				{#if collaborators.length > 3}
-					<span class="more-users">+{collaborators.length - 3}</span>
-				{/if}
+
+			<div class="editor-container">
+				<CollaborativeEditor
+					documentId="demo-doc"
+					initialContent={sampleContent}
+					language="typescript"
+					onCursorChange={(line, column) => (localCursor = { line, column })}
+				/>
 			</div>
-		</div>
 
-		<div class="editor-container">
-			<CollaborativeEditor
-				documentId="demo-doc"
-				initialContent={sampleContent}
-				language="typescript"
-				onCursorChange={(line, column) => (localCursor = { line, column })}
-			/>
-		</div>
-
-		<div class="editor-footer">
-			<span class="presence-note">Presence strip above is sample data.</span>
-			<span class="live-caret">
-				Your caret: <strong>Ln {localCursor.line}, Col {localCursor.column}</strong> (live)
-			</span>
-		</div>
+			<div class="editor-footer">
+				<span class="presence-note">Presence strip above is sample data.</span>
+				<span class="live-caret">
+					Your caret: <strong>Ln {localCursor.line}, Col {localCursor.column}</strong> (live)
+				</span>
+			</div>
+		</DemoExhibit>
 	</section>
 
 	<!-- Cursor Visualization -->
@@ -459,29 +478,9 @@ proposeAIChange(sessionId, {
 				></pre>
 		</div>
 	</section>
-</div>
+</DemoPage>
 
 <style>
-	.demo-page {
-		padding: 2rem 3rem;
-		max-width: 1000px;
-	}
-
-	.page-header {
-		margin-bottom: 2.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: var(--ide-text-primary);
-		margin-bottom: 0.5rem;
-	}
-
-	.page-header p {
-		color: var(--ide-text-secondary);
-	}
-
 	.component-section {
 		margin-bottom: 3rem;
 		padding-bottom: 2rem;
@@ -859,11 +858,6 @@ proposeAIChange(sessionId, {
 
 	/* Tablet -> mobile shift */
 	@media (max-width: 860px) {
-		.demo-page {
-			padding: 1.5rem;
-			overflow-x: hidden;
-		}
-
 		.editor-header {
 			flex-direction: column;
 			align-items: flex-start;
@@ -893,14 +887,6 @@ proposeAIChange(sessionId, {
 
 	/* Phones */
 	@media (max-width: 640px) {
-		.demo-page {
-			padding: 1.25rem 1rem;
-		}
-
-		.page-header h1 {
-			font-size: 1.625rem;
-		}
-
 		.component-section h2 {
 			font-size: 1.25rem;
 		}

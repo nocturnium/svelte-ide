@@ -9,6 +9,8 @@
 	 */
 
 	import { SvelteMap } from 'svelte/reactivity';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import StructureMap from '$lib/components/editor/StructureMap.svelte';
 	import {
@@ -302,14 +304,44 @@ export const capitalize = (str: string): string =>
 			(r) => !(r.category === 'exports' && specificStartLines.has(r.startLine))
 		).length;
 	});
+
+	// Copy-paste source for the Live Demo exhibit: the editor paired with a live
+	// Structure Map that scrolls the editor when you click a symbol.
+	const liveDemoCode = `<script lang="ts">
+  import CustomEditor from '@nocturnium/svelte-ide';
+  import StructureMap from '@nocturnium/svelte-ide';
+
+  let editor = $state<CustomEditor | null>(null);
+  let content = $state(source);
+  let cursorLine = $state(0);
+  const lines = $derived(
+    content.split('\\n').map((text, i) => ({ text, number: i + 1 }))
+  );
+
+  // Click a Structure Map node -> scroll the editor to that line.
+  function navigateToLine(line: number) {
+    cursorLine = line;
+    void editor?.scrollToLine(line);
+  }
+<${'/'}script>
+
+<CustomEditor
+  bind:this={editor}
+  {content}
+  onChange={(value) => (content = value)}
+  language="typescript"
+  folding
+  complexityHighlighting
+  onCursorChange={(line) => (cursorLine = line)}
+/>
+<StructureMap {lines} {cursorLine} language="typescript" onNodeClick={navigateToLine} />`;
 </script>
 
-<div class="demo-page">
-	<header class="page-header">
-		<h1>Semantic Features</h1>
-		<p>Intelligent code understanding with semantic folding and a live structure map</p>
-	</header>
-
+<DemoPage
+	eyebrow="Intelligence"
+	title="Semantic Features"
+	description="Intelligent code understanding with semantic folding and a live structure map."
+>
 	<!-- Semantic Regions Overview -->
 	<section class="component-section">
 		<h2>Semantic Analysis</h2>
@@ -402,103 +434,110 @@ export const capitalize = (str: string): string =>
 			Semantic Analysis cards above — to scroll the editor to it.
 		</p>
 
-		<div class="editor-with-map">
-			<div class="editor-pane" onscroll={handleScroll}>
-				<CustomEditor
-					bind:this={editor}
-					{content}
-					onChange={(value) => (content = value)}
-					language="typescript"
-					readonly={false}
-					folding={true}
-					complexityHighlighting={true}
-					onCursorChange={(line, col) => {
-						cursorLine = line;
-						_cursorColumn = col;
-					}}
-					onComplexityChange={(metrics) => {
-						complexityMetrics = metrics;
-					}}
-				/>
-			</div>
-
-			<!-- Desktop: side-by-side structure pane -->
-			<div class="structure-pane">
-				<StructureMap
-					lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
-					{scrollLine}
-					visibleLines={25}
-					totalLines={content.split('\n').length}
-					{cursorLine}
-					{complexityMetrics}
-					language="typescript"
-					width={180}
-					enabled={true}
-					onNodeClick={navigateToLine}
-				/>
-			</div>
-		</div>
-
-		<!-- Mobile: collapsible Structure Map accordion (hidden on desktop) -->
-		<div class="structure-accordion">
-			<button
-				class="structure-accordion__toggle"
-				onclick={() => (structureMapOpen = !structureMapOpen)}
-				aria-expanded={structureMapOpen}
-				aria-controls="structure-map-mobile"
-			>
-				<svg
-					class="structure-accordion__icon"
-					width="16"
-					height="16"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					aria-hidden="true"
-				>
-					<rect x="3" y="3" width="7" height="7" />
-					<rect x="14" y="3" width="7" height="7" />
-					<rect x="3" y="14" width="7" height="7" />
-					<rect x="14" y="14" width="7" height="7" />
-				</svg>
-				Structure Map
-				<span class="structure-accordion__badge"
-					>{structureSymbolCount} {structureSymbolCount === 1 ? 'symbol' : 'symbols'}</span
-				>
-				<svg
-					class="structure-accordion__chevron"
-					class:structure-accordion__chevron--open={structureMapOpen}
-					width="16"
-					height="16"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					aria-hidden="true"
-				>
-					<path d="M6 9l6 6 6-6" />
-				</svg>
-			</button>
-			{#if structureMapOpen}
-				<div class="structure-accordion__body" id="structure-map-mobile">
-					<div class="structure-accordion__scroll">
-						<StructureMap
-							lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
-							{scrollLine}
-							visibleLines={25}
-							totalLines={content.split('\n').length}
-							{cursorLine}
-							{complexityMetrics}
-							language="typescript"
-							width={340}
-							enabled={true}
-							onNodeClick={navigateToLine}
-						/>
-					</div>
+		<DemoExhibit
+			code={liveDemoCode}
+			language="svelte"
+			filename="SemanticEditor.svelte"
+			padded={false}
+		>
+			<div class="editor-with-map">
+				<div class="editor-pane" onscroll={handleScroll}>
+					<CustomEditor
+						bind:this={editor}
+						{content}
+						onChange={(value) => (content = value)}
+						language="typescript"
+						readonly={false}
+						folding={true}
+						complexityHighlighting={true}
+						onCursorChange={(line, col) => {
+							cursorLine = line;
+							_cursorColumn = col;
+						}}
+						onComplexityChange={(metrics) => {
+							complexityMetrics = metrics;
+						}}
+					/>
 				</div>
-			{/if}
-		</div>
+
+				<!-- Desktop: side-by-side structure pane -->
+				<div class="structure-pane">
+					<StructureMap
+						lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
+						{scrollLine}
+						visibleLines={25}
+						totalLines={content.split('\n').length}
+						{cursorLine}
+						{complexityMetrics}
+						language="typescript"
+						width={180}
+						enabled={true}
+						onNodeClick={navigateToLine}
+					/>
+				</div>
+			</div>
+
+			<!-- Mobile: collapsible Structure Map accordion (hidden on desktop) -->
+			<div class="structure-accordion">
+				<button
+					class="structure-accordion__toggle"
+					onclick={() => (structureMapOpen = !structureMapOpen)}
+					aria-expanded={structureMapOpen}
+					aria-controls="structure-map-mobile"
+				>
+					<svg
+						class="structure-accordion__icon"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						aria-hidden="true"
+					>
+						<rect x="3" y="3" width="7" height="7" />
+						<rect x="14" y="3" width="7" height="7" />
+						<rect x="3" y="14" width="7" height="7" />
+						<rect x="14" y="14" width="7" height="7" />
+					</svg>
+					Structure Map
+					<span class="structure-accordion__badge"
+						>{structureSymbolCount} {structureSymbolCount === 1 ? 'symbol' : 'symbols'}</span
+					>
+					<svg
+						class="structure-accordion__chevron"
+						class:structure-accordion__chevron--open={structureMapOpen}
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						aria-hidden="true"
+					>
+						<path d="M6 9l6 6 6-6" />
+					</svg>
+				</button>
+				{#if structureMapOpen}
+					<div class="structure-accordion__body" id="structure-map-mobile">
+						<div class="structure-accordion__scroll">
+							<StructureMap
+								lines={content.split('\n').map((text, i) => ({ text, number: i + 1 }))}
+								{scrollLine}
+								visibleLines={25}
+								totalLines={content.split('\n').length}
+								{cursorLine}
+								{complexityMetrics}
+								language="typescript"
+								width={340}
+								enabled={true}
+								onNodeClick={navigateToLine}
+							/>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</DemoExhibit>
 	</section>
 
 	<!-- Feature Cards -->
@@ -586,30 +625,9 @@ export const capitalize = (str: string): string =>
 			</div>
 		</div>
 	</section>
-</div>
+</DemoPage>
 
 <style>
-	.demo-page {
-		padding: 2rem 3rem;
-		max-width: 1200px;
-		overflow-x: hidden;
-	}
-
-	.page-header {
-		margin-bottom: 2.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: var(--ide-text-primary);
-		margin-bottom: 0.5rem;
-	}
-
-	.page-header p {
-		color: var(--ide-text-secondary);
-	}
-
 	.component-section {
 		margin-bottom: 3rem;
 		padding-bottom: 2rem;
@@ -844,12 +862,10 @@ export const capitalize = (str: string): string =>
 		color: var(--ide-text-primary);
 	}
 
-	/* Editor with Map */
+	/* Editor with Map — the outer frame is supplied by DemoExhibit */
 	.editor-with-map {
 		display: flex;
 		height: 500px;
-		border: 1px solid var(--ide-border);
-		border-radius: 8px;
 		overflow: hidden;
 	}
 
@@ -997,22 +1013,8 @@ export const capitalize = (str: string): string =>
 		}
 	}
 
-	@media (max-width: 768px) {
-		.demo-page {
-			padding: 1.75rem 1.5rem;
-		}
-	}
-
 	/* Phones */
 	@media (max-width: 640px) {
-		.demo-page {
-			padding: 1.25rem 1rem;
-		}
-
-		.page-header h1 {
-			font-size: 1.625rem;
-		}
-
 		.component-section {
 			margin-bottom: 2.25rem;
 			padding-bottom: 1.5rem;

@@ -11,6 +11,8 @@
 	import * as Y from 'yjs';
 	import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate } from 'y-protocols/awareness';
 	import { createAwarenessProtocol } from '$lib/crdt/awareness';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import CollaborativeEditor from '$lib/components/editor/CollaborativeEditor.svelte';
 	import TimelineScrubber from '$lib/components/editor/TimelineScrubber.svelte';
@@ -361,14 +363,38 @@ export function applyDiscount(order: Order, percent: number): Order {
 		isPlayback = false;
 		playbackContent = '';
 	}
+
+	// Inline usage snippet for the Shared Editors exhibit — two CollaborativeEditor
+	// instances bound to one shared Y.Doc, with awareness relayed between them.
+	const sharedEditorsCode = `<script lang="ts">
+  import { CollaborativeEditor } from '@nocturnium/svelte-ide';
+  import * as Y from 'yjs';
+  import { Awareness } from 'y-protocols/awareness';
+
+  const doc = new Y.Doc();
+  const you = { id: 'you', name: 'You', color: '#4a8db7' };
+  const reviewer = { id: 'reviewer', name: 'Reviewer', color: '#4ade80' };
+
+  const yourAwareness = new Awareness(doc);
+  const theirAwareness = new Awareness(doc);
+<${'/'}script>
+
+<CollaborativeEditor
+  {doc}
+  awareness={yourAwareness}
+  textName="content"
+  language="typescript"
+  currentUser={you}
+  onChange={(value) => handleChange(value)}
+  onCursorChange={(line) => handleCursor(line)}
+/>`;
 </script>
 
-<div class="demo-page">
-	<header class="demo-header">
-		<h1>Collaboration Features</h1>
-		<p>Time Machine Scrubbing and Collaborative Conflict Theater</p>
-	</header>
-
+<DemoPage
+	eyebrow="Collaboration & AI"
+	title="Collaboration Features"
+	description="Time Machine Scrubbing and Collaborative Conflict Theater."
+>
 	<div class="demo-content">
 		<!-- Time Machine Section -->
 		<section class="demo-section">
@@ -491,7 +517,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 		</section>
 
 		<!-- Editor with overlay -->
-		<section class="demo-section demo-section--editor">
+		<section class="demo-section demo-section--editor demo-section--frameless">
 			<h2>Shared Editors with Conflict Zones</h2>
 			<p class="demo-description">
 				Both editors below write to the same in-page document. The conflict band is rendered over
@@ -499,94 +525,71 @@ export function applyDiscount(order: Order, percent: number): Order {
 				The overlay is anchored to the top of the editor, so it stays accurate near the top of the
 				file and may drift once you scroll the code past the first viewport.
 			</p>
-			<div class="collab-editor-grid">
-				<div class="editor-pane">
-					<div class="editor-pane__header">
-						<span class="legend-dot" style="background: {primaryUser.color}"></span>
-						<span>{isPlayback ? 'Timeline Playback' : primaryUser.name}</span>
-					</div>
-					<div class="editor-container">
-						<div class="conflict-overlay">
-							<ConflictZoneLayer
-								zones={conflictZones}
-								lineHeight={20}
-								gutterWidth={50}
-								showParticipants={true}
-								enabled={true}
-							/>
+			<DemoExhibit code={sharedEditorsCode} language="svelte" filename="SharedEditors.svelte">
+				<div class="collab-editor-grid">
+					<div class="editor-pane">
+						<div class="editor-pane__header">
+							<span class="legend-dot" style="background: {primaryUser.color}"></span>
+							<span>{isPlayback ? 'Timeline Playback' : primaryUser.name}</span>
 						</div>
-						{#if isPlayback}
-							<CustomEditor
-								content={playbackContent}
-								language="typescript"
-								readonly={true}
-								folding={true}
-							/>
-						{:else}
+						<div class="editor-container">
+							<div class="conflict-overlay">
+								<ConflictZoneLayer
+									zones={conflictZones}
+									lineHeight={20}
+									gutterWidth={50}
+									showParticipants={true}
+									enabled={true}
+								/>
+							</div>
+							{#if isPlayback}
+								<CustomEditor
+									content={playbackContent}
+									language="typescript"
+									readonly={true}
+									folding={true}
+								/>
+							{:else}
+								<CollaborativeEditor
+									doc={sharedDoc}
+									awareness={primaryAwareness}
+									initialContent={SAMPLE_CODE}
+									textName="content"
+									language="typescript"
+									currentUser={primaryUser}
+									onChange={(value) => handleContentChange(value, primaryUser, primaryCursorLine)}
+									onCursorChange={(line) => handleCursorActivity(primaryUser.id, line)}
+								/>
+							{/if}
+						</div>
+					</div>
+
+					<div class="editor-pane">
+						<div class="editor-pane__header">
+							<span class="legend-dot" style="background: {secondaryUser.color}"></span>
+							<span>{secondaryUser.name}</span>
+						</div>
+						<div class="editor-container">
 							<CollaborativeEditor
 								doc={sharedDoc}
-								awareness={primaryAwareness}
+								awareness={secondaryAwareness}
 								initialContent={SAMPLE_CODE}
 								textName="content"
 								language="typescript"
-								currentUser={primaryUser}
-								onChange={(value) => handleContentChange(value, primaryUser, primaryCursorLine)}
-								onCursorChange={(line) => handleCursorActivity(primaryUser.id, line)}
+								currentUser={secondaryUser}
+								onChange={(value) => handleContentChange(value, secondaryUser, secondaryCursorLine)}
+								onCursorChange={(line) => handleCursorActivity(secondaryUser.id, line)}
 							/>
-						{/if}
+						</div>
 					</div>
 				</div>
-
-				<div class="editor-pane">
-					<div class="editor-pane__header">
-						<span class="legend-dot" style="background: {secondaryUser.color}"></span>
-						<span>{secondaryUser.name}</span>
-					</div>
-					<div class="editor-container">
-						<CollaborativeEditor
-							doc={sharedDoc}
-							awareness={secondaryAwareness}
-							initialContent={SAMPLE_CODE}
-							textName="content"
-							language="typescript"
-							currentUser={secondaryUser}
-							onChange={(value) => handleContentChange(value, secondaryUser, secondaryCursorLine)}
-							onCursorChange={(line) => handleCursorActivity(secondaryUser.id, line)}
-						/>
-					</div>
-				</div>
-			</div>
+			</DemoExhibit>
 		</section>
 	</div>
-</div>
+</DemoPage>
 
 <style>
-	.demo-page {
-		min-height: 100vh;
-		background: var(--ide-bg-primary);
-		color: var(--ide-text-primary);
-		overflow-x: hidden;
-	}
-
-	.demo-header {
-		padding: 2rem;
-		border-bottom: 1px solid var(--ide-border);
-		background: var(--ide-bg-secondary);
-	}
-
-	.demo-header h1 {
-		margin: 0 0 0.5rem 0;
-		font-size: 2rem;
-		font-weight: 700;
-	}
-
-	.demo-header p {
-		margin: 0;
-		color: var(--ide-text-secondary);
-	}
-
 	.demo-content {
-		padding: 2rem;
 		display: flex;
 		flex-direction: column;
 		gap: 2rem;
@@ -809,6 +812,14 @@ export function applyDiscount(order: Order, percent: number): Order {
 		min-height: 400px;
 	}
 
+	/* The editor demo lives inside a DemoExhibit, which supplies its own window
+	   frame — drop this section's card chrome so we don't double-frame it. */
+	.demo-section--frameless {
+		background: transparent;
+		border: none;
+		padding: 0;
+	}
+
 	.collab-editor-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -866,19 +877,6 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	/* ── Responsive: tablet → mobile ─────────────────────────────── */
 	@media (max-width: 860px) {
-		.demo-header,
-		.demo-content {
-			padding: 1.5rem;
-		}
-
-		/* The shared demo shell shows a sticky "Nocturnium IDE" bar (~56px) at the
-		   top of every page below 860px. Reserve that height so the first section
-		   heading + description never tuck under the bar, and let in-page anchor
-		   jumps land below it. */
-		.demo-content {
-			padding-top: calc(1.5rem + 56px);
-		}
-
 		.demo-section {
 			min-width: 0;
 			scroll-margin-top: 64px;
@@ -901,21 +899,6 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	/* ── Responsive: phones ──────────────────────────────────────── */
 	@media (max-width: 640px) {
-		.demo-header,
-		.demo-content {
-			padding: 1.25rem;
-		}
-
-		/* Keep the sticky-bar offset (re-declared because the rule above resets
-		   .demo-content padding on phones). */
-		.demo-content {
-			padding-top: calc(1.25rem + 56px);
-		}
-
-		.demo-header h1 {
-			font-size: 1.625rem;
-		}
-
 		.demo-section {
 			padding: 1.25rem;
 		}

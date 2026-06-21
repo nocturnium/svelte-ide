@@ -6,6 +6,8 @@
 	 */
 
 	import { onMount } from 'svelte';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import {
 		createDiagnosticsManager,
 		getSeverityIcon,
@@ -82,6 +84,27 @@ function privateHelper(value) {
 	const lineHeight = 20;
 	const charWidth = 8;
 	const filePath = 'src/components/UserComponent.tsx';
+
+	const diagnosticsCode = `<script lang="ts">
+  import InlineDiagnosticsLayer from '@nocturnium/svelte-ide';
+  import { createDiagnosticsManager } from '@nocturnium/svelte-ide';
+
+  const manager = createDiagnosticsManager();
+  manager.setDiagnostics('src/App.tsx', diagnostics);
+<${'/'}script>
+
+<InlineDiagnosticsLayer
+  {manager}
+  filePath="src/App.tsx"
+  lineHeight={20}
+  charWidth={8}
+  gutterWidth={50}
+  showSquiggles
+  showGutterIcons
+  showInlineMessages
+  onApplyFix={(diagnostic, fix) => applyEdit(fix)}
+  onDiagnosticClick={(d) => goToLocation(d)}
+/>`;
 
 	// Diagnostics
 	let diagnosticsManager = $state<DiagnosticsManager>(null!);
@@ -418,12 +441,12 @@ function privateHelper(value) {
 	}
 </script>
 
-<div class="debugging-demo">
-	<header class="demo-header">
-		<h1>Debugging & Diagnostics</h1>
-		<p>Inline errors, problems panel, breakpoints, and debug console</p>
-	</header>
-
+<DemoPage
+	eyebrow="Intelligence"
+	title="Debugging"
+	docTitle="Debugging & Diagnostics"
+	description="Inline errors, problems panel, breakpoints, and debug console."
+>
 	<!-- Demo tabs -->
 	<div class="demo-tabs" role="tablist" aria-label="Debugging demos">
 		<button
@@ -477,32 +500,39 @@ function privateHelper(value) {
 			</div>
 
 			<div class="diagnostics-demo">
-				<div class="editor-container">
-					<div class="editor-preview" style="position: relative;">
-						{#if diagnosticsManager}
-							<InlineDiagnosticsLayer
-								manager={diagnosticsManager}
-								{filePath}
-								{lineHeight}
-								{charWidth}
-								gutterWidth={50}
-								enabled={diagnosticsEnabled}
-								showSquiggles={true}
-								showGutterIcons={true}
-								showInlineMessages={true}
-								onApplyFix={handleApplyFix}
-								onDiagnosticClick={(d) => handleDiagnosticNavigate(filePath, d)}
-							/>
-						{/if}
+				<DemoExhibit
+					code={diagnosticsCode}
+					language="svelte"
+					filename="InlineDiagnostics.svelte"
+					padded={false}
+				>
+					<div class="editor-container">
+						<div class="editor-preview" style="position: relative;">
+							{#if diagnosticsManager}
+								<InlineDiagnosticsLayer
+									manager={diagnosticsManager}
+									{filePath}
+									{lineHeight}
+									{charWidth}
+									gutterWidth={50}
+									enabled={diagnosticsEnabled}
+									showSquiggles={true}
+									showGutterIcons={true}
+									showInlineMessages={true}
+									onApplyFix={handleApplyFix}
+									onDiagnosticClick={(d) => handleDiagnosticNavigate(filePath, d)}
+								/>
+							{/if}
 
-						{#each sampleLines as line, i (i)}
-							<div class="code-line" style="height: {lineHeight}px;">
-								<span class="line-num">{i + 1}</span>
-								<span class="line-content">{line || ' '}</span>
-							</div>
-						{/each}
+							{#each sampleLines as line, i (i)}
+								<div class="code-line" style="height: {lineHeight}px;">
+									<span class="line-num">{i + 1}</span>
+									<span class="line-content">{line || ' '}</span>
+								</div>
+							{/each}
+						</div>
 					</div>
-				</div>
+				</DemoExhibit>
 
 				<div class="diagnostics-controls">
 					<button
@@ -712,32 +742,9 @@ function privateHelper(value) {
 			</div>
 		</section>
 	{/if}
-</div>
+</DemoPage>
 
 <style>
-	.debugging-demo {
-		padding: 2rem;
-		max-width: 1200px;
-		margin: 0 auto;
-		overflow-x: hidden;
-	}
-
-	.demo-header {
-		text-align: center;
-		margin-bottom: 2rem;
-	}
-
-	.demo-header h1 {
-		margin: 0 0 0.5rem;
-		font-size: 2rem;
-		color: var(--ide-text-primary, #e8e8f0);
-	}
-
-	.demo-header p {
-		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
-	}
-
 	/* Tabs */
 	.demo-tabs {
 		display: flex;
@@ -981,10 +988,6 @@ function privateHelper(value) {
 
 	/* ===== Responsive: tablet -> mobile ===== */
 	@media (max-width: 860px) {
-		.debugging-demo {
-			padding: 1.5rem 1rem;
-		}
-
 		/* Horizontally scrollable tab strip with edge fade */
 		.demo-tabs {
 			flex-wrap: nowrap;
@@ -1047,10 +1050,6 @@ function privateHelper(value) {
 		.demo-section {
 			padding: 1rem;
 			border-radius: 10px;
-		}
-
-		.demo-header h1 {
-			font-size: 1.6rem;
 		}
 
 		/* Flatten nested cards to dividers to avoid box-in-a-box crowding */

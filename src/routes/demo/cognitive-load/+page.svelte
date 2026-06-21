@@ -7,6 +7,8 @@
 	 * - Ghost Pair: AI cursor and focus visualization
 	 */
 
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import CognitiveLoadMeter from '$lib/components/editor/CognitiveLoadMeter.svelte';
 	import {
@@ -15,6 +17,27 @@
 		type AIAwareness,
 		createAIAwareness
 	} from '$lib/components/editor/core';
+
+	const liveDemoCode = `<script lang="ts">
+  import { CustomEditor } from '@nocturnium/svelte-ide';
+  import type { ComplexityMetrics, AIAwareness } from '@nocturnium/svelte-ide';
+
+  let content = $state(sourceCode);
+  let metrics = $state<ComplexityMetrics | null>(null);
+  let aiAgents = $state<AIAwareness[]>([claudeAgent]);
+<${'/'}script>
+
+<CustomEditor
+  {content}
+  onChange={(value) => (content = value)}
+  language="typescript"
+  complexityHighlighting={true}
+  complexityThreshold={30}
+  {aiAgents}
+  showAILabels={true}
+  showAIFocusRegions={true}
+  onComplexityChange={(m) => (metrics = m)}
+/>`;
 
 	// Sample code with varying complexity levels
 	const complexCode = `// This file demonstrates code complexity analysis
@@ -342,12 +365,12 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 </script>
 
-<div class="demo-page">
-	<header class="page-header">
-		<h1>Cognitive Load & Ghost Pair</h1>
-		<p>Real-time complexity visualization and AI presence</p>
-	</header>
-
+<DemoPage
+	eyebrow="Intelligence"
+	title="Cognitive Load"
+	description="Real-time complexity visualization and AI presence."
+	docTitle="Cognitive Load & Ghost Pair"
+>
 	<!-- Cognitive Load Meter Demo -->
 	<section class="component-section">
 		<h2>Cognitive Load Meter</h2>
@@ -512,21 +535,28 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			{/if}
 		</div>
 
-		<div class="editor-container">
-			<CustomEditor
-				bind:this={editorRef}
-				{content}
-				onChange={(value) => (content = value)}
-				language={selectedLanguage}
-				readonly={false}
-				complexityHighlighting={true}
-				complexityThreshold={30}
-				{aiAgents}
-				showAILabels={true}
-				showAIFocusRegions={true}
-				onComplexityChange={handleComplexityChange}
-			/>
-		</div>
+		<DemoExhibit
+			code={liveDemoCode}
+			language="svelte"
+			filename="CognitiveLoad.svelte"
+			padded={false}
+		>
+			<div class="editor-container">
+				<CustomEditor
+					bind:this={editorRef}
+					{content}
+					onChange={(value) => (content = value)}
+					language={selectedLanguage}
+					readonly={false}
+					complexityHighlighting={true}
+					complexityThreshold={30}
+					{aiAgents}
+					showAILabels={true}
+					showAIFocusRegions={true}
+					onComplexityChange={handleComplexityChange}
+				/>
+			</div>
+		</DemoExhibit>
 	</section>
 
 	<!-- Feature Highlights -->
@@ -630,30 +660,9 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			</div>
 		</div>
 	</section>
-</div>
+</DemoPage>
 
 <style>
-	.demo-page {
-		padding: 2rem 3rem;
-		max-width: 1000px;
-		overflow-x: hidden;
-	}
-
-	.page-header {
-		margin-bottom: 2.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: var(--ide-text-primary);
-		margin-bottom: 0.5rem;
-	}
-
-	.page-header p {
-		color: var(--ide-text-secondary);
-	}
-
 	.component-section {
 		margin-bottom: 3rem;
 		padding-bottom: 2rem;
@@ -1019,11 +1028,10 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		outline-color: var(--ide-interactive-focus);
 	}
 
-	/* Editor Container */
+	/* Editor Container — the definite height the CustomEditor needs to render;
+	   DemoExhibit (padded={false}) supplies the surrounding frame. */
 	.editor-container {
 		height: 500px;
-		border: 1px solid var(--ide-border);
-		border-radius: 8px;
 		overflow: hidden;
 	}
 
@@ -1083,10 +1091,6 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	/* ===== Responsive ===== */
 	@media (max-width: 860px) {
-		.demo-page {
-			padding: 1.75rem 1.5rem;
-		}
-
 		/* Lower min column width so 2+ feature cards sit per row */
 		.features-grid {
 			grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1119,14 +1123,6 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	@media (max-width: 640px) {
-		.demo-page {
-			padding: 1.25rem 1rem;
-		}
-
-		.page-header h1 {
-			font-size: 1.625rem;
-		}
-
 		/* Allow controls to wrap and give the checkbox a 48px touch target */
 		.ghost-pair-controls {
 			gap: 0.875rem 1rem;

@@ -99,6 +99,8 @@
 
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import { seedProposals } from '$lib/stores/plugin.svelte';
 	import PluginPanel from '$lib/components/plugins/PluginPanel.svelte';
 	import PluginCard from '$lib/components/plugins/PluginCard.svelte';
@@ -150,22 +152,34 @@
 	];
 	// Terminal / negative outcomes, separated to express the state model.
 	const terminalStatuses: PluginStatus[] = ['rejected', 'rolled_back'];
+
+	const panelCode = `<script lang="ts">
+  import { PluginPanel } from '@nocturnium/svelte-ide';
+  import { connect } from '@nocturnium/svelte-ide/stores';
+
+  // Open the Server-Sent-Events stream the panel reads proposals from.
+  connect('https://plugins.example.com/api/plugins/stream');
+<${'/'}script>
+
+<!-- Full plugin management UI: proposals, review, and available tabs. -->
+<PluginPanel initialTab="proposals" />`;
 </script>
 
-<div class="demo-page">
-	<header class="page-header">
-		<h1>Plugin System</h1>
-		<p>Extensible architecture with proposal-based plugin management</p>
-	</header>
-
+<DemoPage
+	eyebrow="Collaboration & AI"
+	title="Plugins"
+	description="Extensible architecture with proposal-based plugin management."
+>
 	<!-- Plugin Panel Demo -->
 	<section class="component-section">
 		<h2>Plugin Panel</h2>
 		<p class="section-desc">Full plugin management interface with tabs</p>
 
-		<div class="panel-container">
-			<PluginPanel initialTab="proposals" />
-		</div>
+		<DemoExhibit code={panelCode} language="svelte" filename="PluginPanel.svelte" padded={false}>
+			<div class="panel-container">
+				<PluginPanel initialTab="proposals" />
+			</div>
+		</DemoExhibit>
 	</section>
 
 	<!-- Plugin Cards -->
@@ -378,30 +392,9 @@ unloadPlugin('prettier-format');`}</code
 				></pre>
 		</div>
 	</section>
-</div>
+</DemoPage>
 
 <style>
-	.demo-page {
-		padding: 2rem 3rem;
-		max-width: 1000px;
-		overflow-x: hidden;
-	}
-
-	.page-header {
-		margin-bottom: 2.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: var(--ide-text-primary);
-		margin-bottom: 0.5rem;
-	}
-
-	.page-header p {
-		color: var(--ide-text-secondary);
-	}
-
 	.component-section {
 		margin-bottom: 3rem;
 		padding-bottom: 2rem;
@@ -427,8 +420,6 @@ unloadPlugin('prettier-format');`}</code
 
 	.panel-container {
 		height: 500px;
-		border: 1px solid var(--ide-border);
-		border-radius: 8px;
 		overflow: hidden;
 	}
 
@@ -607,10 +598,6 @@ unloadPlugin('prettier-format');`}</code
 
 	/* Tablet -> mobile shift */
 	@media (max-width: 860px) {
-		.demo-page {
-			padding: 1.5rem 1.25rem;
-		}
-
 		.cards-grid {
 			grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 		}
@@ -679,14 +666,6 @@ unloadPlugin('prettier-format');`}</code
 
 	/* Phones */
 	@media (max-width: 640px) {
-		.demo-page {
-			padding: 1.25rem 1rem;
-		}
-
-		.page-header h1 {
-			font-size: 1.625rem;
-		}
-
 		.cards-grid {
 			grid-template-columns: 1fr;
 		}
