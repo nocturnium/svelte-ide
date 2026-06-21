@@ -221,10 +221,10 @@
 ): <span class="t">string</span> {
   <span class="k">let</span> score = <span class="t">0</span>;
 <span class="hot">  <span class="k">for</span> (<span class="k">const</span> s <span class="k">of</span> signals) {</span>
-<span class="hot">    <span class="k">if</span> (s.kind === <span class="s">'error'</span> && s.count > <span class="t">3</span>)</span>
+<span class="hot">    <span class="k">if</span> (s.kind === <span class="s">'error'</span>)</span>
       score += s.count * <span class="t">6</span>;
   }
-  <span class="k">return</span> score > <span class="t">80</span> ? <span class="s">'critical'</span> : <span class="s">'clear'</span>;
+  <span class="k">return</span> score > <span class="t">80</span> ? <span class="s">'hot'</span> : <span class="s">'ok'</span>;
 }</pre>
 		</div>
 	</body>
