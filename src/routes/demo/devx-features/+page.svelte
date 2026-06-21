@@ -6,6 +6,8 @@
 	 */
 
 	import { onMount } from 'svelte';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import {
 		createGitBlameManager,
 		generateMockBlameData,
@@ -199,15 +201,34 @@ ${'<'}/script>
 		const expanded = snippetManager.expand(snippet);
 		expandedCode = expanded.text;
 	}
+
+	// Inline usage snippet shown in the Git Blame exhibit's Code tab.
+	const blameCode = `<script lang="ts">
+  import {
+    createGitBlameManager,
+    generateMockBlameData
+  } from '@nocturnium/svelte-ide';
+  import { GitBlameLayer } from '@nocturnium/svelte-ide';
+
+  const manager = createGitBlameManager();
+  manager.setBlameData(generateMockBlameData(lineCount));
+  manager.enable();
+<${'/'}script>
+
+<GitBlameLayer
+  {manager}
+  lineHeight={20}
+  blameWidth={180}
+  enabled={true}
+  onCommitClick={(info) => (selectedCommit = info)}
+/>`;
 </script>
 
-<div class="devx-features-demo">
-	<header class="demo-header">
-		<span class="demo-eyebrow">Developer Experience</span>
-		<h1>Developer Experience</h1>
-		<p>Git Blame, Code Snippets, and Inline Diff visualization</p>
-	</header>
-
+<DemoPage
+	eyebrow="Intelligence"
+	title="DevX Features"
+	description="Git Blame, Code Snippets, and Inline Diff visualization."
+>
 	<!-- Demo tabs -->
 	<div class="demo-tabs">
 		<button
@@ -237,88 +258,90 @@ ${'<'}/script>
 				<p>View commit history inline with author information, timestamps, and commit messages.</p>
 			</div>
 
-			<div class="blame-demo">
-				<div class="blame-controls">
-					<button class="control-btn" class:active={blameEnabled} onclick={toggleBlame}>
-						{blameEnabled ? 'Hide' : 'Show'} Blame
-					</button>
+			<DemoExhibit code={blameCode} language="svelte" filename="GitBlameLayer.svelte">
+				<div class="blame-demo">
+					<div class="blame-controls">
+						<button class="control-btn" class:active={blameEnabled} onclick={toggleBlame}>
+							{blameEnabled ? 'Hide' : 'Show'} Blame
+						</button>
 
-					{#if blameEnabled}
-						<div class="color-mode-toggle">
-							<span class="toggle-label">Color by:</span>
-							<button
-								class="mode-btn"
-								class:active={blameColorMode === 'age'}
-								onclick={() => setBlameColorMode('age')}
-							>
-								Age
-							</button>
-							<button
-								class="mode-btn"
-								class:active={blameColorMode === 'author'}
-								onclick={() => setBlameColorMode('author')}
-							>
-								Author
-							</button>
-						</div>
-					{/if}
-				</div>
-
-				<div class="editor-preview">
-					<!-- Blame layer -->
-					{#if blameEnabled && blameManager}
-						<GitBlameLayer
-							manager={blameManager}
-							{lineHeight}
-							gutterWidth={0}
-							{blameWidth}
-							enabled={true}
-							onCommitClick={handleCommitClick}
-						/>
-					{/if}
-
-					<!-- Code display -->
-					<div class="code-container" style="margin-left: {blameEnabled ? blameWidth : 0}px;">
-						{#each sampleLines as line, i (i)}
-							<div class="code-line" style="height: {lineHeight}px;">
-								<span class="line-num">{i + 1}</span>
-								<span class="line-content">{line || ' '}</span>
+						{#if blameEnabled}
+							<div class="color-mode-toggle">
+								<span class="toggle-label">Color by:</span>
+								<button
+									class="mode-btn"
+									class:active={blameColorMode === 'age'}
+									onclick={() => setBlameColorMode('age')}
+								>
+									Age
+								</button>
+								<button
+									class="mode-btn"
+									class:active={blameColorMode === 'author'}
+									onclick={() => setBlameColorMode('author')}
+								>
+									Author
+								</button>
 							</div>
-						{/each}
+						{/if}
+					</div>
+
+					<div class="editor-preview">
+						<!-- Blame layer -->
+						{#if blameEnabled && blameManager}
+							<GitBlameLayer
+								manager={blameManager}
+								{lineHeight}
+								gutterWidth={0}
+								{blameWidth}
+								enabled={true}
+								onCommitClick={handleCommitClick}
+							/>
+						{/if}
+
+						<!-- Code display -->
+						<div class="code-container" style="margin-left: {blameEnabled ? blameWidth : 0}px;">
+							{#each sampleLines as line, i (i)}
+								<div class="code-line" style="height: {lineHeight}px;">
+									<span class="line-num">{i + 1}</span>
+									<span class="line-content">{line || ' '}</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<div class="blame-info">
+						<h4>Features</h4>
+						<ul>
+							<li>Shows author and timestamp for each line</li>
+							<li>Color-coded by age (green = recent, gray = old) or author</li>
+							<li>Hover for full commit details</li>
+							<li>Click a blame row to load the full commit below</li>
+							<li>Groups consecutive lines from same commit</li>
+						</ul>
+
+						{#if selectedCommit}
+							<div class="selected-commit">
+								<h5>Selected Commit</h5>
+								<div class="commit-row">
+									<span class="commit-sha">{selectedCommit.commitSha.slice(0, 7)}</span>
+									<span class="commit-author">{selectedCommit.author}</span>
+									<span class="commit-date">
+										{selectedCommit.timestamp.toLocaleDateString(undefined, {
+											year: 'numeric',
+											month: 'short',
+											day: 'numeric'
+										})}
+									</span>
+								</div>
+								<p class="commit-message">{selectedCommit.message}</p>
+							</div>
+						{:else}
+							<p class="blame-hint">Enable blame, then click a row to inspect its commit here.</p>
+						{/if}
 					</div>
 				</div>
-
-				<div class="blame-info">
-					<h4>Features</h4>
-					<ul>
-						<li>Shows author and timestamp for each line</li>
-						<li>Color-coded by age (green = recent, gray = old) or author</li>
-						<li>Hover for full commit details</li>
-						<li>Click a blame row to load the full commit below</li>
-						<li>Groups consecutive lines from same commit</li>
-					</ul>
-
-					{#if selectedCommit}
-						<div class="selected-commit">
-							<h5>Selected Commit</h5>
-							<div class="commit-row">
-								<span class="commit-sha">{selectedCommit.commitSha.slice(0, 7)}</span>
-								<span class="commit-author">{selectedCommit.author}</span>
-								<span class="commit-date">
-									{selectedCommit.timestamp.toLocaleDateString(undefined, {
-										year: 'numeric',
-										month: 'short',
-										day: 'numeric'
-									})}
-								</span>
-							</div>
-							<p class="commit-message">{selectedCommit.message}</p>
-						</div>
-					{:else}
-						<p class="blame-hint">Enable blame, then click a row to inspect its commit here.</p>
-					{/if}
-				</div>
-			</div>
+			</DemoExhibit>
 		</section>
 	{/if}
 
@@ -517,51 +540,9 @@ ${'<'}/script>
 			</div>
 		</section>
 	{/if}
-</div>
+</DemoPage>
 
 <style>
-	.devx-features-demo {
-		padding: 2rem;
-		max-width: 1200px;
-		margin: 0 auto;
-		overflow-x: hidden;
-	}
-
-	.demo-header {
-		text-align: left;
-		margin-bottom: 2.5rem;
-	}
-
-	.demo-eyebrow {
-		display: inline-block;
-		margin-bottom: 0.6rem;
-		padding: 0.2rem 0.65rem;
-		font-size: 0.7rem;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--ide-interactive);
-		background: color-mix(in srgb, var(--ide-interactive) 14%, transparent);
-		border: 1px solid color-mix(in srgb, var(--ide-interactive) 35%, transparent);
-		border-radius: 999px;
-	}
-
-	.demo-header h1 {
-		margin: 0 0 0.4rem;
-		font-size: 2rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, var(--ide-text-primary) 0%, var(--ide-interactive) 100%);
-		-webkit-background-clip: text;
-		background-clip: text;
-		-webkit-text-fill-color: transparent;
-		color: var(--ide-text-primary);
-	}
-
-	.demo-header p {
-		margin: 0;
-		color: var(--ide-text-secondary);
-	}
-
 	/* Tabs */
 	.demo-tabs {
 		display: flex;
@@ -609,11 +590,13 @@ ${'<'}/script>
 		border-bottom-color: var(--ide-interactive);
 	}
 
-	/* Section */
+	/* Section — frameless: the DemoExhibit (Git Blame) is the sole window frame,
+	   so the wrapper drops its own card chrome to avoid a card-on-card. Vertical
+	   rhythm comes from the section-header margin and inner grid gaps. */
 	.demo-section {
-		background: var(--ide-bg-secondary, #1e1e2e);
-		border-radius: 12px;
-		padding: 1.5rem;
+		background: transparent;
+		border-radius: 0;
+		padding: 0;
 	}
 
 	.section-header {
@@ -1123,10 +1106,6 @@ ${'<'}/script>
 
 	/* ===== Responsive: tablet -> mobile ===== */
 	@media (max-width: 860px) {
-		.devx-features-demo {
-			padding: 1.5rem 1rem;
-		}
-
 		.snippets-content {
 			grid-template-columns: 1fr;
 		}
@@ -1134,14 +1113,6 @@ ${'<'}/script>
 
 	/* ===== Responsive: phones ===== */
 	@media (max-width: 640px) {
-		.devx-features-demo {
-			padding: 1.25rem 0.85rem;
-		}
-
-		.demo-header h1 {
-			font-size: 1.6rem;
-		}
-
 		/* Stack the snippet preview above categories; the preview is first
 		   in DOM order, so it stays pinned at the top on phones. */
 		.snippets-content {

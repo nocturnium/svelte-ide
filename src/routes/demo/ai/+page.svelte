@@ -117,6 +117,8 @@
 
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import AIPanel from '$lib/components/ai/AIPanel.svelte';
 	import AIMessage from '$lib/components/ai/AIMessage.svelte';
 	import AIToolCallDisplay from '$lib/components/ai/AIToolCallDisplay.svelte';
@@ -335,14 +337,31 @@
 			handleSendStreaming();
 		}
 	}
+
+	const aiPanelCode = `<script lang="ts">
+  import { AIPanel } from '@nocturnium/svelte-ide';
+  import { updateConfig } from '@nocturnium/svelte-ide';
+
+  // Point the panel at your chat endpoint.
+  updateConfig({
+    endpoint: '/api/chat',
+    model: 'your-model-id',
+    streaming: true
+  });
+<${'/'}script>
+
+<!-- Full assistant panel: conversation rail + chat column. -->
+<div style="height: 500px">
+  <AIPanel showSidebar={true} />
+</div>`;
 </script>
 
-<div class="demo-page">
-	<header class="page-header">
-		<h1>AI Integration</h1>
-		<p>AI assistant panel with conversation UI, tool calls, and edit previews</p>
-	</header>
-
+<DemoPage
+	eyebrow="Collaboration & AI"
+	title="AI Panel"
+	docTitle="AI Integration"
+	description="AI assistant panel with conversation UI, tool calls, and edit previews."
+>
 	<!-- Interactive Demo -->
 	<section class="component-section">
 		<h2>Interactive Mock Demo</h2>
@@ -473,9 +492,11 @@
 		<h2>AI Panel Component</h2>
 		<p class="section-desc">Full-featured AI assistant panel with sidebar</p>
 
-		<div class="panel-container">
-			<AIPanel showSidebar={true} />
-		</div>
+		<DemoExhibit code={aiPanelCode} language="svelte" filename="AIPanel.svelte" padded={false}>
+			<div class="panel-container">
+				<AIPanel showSidebar={true} />
+			</div>
+		</DemoExhibit>
 	</section>
 
 	<!-- Tool Calls Interactive -->
@@ -592,29 +613,9 @@ registerTool({
 				></pre>
 		</div>
 	</section>
-</div>
+</DemoPage>
 
 <style>
-	.demo-page {
-		padding: 2rem 3rem;
-		max-width: 1000px;
-	}
-
-	.page-header {
-		margin-bottom: 2.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: var(--ide-text-primary);
-		margin-bottom: 0.5rem;
-	}
-
-	.page-header p {
-		color: var(--ide-text-secondary);
-	}
-
 	.component-section {
 		margin-bottom: 3rem;
 		padding-bottom: 2rem;
@@ -853,11 +854,13 @@ registerTool({
 	.panel-container {
 		/* position: relative + overflow: hidden makes this the containing block and
 		   clip region for <AIPanel>'s absolutely-positioned conversation rail at
-		   small widths, so the rail can never escape and overlap the page heading. */
+		   small widths, so the rail can never escape and overlap the page heading.
+		   Frameless: the enclosing <DemoExhibit> supplies the only window frame, so
+		   this container drops its own border/radius to avoid a concentric
+		   card-on-card. position/height/overflow stay — they are load-bearing for
+		   the rail clip, not chrome. */
 		position: relative;
 		height: 500px;
-		border: 1px solid var(--ide-border);
-		border-radius: 8px;
 		overflow: hidden;
 	}
 
@@ -928,10 +931,6 @@ registerTool({
 
 	/* Responsive */
 	@media (max-width: 768px) {
-		.demo-page {
-			padding: 1rem;
-		}
-
 		.demo-controls {
 			flex-direction: column;
 			align-items: stretch;

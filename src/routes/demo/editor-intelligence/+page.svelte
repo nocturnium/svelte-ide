@@ -6,6 +6,8 @@
 	 */
 
 	import { onMount } from 'svelte';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import Minimap from '$lib/components/editor/Minimap.svelte';
 	import Breadcrumbs, { type BreadcrumbSymbol } from '$lib/components/editor/Breadcrumbs.svelte';
 	import QuickActionsMenu from '$lib/components/editor/QuickActionsMenu.svelte';
@@ -185,6 +187,34 @@ export const formatSession = (session: UserSession): string => {
 		.split('\n')
 		.map((text, number) => ({ number, text }));
 	const contextLensCursorLine = 5;
+
+	// Minimap usage snippet (Code tab of the Minimap exhibit).
+	const minimapUsage = `<script lang="ts">
+  import { Minimap } from '@nocturnium/svelte-ide';
+
+  let lines = $state(sourceCode.split('\\n'));
+  let scrollTop = $state(0);
+  const editorHeight = 400;
+  const lineHeight = 20;
+
+  function onNavigate(line: number) {
+    scrollTop = line; // scroll the editor to the clicked line
+  }
+<${'/'}script>
+
+<Minimap
+  {lines}
+  {scrollTop}
+  {editorHeight}
+  visibleLines={Math.floor(editorHeight / lineHeight)}
+  highlights={[
+    { line: 35, type: 'error' },
+    { line: 42, type: 'warning' }
+  ]}
+  enabled
+  width={100}
+  {onNavigate}
+/>`;
 
 	// Minimap state
 	let minimapScrollTop = $state(0);
@@ -598,12 +628,11 @@ function renderInvoice(order) {
 	}
 </script>
 
-<div class="intelligence-demo">
-	<header class="demo-header">
-		<h1>Editor Intelligence</h1>
-		<p>Navigation aids, code actions, and rendered intelligence overlays</p>
-	</header>
-
+<DemoPage
+	eyebrow="Intelligence"
+	title="Editor Intelligence"
+	description="Navigation aids, code actions, and rendered intelligence overlays."
+>
 	<!-- Demo tabs -->
 	<div class="demo-tabs" role="tablist" aria-label="Editor intelligence demos">
 		<button
@@ -699,85 +728,87 @@ function renderInvoice(order) {
 				<p>A scaled-down overview of the document with highlights and click-to-navigate.</p>
 			</div>
 
-			<div class="minimap-demo">
-				<div class="editor-container">
-					<div class="editor-preview" style="height: {editorHeight}px;">
-						<div
-							class="code-viewport"
-							style="transform: translateY(-{minimapScrollTop * lineHeight}px);"
-						>
-							{#each sampleLines as line, i (i)}
-								<div
-									class="code-line"
-									class:code-line--current={i === cursorLine}
-									style="height: {lineHeight}px;"
-								>
-									<span class="line-num">{i + 1}</span>
-									<span class="line-content">{line || ' '}</span>
+			<DemoExhibit code={minimapUsage} language="svelte" filename="Minimap.svelte">
+				<div class="minimap-demo">
+					<div class="editor-container">
+						<div class="editor-preview" style="height: {editorHeight}px;">
+							<div
+								class="code-viewport"
+								style="transform: translateY(-{minimapScrollTop * lineHeight}px);"
+							>
+								{#each sampleLines as line, i (i)}
+									<div
+										class="code-line"
+										class:code-line--current={i === cursorLine}
+										style="height: {lineHeight}px;"
+									>
+										<span class="line-num">{i + 1}</span>
+										<span class="line-content">{line || ' '}</span>
+									</div>
+								{/each}
+							</div>
+						</div>
+
+						<Minimap
+							lines={sampleLines}
+							scrollTop={minimapScrollTop}
+							visibleLines={Math.floor(editorHeight / lineHeight)}
+							{editorHeight}
+							highlights={minimapHighlights}
+							enabled={true}
+							width={100}
+							onNavigate={handleMinimapNavigate}
+						/>
+					</div>
+
+					<div class="minimap-controls">
+						<div class="control-group">
+							<label>
+								Scroll Position: {minimapScrollTop}
+								<input
+									type="range"
+									min="0"
+									max={sampleLines.length - 20}
+									bind:value={minimapScrollTop}
+								/>
+							</label>
+						</div>
+
+						<div class="highlight-legend">
+							<h4>Highlights</h4>
+							<div class="legend-items">
+								<div class="legend-item">
+									<span class="legend-color" style="background: #f9e64f;"></span>
+									<span>Search results (3)</span>
 								</div>
-							{/each}
-						</div>
-					</div>
-
-					<Minimap
-						lines={sampleLines}
-						scrollTop={minimapScrollTop}
-						visibleLines={Math.floor(editorHeight / lineHeight)}
-						{editorHeight}
-						highlights={minimapHighlights}
-						enabled={true}
-						width={100}
-						onNavigate={handleMinimapNavigate}
-					/>
-				</div>
-
-				<div class="minimap-controls">
-					<div class="control-group">
-						<label>
-							Scroll Position: {minimapScrollTop}
-							<input
-								type="range"
-								min="0"
-								max={sampleLines.length - 20}
-								bind:value={minimapScrollTop}
-							/>
-						</label>
-					</div>
-
-					<div class="highlight-legend">
-						<h4>Highlights</h4>
-						<div class="legend-items">
-							<div class="legend-item">
-								<span class="legend-color" style="background: #f9e64f;"></span>
-								<span>Search results (3)</span>
-							</div>
-							<div class="legend-item">
-								<span class="legend-color" style="background: #f44747;"></span>
-								<span>Errors (1)</span>
-							</div>
-							<div class="legend-item">
-								<span class="legend-color" style="background: #ff8c00;"></span>
-								<span>Warnings (1)</span>
-							</div>
-							<div class="legend-item">
-								<span class="legend-color" style="background: #3b82f6;"></span>
-								<span>Changes (2)</span>
+								<div class="legend-item">
+									<span class="legend-color" style="background: #f44747;"></span>
+									<span>Errors (1)</span>
+								</div>
+								<div class="legend-item">
+									<span class="legend-color" style="background: #ff8c00;"></span>
+									<span>Warnings (1)</span>
+								</div>
+								<div class="legend-item">
+									<span class="legend-color" style="background: #3b82f6;"></span>
+									<span>Changes (2)</span>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
 
-				<div class="feature-info">
-					<h4>Features</h4>
-					<ul>
-						<li>Scaled code preview with syntax coloring</li>
-						<li>Viewport slider showing current position</li>
-						<li>Highlighted regions for search, errors, warnings</li>
-						<li>Click or drag to navigate</li>
-						<li>Auto-scaling for large files</li>
-					</ul>
+					<div class="feature-info">
+						<h4>Features</h4>
+						<ul>
+							<li>Scaled code preview with syntax coloring</li>
+							<li>Viewport slider showing current position</li>
+							<li>Highlighted regions for search, errors, warnings</li>
+							<li>Click or drag to navigate</li>
+							<li>Auto-scaling for large files</li>
+						</ul>
+					</div>
 				</div>
-			</div>
+			</DemoExhibit>
 		</div>
 	{/if}
 
@@ -1203,33 +1234,9 @@ function renderInvoice(order) {
 			</div>
 		</div>
 	{/if}
-</div>
+</DemoPage>
 
 <style>
-	.intelligence-demo {
-		padding: 2rem;
-		max-width: 1400px;
-		margin: 0 auto;
-		overflow-x: hidden;
-	}
-
-	.demo-header {
-		text-align: left;
-		margin-bottom: 2rem;
-	}
-
-	.demo-header h1 {
-		margin: 0 0 0.5rem;
-		font-size: 2.25rem;
-		letter-spacing: -0.01em;
-		color: var(--ide-text-primary, #e8e8f0);
-	}
-
-	.demo-header p {
-		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
-	}
-
 	/* Tabs */
 	.demo-tabs {
 		display: flex;
@@ -1283,11 +1290,15 @@ function renderInvoice(order) {
 		background: color-mix(in srgb, var(--ide-interactive) 14%, transparent);
 	}
 
-	/* Section */
+	/* Section: a flat grouping container — the DemoExhibit (and each panel's own
+	   inner cards) supply the only frame, so the wrapper stays frameless to avoid
+	   a card-on-card double frame. */
 	.demo-section {
-		background: var(--ide-bg-secondary, #1e1e2e);
-		border-radius: 12px;
-		padding: 1.5rem;
+		background: transparent;
+		border: none;
+		border-radius: 0;
+		box-shadow: none;
+		padding: 0;
 	}
 
 	.section-header {
@@ -1929,10 +1940,6 @@ function renderInvoice(order) {
 
 	/* Responsive: tablet -> mobile */
 	@media (max-width: 860px) {
-		.intelligence-demo {
-			padding: 1.5rem 1.25rem;
-		}
-
 		.minimap-controls {
 			flex-direction: column;
 			gap: 1rem;
@@ -1952,23 +1959,11 @@ function renderInvoice(order) {
 
 	/* Responsive: phones */
 	@media (max-width: 640px) {
-		.intelligence-demo {
-			padding: 1.25rem 1rem;
-		}
-
-		.demo-header h1 {
-			font-size: 1.6rem;
-		}
-
 		.tab {
 			padding: 0.6rem 1rem;
 			font-size: 0.85rem;
 			/* keep a comfortable tap target */
 			min-height: 44px;
-		}
-
-		.demo-section {
-			padding: 1.25rem 1rem;
 		}
 
 		/* Let the minimap editor scroll horizontally with a fade cue

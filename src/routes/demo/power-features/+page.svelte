@@ -6,6 +6,8 @@
 	 */
 
 	import { onMount } from 'svelte';
+	import DemoPage from '../_components/DemoPage.svelte';
+	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import {
 		createEchoCursorManager,
@@ -152,6 +154,20 @@ renderStatus(status);`);
 			}
 		});
 
+		// Seed the echo demo so it is populated on first paint instead of an empty
+		// log: enable echo, drop two echo points, then replay a short sample of REAL
+		// recorded keystrokes (the manager replays them into the echo mirror buffers —
+		// honest, not faked log lines). The user can keep typing from here.
+		echoManager.enable();
+		echoEnabled = true;
+		echoManager.addEchoPoint({ line: 2, column: 0 }, { delay: 220, label: 'Echo 3' });
+		echoManager.addEchoPoint({ line: 5, column: 0 }, { delay: 420, label: 'Echo 6' });
+		for (const ch of 'const total = sum(items);') {
+			echoManager.recordInsert(ch);
+		}
+		echoCursors = echoManager.getEchoCursors();
+		refreshEchoMirrors();
+
 		// Initialize bracket healer
 		bracketHealer = createBracketHealer();
 		bracketHealer.subscribe((state) => {
@@ -272,14 +288,31 @@ renderStatus(status);`);
 		sandboxCode = transform.transformed;
 		sandboxVisible = false;
 	}
+
+	const echoCode = `<script lang="ts">
+  import { createEchoCursorManager } from '@nocturnium/svelte-ide';
+  import { createEditorState } from '@nocturnium/svelte-ide';
+
+  const editor = createEditorState({ content: source, language: 'javascript' });
+  const echoes = createEchoCursorManager({ defaultDelay: 200 });
+  echoes.attach(editor);
+  echoes.enable();
+
+  // Drop an echo that replays your keystrokes after a delay.
+  echoes.addEchoPoint({ line: 2, column: 0 }, { delay: 100, label: 'Echo 3' });
+
+  // Mirror each echo's replayed buffer into the UI.
+  echoes.subscribe(() => {
+    cursors = echoes.getEchoCursors();
+  });
+<${'/'}script>`;
 </script>
 
-<div class="power-features-demo">
-	<header class="demo-header">
-		<h1>Power Features</h1>
-		<p>Echo Cursors, Bracket Healing, and Plugin Preview</p>
-	</header>
-
+<DemoPage
+	eyebrow="Collaboration & AI"
+	title="Power Features"
+	description="Echo Cursors, Bracket Healing, and Plugin Preview."
+>
 	<!-- Demo tabs -->
 	<div class="demo-tabs">
 		<button class="tab" class:active={activeDemo === 'echo'} onclick={() => (activeDemo = 'echo')}>
@@ -312,102 +345,104 @@ renderStatus(status);`);
 				</p>
 			</div>
 
-			<div class="echo-demo">
-				<div class="echo-controls">
-					<button class="control-btn" class:active={echoEnabled} onclick={toggleEchoMode}>
-						{echoEnabled ? 'Disable' : 'Enable'} Echo Mode
-					</button>
-
-					{#if echoEnabled}
-						<div class="echo-actions">
-							<span class="action-label">Add Echo at Line:</span>
-							<button class="small-btn" onclick={() => addEchoPoint(2, 100)}>3 (100ms)</button>
-							<button class="small-btn" onclick={() => addEchoPoint(5, 200)}>6 (200ms)</button>
-							<button class="small-btn" onclick={() => addEchoPoint(8, 300)}>9 (300ms)</button>
-						</div>
-
-						<button class="control-btn control-btn--danger" onclick={clearEchoes}>
-							Clear All Echoes
+			<DemoExhibit code={echoCode} language="svelte" filename="echo-cursors.svelte">
+				<div class="echo-demo">
+					<div class="echo-controls">
+						<button class="control-btn" class:active={echoEnabled} onclick={toggleEchoMode}>
+							{echoEnabled ? 'Disable' : 'Enable'} Echo Mode
 						</button>
-					{/if}
-				</div>
 
-				<div class="echo-visualization">
-					<div class="editor-mock-wrap">
-						<div class="editor-mock">
-							{#each echoSourceContent.split('\n') as line, i (i)}
-								<div class="mock-line">
-									<span class="line-num">{i + 1}</span>
-									<span class="line-content">{line || ' '}</span>
-								</div>
-							{/each}
+						{#if echoEnabled}
+							<div class="echo-actions">
+								<span class="action-label">Add Echo at Line:</span>
+								<button class="small-btn" onclick={() => addEchoPoint(2, 100)}>3 (100ms)</button>
+								<button class="small-btn" onclick={() => addEchoPoint(5, 200)}>6 (200ms)</button>
+								<button class="small-btn" onclick={() => addEchoPoint(8, 300)}>9 (300ms)</button>
+							</div>
 
-							<!-- Echo cursor overlay (simplified for demo) -->
-							{#each echoCursors as cursor (cursor.id)}
-								<div
-									class="echo-marker"
-									style="top: {cursor.position.line * lineHeight}px; --color: {cursor.color};"
-								>
-									<span class="echo-caret"></span>
-									<span class="echo-label">{cursor.label} ({cursor.delayMs}ms)</span>
-								</div>
-							{/each}
-						</div>
+							<button class="control-btn control-btn--danger" onclick={clearEchoes}>
+								Clear All Echoes
+							</button>
+						{/if}
+					</div>
 
-						{#if echoCursors.length > 0}
-							<div class="echo-mirrors">
+					<div class="echo-visualization">
+						<div class="editor-mock-wrap">
+							<div class="editor-mock">
+								{#each echoSourceContent.split('\n') as line, i (i)}
+									<div class="mock-line">
+										<span class="line-num">{i + 1}</span>
+										<span class="line-content">{line || ' '}</span>
+									</div>
+								{/each}
+
+								<!-- Echo cursor overlay (simplified for demo) -->
 								{#each echoCursors as cursor (cursor.id)}
-									<div class="echo-mirror" style="--color: {cursor.color};">
-										<div class="echo-mirror__header">
-											<span class="echo-mirror__dot"></span>
-											<span class="echo-mirror__label">{cursor.label}</span>
-											<span class="echo-mirror__delay">{cursor.delayMs}ms</span>
-										</div>
-										<pre class="echo-mirror__buffer">{echoMirrorContents[cursor.id] ?? ''}</pre>
+									<div
+										class="echo-marker"
+										style="top: {cursor.position.line * lineHeight}px; --color: {cursor.color};"
+									>
+										<span class="echo-caret"></span>
+										<span class="echo-label">{cursor.label} ({cursor.delayMs}ms)</span>
 									</div>
 								{/each}
 							</div>
-						{/if}
 
-						<p class="mock-caption" role="note">
-							Each echo's buffer above is a real EditorState mirror — keystrokes you type in the
-							source replay into it after the echo's delay.
-						</p>
+							{#if echoCursors.length > 0}
+								<div class="echo-mirrors">
+									{#each echoCursors as cursor (cursor.id)}
+										<div class="echo-mirror" style="--color: {cursor.color};">
+											<div class="echo-mirror__header">
+												<span class="echo-mirror__dot"></span>
+												<span class="echo-mirror__label">{cursor.label}</span>
+												<span class="echo-mirror__delay">{cursor.delayMs}ms</span>
+											</div>
+											<pre class="echo-mirror__buffer">{echoMirrorContents[cursor.id] ?? ''}</pre>
+										</div>
+									{/each}
+								</div>
+							{/if}
+
+							<p class="mock-caption" role="note">
+								Each echo's buffer above is a real EditorState mirror — keystrokes you type in the
+								source replay into it after the echo's delay.
+							</p>
+						</div>
+
+						<div class="keystroke-log">
+							<h4>Keystroke Log</h4>
+							{#if keystrokeLog.length === 0}
+								<p class="log-empty">Keystrokes will appear here...</p>
+							{:else}
+								{#each keystrokeLog as log, i (i)}
+									<div class="log-entry" style="opacity: {1 - i * 0.08};">{log}</div>
+								{/each}
+							{/if}
+						</div>
 					</div>
 
-					<div class="keystroke-log">
-						<h4>Keystroke Log</h4>
-						{#if keystrokeLog.length === 0}
-							<p class="log-empty">Keystrokes will appear here...</p>
-						{:else}
-							{#each keystrokeLog as log, i (i)}
-								<div class="log-entry" style="opacity: {1 - i * 0.08};">{log}</div>
-							{/each}
-						{/if}
+					<label class="echo-source">
+						<span>Source buffer</span>
+						<textarea
+							value={echoSourceContent}
+							oninput={(event) =>
+								applyEchoSourceContent((event.currentTarget as HTMLTextAreaElement).value)}
+							spellcheck="false"
+						></textarea>
+					</label>
+
+					<div class="echo-info">
+						<h4>How It Works</h4>
+						<ul>
+							<li>Enable Echo Mode and add echo points at different lines</li>
+							<li>Each echo has a configurable delay (100-500ms typical)</li>
+							<li>Keystrokes at your main cursor are recorded</li>
+							<li>Echo cursors replay the same keystrokes after their delay</li>
+							<li>Perfect for repetitive edits across multiple locations</li>
+						</ul>
 					</div>
 				</div>
-
-				<label class="echo-source">
-					<span>Source buffer</span>
-					<textarea
-						value={echoSourceContent}
-						oninput={(event) =>
-							applyEchoSourceContent((event.currentTarget as HTMLTextAreaElement).value)}
-						spellcheck="false"
-					></textarea>
-				</label>
-
-				<div class="echo-info">
-					<h4>How It Works</h4>
-					<ul>
-						<li>Enable Echo Mode and add echo points at different lines</li>
-						<li>Each echo has a configurable delay (100-500ms typical)</li>
-						<li>Keystrokes at your main cursor are recorded</li>
-						<li>Echo cursors replay the same keystrokes after their delay</li>
-						<li>Perfect for repetitive edits across multiple locations</li>
-					</ul>
-				</div>
-			</div>
+			</DemoExhibit>
 		</section>
 	{/if}
 
@@ -544,32 +579,9 @@ renderStatus(status);`);
 		onApply={handlePluginApply}
 		onClose={() => (sandboxVisible = false)}
 	/>
-</div>
+</DemoPage>
 
 <style>
-	.power-features-demo {
-		padding: 2rem;
-		max-width: 1200px;
-		margin: 0 auto;
-		overflow-x: hidden;
-	}
-
-	.demo-header {
-		text-align: left;
-		margin-bottom: 2rem;
-	}
-
-	.demo-header h1 {
-		margin: 0 0 0.5rem;
-		font-size: 2rem;
-		color: var(--ide-text-primary, #e8e8f0);
-	}
-
-	.demo-header p {
-		margin: 0;
-		color: var(--ide-text-secondary, #aaa);
-	}
-
 	/* Tabs */
 	.demo-tabs {
 		display: flex;
@@ -608,11 +620,12 @@ renderStatus(status);`);
 		border-bottom-color: var(--ide-interactive);
 	}
 
-	/* Section */
+	/* Section — frameless grouping container; the DemoExhibit (or inner cards)
+	   supplies the only frame, so this no longer draws its own card chrome. */
 	.demo-section {
-		background: var(--ide-bg-secondary, #1e1e2e);
-		border-radius: 12px;
-		padding: 1.5rem;
+		background: transparent;
+		border-radius: 0;
+		padding: 0;
 	}
 
 	.section-header {
@@ -1287,18 +1300,6 @@ renderStatus(status);`);
 
 	/* ===== Responsive: phones ===== */
 	@media (max-width: 640px) {
-		.power-features-demo {
-			padding: 1.25rem 1rem;
-		}
-
-		.demo-header h1 {
-			font-size: 1.5rem;
-		}
-
-		.demo-section {
-			padding: 1.25rem 1rem;
-		}
-
 		/* Tighter tab padding so all three short labels are more likely to fit
 		   without scrolling, plus a wider right-edge fade so the third demo
 		   ("Plugin Preview") stays discoverable when the strip does scroll. */

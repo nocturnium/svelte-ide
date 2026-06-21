@@ -281,6 +281,9 @@ export function triageLoad(
 						Browse demos
 					</Button>
 				</div>
+				<a class="hero-tertiary" href={resolve('/demo/playground')}>
+					Or see the full IDE playground <span aria-hidden="true">→</span>
+				</a>
 				<dl class="hero-stats">
 					{#each stats as stat, i (i)}
 						<div class="stat">
@@ -577,7 +580,33 @@ export function triageLoad(
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--ide-spacing-md);
+		margin-bottom: var(--ide-spacing-md);
+	}
+
+	.hero-tertiary {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4em;
 		margin-bottom: var(--ide-spacing-2xl);
+		color: var(--ide-text-secondary);
+		font-size: var(--ide-font-size-sm);
+		font-weight: 500;
+		text-decoration: none;
+		transition: color var(--ide-transition-fast);
+	}
+	.hero-tertiary span {
+		transition: transform var(--ide-transition-fast);
+	}
+	.hero-tertiary:hover {
+		color: var(--ide-text-primary);
+	}
+	.hero-tertiary:hover span {
+		transform: translateX(2px);
+	}
+	.hero-tertiary:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 3px;
+		border-radius: var(--ide-radius-sm);
 	}
 
 	.hero-stats {

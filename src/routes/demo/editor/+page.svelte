@@ -308,6 +308,10 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 	const editorPrefs = $derived({ lineNumbers: lineNumbers ? ('on' as const) : ('off' as const) });
 </script>
 
+<svelte:head>
+	<title>Editor | Nocturnium Svelte IDE</title>
+</svelte:head>
+
 <div class="editor-demo">
 	<header class="demo-header">
 		<div class="demo-header-text">

@@ -13,15 +13,29 @@
 		featured?: boolean;
 	};
 
-	const featured: Demo = {
-		title: 'Code Editor',
-		description:
-			'The flagship demo — a real mini-IDE with a language switcher, sample files, and live feature toggles.',
-		href: '/demo/editor',
-		icon: '✎',
-		tag: 'Flagship',
-		featured: true
-	};
+	// Two co-flagships: the focused editor demo and the full multi-pane IDE
+	// playground — the two "see the whole thing" entry points, lifted above the
+	// per-feature grid.
+	const flagships: Demo[] = [
+		{
+			title: 'Code Editor',
+			description:
+				'A real mini-IDE with a language switcher, sample files, and live feature toggles.',
+			href: '/demo/editor',
+			icon: '✎',
+			tag: 'Flagship',
+			featured: true
+		},
+		{
+			title: 'Playground',
+			description:
+				'The full IDE composed from the library — file explorer, tabbed editors, an AI panel, and a live status bar.',
+			href: '/demo/playground',
+			icon: '▶',
+			tag: 'Full IDE',
+			featured: true
+		}
+	];
 
 	// Each group gets a distinct accent so the taxonomy reads at a glance:
 	// Core = wave/blue, Intelligence = aurora-purple, Collaboration & AI = ember.
@@ -58,13 +72,6 @@
 					href: '/demo/resize',
 					icon: '⇔',
 					tag: 'Layout'
-				},
-				{
-					title: 'Playground',
-					description: 'An interactive sandbox combining every feature into one IDE.',
-					href: '/demo/playground',
-					icon: '▶',
-					tag: 'Full Demo'
 				}
 			]
 		},
@@ -175,6 +182,10 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 	}
 </script>
 
+<svelte:head>
+	<title>Demos | Nocturnium Svelte IDE</title>
+</svelte:head>
+
 <div class="demo-hub">
 	<header class="hub-hero">
 		<Badge variant="info">Demo gallery</Badge>
@@ -185,16 +196,20 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		</p>
 	</header>
 
-	<!-- Featured flagship -->
-	<a class="demo-card demo-card--featured" href={`${base}${featured.href}`}>
-		<div class="card-head">
-			<span class="card-icon card-icon--featured" aria-hidden="true">{featured.icon}</span>
-			<span class="demo-tag demo-tag--featured">{featured.tag}</span>
-		</div>
-		<h2>{featured.title}</h2>
-		<p>{featured.description}</p>
-		<span class="card-link card-link--featured">Open the flagship demo →</span>
-	</a>
+	<!-- Co-flagships: the editor demo and the full IDE playground -->
+	<div class="flagship-pair">
+		{#each flagships as flagship (flagship.href)}
+			<a class="demo-card demo-card--featured" href={`${base}${flagship.href}`}>
+				<div class="card-head">
+					<span class="card-icon card-icon--featured" aria-hidden="true">{flagship.icon}</span>
+					<span class="demo-tag demo-tag--featured">{flagship.tag}</span>
+				</div>
+				<h2>{flagship.title}</h2>
+				<p>{flagship.description}</p>
+				<span class="card-link card-link--featured">Open the demo →</span>
+			</a>
+		{/each}
+	</div>
 
 	{#each groups as group (group.title)}
 		<section
@@ -310,11 +325,18 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		border-color: color-mix(in srgb, var(--group-accent) 60%, var(--ide-border));
 	}
 
+	/* Co-flagship pair sits above the per-feature grid. */
+	.flagship-pair {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--ide-spacing-lg);
+		margin-bottom: var(--ide-spacing-2xl);
+	}
+
 	/* Featured flagship: gradient accent border + inner glow so the eye lands
 	   here first and it reads as distinctly more important than the grid. */
 	.demo-card--featured {
 		position: relative;
-		margin-bottom: var(--ide-spacing-2xl);
 		padding: var(--ide-spacing-xl);
 		background:
 			radial-gradient(
@@ -558,6 +580,9 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 			padding: var(--ide-spacing-xl) var(--ide-spacing-lg) var(--ide-spacing-2xl);
 		}
 		.card-grid {
+			grid-template-columns: 1fr;
+		}
+		.flagship-pair {
 			grid-template-columns: 1fr;
 		}
 		/* Tighten the flagship card on phones: less padding and a softer inner glow so
