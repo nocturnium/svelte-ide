@@ -51,7 +51,7 @@
 		language = 'svelte',
 		filename,
 		padded = true,
-		previewMinHeight = '360px',
+		previewMinHeight = '460px',
 		children
 	}: Props = $props();
 
@@ -299,18 +299,13 @@
 	.exhibit__preview--padded {
 		padding: var(--ide-spacing-lg);
 	}
-	/* Reserved space shown on the prerendered pass until the live demo hydrates. */
+	/* Reserved space shown on the prerendered pass until the live demo hydrates.
+	   A calm fill (the editor's own surface colour) rather than a busy pattern, so
+	   the swap to the real demo is near-seamless. */
 	.exhibit__skeleton {
 		width: 100%;
 		border-radius: var(--ide-radius-md);
-		background: repeating-linear-gradient(
-			-45deg,
-			var(--ide-bg-secondary),
-			var(--ide-bg-secondary) 10px,
-			var(--ide-bg-tertiary) 10px,
-			var(--ide-bg-tertiary) 20px
-		);
-		opacity: 0.4;
+		background: var(--ide-bg-primary);
 	}
 
 	/* Code face */
