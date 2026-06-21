@@ -10,10 +10,54 @@
 	import Kbd from '$lib/components/core/Kbd.svelte';
 	import Avatar from '$lib/components/core/Avatar.svelte';
 	import Tooltip from '$lib/components/core/Tooltip.svelte';
+	import PropsPlayground from '../_components/PropsPlayground.svelte';
 
 	let inputValue = $state('');
 	let textareaValue = $state('');
 	let isLoading = $state(false);
+
+	// Live-editable props playground for the Button (the pilot for "edit the props,
+	// watch it re-render"). `type` (not interface) so it satisfies the playground's
+	// `T extends Record<string, unknown>` bound.
+	type ButtonPlaygroundProps = {
+		variant: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
+		size: 'xs' | 'sm' | 'md' | 'lg';
+		disabled: boolean;
+		loading: boolean;
+		label: string;
+	};
+	const buttonPlayground: ButtonPlaygroundProps = {
+		variant: 'primary',
+		size: 'md',
+		disabled: false,
+		loading: false,
+		label: 'Save changes'
+	};
+	const buttonUsage = (p: ButtonPlaygroundProps) =>
+		`<Button variant="${p.variant}" size="${p.size}"${p.disabled ? ' disabled' : ''}${p.loading ? ' loading' : ''}>${p.label}</Button>`;
+
+	type BadgePlaygroundProps = {
+		variant:
+			| 'default'
+			| 'primary'
+			| 'secondary'
+			| 'success'
+			| 'warning'
+			| 'error'
+			| 'danger'
+			| 'info';
+		size: 'sm' | 'md';
+		dot: boolean;
+		label: string;
+	};
+	const badgePlayground: BadgePlaygroundProps = {
+		variant: 'success',
+		size: 'md',
+		dot: true,
+		label: 'Deployed'
+	};
+	const badgeUsage = (p: BadgePlaygroundProps) =>
+		`<Badge variant="${p.variant}" size="${p.size}"${p.dot ? ' dot' : ''}>${p.label}</Badge>`;
 
 	function simulateLoading() {
 		isLoading = true;
@@ -190,6 +234,21 @@
 				</div>
 			</div>
 		</DemoExhibit>
+
+		<div class="playground-block">
+			<h3 class="playground-block__heading">Try it live — edit the props</h3>
+			<p class="playground-block__sub">
+				This editor is the library's own <code>CustomEditor</code>. Change the JSON and the button
+				re-renders instantly.
+			</p>
+			<PropsPlayground initial={buttonPlayground} usage={buttonUsage}>
+				{#snippet preview(p)}
+					<Button variant={p.variant} size={p.size} disabled={p.disabled} loading={p.loading}>
+						{p.label}
+					</Button>
+				{/snippet}
+			</PropsPlayground>
+		</div>
 	</section>
 
 	<!-- Input -->
@@ -291,6 +350,19 @@
 				</div>
 			</div>
 		</DemoExhibit>
+
+		<div class="playground-block">
+			<h3 class="playground-block__heading">Try it live — edit the props</h3>
+			<p class="playground-block__sub">
+				Toggle <code>dot</code>, swap the <code>variant</code>, rename the label — the badge updates
+				as you type.
+			</p>
+			<PropsPlayground initial={badgePlayground} usage={badgeUsage} previewMinHeight="120px">
+				{#snippet preview(p)}
+					<Badge variant={p.variant} size={p.size} dot={p.dot}>{p.label}</Badge>
+				{/snippet}
+			</PropsPlayground>
+		</div>
 	</section>
 
 	<!-- Spinner -->
@@ -560,5 +632,30 @@
 	.footer-source:focus-visible {
 		outline: 2px solid var(--ide-interactive-focus);
 		outline-offset: 2px;
+	}
+
+	.playground-block {
+		margin-top: 24px;
+		padding-top: 24px;
+		border-top: 1px dashed var(--ide-border-subtle, #233148);
+	}
+	.playground-block__heading {
+		margin: 0 0 4px;
+		font-size: 15px;
+		font-weight: 600;
+		color: var(--ide-text-primary, #e8eefc);
+	}
+	.playground-block__sub {
+		margin: 0 0 16px;
+		font-size: 13px;
+		color: var(--ide-text-muted, #93a4c3);
+	}
+	.playground-block__sub code {
+		font-family: var(--ide-font-mono, ui-monospace, monospace);
+		font-size: 12px;
+		color: var(--ide-text-secondary, #c4d2ec);
+		background: var(--ide-bg-primary, #0d1421);
+		padding: 1px 5px;
+		border-radius: 4px;
 	}
 </style>
