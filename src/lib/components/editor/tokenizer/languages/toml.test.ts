@@ -246,6 +246,34 @@ describe('TOML: booleans and dates', () => {
 		const line = tok(toml, 'updated = 1979-05-27T07:32:00-08:00');
 		expectToken(line, 'constant.builtin', '1979-05-27T07:32:00-08:00');
 	});
+
+	it('does not mis-color a date prefix abutting identifier chars as a date', () => {
+		// fail-before/pass-after: the date matcher used to run UNguarded (unlike the
+		// number matchers, which boundary-check). So `2020-01-01extra` partial-matched
+		// `2020-01-01` as a `constant.builtin` and left `extra` dangling — coloring an
+		// invalid value as a real date. A date is only a date when not immediately
+		// followed by an identifier char; otherwise it degrades like a bad number.
+		const line = tok(toml, 'v = 2020-01-01extra');
+		const dateTokens = line.tokens.filter((t) => t.type === 'constant.builtin');
+		if (dateTokens.length > 0) {
+			throw new Error(
+				'a date prefix abutting identifier chars must NOT classify as a date constant: ' +
+					JSON.stringify(dateTokens)
+			);
+		}
+		expectLossless(line, 'v = 2020-01-01extra');
+	});
+
+	it('still classifies a real bare date and a date array element', () => {
+		// Guard the boundary fix: genuinely-terminated dates (EOL, comma, `]`) keep
+		// their date classification.
+		const bare = tok(toml, 'd = 2020-01-01');
+		expectToken(bare, 'constant.builtin', '2020-01-01');
+		const arr = tok(toml, 'ds = [2020-01-01, 2021-02-02]');
+		expectToken(arr, 'constant.builtin', '2020-01-01');
+		expectToken(arr, 'constant.builtin', '2021-02-02');
+		expectLossless(arr, 'ds = [2020-01-01, 2021-02-02]');
+	});
 });
 
 describe('TOML: arrays and inline tables', () => {

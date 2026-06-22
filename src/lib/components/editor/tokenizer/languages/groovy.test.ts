@@ -457,6 +457,31 @@ describe('Groovy tokenizer', () => {
 			const line = tok(groovy, 'def x = 1 << 4');
 			expectToken(line, 'operator', '<<');
 		});
+
+		it('does NOT open a generic after a PascalCase name compared with < (regression)', () => {
+			// Regression: `Result` classifies as type.class, so a naive "open a generic
+			// after any type name" rule treated `<` as a bracket and — because the
+			// generic was never closed — leaked an unbalanced angle depth that ate the
+			// LATER, unrelated `>` in `other > 3`, turning a comparison into a bracket.
+			// A type-argument lookahead now keeps both `<` and `>` as comparisons.
+			const line = tok(groovy, 'def b = Result < 5 && other > 3');
+			expectToken(line, 'type.class', 'Result');
+			expectToken(line, 'operator.comparison', '<');
+			expectToken(line, 'operator.comparison', '>');
+			if (line.tokens.some((t) => t.type === 'punctuation.bracket')) {
+				throw new Error('comparison `<`/`>` must not become generic brackets');
+			}
+			expectLossless(line, 'def b = Result < 5 && other > 3');
+		});
+
+		it('still opens a real generic after a PascalCase type (no false negative)', () => {
+			// Guard the other direction: the lookahead must not over-suppress a genuine
+			// type-argument list whose owner is a user PascalCase class.
+			const line = tok(groovy, 'Result<String> r = compute()');
+			expectToken(line, 'punctuation.bracket', '<');
+			expectToken(line, 'punctuation.bracket', '>');
+			expectLossless(line, 'Result<String> r = compute()');
+		});
 	});
 
 	describe('multi-line constructs', () => {

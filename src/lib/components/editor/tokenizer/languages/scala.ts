@@ -288,15 +288,14 @@ export class ScalaTokenizer {
 				j += 2;
 				continue;
 			}
-			// Skip a balanced `${ ... }` interpolation block.
+			// Skip a balanced `${ ... }` interpolation block. The brace matcher
+			// skips over nested string literals so that a `}` typed *inside* a
+			// nested string — s"${ if (b) "}" else "{" }" — does not close the
+			// block early and bleed the outer string.
 			if (interpolating && ch === '$' && text[j + 1] === '{') {
-				let depth = 1;
-				j += 2;
-				while (j < text.length && depth > 0) {
-					if (text[j] === '{') depth++;
-					else if (text[j] === '}') depth--;
-					j++;
-				}
+				// findInterpolationEnd returns the index of the matching `}` (or the
+				// string length when unterminated); resume scanning just past it.
+				j = this.findInterpolationEnd(text, j + 2) + 1;
 				continue;
 			}
 			if (triple) {
@@ -389,16 +388,9 @@ export class ScalaTokenizer {
 				// `${ expr }` — tokenize the inner expression with real types.
 				if (next === '{') {
 					flush(i);
-					let depth = 1;
-					let j = i + 2;
-					while (j < body.length && depth > 0) {
-						if (body[j] === '{') depth++;
-						else if (body[j] === '}') {
-							depth--;
-							if (depth === 0) break;
-						}
-						j++;
-					}
+					// Find the matching `}`, skipping nested string literals so a `}`
+					// inside a nested string does not terminate the block early.
+					const j = this.findInterpolationEnd(body, i + 2);
 					const exprEnd = j < body.length ? j : body.length; // index of closing }
 					tokens.push(createToken('string.template', '${', base + i));
 					this.tokenizeInterpolatedExpr(tokens, body.slice(i + 2, exprEnd), base + i + 2);
@@ -467,6 +459,55 @@ export class ScalaTokenizer {
 			return i + m[0].length;
 		}
 		return i;
+	}
+
+	/**
+	 * Given `text` and a start index pointing just *inside* an opened `${` (i.e. at
+	 * the first char of the expression), return the index of the matching closing
+	 * `}` — or `text.length` if the block is unterminated on this slice. Brace depth
+	 * is balanced while SKIPPING over nested string and char literals, so a `}` (or
+	 * `{`) typed inside a nested literal — s"${ if (b) "}" else "{" }" — does not
+	 * close the interpolation early. Triple-quoted, plain double-quoted (with `\"`
+	 * escapes) and `'c'` char literals are all skipped.
+	 */
+	private findInterpolationEnd(text: string, start: number): number {
+		let depth = 1;
+		let j = start;
+		while (j < text.length) {
+			const ch = text[j];
+			if (ch === '"') {
+				// Skip a nested string literal so its braces/quotes are inert.
+				if (text.startsWith('"""', j)) {
+					const close = text.indexOf('"""', j + 3);
+					j = close === -1 ? text.length : close + 3;
+				} else {
+					j++;
+					while (j < text.length && text[j] !== '"') {
+						if (text[j] === '\\') j++; // skip the escaped char
+						j++;
+					}
+					j++; // consume the closing quote (or run off the end)
+				}
+				continue;
+			}
+			// Skip a char literal `'c'` / `'\n'` so a `'}'` brace is inert. A bare
+			// apostrophe that is not a closed char literal (e.g. a symbol `'sym`)
+			// falls through and is treated as an ordinary char.
+			if (ch === "'") {
+				const m = text.slice(j).match(/^'(?:\\(?:u[0-9a-fA-F]{4}|[0-7]{1,3}|.)|[^'\\])'/);
+				if (m) {
+					j += m[0].length;
+					continue;
+				}
+			}
+			if (ch === '{') depth++;
+			else if (ch === '}') {
+				depth--;
+				if (depth === 0) return j;
+			}
+			j++;
+		}
+		return text.length;
 	}
 
 	/**

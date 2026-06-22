@@ -227,6 +227,12 @@ interface CSharpTokenizerState extends TokenizerState {
 	 * The continuation line resumes tokenizing the expression until depth hits 0.
 	 */
 	interpHoleDepth?: number;
+	/**
+	 * If a carried interpolation hole was inside nested `(...)`/`[...]` when the line
+	 * ended, this is that paren/bracket depth, so the continuation line keeps treating
+	 * `,`/`:` as expression syntax (not the hole's alignment/format specifier).
+	 */
+	interpHoleParenDepth?: number;
 }
 
 /** Preprocessor directive names (`#` already consumed). */
@@ -1105,6 +1111,13 @@ export class CSharpTokenizer {
 	 * an already-open brace depth of `openDepth`. Emits the closing `}` as
 	 * punctuation.brace. If the hole runs off the end of the line, records the still-
 	 * open depth in state.interpHoleDepth and returns line.length.
+	 *
+	 * The `,alignment` / `:format` specifier of an interpolation hole is only valid
+	 * at the TOP LEVEL of the hole expression — C# requires `(...)` around anything
+	 * that itself uses `,` or `:` (multi-arg calls, ternaries). So a `,`/`:` is only
+	 * a format/alignment specifier when we are at the hole's brace root AND not inside
+	 * any nested `(...)` or `[...]`; otherwise it is ordinary expression syntax (an
+	 * argument separator, an indexer separator, a ternary/label colon).
 	 */
 	private scanHoleExpr(
 		tokens: Token[],
@@ -1116,6 +1129,9 @@ export class CSharpTokenizer {
 	): number {
 		let i = start;
 		let depth = openDepth;
+		// Nesting depth of `(...)` and `[...]` within the hole, so a `,`/`:` inside a
+		// call or indexer is not mistaken for the hole's alignment/format separator.
+		let parenDepth = state.interpHoleParenDepth ?? 0;
 		while (i < line.length && depth > 0) {
 			const ch = line[i];
 			if (ch === '}') {
@@ -1124,6 +1140,7 @@ export class CSharpTokenizer {
 				i++;
 				if (depth === 0) {
 					state.interpHoleDepth = 0;
+					state.interpHoleParenDepth = 0;
 					return i;
 				}
 				continue;
@@ -1134,11 +1151,16 @@ export class CSharpTokenizer {
 				i++;
 				continue;
 			}
-			if (depth === 1 && (ch === ':' || ch === ',')) {
+			if (depth === 1 && parenDepth === 0 && (ch === ':' || ch === ',')) {
 				const fmtEnd = this.findHoleFormatEnd(line, i);
 				tokens.push(createToken('string', line.slice(i, fmtEnd), i));
 				i = fmtEnd;
 				continue;
+			}
+			if (ch === '(' || ch === '[') {
+				parenDepth++;
+			} else if ((ch === ')' || ch === ']') && parenDepth > 0) {
+				parenDepth--;
 			}
 			if (ch === '"') {
 				i = this.tokenizeString(tokens, line, i);
@@ -1160,9 +1182,11 @@ export class CSharpTokenizer {
 		}
 		if (depth > 0) {
 			state.interpHoleDepth = depth;
+			state.interpHoleParenDepth = parenDepth;
 			return line.length;
 		}
 		state.interpHoleDepth = 0;
+		state.interpHoleParenDepth = 0;
 		return i;
 	}
 }

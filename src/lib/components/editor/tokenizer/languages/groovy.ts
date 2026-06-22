@@ -408,8 +408,20 @@ export class GroovyTokenizer {
 
 		// Opening a generic context: `<` immediately after a type/class name or a
 		// `>` close (nested generics) — i.e. the previous significant token reads as
-		// a type. e.g. `List<`, `Map<String,`, `List<List<`.
-		if (text[0] === '<' && text[1] !== '<' && text[1] !== '=' && this.genericOpenAllowed(tokens)) {
+		// a type. e.g. `List<`, `Map<String,`, `List<List<`. Because a PascalCase
+		// identifier is also a valid LEFT operand of a `<` comparison (`Result < 5`),
+		// we additionally require a bounded lookahead to confirm the span actually
+		// looks like a balanced type-argument list. Without this guard an opening
+		// `<` that is really a comparison leaks an unclosed angle depth and silently
+		// reclassifies a LATER, unrelated `>` (e.g. in `Result < 5 && other > 3`) as
+		// a bracket — turning a comparison into punctuation.
+		if (
+			text[0] === '<' &&
+			text[1] !== '<' &&
+			text[1] !== '=' &&
+			this.genericOpenAllowed(tokens) &&
+			this.looksLikeTypeArguments(line, pos)
+		) {
 			this.angleDepth++;
 			tokens.push(createToken('punctuation.bracket', '<', pos));
 			return pos + 1;
@@ -458,6 +470,66 @@ export class GroovyTokenizer {
 			}
 			return false;
 		}
+		return false;
+	}
+
+	/**
+	 * Bounded lookahead from an opening `<` at `pos`: returns true only when the
+	 * span up to the matching `>` is shaped like a Java/Groovy type-argument list —
+	 * containing solely identifiers, `.`, `,`, `?`, `&`, array `[]`, whitespace and
+	 * nested `<>`. The first character that cannot appear in a type-argument list
+	 * (an operator, number, string, `(`, `=`, `;`, etc.) means this `<` is really a
+	 * comparison, so we refuse to open a generic context (which would otherwise leak
+	 * an unbalanced angle depth and eat a later `>`). Conservative: a real generic
+	 * always satisfies this; an end-of-line `<` with no matching `>` is rejected.
+	 */
+	private looksLikeTypeArguments(line: string, pos: number): boolean {
+		let depth = 0;
+		let i = pos;
+		const max = line.length;
+		while (i < max) {
+			const c = line[i];
+			if (c === '<') {
+				depth++;
+				i++;
+				continue;
+			}
+			if (c === '>') {
+				depth--;
+				i++;
+				if (depth === 0) return true;
+				continue;
+			}
+			if (c === ' ' || c === '\t' || c === ',') {
+				i++;
+				continue;
+			}
+			// `&&` / `||` are logical operators (a comparison context), never type-arg
+			// syntax. A single `&` is a legal intersection bound (`T extends A & B`).
+			if (c === '&') {
+				if (line[i + 1] === '&') return false;
+				i++;
+				continue;
+			}
+			if (c === '|') return false;
+			// Wildcard `?`, array `[]`, qualified `.`.
+			if (c === '?' || c === '[' || c === ']' || c === '.') {
+				i++;
+				continue;
+			}
+			// Identifier / qualified type name — consume the whole run. A digit may
+			// appear INSIDE an identifier (`T1`) but a term never starts with one.
+			if (/[A-Za-z_$]/.test(c)) {
+				i++;
+				while (i < max && /[A-Za-z0-9_$.]/.test(line[i])) i++;
+				continue;
+			}
+			// Anything else — a bare digit (`Result < 5`), quote, paren, `=`, `;`,
+			// `:`, arithmetic, etc. — cannot occur in a type-argument list, so this
+			// `<` is a comparison, not a generic open.
+			return false;
+		}
+		// Reached end of line without balancing: not a (single-line) generic.
 		return false;
 	}
 

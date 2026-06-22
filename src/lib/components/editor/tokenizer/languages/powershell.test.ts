@@ -1,6 +1,13 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createPowerShellTokenizer } from './powershell';
-import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
+import {
+	tok,
+	tokLines,
+	findTokens,
+	expectToken,
+	expectTokenType,
+	expectLossless
+} from '../test-helpers';
 
 const ps = createPowerShellTokenizer();
 
@@ -130,6 +137,43 @@ describe('PowerShell tokenizer', () => {
 			expectToken(line, 'variable', '$d');
 			expectToken(line, 'function.call', 'ToString');
 			expectLossless(line, '"Now: $($d.ToString("o"))"');
+		});
+
+		it('sub-tokenizes a NESTED $(...) subexpression without mangling the inner $(', () => {
+			// Regression: a `$(` nested inside another `$(...)` was tokenized by the
+			// inner lexer as a lone `$` variable + a `(` paren, because `$(` was not
+			// recognized as the subexpression operator outside the string-body scanner.
+			// The inner `$(...)` must stay a single subexpression-operator token and
+			// the bogus lone `$` must NOT appear.
+			const line = tok(ps, '"deep $($a + $($b * 2))"');
+			expectToken(line, 'string.template', '$('); // the outer (string-body) delimiter
+			expectToken(line, 'operator', '$('); // the nested subexpression operator
+			expectToken(line, 'variable', '$a');
+			expectToken(line, 'variable', '$b');
+			expectToken(line, 'number.integer', '2');
+			// No bogus standalone `$` token leaked from the split.
+			expect(findTokens(line, 'variable').some((t) => t.text === '$')).toBe(false);
+			expectLossless(line, '"deep $($a + $($b * 2))"');
+		});
+
+		it('treats a top-level $(...) subexpression operator as a single operator token', () => {
+			// Regression: `$(Get-Date)` in code context split `$(` into a lone `$`
+			// variable + `(` paren. `$(` is the subexpression operator and must be one
+			// token; the matching `)` is a normal paren.
+			const line = tok(ps, '$x = $(Get-Date)');
+			expectToken(line, 'operator', '$(');
+			expectToken(line, 'function.call', 'Get-Date');
+			expectToken(line, 'punctuation.paren', ')');
+			expect(findTokens(line, 'variable').some((t) => t.text === '$')).toBe(false);
+			expectLossless(line, '$x = $(Get-Date)');
+		});
+
+		it('still emits a lone $ as a variable when not the subexpression operator', () => {
+			// Guard the fix: `$( ` is special, but a bare `$` (e.g. at end of input)
+			// must still tokenize as a variable, not get dropped.
+			const line = tok(ps, 'echo $');
+			expectToken(line, 'variable', '$');
+			expectLossless(line, 'echo $');
 		});
 
 		it('emits a braced variable inside an expandable string', () => {

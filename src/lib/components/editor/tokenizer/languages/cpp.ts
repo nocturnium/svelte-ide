@@ -686,8 +686,11 @@ export class CppTokenizer {
 		// `void name(` — void is a definition keyword but a genuine return type here.
 		if (p.type === 'keyword.definition' && p.text === 'void') return true;
 		// A pointer/reference declarator (`int* make(`, `T& get(`) or a closing generic
-		// bracket of a return type (`vector<int> build(`) also introduce a definition.
-		if (p.type === 'operator.arithmetic' && (p.text === '*' || p.text === '%')) return false;
+		// bracket of a return type (`vector<int> build(`) also introduces a definition.
+		// The `*` here is the pointer declarator on a return type; matching the
+		// documented design, treat it (and the `&` reference declarator) as a definition.
+		if (p.type === 'operator.arithmetic' && p.text === '*') return true;
+		if (p.type === 'operator' && p.text === '&') return true;
 		if (p.type === 'punctuation.bracket' && (p.text === '>' || p.text === '>>')) return true;
 		return false;
 	}

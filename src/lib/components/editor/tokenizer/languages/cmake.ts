@@ -209,6 +209,22 @@ export class CMakeTokenizer implements LanguageTokenizer {
 		// to precede a `(...)` sub-group (`set(FOO bar (baz))`) is an argument, not a
 		// call. `sawSignificant` flips true once any non-blank token is emitted.
 		let sawSignificant = false;
+		// A fresh line (not resuming a string/bracket) that BEGINS a new statement —
+		// its first significant word is a control keyword or a known builtin command —
+		// cannot be the continuation of a wrapped if()/while() argument list (those
+		// continuations start with an argument word, operator, or `(`). So if a prior
+		// line left `condParenDepth` dangling because its `(` never closed (malformed,
+		// unbalanced source), clear it here rather than leaking the operator context
+		// into the new, unrelated command. Legitimate wrapped conditions are untouched.
+		if (!state.condArmed && (state.condParenDepth ?? 0) > 0) {
+			const firstWord = line.match(/^[ \t]*([A-Za-z_][A-Za-z0-9_]*)/);
+			if (firstWord) {
+				const lower = firstWord[1].toLowerCase();
+				if (controlCommands.has(lower) || builtinCommands.has(lower)) {
+					state.condParenDepth = 0;
+				}
+			}
+		}
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
 			const before = tokens.length;

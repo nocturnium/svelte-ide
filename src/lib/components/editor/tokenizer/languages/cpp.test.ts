@@ -466,6 +466,17 @@ describe('C/C++ tokenizer', () => {
 			expectToken(tok(cpp, 'void run() {'), 'function.definition', 'run');
 			expectToken(tok(cpp, 'compute(value);'), 'function.call', 'compute');
 		});
+
+		it('classifies a pointer/reference-returning name as a definition', () => {
+			// Regression (introduced by the A+ rewrite): `int* make(` and `T& get(` were
+			// returned as function.call, contradicting the documented design that a
+			// pointer/reference declarator on the return type introduces a definition.
+			expectToken(tok(cpp, 'int* make() {'), 'function.definition', 'make');
+			expectToken(tok(cpp, 'char* dup(const char* s);'), 'function.definition', 'dup');
+			expectToken(tok(cpp, 'T& get() {'), 'function.definition', 'get');
+			expectToken(tok(cpp, 'std::string& ref();'), 'function.definition', 'ref');
+			expectLossless(tok(cpp, 'int* make() {'), 'int* make() {');
+		});
 	});
 
 	describe('backslash line-continuation in string literals (A+ closure)', () => {

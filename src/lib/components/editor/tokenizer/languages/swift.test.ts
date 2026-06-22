@@ -401,6 +401,46 @@ describe('SwiftTokenizer - generics as bracket punctuation', () => {
 		expectToken(line, 'punctuation.bracket', '>');
 		expectLossless(line, 'let g = Foo<Bar>(value: 1)');
 	});
+
+	it('keeps dual comparisons joined by && / || as operators, not generic brackets', () => {
+		// Regression (generic rewrite): looksLikeGenericOpen scanned the rest of the line
+		// for ANY matching `>` while only bailing on `; { } = + % "`. So in idiomatic
+		// boolean conditions like `i < n && j > 0`, the `<` reached the unrelated `>` and
+		// BOTH were misclassified as punctuation.bracket. A `&&`/`||` between them can only
+		// be a value expression, so the `<`/`>` must stay comparison operators.
+		const w = tok(swift, 'while i < n && j > 0 {}');
+		expectToken(w, 'operator', '<');
+		expectToken(w, 'operator', '>');
+		expectToken(w, 'operator.logical', '&&');
+		expectLossless(w, 'while i < n && j > 0 {}');
+
+		const g = tok(swift, 'guard lower < value || value > upper else { return }');
+		expectToken(g, 'operator', '<');
+		expectToken(g, 'operator', '>');
+		expectToken(g, 'operator.logical', '||');
+		expectLossless(g, 'guard lower < value || value > upper else { return }');
+
+		const i = tok(swift, 'if a < b && c > d {}');
+		expectToken(i, 'operator', '<');
+		expectToken(i, 'operator', '>');
+		expectLossless(i, 'if a < b && c > d {}');
+	});
+
+	it('still classifies real generics as brackets across the tightened heuristic', () => {
+		// The fix must not regress legitimate type-argument lists, including function-type
+		// args (`-> ` inside) and single-`&` protocol composition.
+		const fn = tok(swift, 'var handler: Optional<() -> Void>');
+		expectToken(fn, 'punctuation.bracket', '<');
+		expectToken(fn, 'punctuation.bracket', '>');
+		expectToken(fn, 'operator', '->');
+		expectLossless(fn, 'var handler: Optional<() -> Void>');
+
+		const comp = tok(swift, 'let p: Foo<A & B>');
+		expectToken(comp, 'punctuation.bracket', '<');
+		expectToken(comp, 'punctuation.bracket', '>');
+		expectToken(comp, 'operator', '&');
+		expectLossless(comp, 'let p: Foo<A & B>');
+	});
 });
 
 describe('SwiftTokenizer - definition naming context', () => {

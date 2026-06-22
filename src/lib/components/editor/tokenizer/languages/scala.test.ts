@@ -552,6 +552,34 @@ describe('ScalaTokenizer — interpolation sub-tokenization', () => {
 		expectToken(line, 'string.template', '${');
 		expectLossless(line, 's"${unclosed');
 	});
+
+	it('does NOT let a } inside a nested string close the ${ } block early', () => {
+		// Regression: the brace matcher must skip nested string literals. Previously
+		// the `}` inside "}" ended the interpolation, bleeding the outer string and
+		// mis-tokenizing the trailing `}` and `"{"` as bare punctuation/strings.
+		const line = tok(scala, 'val v = s"${ if (x) "}" else "{" }"');
+		// The whole conditional is one interpolation: both braces stay inside their
+		// nested string literals, and the closing template `}` is the FINAL brace.
+		expectToken(line, 'string.template', '${');
+		expectToken(line, 'keyword.control', 'if');
+		expectToken(line, 'string', '"}"');
+		expectToken(line, 'keyword.control', 'else');
+		expectToken(line, 'string', '"{"');
+		expectToken(line, 'string.template', '}');
+		// Exactly one opening and one closing interpolation delimiter — no stray
+		// `punctuation.brace` leaked from a prematurely-closed block.
+		expect(findTokens(line, 'string.template').map((t) => t.text)).toEqual(['${', '}']);
+		expect(findTokens(line, 'punctuation.brace')).toHaveLength(0);
+		expectLossless(line, 'val v = s"${ if (x) "}" else "{" }"');
+	});
+
+	it('skips a char literal holding a brace when matching the ${ } block', () => {
+		const line = tok(scala, 'val c = s"${ if (ch == \'}\') 1 else 0 }"');
+		expectToken(line, 'string.template', '${');
+		expectToken(line, 'string', "'}'");
+		expect(findTokens(line, 'string.template').map((t) => t.text)).toEqual(['${', '}']);
+		expectLossless(line, 'val c = s"${ if (ch == \'}\') 1 else 0 }"');
+	});
 });
 
 describe('ScalaTokenizer — string escapes', () => {

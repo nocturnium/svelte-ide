@@ -496,6 +496,14 @@ export class RustTokenizer implements LanguageTokenizer {
 		if (prevToken.type === 'operator' && prevToken.text === '::') {
 			return true;
 		}
+		// `impl<T>` / `impl<T: Trait>`: the generic parameter list on an impl block
+		// puts `<` DIRECTLY after the `impl` keyword (no intervening name), so the
+		// `function.definition` case above never fires for it. `impl` is the only
+		// definition keyword that is immediately followed by a generic `<`; `fn`,
+		// `struct`, `enum`, `trait`, `type`, etc. are followed by a name first.
+		if (prevToken.type === 'keyword.definition' && prevToken.text === 'impl') {
+			return true;
+		}
 		return false;
 	}
 

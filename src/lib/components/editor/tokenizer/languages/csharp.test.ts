@@ -144,6 +144,54 @@ describe('csharp: strings', () => {
 		expectLossless(line, src);
 	});
 
+	it('does not treat a comma/colon inside a call or indexer in a hole as a format spec', () => {
+		// Regression: the `,alignment`/`:format` separator is only valid at the TOP of an
+		// interpolation hole. A `,` or `:` nested inside `(...)`/`[...]` used to be eaten
+		// as a format specifier — so `$"{Foo(a, b)}"` swallowed `, b)` into one `string`
+		// token, losing the argument separator, the `b` variable and the `)` paren.
+		const call = tok(cs, 'var s = $"{Foo(a, b)}";');
+		expectToken(call, 'function.call', 'Foo');
+		expectToken(call, 'punctuation.separator', ',');
+		expectToken(call, 'variable', 'b');
+		expectToken(call, 'punctuation.paren', ')');
+		expectLossless(call, 'var s = $"{Foo(a, b)}";');
+
+		const idx = tok(cs, 'var s = $"{arr[a, b]}";');
+		expectToken(idx, 'punctuation.separator', ',');
+		expectToken(idx, 'variable', 'b');
+		expectToken(idx, 'punctuation.bracket', ']');
+		expectLossless(idx, 'var s = $"{arr[a, b]}";');
+
+		// A genuine top-level `:format` AFTER a nested call must still be a format string.
+		const fmt = tok(cs, 'var s = $"{Math.Max(a, b):F2}";');
+		expectToken(fmt, 'punctuation.separator', ',');
+		expectToken(fmt, 'variable', 'b');
+		expectToken(fmt, 'string', ':F2');
+		expectLossless(fmt, 'var s = $"{Math.Max(a, b):F2}";');
+	});
+
+	it('treats a parenthesized ternary colon in a hole as an operator, not a format spec', () => {
+		// Regression: `$"{(cond ? a : b)}"` — the grammatically-required parenthesized
+		// conditional — had its `:` eaten as a format specifier, turning `: b)` into a
+		// single `string` token. With paren tracking the `:` is a separator and `b` a var.
+		const src = 'var s = $"{(cond ? a : b)}";';
+		const line = tok(cs, src);
+		expectToken(line, 'variable', 'b');
+		expectToken(line, 'punctuation.paren', ')');
+		expectLossless(line, src);
+	});
+
+	it('threads hole paren-depth across lines so a continuation comma is a separator', () => {
+		// Regression: a hole opening inside `(...)` that runs onto the next line must keep
+		// treating `,` as an argument separator on the continuation, not a format spec.
+		const lines = tokLines(cs, ['var s = $@"x {Foo(a,', '  b, c)} y";']);
+		expectToken(lines[1], 'variable', 'b');
+		expectToken(lines[1], 'variable', 'c');
+		expectToken(lines[1], 'punctuation.separator', ',');
+		expectLossless(lines[0], 'var s = $@"x {Foo(a,');
+		expectLossless(lines[1], '  b, c)} y";');
+	});
+
 	it('sub-tokenizes interpolated-verbatim strings as string.template + hole', () => {
 		const src = 'var s = $@"path {dir}";';
 		const line = tok(cs, src);

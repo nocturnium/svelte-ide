@@ -365,26 +365,30 @@ export class VueTokenizer implements LanguageTokenizer {
 				continue;
 			}
 
-			// HTML tags (opening / closing / self-closing). The match may run to
-			// end-of-line when the `>` lands on a later line; in that case thread
-			// `inTag` so the following line(s) resume attribute parsing rather than
-			// bleeding the attributes out as plain template text.
+			// HTML tags (opening / closing / self-closing). The tag end (`>` / `/>`) is
+			// located with the QUOTE-AWARE scanner so a `>` (or `>>`, `>=`, …) inside a
+			// quoted attribute value — e.g. `<p v-if="a > b">` or `<a href="x>y">` — is
+			// NOT mistaken for the closing bracket. A `>` may also land on a LATER line;
+			// in that case thread `inTag` so the following line(s) resume attribute
+			// parsing rather than bleeding the attributes out as plain template text.
 			if (char === '<' && /^<\/?[\w.-]/.test(rest)) {
-				const tagMatch = rest.match(/^<\/?[\w.-]+(?:\s+[^>]*)?\/?>?/);
-				if (tagMatch) {
-					const tag = tagMatch[0];
-					tokens.push(...this.tokenizeTag(tag, state));
-					pos += tag.length;
-					// An opening tag (not `</...`) that did not close on this line —
-					// no `>` and no self-closing `/>` terminator was consumed. Thread
-					// `inTag` so following lines resume attribute parsing instead of
-					// bleeding the attributes out as plain template text.
-					if (!tag.startsWith('</') && !/\/?>$/.test(tag)) {
-						state.inTag = true;
-						pos = line.length;
-					}
+				const endIdx = this.indexOfTagEnd(rest);
+				if (endIdx === -1) {
+					// `>` lands on a later line — consume the rest as the tag (opening-tag
+					// attribute region) and thread `inTag` for the continuation. A `</…`
+					// closing tag that does not close on the line is degenerate, but
+					// threading `inTag` keeps the following attribute region highlighted
+					// (and stays lossless either way).
+					tokens.push(...this.tokenizeTag(rest, state));
+					state.inTag = true;
+					pos = line.length;
 					continue;
 				}
+				const closeLen = rest[endIdx] === '/' ? 2 : 1;
+				const tag = rest.slice(0, endIdx + closeLen);
+				tokens.push(...this.tokenizeTag(tag, state));
+				pos += tag.length;
+				continue;
 			}
 
 			// Plain text up to the next `<` or `{`.

@@ -385,10 +385,14 @@ export class JavaTokenizer implements LanguageTokenizer {
 		const punctMatch = text.match(/^[{}[\](),.;]/);
 		if (punctMatch) {
 			const char = punctMatch[0];
-			// Safety valve: these can never appear inside a generic type-argument
-			// list, so an open angle-depth here was a misfire (e.g. `Foo < bar;`);
-			// reset it so a leaked depth can't corrupt the rest of the line/file.
-			if (char === ';' || char === '{' || char === '}') {
+			// Safety valve: none of these can appear inside a generic type-argument
+			// list (type args are types/wildcards/bounds — never statements, blocks,
+			// or parenthesized expressions), so an open angle-depth here was a
+			// misfire (e.g. `Foo < bar;`, or `check(Foo < bar)`). Reset it so a leaked
+			// depth can't corrupt a later relational `>`/`<` — and because the depth
+			// threads across lines, a `(`/`)` reset stops a misfire inside `(...)`
+			// from bleeding into a following line such as `while (i > 0)`.
+			if (char === ';' || char === '{' || char === '}' || char === '(' || char === ')') {
 				state.angleDepth = 0;
 			}
 			let type: TokenType = 'punctuation';

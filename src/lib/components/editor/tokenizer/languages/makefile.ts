@@ -553,7 +553,21 @@ export class MakefileTokenizer {
 		// Bare words: prerequisites, values, in-line directive words.
 		const identMatch = text.match(/^[^\s:=#$()'"`]+/);
 		if (identMatch) {
-			const word = identMatch[0];
+			let word = identMatch[0];
+			// The bare-word class does not exclude `+`, `?`, `!`, so a no-space append /
+			// conditional / shell assignment (`CFLAGS+=-g`, `PREFIX?=/usr/local`, `DATE!=date`)
+			// would swallow the operator's leading char into the variable name and leave the
+			// `=` to mis-tokenize as a plain recursive `=`. If the word ends in one of those
+			// chars and the very next character is `=`, give the char back so the next pass
+			// matches the full `+=` / `?=` / `!=` operator. A mid-word `+`/`?`/`!` (a value like
+			// `-a+b`) is untouched because it is not followed by `=`.
+			if (
+				word.length > 1 &&
+				(word.endsWith('+') || word.endsWith('?') || word.endsWith('!')) &&
+				text[word.length] === '='
+			) {
+				word = word.slice(0, -1);
+			}
 			return createToken(this.classifyIdentifier(word), word, pos);
 		}
 

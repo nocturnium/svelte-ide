@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createRubyTokenizer } from './ruby';
 import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
 
@@ -591,6 +591,96 @@ describe('ruby: realistic lines', () => {
 		expectToken(line, 'type.class', 'Account');
 		expectToken(line, 'operator', '<');
 		expectToken(line, 'type.class', 'ApplicationRecord');
+	});
+});
+
+describe('ruby: re-audit regressions (multi-line %-literals, number suffix, ?c after ?)', () => {
+	it('threads an unterminated interpolating %Q{ } across lines (no # bleed)', () => {
+		// Regression: before the fix, tokenizePercentLiteral never recorded an
+		// openLiteral, so the continuation line was tokenized as code and `#{a}`
+		// became a `comment.line` — the `#` bled into a comment and the body was lost.
+		const src = ['q = %Q{', 'line #{a}', 'more}'];
+		const lines = tokLines(rb, src);
+		expectToken(lines[0], 'string', '%Q{');
+		// Continuation body stays string; interpolation is sub-tokenized, NOT a comment.
+		expectToken(lines[1], 'string', 'line ');
+		expectToken(lines[1], 'string.template', '#{');
+		expectToken(lines[1], 'variable', 'a');
+		expectToken(lines[1], 'string.template', '}');
+		lines[1].tokens.forEach((t) => expect(t.type).not.toBe('comment.line'));
+		expectToken(lines[2], 'string', 'more');
+		expectToken(lines[2], 'string', '}'); // the closing delimiter
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+	});
+
+	it('threads a multi-line %r{ } regex (flags consumed on close) and a raw %q( )', () => {
+		const rx = ['r = %r{', 'pat #{x}', '}imx'];
+		const rl = tokLines(rb, rx);
+		expectToken(rl[0], 'string.regex', '%r{');
+		expectToken(rl[1], 'string.regex', 'pat ');
+		expectToken(rl[1], 'string.template', '#{');
+		expectToken(rl[2], 'string.regex', '}imx'); // closer + flags
+		rl.forEach((l, i) => expectLossless(l, rx[i]));
+
+		// %q( ) does NOT interpolate — `#{a}` on a continuation line stays literal.
+		const raw = ['x = %q(', 'no interp #{a}', ')'];
+		const rawL = tokLines(rb, raw);
+		expectToken(rawL[1], 'string', 'no interp #{a}');
+		rawL[1].tokens.forEach((t) => expect(t.type).not.toBe('comment.line'));
+		rawL.forEach((l, i) => expectLossless(l, raw[i]));
+	});
+
+	it('balances nested delimiters in a multi-line nestable %-literal', () => {
+		// `%Q{ ... { ... } ... }` must not close on an inner `}`, even across lines.
+		const src = ['s = %Q{outer {inner', 'still {deep} here', '} done}'];
+		const lines = tokLines(rb, src);
+		// The literal only closes on the FINAL `}` of line 3.
+		expectToken(lines[2], 'string', '} done');
+		expectToken(lines[2], 'string', '}');
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+		// Back to code after it closes.
+		const after = rb.tokenizeLine('z = 1', 4, lines[2].state);
+		expectToken(after, 'number.integer', '1');
+	});
+
+	it('does not let a rational/imaginary suffix eat a following keyword/identifier', () => {
+		// Regression: `numberWithSuffix` greedily matched a leading `r`/`i`, so
+		// `5rescue`, `2in`, `1if_true`, `0xffrescue` split the next word.
+		const a = tok(rb, 'b = 5rescue 6');
+		expectToken(a, 'number.integer', '5'); // not "5r"
+		expectToken(a, 'keyword.control', 'rescue'); // not "escue"
+		const b = tok(rb, 'c = 2in [1]');
+		expectToken(b, 'number.integer', '2'); // not "2i"
+		expectToken(b, 'keyword.control', 'in'); // not "n"
+		const c = tok(rb, 'x = 1if_true');
+		expectToken(c, 'number.integer', '1'); // not "1i"
+		expectToken(c, 'variable', 'if_true');
+		const d = tok(rb, 'e = 0xffrescue');
+		expectToken(d, 'number.hex', '0xff'); // not "0xffr"
+		// Genuine suffixes still attach when the literal actually ends there.
+		expectToken(tok(rb, 'r = 3r'), 'number.integer', '3r');
+		expectToken(tok(rb, 'i = 4i'), 'number.integer', '4i');
+		expectToken(tok(rb, 'c = 2.0i'), 'number.float', '2.0i');
+		expectLossless(a, 'b = 5rescue 6');
+		expectLossless(b, 'c = 2in [1]');
+		expectLossless(c, 'x = 1if_true');
+		expectLossless(d, 'e = 0xffrescue');
+	});
+
+	it('recognizes a ?c character literal in the true/false arms of a ternary', () => {
+		// Regression: a preceding standalone `?` was treated as a value, so `?y` after
+		// the ternary `?` was mis-split into two `?` operators plus `y`.
+		const line = tok(rb, 'z = c ? ?y : ?n');
+		expectToken(line, 'operator', '?'); // the ternary question
+		expectToken(line, 'string', '?y'); // the true-arm char literal
+		expectToken(line, 'string', '?n'); // the false-arm char literal
+		expectLossless(line, 'z = c ? ?y : ?n');
+		// A predicate-method `?` (glued to a word) must NOT enable a char/regex literal
+		// where division/operators belong, and the ternary still parses.
+		const pred = tok(rb, 'x = valid? ? 1 : 2');
+		expectToken(pred, 'variable', 'valid?');
+		expectToken(pred, 'operator', '?');
+		expectLossless(pred, 'x = valid? ? 1 : 2');
 	});
 });
 

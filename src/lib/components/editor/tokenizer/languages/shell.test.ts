@@ -573,6 +573,40 @@ describe('shell: operator subtypes', () => {
 		expectToken(line, 'operator.comparison', '!=');
 	});
 
+	it('emits operator.comparison for <= and >= (not redirect + assignment)', () => {
+		// Regression: the redirection matcher used to swallow a bare '<'/'>' before the
+		// comparison matcher ran, so '<=' / '>=' split into operator '<' + assignment
+		// '=' instead of a single operator.comparison. The fix gates the bare-redirect
+		// alternatives with a lookahead so '<='/'>=' fall through to the comparison rule.
+		const le = tok(sh, '[[ $a <= $b ]]');
+		expectToken(le, 'operator.comparison', '<=');
+		const ge = tok(sh, '[[ $a >= $b ]]');
+		expectToken(ge, 'operator.comparison', '>=');
+		const arith = tok(sh, 'echo $(( a <= b ))');
+		expectToken(arith, 'operator.comparison', '<=');
+		// And a bare '<='/'>=' must NOT decompose into a stray assignment '='.
+		const assign = le.tokens.filter((t) => t.type === 'operator.assignment');
+		if (assign.length > 0) {
+			throw new Error("'<=' must not split off an operator.assignment '='");
+		}
+		expectLossless(le, '[[ $a <= $b ]]');
+		expectLossless(ge, '[[ $a >= $b ]]');
+		expectLossless(arith, 'echo $(( a <= b ))');
+	});
+
+	it('still treats bare and fd-prefixed redirections as operators (no comparison bleed)', () => {
+		// The lookahead fix must not break ordinary redirections: '<' '>' '2>' '0<'
+		// '2>&1' '<>' '>|' must all stay redirection operators.
+		const redir = tok(sh, 'cmd < a > b 2>&1 0<c <>rw >|clob');
+		expectToken(redir, 'operator', '<');
+		expectToken(redir, 'operator', '>');
+		expectToken(redir, 'operator', '2>&1');
+		expectToken(redir, 'operator', '0<');
+		expectToken(redir, 'operator', '<>');
+		expectToken(redir, 'operator', '>|');
+		expectLossless(redir, 'cmd < a > b 2>&1 0<c <>rw >|clob');
+	});
+
 	it('emits operator.assignment for = and compound assignments', () => {
 		const a = tok(sh, 'x=1');
 		expectToken(a, 'operator.assignment', '=');

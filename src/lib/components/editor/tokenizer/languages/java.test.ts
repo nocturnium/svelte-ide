@@ -438,6 +438,30 @@ describe('JavaTokenizer', () => {
 			expectLossless(tok(java, 'Map<String, int[]> m;'), 'Map<String, int[]> m;');
 			expectLossless(tok(java, '(List<String>) obj;'), '(List<String>) obj;');
 		});
+
+		it('resets a misfired generic depth at a close paren so it cannot leak to the next line', () => {
+			// `check(Foo < bar)` looks like `Foo<...` opening a generic (Foo is a type),
+			// but the type-arg list is never closed and there is no ;{}= on the line.
+			// A close paren can never appear inside a type-arg list, so it must reset
+			// the misfired depth. Otherwise the leaked depth threads to the next line
+			// and corrupts an ordinary relational `>` (e.g. `while (i > 0)`), turning it
+			// into a punctuation.bracket. Regression: fails before the `)` reset fix.
+			const lines = tokLines(java, ['call(Pair < x)', 'while (i > 0) i--;']);
+			expectToken(lines[1], 'operator', '>');
+			expect(
+				findTokens(lines[1], 'punctuation.bracket').filter((t) => t.text === '>')
+			).toHaveLength(0);
+			expectLossless(lines[0], 'call(Pair < x)');
+			expectLossless(lines[1], 'while (i > 0) i--;');
+		});
+
+		it('resets a misfired generic depth on the same line after a close paren', () => {
+			// `if (Foo < bar) ... a > b` — the `>` after the `)` stays relational.
+			const line = tok(java, 'if (Foo < bar) return a > b;');
+			expectToken(line, 'operator', '>');
+			expect(findTokens(line, 'punctuation.bracket').filter((t) => t.text === '>')).toHaveLength(0);
+			expectLossless(line, 'if (Foo < bar) return a > b;');
+		});
 	});
 
 	// --- Context classification: properties & constants after accessor ----------

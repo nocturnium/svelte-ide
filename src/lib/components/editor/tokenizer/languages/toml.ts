@@ -321,9 +321,13 @@ export class TomlTokenizer {
 				return [createToken('text', text[0], pos)];
 			}
 
-			// Dates / times (RFC 3339)
+			// Dates / times (RFC 3339). Boundary-check exactly as numbers do: a date is
+			// only a date when it is not immediately followed by an identifier char.
+			// Otherwise `2020-01-01extra` would color the `2020-01-01` prefix as a date
+			// constant and leave `extra` dangling — the same partial-match defect the
+			// number matchers guard against. Falling through keeps it lossless and honest.
 			const dateMatch = text.match(dateTimeRe);
-			if (dateMatch) {
+			if (dateMatch && this.numberBoundaryOk(text, dateMatch[0])) {
 				return [createToken('constant.builtin', dateMatch[0], pos)];
 			}
 

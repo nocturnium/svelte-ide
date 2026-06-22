@@ -311,6 +311,15 @@ export class PowerShellTokenizer {
 			return this.tokenizeSingleString(tokens, text, pos);
 		}
 
+		// Subexpression operator $( ... ) in code context. Must be checked before the
+		// $variable matcher, which would otherwise split `$(` into a lone `$` variable
+		// plus a `(` paren — corrupting both top-level `$(...)` and nested
+		// interpolation `$( ... $( ... ) ... )` inside expandable strings.
+		if (text.startsWith('$(')) {
+			tokens.push(createToken('operator', '$(', pos));
+			return 2;
+		}
+
 		// Variables: $name, ${name}, $_, $$, $?, $^
 		if (text.startsWith('$')) {
 			const v = this.matchVariable(text, pos);

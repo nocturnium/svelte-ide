@@ -569,6 +569,33 @@ describe('PHP tokenizer', () => {
 			expect(lines[1].tokens.every((t) => t.type === 'string')).toBe(true);
 		});
 
+		it('does not truncate {$...} at a brace hidden inside a quoted array key', () => {
+			// Regression: findMatchingBrace was string-blind, so the literal `}` inside
+			// the single-quoted key `'}'` was counted as the interpolation's closing brace.
+			// That cut the expression short — `$a`, a bare `'`, an early `}` template close,
+			// then `']}x` bled out as literal string. The brace matcher must skip over
+			// quoted string literals.
+			const src = '$s = "{$a[\'}\']}x";';
+			const line = tok(php, src);
+			expectToken(line, 'string.template', '{');
+			expectToken(line, 'variable', '$a');
+			expectToken(line, 'punctuation.bracket', '[');
+			expectToken(line, 'string', "'}'"); // the key is a complete single-quoted string
+			expectToken(line, 'punctuation.bracket', ']');
+			expectToken(line, 'string.template', '}'); // closes the interpolation, not the key
+			expectToken(line, 'string', 'x'); // trailing literal after the interpolation
+			expectLossless(line, src);
+
+			// Same hazard with a double-quoted key containing a brace.
+			const src2 = '$s = "{$a["k}"]}!";';
+			const line2 = tok(php, src2);
+			expectToken(line2, 'variable', '$a');
+			expectToken(line2, 'string', '"k}"');
+			expectToken(line2, 'string.template', '}');
+			expectToken(line2, 'string', '!');
+			expectLossless(line2, src2);
+		});
+
 		it('interpolates inside a heredoc body', () => {
 			const lines = tokLines(php, ['$h = <<<HTML', '<p>Hi $name {$o->x}</p>', 'HTML;']);
 			expectToken(lines[1], 'variable', '$name');

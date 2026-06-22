@@ -491,6 +491,58 @@ describe('makefile: number subtypes', () => {
 	});
 });
 
+describe('makefile: no-space append/conditional/shell operators', () => {
+	// Regression: the bare-word scanner does not exclude `+`, `?`, `!`, so an unspaced
+	// `CFLAGS+=-g` swallowed the operator's leading char into the variable name and left a
+	// lone `=` mis-tokenized as a plain recursive assignment. The whole `+=`/`?=`/`!=`
+	// operator must survive intact, with the bare name to its left.
+	it('tokenizes an unspaced += as a single append operator', () => {
+		const line = tok(t, 'CFLAGS+=-g');
+		expectToken(line, 'variable.definition', 'CFLAGS');
+		expectToken(line, 'operator.assignment', '+=');
+		expectLossless(line, 'CFLAGS+=-g');
+		// The name must NOT carry a trailing `+`, and there must be no lone `=` operator.
+		const eqOnly = line.tokens.filter((tk) => tk.type === 'operator.assignment' && tk.text === '=');
+		if (eqOnly.length !== 0) {
+			throw new Error(`+= must not split into a lone =, got ${JSON.stringify(eqOnly)}`);
+		}
+	});
+
+	it('tokenizes an unspaced ?= as a single conditional operator', () => {
+		const line = tok(t, 'PREFIX?=/usr/local');
+		expectToken(line, 'variable.definition', 'PREFIX');
+		expectToken(line, 'operator.assignment', '?=');
+		expectToken(line, 'variable', '/usr/local');
+		expectLossless(line, 'PREFIX?=/usr/local');
+	});
+
+	it('tokenizes an unspaced != as a single shell-assign operator', () => {
+		const line = tok(t, 'DATE!=date +%Y');
+		expectToken(line, 'variable.definition', 'DATE');
+		expectToken(line, 'operator.assignment', '!=');
+		expectLossless(line, 'DATE!=date +%Y');
+	});
+
+	it('does not trim a mid-word + ? or ! out of a plain value', () => {
+		// A `+`/`?`/`!` that is NOT immediately followed by `=` is an ordinary value char.
+		const line = tok(t, 'FLAGS = -a+b a?b c!d');
+		expectToken(line, 'variable', '-a+b');
+		expectToken(line, 'variable', 'a?b');
+		expectToken(line, 'variable', 'c!d');
+		expectLossless(line, 'FLAGS = -a+b a?b c!d');
+	});
+
+	it('keeps a trailing + ? or ! at end of value (no spurious operator)', () => {
+		const line = tok(t, 'P = trailing+');
+		expectToken(line, 'variable', 'trailing+');
+		expectLossless(line, 'P = trailing+');
+		const ops = line.tokens.filter((tk) => tk.type === 'operator.assignment' && tk.text !== '=');
+		if (ops.length !== 0) {
+			throw new Error(`a trailing + at EOL is not an operator, got ${JSON.stringify(ops)}`);
+		}
+	});
+});
+
 describe('makefile: variable definitions vs references', () => {
 	it('emits the assignment LHS as variable.definition', () => {
 		// Regression: the defined name was the same `variable` type as a value reference.

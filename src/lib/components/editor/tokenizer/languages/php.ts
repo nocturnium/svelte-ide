@@ -926,11 +926,31 @@ export class PhpTokenizer {
 		return end + 1;
 	}
 
-	/** Find the index of the `}` matching the `{` at `open` (brace-depth aware). */
+	/**
+	 * Find the index of the `}` matching the `{` at `open` (brace-depth aware).
+	 * String-aware: braces appearing inside a quoted string literal (e.g. the
+	 * array key in `{$a['}']}`) are skipped, so a `}` hidden inside a nested
+	 * string does not truncate the interpolation at the wrong place.
+	 */
 	private findMatchingBrace(text: string, open: number): number {
 		let depth = 0;
 		for (let k = open; k < text.length; k++) {
 			const c = text[k];
+			// Skip over a nested quoted string literal so its braces don't count.
+			if (c === "'" || c === '"') {
+				const quote = c;
+				k++;
+				while (k < text.length) {
+					if (text[k] === '\\') {
+						k += 2;
+						continue;
+					}
+					if (text[k] === quote) break;
+					k++;
+				}
+				// k now points at the closing quote (or past end if unterminated).
+				continue;
+			}
 			if (c === '{') depth++;
 			else if (c === '}') {
 				depth--;

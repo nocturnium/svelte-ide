@@ -455,6 +455,39 @@ describe('VueTokenizer', () => {
 			expectToken(line, 'tag.attribute.value', '"card"');
 			expectLossless(line, '<div class="card">');
 		});
+
+		// Regression: a `>` (or `>=`, `>>`, `>>>`) INSIDE a quoted directive value on a
+		// SINGLE line must NOT be mistaken for the tag's closing bracket. A prior bug
+		// matched the tag with a quote-blind `[^>]*` regex that stopped at the first
+		// `>`, so `<p v-if="a > b">` truncated the value to `"a`, bled ` b">` out as
+		// plain text, and emitted a bogus early close. The tag end is now located with
+		// the quote-aware scanner (the same one the multi-line path already used).
+		it('does not close a single-line tag on a `>` inside a quoted directive value', () => {
+			const line = tok(createVueTokenizer(), '<p v-if="count > 0">');
+			expectToken(line, 'tag.attribute', 'v-if');
+			expectToken(line, 'operator', '>');
+			expectToken(line, 'variable', 'count');
+			expectToken(line, 'number.integer', '0');
+			// Exactly one real tag close (the trailing `>`), not an early bogus one.
+			const closes = line.tokens.filter((t) => t.type === 'tag.punctuation' && t.text === '>');
+			expect(closes.length).toBe(1);
+			expectLossless(line, '<p v-if="count > 0">');
+		});
+
+		it('does not close a single-line tag on a `>` inside a quoted PLAIN value', () => {
+			const line = tok(createVueTokenizer(), '<a href="x>y">link</a>');
+			// The plain (non-directive) value keeps its `>` and stays one static token.
+			expectToken(line, 'tag.attribute.value', '"x>y"');
+			expectToken(line, 'tag.name', 'a');
+			expectLossless(line, '<a href="x>y">link</a>');
+		});
+
+		it('treats `>>>` inside a single-line binding value as a shift operator', () => {
+			const line = tok(createVueTokenizer(), '<C :v="x>>>y" />');
+			expectToken(line, 'operator', '>>>');
+			expectToken(line, 'tag.punctuation', '/>');
+			expectLossless(line, '<C :v="x>>>y" />');
+		});
 	});
 
 	describe('multi-line opening <script>/<style> tags', () => {

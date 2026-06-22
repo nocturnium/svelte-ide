@@ -532,6 +532,25 @@ describe('Kotlin tokenizer', () => {
 			expectLossless(line, 'set(value) { field = value }');
 		});
 
+		it('treats `field` declared after val/var as a variable name, not the soft keyword', () => {
+			// Regression: `field` is a soft keyword only inside an accessor body. As the
+			// NAME in `val field = 1` / `var field: Int` it is an ordinary identifier and
+			// must NOT be colored as the backing-field keyword.
+			const v = tok(kotlin, 'val field = 1');
+			expectToken(v, 'variable', 'field');
+			if (findTokens(v, 'keyword').some((t) => t.text === 'field')) {
+				throw new Error('declared `val field` leaked as the soft keyword');
+			}
+			expectLossless(v, 'val field = 1');
+
+			const m = tok(kotlin, 'var field: Int = 0');
+			expectToken(m, 'variable', 'field');
+			if (findTokens(m, 'keyword').some((t) => t.text === 'field')) {
+				throw new Error('declared `var field` leaked as the soft keyword');
+			}
+			expectLossless(m, 'var field: Int = 0');
+		});
+
 		it('classifies the new unsigned built-in types', () => {
 			expectToken(tok(kotlin, 'val u: UInt = 1u'), 'type.builtin', 'UInt');
 			expectToken(tok(kotlin, 'val a: IntArray = intArrayOf()'), 'type.builtin', 'IntArray');

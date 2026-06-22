@@ -514,6 +514,44 @@ describe('rust: generic angle brackets', () => {
 		expectToken(line, 'operator', '>>');
 		expectLossless(line, 'let v: Vec<u8> = y; let z = a >> 1;');
 	});
+
+	// Regression: `impl<T>` is a generic parameter list whose `<` sits DIRECTLY
+	// after the `impl` keyword (no intervening name), so the generic-on-definition
+	// rule that catches `fn f<T>` never fired for it. Before the fix the angle
+	// brackets on every generic impl block lexed as comparison operators (`a < b`
+	// style) instead of `punctuation.bracket`, miscoloring idiomatic Rust.
+	it('lexes the generic param list on an impl block as brackets, not comparisons', () => {
+		const line = tok(rust, 'impl<T: Clone> Config<T> {');
+		// Both the impl param list `<T: Clone>` and the type args `Config<T>` are
+		// brackets; nothing here is a comparison.
+		const brackets = findTokens(line, 'punctuation.bracket').map((t) => t.text);
+		expect(brackets).toEqual(['<', '>', '<', '>']);
+		expect(findTokens(line, 'operator.comparison').length).toBe(0);
+		expectLossless(line, 'impl<T: Clone> Config<T> {');
+	});
+
+	it('handles an impl block with a lifetime parameter as brackets', () => {
+		const line = tok(rust, "impl<'a> Foo<'a> {");
+		expect(findTokens(line, 'operator.comparison').length).toBe(0);
+		expect(findTokens(line, 'punctuation.bracket').map((t) => t.text)).toEqual([
+			'<',
+			'>',
+			'<',
+			'>'
+		]);
+		expectToken(line, 'keyword.operator', "'a");
+		expectLossless(line, "impl<'a> Foo<'a> {");
+	});
+
+	it('leaves a plain (non-generic) impl block untouched', () => {
+		// `impl Display for Point {}` has no `<`, so the impl-generic rule must not
+		// fire and there must be zero phantom brackets from it.
+		const line = tok(rust, 'impl Display for Point {}');
+		expectToken(line, 'keyword.definition', 'impl');
+		expectToken(line, 'type.class', 'Point');
+		expect(findTokens(line, 'punctuation.bracket').length).toBe(0);
+		expectLossless(line, 'impl Display for Point {}');
+	});
 });
 
 describe('rust: nesting block comments', () => {

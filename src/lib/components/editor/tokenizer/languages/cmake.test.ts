@@ -114,6 +114,28 @@ describe('cmake: conditional operators', () => {
 		// Once the condition closes, AND is a plain argument again.
 		expectToken(lines[2], 'variable', 'AND');
 	});
+
+	it('does not leak condition-operator context past an unbalanced if(', () => {
+		// Regression: an `if(` whose `)` never arrives (malformed/unbalanced source)
+		// used to leave condParenDepth dangling, so a following, unrelated command's
+		// argument word `AND` was mis-colored as an operator on every later line. A
+		// fresh line that BEGINS a new command (control keyword or known builtin)
+		// cannot be a wrapped-condition continuation, so the stale depth is dropped.
+		const bare = tokLines(t, ['if(', 'set(AND 99)']);
+		expectToken(bare[1], 'variable', 'AND');
+
+		const withArg = tokLines(t, ['if(WIN32', 'set(AND 98)']);
+		expectToken(withArg[1], 'variable', 'AND');
+
+		// An unterminated ${...} inside the if() must not leak either.
+		const interp = tokLines(t, ['if(${UNCLOSED', 'set(AND 97)']);
+		expectToken(interp[1], 'variable', 'AND');
+
+		// And a legitimate wrapped condition (continuation begins with an argument,
+		// not a command keyword) must STILL keep its operators classified.
+		const wrapped = tokLines(t, ['if(A AND', 'B OR C)']);
+		expectToken(wrapped[1], 'keyword.operator', 'OR');
+	});
 });
 
 describe('cmake: variables', () => {

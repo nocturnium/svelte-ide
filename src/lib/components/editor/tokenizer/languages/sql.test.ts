@@ -647,6 +647,96 @@ describe('SqlTokenizer', () => {
 		});
 	});
 
+	describe('re-audit hardening (seam regressions)', () => {
+		it('does not turn comparisons or shifts into brackets/generics', () => {
+			// A generic-depth tracker (if ever added) must never claim < > << >>.
+			const line = tok(createSqlTokenizer(), 'WHERE a < b AND c > d AND a << 2 AND b >> 1');
+			expectToken(line, 'operator.comparison', '<');
+			expectToken(line, 'operator.comparison', '>');
+			expectToken(line, 'operator', '<<');
+			expectToken(line, 'operator', '>>');
+			const brackets = line.tokens.filter((t) => t.type === 'punctuation.bracket');
+			if (brackets.length !== 0) throw new Error('comparison/shift leaked into a bracket');
+			expectLossless(line, 'WHERE a < b AND c > d AND a << 2 AND b >> 1');
+		});
+
+		it('keeps numbers and operators distinct when glued together', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT 1<2, 3>4, 5<>6, 1+2, 9%2');
+			expectToken(line, 'number.integer', '1');
+			expectToken(line, 'operator.comparison', '<');
+			expectToken(line, 'operator.comparison', '<>');
+			expectToken(line, 'operator.arithmetic', '+');
+			expectToken(line, 'operator.arithmetic', '%');
+			expectLossless(line, 'SELECT 1<2, 3>4, 5<>6, 1+2, 9%2');
+		});
+
+		it('leaves a string open when its closing quote is backslash-escaped', () => {
+			// `'a\'` — the \' escapes the quote, so the literal is unterminated and the
+			// escape must not be dropped/duplicated (lossless) and state stays open.
+			const line = tok(createSqlTokenizer(), "SELECT 'a\\'");
+			expectToken(line, 'string', "'a");
+			expectToken(line, 'string.escape', "\\'");
+			if ((line.state as { inString?: boolean } | undefined)?.inString !== true)
+				throw new Error('escaped close-quote should leave string open');
+			expectLossless(line, "SELECT 'a\\'");
+		});
+
+		it('keeps a doubled-quote run open when no real close quote follows', () => {
+			// `'\\''` is backslash-escape + escaped-quote with no terminator: unterminated.
+			const line = tok(createSqlTokenizer(), "SELECT '\\\\''");
+			expectToken(line, 'string.escape', '\\\\');
+			expectToken(line, 'string.escape', "''");
+			if ((line.state as { inString?: boolean } | undefined)?.inString !== true)
+				throw new Error('quote run should leave string open');
+			expectLossless(line, "SELECT '\\\\''");
+		});
+
+		it('keeps a terminated prefixed E-string lossless when it abuts a cast', () => {
+			// Regression on the prefixed-string return-length math: E'ends' must stop
+			// at the close quote so ::text is re-scanned, not swallowed.
+			const line = tok(createSqlTokenizer(), "SELECT E'ends'::text");
+			expectToken(line, 'string', 'E');
+			expectToken(line, 'string', "'ends'");
+			expectToken(line, 'operator', '::');
+			expectToken(line, 'type.builtin', 'text');
+			expectLossless(line, "SELECT E'ends'::text");
+		});
+
+		it('threads an unterminated prefixed E-string across lines losslessly', () => {
+			const inputs = ["SELECT E'open\\", 'still in string', "close' AS y"];
+			const lines = tokLines(createSqlTokenizer(), inputs);
+			expectToken(lines[1], 'string', 'still in string');
+			expectToken(lines[2], 'string', "close'");
+			expectToken(lines[2], 'keyword', 'AS');
+			for (let i = 0; i < inputs.length; i++) {
+				expectLossless(lines[i], inputs[i]);
+			}
+		});
+
+		it('distinguishes the jsonb ? operator from a ? placeholder by operand context', () => {
+			// `?` after an operand (here a string from data->'a') is the existence
+			// operator; a `?` in operand position is a placeholder.
+			const op = tok(createSqlTokenizer(), "WHERE data->'a' ? 'k'");
+			expectToken(op, 'operator', '?');
+			const ph = tok(createSqlTokenizer(), 'SELECT ? FROM t');
+			expectToken(ph, 'variable.parameter', '?');
+			expectLossless(op, "WHERE data->'a' ? 'k'");
+		});
+
+		it('produces contiguous, in-bounds token offsets on a dense mixed line', () => {
+			const original = "SELECT t.col, E'x\\n', 0xFF, a->>'b', x::int[] FROM s.t WHERE id = $1;";
+			const line = tok(createSqlTokenizer(), original);
+			let cursor = 0;
+			for (const t of line.tokens) {
+				if (t.start !== cursor) throw new Error('non-contiguous token start at ' + cursor);
+				if (t.end !== cursor + t.text.length) throw new Error('bad token end at ' + cursor);
+				cursor = t.end;
+			}
+			if (cursor !== original.length) throw new Error('offsets do not span the line');
+			expectLossless(line, original);
+		});
+	});
+
 	describe('lossless reconstruction', () => {
 		it('is lossless on an indented statement', () => {
 			const original = '\t\tSELECT id, name FROM users WHERE id = 10;';

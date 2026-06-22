@@ -637,20 +637,30 @@ export class YamlTokenizer {
 	}
 
 	/**
-	 * A numeric literal must be a standalone value — the char after it must end the
-	 * token (EOL, whitespace, or a flow terminator). Otherwise "1abc" or "3.4.5"
-	 * is an unquoted scalar, not a number.
+	 * A numeric literal must be the WHOLE value scalar — not merely number-shaped at
+	 * its head. The char after it must end the token directly (EOL or a flow
+	 * terminator), OR be whitespace that is itself followed only by end-of-line, a
+	 * comment, or a flow terminator. If non-comment scalar content follows the
+	 * whitespace, the value is a plain scalar that happens to start with digits
+	 * (e.g. "5 apples", "1 2 3", "3.14 is pi", "1.0.0-rc1") — NOT a number. This also
+	 * still rejects "1abc"/"3.4.5" where the very next char continues the token.
 	 */
 	private numberBoundaryOk(text: string, len: number): boolean {
 		const after = text[len];
-		return (
-			after === undefined ||
-			after === ' ' ||
-			after === '\t' ||
-			after === ',' ||
-			after === ']' ||
-			after === '}'
-		);
+		if (after === undefined || after === ',' || after === ']' || after === '}') {
+			return true;
+		}
+		if (after === ' ' || after === '\t') {
+			// Peek past the whitespace run. The number stands only if nothing more of
+			// the scalar follows it (EOL), the next thing is a comment, or a flow
+			// terminator. Otherwise more plain-scalar content follows and this is a
+			// string value, not a number.
+			let i = len;
+			while (i < text.length && (text[i] === ' ' || text[i] === '\t')) i++;
+			const next = text[i];
+			return next === undefined || next === '#' || next === ',' || next === ']' || next === '}';
+		}
+		return false;
 	}
 
 	private classifyScalar(scalar: string): TokenType {

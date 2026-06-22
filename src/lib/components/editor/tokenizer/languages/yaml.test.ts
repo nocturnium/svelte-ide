@@ -171,6 +171,43 @@ describe('yaml: numbers and dates', () => {
 		expectLossless(line, 'id: 1abc');
 	});
 
+	it('does not split a plain scalar that merely STARTS with a number', () => {
+		// Defect: a plain scalar value beginning with a number-shaped run but containing
+		// more (space-separated) content was split into a number token plus a trailing
+		// string — e.g. "5 apples" became number "5" + string "apples". In YAML the whole
+		// value is one plain scalar. A number must be the COMPLETE value, not just its head.
+		const a = tok(yaml, 'b: 5 apples');
+		expectToken(a, 'string', '5 apples');
+		const noNum = a.tokens.filter((t) => t.type.startsWith('number'));
+		if (noNum.length > 0) {
+			throw new Error(`"5 apples" must not yield a number token: ${JSON.stringify(noNum)}`);
+		}
+		expectLossless(a, 'b: 5 apples');
+
+		const b = tok(yaml, 'a: 1 2 3');
+		expectToken(b, 'string', '1 2 3');
+		expectLossless(b, 'a: 1 2 3');
+
+		const c = tok(yaml, 'c: 3.14 is pi');
+		expectToken(c, 'string', '3.14 is pi');
+		expectLossless(c, 'c: 3.14 is pi');
+
+		// A list-item plain scalar that starts with a number is also one whole scalar.
+		const d = tok(yaml, '  - 1 of many');
+		expectToken(d, 'string', '1 of many');
+		expectLossless(d, '  - 1 of many');
+	});
+
+	it('still classifies a standalone number before a trailing comment as a number', () => {
+		// Guard the fix above: a number followed by whitespace then a "#" comment is a
+		// complete numeric value (the comment is not scalar content), so it must stay a
+		// number — this is the case the tightened boundary must NOT break.
+		const line = tok(yaml, 'port: 8080 # listen port');
+		expectToken(line, 'number.integer', '8080');
+		expectToken(line, 'comment.line', '# listen port');
+		expectLossless(line, 'port: 8080 # listen port');
+	});
+
 	it('classifies number subtypes inside a flow sequence', () => {
 		const line = tok(yaml, 'xs: [1, 0x2, 0b11, 3.5]');
 		expectToken(line, 'number.integer', '1');

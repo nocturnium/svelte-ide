@@ -513,9 +513,13 @@ export class KotlinTokenizer {
 		if (moduleKeywords.has(word)) return 'keyword.module';
 		if (otherKeywords.has(word)) return 'keyword';
 
-		// Soft keywords (get/set/field) — only as keywords when not used as a call
-		// or member; `getThing()` is a call, `obj.get` is a member (handled above).
-		if (softKeywords.has(word) && !afterWord.startsWith('(')) {
+		// Soft keywords (e.g. `field`) — only as keywords when not used as a call or
+		// member; `getThing()` is a call, `obj.get` is a member (handled above). They
+		// are ALSO valid identifiers, so a soft keyword immediately following a
+		// declaration keyword (`val field = 1`, `var field: Int`) is the NAME being
+		// declared, not the backing-field reference — classify it as a variable.
+		const decl = ctx.prevText === 'val' || ctx.prevText === 'var';
+		if (softKeywords.has(word) && !afterWord.startsWith('(') && !decl) {
 			return 'keyword';
 		}
 

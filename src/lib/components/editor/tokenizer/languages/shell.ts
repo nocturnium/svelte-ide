@@ -281,7 +281,13 @@ export class ShellTokenizer {
 		}
 
 		// Redirection / file-descriptor operators (e.g. 2>&1, >>, &>, >|).
-		const redirMatch = text.match(/^(?:\d*>>|\d*>&\d*|\d*>\||&>>|&>|\d*>|\d*<&\d*|\d*<|<>)/);
+		// A bare '>'/'<' that is immediately followed by '=' is NOT redirection — it
+		// is the start of a '>='/'<=' comparison, which must fall through to the
+		// comparison matcher below. (A fd-prefixed form like `2>=f` stays a redirect:
+		// the `\d+` alternatives are tried first and are not gated by the lookahead.)
+		const redirMatch = text.match(
+			/^(?:\d*>>|\d*>&\d*|\d*>\||&>>|&>|\d+>|>(?!=)|\d*<&\d*|\d+<|<(?![=>])|<>)/
+		);
 		if (redirMatch) {
 			tokens.push(createToken('operator', redirMatch[0], pos));
 			return pos + redirMatch[0].length;

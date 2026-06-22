@@ -399,6 +399,15 @@ export class DockerfileTokenizer {
 					continue;
 				}
 			}
+			// A quoted string inside the default/replacement (e.g. `${V:-"a } b"}`):
+			// scan it as a string unit so a `}` (or `${`) hidden inside the quotes does
+			// NOT close the expansion early. Single quotes are literal; double quotes
+			// interpolate, matching the top-level string rules.
+			if (ch === '"' || ch === "'") {
+				const next = this.scanString(text.slice(i), pos + i, ch, ch === '"', out);
+				i = next - pos;
+				continue;
+			}
 			if (ch === ' ' || ch === '\t') {
 				const wsm = text.slice(i).match(/^[ \t]+/)!;
 				out.push(createToken('text', wsm[0], pos + i));

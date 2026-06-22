@@ -408,6 +408,36 @@ describe('dockerfile: variable expansion sub-tokenization', () => {
 		expectToken(line, 'operator', ':-');
 		expectLossless(line, 'RUN echo ${BROKEN:-');
 	});
+
+	it('does NOT let a } hidden inside a quoted default close the expansion early', () => {
+		// Regression: the default-expression scanner must consume a quoted string as a
+		// unit, so a `}` inside the quotes is part of the string — not the closing brace.
+		const line = tok(t, 'RUN echo ${OUTER:-"inner } brace"}');
+		const braces = findTokens(line, 'punctuation.brace');
+		// Exactly one opener and one (real) closer — the in-string `}` is NOT a brace.
+		expect(braces.filter((x) => x.text === '${').length).toBe(1);
+		expect(braces.filter((x) => x.text === '}').length).toBe(1);
+		// The whole quoted default is a single string token, with its `}` intact.
+		expectToken(line, 'string', '"inner } brace"');
+		expectLossless(line, 'RUN echo ${OUTER:-"inner } brace"}');
+	});
+
+	it('interpolates $VAR and nested ${...} inside a quoted default', () => {
+		const line = tok(t, 'RUN echo ${A:-"with $VAR and ${NESTED}"}');
+		expectToken(line, 'variable', '$VAR');
+		expectToken(line, 'variable', 'NESTED');
+		// Outer expansion still closes correctly after the quoted default.
+		expect(findTokens(line, 'punctuation.brace').filter((x) => x.text === '${').length).toBe(2);
+		expect(findTokens(line, 'punctuation.brace').filter((x) => x.text === '}').length).toBe(2);
+		expectLossless(line, 'RUN echo ${A:-"with $VAR and ${NESTED}"}');
+	});
+
+	it('treats a single-quoted default literally (braces inside are not braces)', () => {
+		const line = tok(t, "RUN echo ${V:-'lit } } literal'}");
+		expectToken(line, 'string', "'lit } } literal'");
+		expect(findTokens(line, 'punctuation.brace').filter((x) => x.text === '}').length).toBe(1);
+		expectLossless(line, "RUN echo ${V:-'lit } } literal'}");
+	});
 });
 
 describe('dockerfile: string escapes and in-string interpolation', () => {

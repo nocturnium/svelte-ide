@@ -499,9 +499,17 @@ export class SwiftTokenizer {
 	 * Heuristic for whether a `<` at the start of `text` opens a generic argument list.
 	 * `text` begins at the `<`. A generic open is followed by a type-ish token (an
 	 * identifier/type, another `<`, `[`, `(`) and eventually a matching `>` before a
-	 * line-structural break. We scan a bounded window for a matching `>` while only
-	 * crossing generic-legal characters; a `<` used as less-than (`a < b`) fails because
-	 * arithmetic/space-separated value expressions won't reach a `>` through that grammar.
+	 * line-structural break.
+	 *
+	 * The scan is an ALLOW-LIST: a generic argument clause contains only type-grammar
+	 * characters — identifiers, `,`, `:`, `.`, whitespace, `?` (optional), single `&`
+	 * (protocol composition), `->` function types, and nested `<> [] ()`. The moment a
+	 * character that cannot appear inside a generic clause is crossed (a value-level
+	 * operator like `&&`, `||`, `==`, `*`, `/`, `!`, `+`, `%`, `=`, a string, a brace, …),
+	 * the `<` is a comparison operator, not a generic opener. This is what keeps idiomatic
+	 * dual-comparison lines like `if a < b && c > d {}` and `while i < n && j > 0 {}` from
+	 * collapsing into bracket punctuation — the `&&` between the operators disqualifies the
+	 * span before its (unrelated) `>` is reached.
 	 */
 	private looksLikeGenericOpen(text: string): boolean {
 		// Must look like `<Type...` — a letter, `_`, `[`, `(`, or nested `<`.
@@ -513,16 +521,33 @@ export class SwiftTokenizer {
 			else if (ch === '>') {
 				depth--;
 				if (depth === 0) return true;
+			} else if (ch === '&') {
+				// A single `&` is protocol composition (`A & B`); `&&` is logical-and and can
+				// only be a comparison expression, so it disqualifies the span.
+				if (text[i + 1] === '&') return false;
 			} else if (
-				// Characters that can't appear inside a generic argument list. If we hit one
-				// before the matching `>`, this `<` was a comparison operator.
-				ch === ';' ||
-				ch === '{' ||
-				ch === '}' ||
-				ch === '=' ||
-				ch === '+' ||
-				ch === '%' ||
-				ch === '"'
+				// Allow-list of characters that may appear inside a generic argument clause.
+				// Anything else (value operators, quotes, braces, …) means this `<` was a
+				// comparison operator.
+				!(
+					(ch >= 'A' && ch <= 'Z') ||
+					(ch >= 'a' && ch <= 'z') ||
+					(ch >= '0' && ch <= '9') ||
+					ch === '_' ||
+					ch === '$' ||
+					ch === ' ' ||
+					ch === '\t' ||
+					ch === ',' ||
+					ch === ':' ||
+					ch === '.' ||
+					ch === '?' ||
+					ch === '[' ||
+					ch === ']' ||
+					ch === '(' ||
+					ch === ')' ||
+					ch === '-' || // `->` in function-type generic args (`Foo<() -> Void>`)
+					ch === '`'
+				)
 			) {
 				return false;
 			}
