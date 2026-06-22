@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/nocturnium/svelte-ide/compare/v1.14.0...v1.15.0) (2026-06-22)
+
+
+### Features
+
+* **editor:** render remote collaborator cursors in the editor ([92c4093](https://github.com/nocturnium/svelte-ide/commit/92c40939ed7e1e29f7f9af85cda9cc20a9a231bb))
+
 # [1.14.0](https://github.com/nocturnium/svelte-ide/compare/v1.13.1...v1.14.0) (2026-06-22)
 
 
