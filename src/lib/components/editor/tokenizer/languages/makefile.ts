@@ -309,8 +309,32 @@ export class MakefileTokenizer {
 		let pos = startPos;
 		// Whether the leading directive on this logical line has been consumed yet.
 		let sawLeadingWord = startPos > 0 || suppressDirective;
+		// The exclusive end of the assignment LHS region (the index of the assignment
+		// operator), or -1 when this line is not an assignment. Identifiers before it are
+		// the variable(s) being DEFINED and emit `variable.definition`.
+		const assignOp = suppressDirective ? -1 : this.findAssignmentOp(line, startPos);
+		// True immediately after consuming an `ifeq`/`ifneq` keyword, so the following
+		// `(arg1,arg2)` is sub-tokenized as a conditional argument pair rather than as a
+		// loose paren and two words.
+		let afterCondDirective = false;
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
+
+			// Conditional argument pair: `ifeq (a,b)` / `ifneq ($(OS),Windows_NT)`. Only the
+			// parenthesized form is special; the `ifeq "a" "b"` quoted form falls through.
+			if (afterCondDirective) {
+				const ws = remaining.match(/^[ \t]+/);
+				const at = ws ? pos + ws[0].length : pos;
+				if (line[at] === '(') {
+					if (ws) tokens.push(createToken('text', ws[0], pos));
+					pos = this.emitConditionalArgs(line, at, tokens);
+					afterCondDirective = false;
+					sawLeadingWord = true;
+					continue;
+				}
+				afterCondDirective = false;
+			}
+
 			// Intercept variable expansions so $(shell ...) emits a function.call.
 			if (remaining[0] === '$') {
 				const v = this.matchVariable(remaining);
@@ -326,6 +350,13 @@ export class MakefileTokenizer {
 				if (token.type !== 'text' || token.text.trim() !== '') {
 					sawLeadingWord = true;
 				}
+				if (token.type === 'keyword.control' && (token.text === 'ifeq' || token.text === 'ifneq')) {
+					afterCondDirective = true;
+				}
+				// A bare word left of the assignment operator is the variable being defined.
+				if (token.type === 'variable' && assignOp !== -1 && token.start < assignOp) {
+					token.type = 'variable.definition';
+				}
 				tokens.push(token);
 				pos = token.end;
 			} else {
@@ -333,6 +364,88 @@ export class MakefileTokenizer {
 				pos += 1;
 			}
 		}
+	}
+
+	/**
+	 * Sub-tokenize an `ifeq`/`ifneq` conditional argument pair `(arg1,arg2)` starting at the
+	 * `(` at `open`. Emits the parens as punctuation.paren, the top-level comma as a
+	 * separator, and each operand's interior (variables, nested expansions, literal words)
+	 * with full sub-tokenization. Returns the position just past the closing `)`, or past the
+	 * unterminated remainder if there is no close.
+	 */
+	private emitConditionalArgs(line: string, open: number, tokens: Token[]): number {
+		// Locate the matching close paren and the top-level comma between the two operands,
+		// skipping any parens that belong to nested `$(...)` expansions.
+		let depth = 0;
+		let comma = -1;
+		let close = -1;
+		for (let i = open; i < line.length; i++) {
+			const c = line[i];
+			if (c === '$' && (line[i + 1] === '(' || line[i + 1] === '{')) {
+				depth++;
+				i++;
+				continue;
+			}
+			if (c === '(' || c === '{') depth++;
+			else if (c === ')' || c === '}') {
+				depth--;
+				if (depth === 0) {
+					close = i;
+					break;
+				}
+			} else if (c === ',' && depth === 1 && comma === -1) {
+				comma = i;
+			}
+		}
+
+		tokens.push(createToken('punctuation.paren', '(', open));
+		const argEnd = close === -1 ? line.length : close;
+		if (comma === -1) {
+			this.scanExpansionText(line.slice(open + 1, argEnd), open + 1, tokens, 'string');
+		} else {
+			this.scanExpansionText(line.slice(open + 1, comma), open + 1, tokens, 'string');
+			tokens.push(createToken('punctuation.separator', ',', comma));
+			this.scanExpansionText(line.slice(comma + 1, argEnd), comma + 1, tokens, 'string');
+		}
+		if (close !== -1) {
+			tokens.push(createToken('punctuation.paren', ')', close));
+			return close + 1;
+		}
+		return line.length;
+	}
+
+	/**
+	 * Index of the assignment operator (`=` `:=` `::=` `+=` `?=` `!=`) on a make line, or -1
+	 * when the line is not an assignment. Skips operators inside `$(...)` expansions and stops
+	 * at a comment. A rule colon (`target:`) reached before any operator means the line is a
+	 * rule, not an assignment, so -1 is returned.
+	 */
+	private findAssignmentOp(line: string, start: number): number {
+		let depth = 0;
+		for (let i = start; i < line.length; i++) {
+			const c = line[i];
+			if (c === '#') return -1;
+			if (c === '$' && (line[i + 1] === '(' || line[i + 1] === '{')) {
+				depth++;
+				i++;
+				continue;
+			}
+			if (depth > 0) {
+				if (c === ')' || c === '}') depth--;
+				continue;
+			}
+			if (c === '=') {
+				// A bare `=` (and `:=`/`::=`/`+=`/`?=`/`!=` — the operator char itself).
+				return i;
+			}
+			if (c === ':') {
+				// `:=` / `::=` are assignment operators; report the `:` start.
+				if (line[i + 1] === '=' || (line[i + 1] === ':' && line[i + 2] === '=')) return i;
+				// A plain rule colon: this is a target rule, not an assignment.
+				return -1;
+			}
+		}
+		return -1;
 	}
 
 	/** Scan recipe-body text from `start`: only comments and $(...) expansions highlight. */
@@ -421,9 +534,14 @@ export class MakefileTokenizer {
 		// a leading digit run of a longer word such as a version string (`1.6.0`) or a
 		// flag value (`12abc`). Otherwise the word would be carved into a `number` plus a
 		// stray `variable`/word remainder.
-		const numMatch = text.match(/^(?:0[xX][0-9a-fA-F]+|\d+(?:\.\d+)?)/);
+		const numMatch = text.match(/^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|\d+(?:\.\d+)?)/);
 		if (numMatch && !this.isInsideWord(text, line, pos) && this.isWholeWord(text, numMatch[0])) {
-			return createToken('number', numMatch[0], pos);
+			const lit = numMatch[0];
+			let numType: TokenType = 'number.integer';
+			if (/^0[xX]/.test(lit)) numType = 'number.hex';
+			else if (/^0[bB]/.test(lit)) numType = 'number.binary';
+			else if (lit.includes('.')) numType = 'number.float';
+			return createToken(numType, lit, pos);
 		}
 
 		// Special targets / dotted names (e.g. .PHONY appearing as a prerequisite).
@@ -522,9 +640,10 @@ export class MakefileTokenizer {
 
 	/**
 	 * Emit a variable expansion as fine-grained tokens: the `$(` / `${` wrapper as
-	 * punctuation, a leading built-in function name as function.call, and the inner
-	 * body as a variable. Falls back to a single variable token for automatic / $X
-	 * forms. Pushed onto `tokens`.
+	 * string.template, a leading built-in function name as function.call, and the inner
+	 * body sub-tokenized (nested `$(...)`, substitution refs `$(VAR:pat=repl)`, and
+	 * comma-separated function arguments). Falls back to fine-grained automatic-variable
+	 * tokens for `$@` / `$(@D)` / `$X` forms. Pushed onto `tokens`.
 	 */
 	private emitVariable(matched: string, pos: number, tokens: Token[]): void {
 		const open = matched[1];
@@ -538,28 +657,161 @@ export class MakefileTokenizer {
 		const innerStart = 2;
 		const innerEnd = hasClose ? matched.length - 1 : matched.length;
 		const inner = matched.slice(innerStart, innerEnd);
+		const innerPos = pos + innerStart;
 
-		// Opening `$(` (or `${`).
-		tokens.push(createToken('punctuation', matched.slice(0, 2), pos));
+		// Opening `$(` (or `${`) — template-delimiter coloring for the expansion wrapper.
+		tokens.push(createToken('string.template', matched.slice(0, 2), pos));
 
-		// Leading built-in function call: `$(shell ...)`, `$(wildcard ...)`, `$(call ...)`.
-		const fnMatch = inner.match(/^([A-Za-z][A-Za-z0-9-]*)(\s)/);
-		if (fnMatch && builtinFunctions.has(fnMatch[1])) {
-			const fnPos = pos + innerStart;
-			tokens.push(createToken('function.call', fnMatch[1], fnPos));
-			const rest = inner.slice(fnMatch[1].length);
-			if (rest.length > 0) {
-				tokens.push(createToken('variable', rest, fnPos + fnMatch[1].length));
+		// An automatic-variable reference wrapped for its dir/file form: `$(@D)`, `$(<F)`,
+		// `$(^D)` etc. The body is a single automatic var char optionally followed by D/F.
+		const autoMatch = inner.match(/^([@<^?*%+|])([DF]?)$/);
+		if (autoMatch) {
+			tokens.push(createToken('variable', inner, innerPos));
+		} else {
+			// Leading built-in function call: `$(shell ...)`, `$(call f,a,b)`, `$(patsubst ...)`.
+			const fnMatch = inner.match(/^([A-Za-z][A-Za-z0-9-]*)([ \t])/);
+			if (fnMatch && builtinFunctions.has(fnMatch[1])) {
+				const fnName = fnMatch[1];
+				tokens.push(createToken('function.call', fnName, innerPos));
+				// The whitespace separating the function name from its first argument.
+				const wsLen = fnMatch[2].length;
+				tokens.push(createToken('text', fnMatch[2], innerPos + fnName.length));
+				const argStart = fnName.length + wsLen;
+				this.scanFunctionArgs(fnName, inner.slice(argStart), innerPos + argStart, tokens);
+			} else if (this.findSubstColon(inner) !== -1) {
+				// Substitution reference: `$(VAR:pat=repl)` / `$(VAR:.c=.o)`.
+				this.emitSubstitutionRef(inner, innerPos, tokens);
+			} else if (inner.length > 0) {
+				// Plain variable reference, possibly containing nested `$(...)`.
+				this.scanExpansionText(inner, innerPos, tokens, 'variable');
 			}
-		} else if (inner.length > 0) {
-			// Plain variable reference (possibly a $(VAR:a=b) substitution): one token.
-			tokens.push(createToken('variable', inner, pos + innerStart));
 		}
 
 		// Closing paren/brace.
 		if (hasClose) {
-			tokens.push(createToken('punctuation', close, pos + matched.length - 1));
+			tokens.push(createToken('string.template', close, pos + matched.length - 1));
 		}
+	}
+
+	/**
+	 * Index of the substitution colon inside a `$(VAR:pat=repl)` body, or -1. The colon
+	 * must sit at top level (not inside a nested `$(...)`) and the body must also contain
+	 * a top-level `=` after it for it to be a real substitution reference.
+	 */
+	private findSubstColon(inner: string): number {
+		let depth = 0;
+		let colon = -1;
+		for (let i = 0; i < inner.length; i++) {
+			const c = inner[i];
+			if (c === '$' && (inner[i + 1] === '(' || inner[i + 1] === '{')) {
+				depth++;
+				i++;
+				continue;
+			}
+			if (c === '(' || c === '{') depth++;
+			else if (c === ')' || c === '}') {
+				if (depth > 0) depth--;
+			} else if (depth === 0) {
+				if (c === ':' && colon === -1) colon = i;
+				else if (c === '=' && colon !== -1) return colon;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * Emit a `$(VAR:pat=repl)` substitution reference: the variable name, the `:` and `=`
+	 * as assignment-flavored operators, and the pattern/replacement (which may themselves
+	 * contain nested `$(...)`).
+	 */
+	private emitSubstitutionRef(inner: string, basePos: number, tokens: Token[]): void {
+		const colon = this.findSubstColon(inner);
+		const eq = inner.indexOf('=', colon + 1);
+		// Variable name (may itself be an expansion such as `$(SRCS)`).
+		this.scanExpansionText(inner.slice(0, colon), basePos, tokens, 'variable');
+		tokens.push(createToken('operator.assignment', ':', basePos + colon));
+		// Pattern between `:` and `=`.
+		this.scanExpansionText(inner.slice(colon + 1, eq), basePos + colon + 1, tokens, 'string');
+		tokens.push(createToken('operator.assignment', '=', basePos + eq));
+		// Replacement after `=`.
+		this.scanExpansionText(inner.slice(eq + 1), basePos + eq + 1, tokens, 'string');
+	}
+
+	/**
+	 * Tokenize the comma-separated arguments of a built-in function. Top-level commas are
+	 * separators; nested `$(...)` and `${...}` are recursed into so a comma inside a nested
+	 * expansion does not split an argument. The first argument of `foreach`/`call` macro
+	 * functions is the loop/parameter variable name, emitted as `variable.parameter`.
+	 */
+	private scanFunctionArgs(fnName: string, args: string, basePos: number, tokens: Token[]): void {
+		const firstArgIsParam = fnName === 'foreach' || fnName === 'call';
+		let argIndex = 0;
+		let segStart = 0;
+		let depth = 0;
+		const flushArg = (end: number) => {
+			const seg = args.slice(segStart, end);
+			const role: TokenType = firstArgIsParam && argIndex === 0 ? 'variable.parameter' : 'string';
+			this.scanExpansionText(seg, basePos + segStart, tokens, role);
+		};
+		for (let i = 0; i < args.length; i++) {
+			const c = args[i];
+			if (c === '$' && (args[i + 1] === '(' || args[i + 1] === '{')) {
+				depth++;
+				i++;
+				continue;
+			}
+			if (depth > 0) {
+				if (c === ')' || c === '}') depth--;
+				continue;
+			}
+			if (c === ',') {
+				flushArg(i);
+				tokens.push(createToken('punctuation.separator', ',', basePos + i));
+				segStart = i + 1;
+				argIndex++;
+			}
+		}
+		flushArg(args.length);
+	}
+
+	/**
+	 * Tokenize a stretch of expansion text that may contain nested `$(...)` expansions and
+	 * automatic variables interleaved with literal characters. Literal runs are emitted with
+	 * `literalType` (e.g. `variable` for a name body, `string` for a function-argument body);
+	 * nested expansions are recursed through `emitVariable` so they get full sub-tokenization.
+	 */
+	private scanExpansionText(
+		text: string,
+		basePos: number,
+		tokens: Token[],
+		literalType: TokenType
+	): void {
+		let pos = 0;
+		let plainStart = 0;
+		const flushPlain = (end: number) => {
+			if (end > plainStart) {
+				tokens.push(createToken(literalType, text.slice(plainStart, end), basePos + plainStart));
+			}
+		};
+		while (pos < text.length) {
+			if (text[pos] === '$') {
+				const v = this.matchVariable(text.slice(pos));
+				if (v) {
+					flushPlain(pos);
+					this.emitVariable(v, basePos + pos, tokens);
+					pos += v.length;
+					plainStart = pos;
+					continue;
+				}
+				if (text[pos + 1] === '$') {
+					// `$$` escaped dollar — keep with the literal run.
+					pos += 2;
+					continue;
+				}
+			}
+			pos += 1;
+		}
+		flushPlain(text.length);
 	}
 
 	/** Tokenize an endef / stray make line with the generic scanner. */

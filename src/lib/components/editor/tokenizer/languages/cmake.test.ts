@@ -1,6 +1,13 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createCMakeTokenizer } from './cmake';
-import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
+import {
+	tok,
+	tokLines,
+	findTokens,
+	expectToken,
+	expectTokenType,
+	expectLossless
+} from '../test-helpers';
 
 const t = createCMakeTokenizer();
 
@@ -27,7 +34,7 @@ describe('cmake: commands and keywords', () => {
 	it('classifies cmake_minimum_required as keyword.module', () => {
 		const line = tok(t, 'cmake_minimum_required(VERSION 3.20)');
 		expectToken(line, 'keyword.module', 'cmake_minimum_required');
-		expectToken(line, 'number', '3.20');
+		expectToken(line, 'number.float', '3.20');
 	});
 
 	it('classifies an unknown command-with-paren as function.call', () => {
@@ -110,36 +117,78 @@ describe('cmake: conditional operators', () => {
 });
 
 describe('cmake: variables', () => {
-	it('tokenizes a ${VAR} reference', () => {
+	it('sub-tokenizes a ${VAR} reference into delimiter + brace + name', () => {
 		const line = tok(t, 'message(${PROJECT_NAME})');
-		expectToken(line, 'variable', '${PROJECT_NAME}');
+		// `$` delimiter, `{`/`}` braces, and the inner name each get a real type.
+		expectToken(line, 'string.template', '$');
+		expectToken(line, 'punctuation.brace', '{');
+		expectToken(line, 'variable', 'PROJECT_NAME');
+		expectToken(line, 'punctuation.brace', '}');
+		expectLossless(line, 'message(${PROJECT_NAME})');
 	});
 
-	it('tokenizes a $ENV{VAR} reference', () => {
+	it('sub-tokenizes a $ENV{VAR} reference keeping the namespace on the delimiter', () => {
 		const line = tok(t, 'set(PATH $ENV{PATH})');
-		expectToken(line, 'variable', '$ENV{PATH}');
+		// `$ENV` reads as the interpolation delimiter; PATH as the variable name.
+		expectToken(line, 'string.template', '$ENV');
+		expectToken(line, 'variable', 'PATH');
+		expectLossless(line, 'set(PATH $ENV{PATH})');
 	});
 
-	it('tokenizes a $CACHE{VAR} reference', () => {
+	it('sub-tokenizes a $CACHE{VAR} reference', () => {
 		const line = tok(t, 'message($CACHE{MY_OPTION})');
-		expectToken(line, 'variable', '$CACHE{MY_OPTION}');
+		expectToken(line, 'string.template', '$CACHE');
+		expectToken(line, 'variable', 'MY_OPTION');
+		expectLossless(line, 'message($CACHE{MY_OPTION})');
 	});
 
-	it('tokenizes a nested ${${inner}} reference as one variable', () => {
+	it('sub-tokenizes a nested ${${inner}} reference, naming the inner var', () => {
 		const line = tok(t, 'set(x ${${prefix}_SUFFIX})');
-		expectToken(line, 'variable', '${${prefix}_SUFFIX}');
+		// The inner reference is recursively split; `prefix` is its own name token
+		// and the surrounding `_SUFFIX` literal is a variable name too.
+		expectToken(line, 'variable', 'prefix');
+		expectToken(line, 'variable', '_SUFFIX');
+		// Two opening and two closing braces, one per nesting level.
+		expect(findTokens(line, 'punctuation.brace').filter((x) => x.text === '{').length).toBe(2);
+		expect(findTokens(line, 'punctuation.brace').filter((x) => x.text === '}').length).toBe(2);
+		expectLossless(line, 'set(x ${${prefix}_SUFFIX})');
+	});
+
+	it('threads an unterminated ${ across nothing but stays lossless (best effort)', () => {
+		const line = tok(t, 'message(${UNCLOSED');
+		expectToken(line, 'string.template', '$');
+		expectToken(line, 'variable', 'UNCLOSED');
+		expectLossless(line, 'message(${UNCLOSED');
 	});
 });
 
 describe('cmake: strings', () => {
-	it('tokenizes a double-quoted string', () => {
+	it('tokenizes a double-quoted string (open/body/close as string tokens)', () => {
 		const line = tok(t, 'message("Hello, world")');
-		expectToken(line, 'string', '"Hello, world"');
+		// The string is emitted as quote + body + quote, all typed `string`.
+		expectToken(line, 'string', '"');
+		expectToken(line, 'string', 'Hello, world');
+		expectLossless(line, 'message("Hello, world")');
 	});
 
-	it('keeps a string with a ${var} inside as a single string token', () => {
+	it('sub-tokenizes a ${var} embedded in a double-quoted string', () => {
 		const line = tok(t, 'set(MSG "version ${VERSION}")');
-		expectToken(line, 'string', '"version ${VERSION}"');
+		// The literal halves stay `string`; the interpolation is split out.
+		expectToken(line, 'string', '"');
+		expectToken(line, 'string', 'version ');
+		expectToken(line, 'string.template', '$');
+		expectToken(line, 'variable', 'VERSION');
+		expectLossless(line, 'set(MSG "version ${VERSION}")');
+	});
+
+	it('sub-tokenizes a generator expression embedded in a string', () => {
+		const line = tok(t, 'set(X "$<TARGET_PROPERTY:t,INCLUDE_DIRECTORIES>")');
+		expectToken(line, 'string.template', '$<');
+		expectToken(line, 'function.call', 'TARGET_PROPERTY');
+		expectToken(line, 'punctuation.separator', ':');
+		expectToken(line, 'punctuation.separator', ',');
+		expectToken(line, 'string.template', '>');
+		expectLossless(line, 'set(X "$<TARGET_PROPERTY:t,INCLUDE_DIRECTORIES>")');
 	});
 
 	it('tokenizes a bracket argument [[ ... ]] as a string', () => {
@@ -172,9 +221,28 @@ describe('cmake: comments', () => {
 });
 
 describe('cmake: numbers', () => {
-	it('tokenizes an integer and a version-like float', () => {
-		expectToken(tok(t, 'set(COUNT 42)'), 'number', '42');
-		expectToken(tok(t, 'set(VERSION 1.5)'), 'number', '1.5');
+	it('classifies an integer as number.integer', () => {
+		expectToken(tok(t, 'set(COUNT 42)'), 'number.integer', '42');
+	});
+
+	it('classifies a version-like float as number.float', () => {
+		expectToken(tok(t, 'set(VERSION 1.5)'), 'number.float', '1.5');
+		// Version triples and exponents are floats too.
+		expectToken(tok(t, 'set(V 1.2.3)'), 'number.float', '1.2.3');
+		expectToken(tok(t, 'set(F 3.14e10)'), 'number.float', '3.14e10');
+	});
+
+	it('classifies a bare hexadecimal literal as number.hex', () => {
+		expectToken(tok(t, 'if(X EQUAL 0x1A)'), 'number.hex', '0x1A');
+		expectToken(tok(t, 'set(MASK 0XFF)'), 'number.hex', '0XFF');
+	});
+
+	it('does not swallow a digit-led identifier as a number', () => {
+		// `2nd` is not a number — CMake identifiers cannot start with a digit, but a
+		// trailing identifier char means the leading digits were never a number.
+		const line = tok(t, 'set(X 2nd)');
+		expect(findTokens(line, 'number.integer').length).toBe(0);
+		expectLossless(line, 'set(X 2nd)');
 	});
 });
 
@@ -205,9 +273,16 @@ describe('cmake: constants and builtins', () => {
 		expectToken(tok(t, 'set(D NO)'), 'constant.boolean', 'NO');
 	});
 
-	it('treats a generator expression best-effort', () => {
+	it('sub-tokenizes a nested generator expression', () => {
 		const line = tok(t, 'target_compile_options(t PRIVATE $<$<CONFIG:Debug>:-g>)');
-		expectTokenType(line, 'constant.builtin');
+		// `$<` / `>` are the gen-expr delimiters, CONFIG the expression name, the `:`
+		// a separator, and the literal payload constant.builtin.
+		expectToken(line, 'string.template', '$<');
+		expectToken(line, 'function.call', 'CONFIG');
+		expectToken(line, 'punctuation.separator', ':');
+		expectToken(line, 'constant.builtin', 'Debug');
+		expectToken(line, 'string.template', '>');
+		expectLossless(line, 'target_compile_options(t PRIVATE $<$<CONFIG:Debug>:-g>)');
 	});
 });
 
@@ -235,16 +310,86 @@ describe('cmake: multi-line constructs', () => {
 		expectTokenType(lines[1], 'string');
 		expectToken(lines[2], 'keyword.module', 'project');
 	});
+
+	it('sub-tokenizes interpolation on BOTH lines of a multi-line string', () => {
+		const lines = tokLines(t, ['set(S "first ${A}', 'second ${B}")', 'project(App)']);
+		// Interpolation is sub-tokenized on the opening line...
+		expectToken(lines[0], 'variable', 'A');
+		expectToken(lines[0], 'string.template', '$');
+		// ...and on the continuation line, which still resumes inside the string.
+		expectToken(lines[1], 'variable', 'B');
+		expectToken(lines[1], 'string.template', '$');
+		// Code resumes after the string closes.
+		expectToken(lines[2], 'keyword.module', 'project');
+		expectLossless(lines[0], 'set(S "first ${A}');
+		expectLossless(lines[1], 'second ${B}")');
+	});
+
+	it('threads a generator expression split across two lines of a string', () => {
+		const lines = tokLines(t, ['set(G "$<CONFIG:', 'Debug>")']);
+		expectToken(lines[0], 'string.template', '$<');
+		expectToken(lines[0], 'function.call', 'CONFIG');
+		expectLossless(lines[0], 'set(G "$<CONFIG:');
+		expectLossless(lines[1], 'Debug>")');
+	});
+});
+
+describe('cmake: string escapes', () => {
+	it('emits string.escape for an escaped quote and a newline escape', () => {
+		const line = tok(t, 'message("path \\"${DIR}\\" now\\n")');
+		expectToken(line, 'string.escape', '\\"');
+		expectToken(line, 'string.escape', '\\n');
+		// Interpolation between the escapes is still sub-tokenized.
+		expectToken(line, 'variable', 'DIR');
+		expectLossless(line, 'message("path \\"${DIR}\\" now\\n")');
+	});
+
+	it('emits string.escape for CMake escapes \\t \\; \\$ \\# \\\\', () => {
+		const src = 'message("\\t\\;\\$\\#\\\\")';
+		const line = tok(t, src);
+		for (const esc of ['\\t', '\\;', '\\$', '\\#', '\\\\']) {
+			expectToken(line, 'string.escape', esc);
+		}
+		expectLossless(line, src);
+	});
+});
+
+describe('cmake: unknown command position', () => {
+	it('treats a spaced unknown command in COMMAND position as a call', () => {
+		const line = tok(t, 'my_macro (a b)');
+		expectToken(line, 'function.call', 'my_macro');
+		expectLossless(line, 'my_macro (a b)');
+	});
+
+	it('does NOT treat a mid-list argument before a sub-group as a call', () => {
+		// `bar (baz)` is an argument followed by a group, not a call — the spaced
+		// form only reads as a call in command position.
+		const line = tok(t, 'set(FOO bar (baz))');
+		expectToken(line, 'variable', 'bar');
+		expectLossless(line, 'set(FOO bar (baz))');
+	});
+
+	it('classifies math/cmake_policy and other added builtins as keyword.module', () => {
+		expectToken(tok(t, 'math(EXPR x "1 + 2")'), 'keyword.module', 'math');
+		expectToken(tok(t, 'cmake_policy(SET CMP0077 NEW)'), 'keyword.module', 'cmake_policy');
+		expectToken(tok(t, 'get_target_property(v t P)'), 'keyword.module', 'get_target_property');
+	});
 });
 
 describe('cmake: realistic multi-token line', () => {
 	it('tokenizes a target_link_libraries call with a generator expression', () => {
-		const line = tok(t, 'target_link_libraries(app PRIVATE ${LIBS} $<$<BOOL:${WIN32}>:ws2_32>)');
+		const src = 'target_link_libraries(app PRIVATE ${LIBS} $<$<BOOL:${WIN32}>:ws2_32>)';
+		const line = tok(t, src);
 		expectToken(line, 'keyword.module', 'target_link_libraries');
 		expectToken(line, 'variable', 'app');
-		expectToken(line, 'variable', '${LIBS}');
-		expectTokenType(line, 'constant.builtin');
+		// ${LIBS} is now sub-tokenized: delimiter + name.
+		expectToken(line, 'variable', 'LIBS');
+		// The generator expression payload + nested ${WIN32} interpolation.
+		expectToken(line, 'function.call', 'BOOL');
+		expectToken(line, 'variable', 'WIN32');
+		expectToken(line, 'constant.builtin', ':ws2_32');
 		expectToken(line, 'punctuation.paren', '(');
+		expectLossless(line, src);
 	});
 });
 

@@ -1,5 +1,20 @@
 /**
  * Java tokenizer
+ *
+ * Design notes / closed caveats:
+ *  - String & char & text-block ESCAPES are sub-tokenized: the literal body stays
+ *    `string` while `\n`, `\t`, `\uXXXX`, `\"`, octal `\012`, etc. are emitted as
+ *    `string.escape`. Multi-line text blocks thread the same escape handling.
+ *  - GENERICS: a `<` that follows a type (or a generic `>` close) opens a generic
+ *    context tracked via `angleDepth` in state. While open, `<`/`>` and the close
+ *    shifts `>>`/`>>>` are split into individual `punctuation.bracket` tokens
+ *    instead of operators. Relational `a < b` / shift `a >> b` stay operators.
+ *    The depth threads across lines so a multi-line `Map<K,\n  V>` resolves.
+ *  - PROPERTY ACCESS: an identifier after a `.` accessor is `property` (or
+ *    `function.call` before `(`); ALL_CAPS members are `constant`.
+ *  - CONSTANTS: ALL_CAPS identifiers (e.g. `MAX_SIZE`) classify as `constant`.
+ *  - Java has no string interpolation, so there is no inner-expression
+ *    sub-tokenization to do (String.format placeholders are runtime, not lexical).
  */
 
 import type { LanguageTokenizer, Token, TokenizedLine, TokenizerState, TokenType } from '../types';
@@ -79,9 +94,25 @@ const builtinTypes = new Set([
 // Commonly-used standard-library classes
 const classTypes = new Set(['String', 'Object', 'Integer', 'List', 'Map', 'Optional']);
 
+// Token types that, when they are the previous significant token, mean a following
+// `<` opens a generic type-argument list (rather than a less-than operator).
+const genericOpenAfter = new Set<TokenType>([
+	'type',
+	'type.class',
+	'type.interface',
+	'type.namespace',
+	'type.builtin'
+]);
+
 interface JavaTokenizerState extends TokenizerState {
 	/** Currently inside a multi-line text block (triple-quote). */
 	inTextBlock?: boolean;
+	/** Open generic angle-bracket depth carried across lines. */
+	angleDepth?: number;
+	/** Type of the previous significant (non-whitespace, non-comment) token. */
+	prevSignificant?: TokenType;
+	/** Text of the previous significant token (for `>` close after a type). */
+	prevSignificantText?: string;
 }
 
 export class JavaTokenizer implements LanguageTokenizer {
@@ -111,26 +142,40 @@ export class JavaTokenizer implements LanguageTokenizer {
 			}
 		}
 
-		// Resume a multi-line text block.
+		// Resume a multi-line text block (triple-quote), sub-tokenizing escapes.
 		if (state.inTextBlock) {
 			const endIdx = line.indexOf('"""');
 			if (endIdx !== -1) {
-				tokens.push(createToken('string', line.slice(0, endIdx + 3), 0));
+				this.pushStringWithEscapes(tokens, line.slice(0, endIdx + 3), 0);
 				pos = endIdx + 3;
 				state.inTextBlock = false;
 			} else {
-				tokens.push(createToken('string', line, 0));
+				this.pushStringWithEscapes(tokens, line, 0);
 				return { lineNumber, tokens, text: line, state };
 			}
 		}
 
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
-			const token = this.getNextToken(remaining, pos, state);
+			const before = tokens.length;
+			const consumed = this.emitNextToken(tokens, remaining, pos, state);
 
-			if (token) {
-				tokens.push(token);
-				pos = token.end;
+			if (consumed > 0) {
+				// Track the previous significant token for context-sensitive decisions.
+				for (let k = before; k < tokens.length; k++) {
+					const t = tokens[k];
+					if (t.type !== 'text' || t.text.trim() !== '') {
+						if (
+							t.type !== 'comment.line' &&
+							t.type !== 'comment.block' &&
+							t.type !== 'comment.doc'
+						) {
+							state.prevSignificant = t.type;
+							state.prevSignificantText = t.text;
+						}
+					}
+				}
+				pos += consumed;
 			} else {
 				tokens.push(createToken('text', remaining[0], pos));
 				pos += 1;
@@ -144,36 +189,51 @@ export class JavaTokenizer implements LanguageTokenizer {
 		return { lineNumber, tokens, text: line, state };
 	}
 
-	private getNextToken(text: string, pos: number, state: JavaTokenizerState): Token | null {
+	/**
+	 * Produce the next token(s) starting at `text`, pushing them onto `tokens`.
+	 * Returns the number of characters consumed (0 if nothing matched).
+	 */
+	private emitNextToken(
+		tokens: Token[],
+		text: string,
+		pos: number,
+		state: JavaTokenizerState
+	): number {
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {
-			return createToken('text', wsMatch[0], pos);
+			tokens.push(createToken('text', wsMatch[0], pos));
+			return wsMatch[0].length;
 		}
 
 		// Line comments
 		if (text.startsWith('//')) {
-			return createToken('comment.line', text, pos);
+			tokens.push(createToken('comment.line', text, pos));
+			return text.length;
 		}
 
 		// Javadoc / block comments
 		if (text.startsWith('/**') && !text.startsWith('/**/')) {
 			const endIdx = text.indexOf('*/', 3);
 			if (endIdx !== -1) {
-				return createToken('comment.doc', text.slice(0, endIdx + 2), pos);
+				tokens.push(createToken('comment.doc', text.slice(0, endIdx + 2), pos));
+				return endIdx + 2;
 			}
 			state.inBlockComment = true;
 			state.custom = { doc: true };
-			return createToken('comment.doc', text, pos);
+			tokens.push(createToken('comment.doc', text, pos));
+			return text.length;
 		}
 		if (text.startsWith('/*')) {
 			const endIdx = text.indexOf('*/', 2);
 			if (endIdx !== -1) {
-				return createToken('comment.block', text.slice(0, endIdx + 2), pos);
+				tokens.push(createToken('comment.block', text.slice(0, endIdx + 2), pos));
+				return endIdx + 2;
 			}
 			state.inBlockComment = true;
 			state.custom = { doc: false };
-			return createToken('comment.block', text, pos);
+			tokens.push(createToken('comment.block', text, pos));
+			return text.length;
 		}
 
 		// Text blocks (triple-quote). A text block opens when """ is the last
@@ -183,37 +243,42 @@ export class JavaTokenizer implements LanguageTokenizer {
 			const after = text.slice(3);
 			if (/^[ \t]*$/.test(after)) {
 				state.inTextBlock = true;
-				return createToken('string', text, pos);
+				tokens.push(createToken('string', text, pos));
+				return text.length;
 			}
 			const endIdx = text.indexOf('"""', 3);
 			if (endIdx !== -1) {
-				return createToken('string', text.slice(0, endIdx + 3), pos);
+				this.pushStringWithEscapes(tokens, text.slice(0, endIdx + 3), pos);
+				return endIdx + 3;
 			}
 			state.inTextBlock = true;
-			return createToken('string', text, pos);
+			this.pushStringWithEscapes(tokens, text, pos);
+			return text.length;
 		}
 
 		// Double-quoted strings
 		if (text.startsWith('"')) {
-			return this.tokenizeString(text, pos, '"');
+			return this.emitString(tokens, text, pos, '"');
 		}
 
 		// Char literals
 		if (text.startsWith("'")) {
 			const charMatch = text.match(
-				/^'(?:\\(?:[btnfr0"'\\]|u[0-9a-fA-F]{4}|[0-3]?[0-7]{1,2})|[^'\\])'/
+				/^'(?:\\(?:[btnfrs0"'\\]|u+[0-9a-fA-F]{4}|[0-3]?[0-7]{1,2})|[^'\\])'/
 			);
 			if (charMatch) {
-				return createToken('string', charMatch[0], pos);
+				this.pushStringWithEscapes(tokens, charMatch[0], pos);
+				return charMatch[0].length;
 			}
-			return this.tokenizeString(text, pos, "'");
+			return this.emitString(tokens, text, pos, "'");
 		}
 
 		// Annotations: @Identifier
 		if (text.startsWith('@')) {
 			const annotationMatch = text.match(/^@[a-zA-Z_][a-zA-Z0-9_.]*/);
 			if (annotationMatch) {
-				return createToken('keyword', annotationMatch[0], pos);
+				tokens.push(createToken('keyword', annotationMatch[0], pos));
+				return annotationMatch[0].length;
 			}
 		}
 
@@ -224,15 +289,18 @@ export class JavaTokenizer implements LanguageTokenizer {
 			/^0[xX](?:[0-9a-fA-F_]+\.?[0-9a-fA-F_]*|\.[0-9a-fA-F_]+)[pP][+-]?\d[\d_]*[fFdD]?/
 		);
 		if (hexFloatMatch) {
-			return createToken('number.float', hexFloatMatch[0], pos);
+			tokens.push(createToken('number.float', hexFloatMatch[0], pos));
+			return hexFloatMatch[0].length;
 		}
 		const hexMatch = text.match(/^0[xX][0-9a-fA-F_]+[lL]?/);
 		if (hexMatch) {
-			return createToken('number.hex', hexMatch[0], pos);
+			tokens.push(createToken('number.hex', hexMatch[0], pos));
+			return hexMatch[0].length;
 		}
 		const binMatch = text.match(/^0[bB][01_]+[lL]?/);
 		if (binMatch) {
-			return createToken('number.binary', binMatch[0], pos);
+			tokens.push(createToken('number.binary', binMatch[0], pos));
+			return binMatch[0].length;
 		}
 		const numMatch = text.match(
 			/^(?:\d[\d_]*\.[\d_]*(?:[eE][+-]?\d[\d_]*)?[fFdD]?|\.\d[\d_]*(?:[eE][+-]?\d[\d_]*)?[fFdD]?|\d[\d_]*(?:[eE][+-]?\d[\d_]*)[fFdD]?|\d[\d_]*[fFdDlL]?)/
@@ -240,22 +308,46 @@ export class JavaTokenizer implements LanguageTokenizer {
 		if (numMatch) {
 			const word = numMatch[0];
 			const type: TokenType =
-				word.includes('.') || /[eEfF]/.test(word) ? 'number.float' : 'number.integer';
-			return createToken(type, word, pos);
+				word.includes('.') || /[eEfFdD.]/.test(word.replace(/[lL]$/, ''))
+					? 'number.float'
+					: 'number.integer';
+			tokens.push(createToken(type, word, pos));
+			return word.length;
 		}
 
 		// Contextual modifier keyword `non-sealed` (a single hyphenated keyword in
 		// the grammar; without this it would split into `non` / `-` / `sealed`).
 		// Require a word boundary after it so it doesn't swallow `non-sealedness`.
 		if (text.startsWith('non-sealed') && !/^non-sealed[a-zA-Z0-9_$]/.test(text)) {
-			return createToken('keyword.storage', 'non-sealed', pos);
+			tokens.push(createToken('keyword.storage', 'non-sealed', pos));
+			return 'non-sealed'.length;
 		}
 
 		// Identifiers and keywords
 		const identMatch = text.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*/);
 		if (identMatch) {
 			const word = identMatch[0];
-			return createToken(this.classifyIdentifier(word, text, word.length), word, pos);
+			const type = this.classifyIdentifier(word, text, word.length, state);
+			tokens.push(createToken(type, word, pos));
+			return word.length;
+		}
+
+		// Generic angle brackets — close (`>`, `>>`, `>>>`) and open (`<`).
+		// When inside a generic context, split the close shifts into individual
+		// `punctuation.bracket` tokens and decrement the depth per `>`.
+		if (text.startsWith('>') && (state.angleDepth ?? 0) > 0) {
+			let n = 0;
+			while (n < text.length && text[n] === '>' && (state.angleDepth ?? 0) > 0) {
+				tokens.push(createToken('punctuation.bracket', '>', pos + n));
+				state.angleDepth = (state.angleDepth ?? 0) - 1;
+				n++;
+			}
+			return n;
+		}
+		if (text.startsWith('<') && this.opensGeneric(state)) {
+			state.angleDepth = (state.angleDepth ?? 0) + 1;
+			tokens.push(createToken('punctuation.bracket', '<', pos));
+			return 1;
 		}
 
 		// Operators
@@ -274,34 +366,91 @@ export class JavaTokenizer implements LanguageTokenizer {
 			} else if (op === '+' || op === '-' || op === '*' || op === '/' || op === '%') {
 				type = 'operator.arithmetic';
 			}
-			return createToken(type, op, pos);
+			// An assignment cannot appear inside a generic type-argument list, so an
+			// open angle-depth here was a misfire; reset to avoid leaking depth.
+			if (type === 'operator.assignment') {
+				state.angleDepth = 0;
+			}
+			tokens.push(createToken(type, op, pos));
+			return op.length;
 		}
 
-		// Angle brackets (generics) — treat as plain operators when not generic context.
+		// Angle brackets outside a generic context — plain operators.
 		if (text.startsWith('<') || text.startsWith('>')) {
-			return createToken('operator', text[0], pos);
+			tokens.push(createToken('operator', text[0], pos));
+			return 1;
 		}
 
 		// Punctuation
 		const punctMatch = text.match(/^[{}[\](),.;]/);
 		if (punctMatch) {
 			const char = punctMatch[0];
+			// Safety valve: these can never appear inside a generic type-argument
+			// list, so an open angle-depth here was a misfire (e.g. `Foo < bar;`);
+			// reset it so a leaked depth can't corrupt the rest of the line/file.
+			if (char === ';' || char === '{' || char === '}') {
+				state.angleDepth = 0;
+			}
 			let type: TokenType = 'punctuation';
 			if (char === '{' || char === '}') type = 'punctuation.brace';
 			else if (char === '[' || char === ']') type = 'punctuation.bracket';
 			else if (char === '(' || char === ')') type = 'punctuation.paren';
 			else if (char === ',' || char === ';') type = 'punctuation.separator';
 			else if (char === '.') type = 'punctuation.accessor';
-			return createToken(type, char, pos);
+			tokens.push(createToken(type, char, pos));
+			return 1;
 		}
 
-		return createToken('text', text[0], pos);
+		return 0;
 	}
 
-	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {
+	/**
+	 * Decide whether a `<` opens a generic type-argument list. True when already
+	 * nested in a generic context, or when the previous significant token is a
+	 * type (e.g. `List<`, `Map<`), or a `>` that closed a prior generic (`A<B<C>>`
+	 * is closed left-to-right so this mostly matters for the open side).
+	 */
+	private opensGeneric(state: JavaTokenizerState): boolean {
+		if ((state.angleDepth ?? 0) > 0) return true;
+		const prev = state.prevSignificant;
+		const prevText = state.prevSignificantText ?? '';
+		if (prev && genericOpenAfter.has(prev)) return true;
+		// A capitalized identifier classified as a property (qualified type name,
+		// e.g. `Map.Entry<...>`), a function name, or a definition name whose first
+		// letter is uppercase (e.g. `class A<T>` where the single-letter name `A`
+		// classifies as a plain identifier) opens a generic parameter list.
+		if (
+			(prev === 'property' || prev === 'variable' || prev === 'function') &&
+			/^[A-Z]/.test(prevText)
+		) {
+			return true;
+		}
+		return false;
+	}
+
+	private classifyIdentifier(
+		word: string,
+		context: string,
+		wordLength: number,
+		state: JavaTokenizerState
+	): TokenType {
 		// Boolean / null literals
 		if (word === 'true' || word === 'false') return 'constant.boolean';
 		if (word === 'null') return 'constant.null';
+
+		const afterAccessor = state.prevSignificant === 'punctuation.accessor';
+		const afterWord = context.slice(wordLength);
+		const isCall = afterWord.startsWith('(');
+
+		// Member access: an identifier immediately following a `.` accessor is a
+		// property (or a method call when followed by `(`), not a free variable or
+		// a type. This must win over the keyword/type classification below so e.g.
+		// `obj.class` / `Color.RED` / `System.out` are members, not keywords/types.
+		if (afterAccessor) {
+			if (isCall) return 'function.call';
+			if (this.isConstantName(word)) return 'constant';
+			return 'property';
+		}
 
 		// Keywords
 		if (definitionKeywords.has(word)) return 'keyword.definition';
@@ -317,9 +466,13 @@ export class JavaTokenizer implements LanguageTokenizer {
 		if (classTypes.has(word)) return 'type.class';
 
 		// Function call: identifier immediately followed by (
-		const afterWord = context.slice(wordLength);
-		if (afterWord.startsWith('(')) {
+		if (isCall) {
 			return 'function.call';
+		}
+
+		// ALL_CAPS (with no lowercase) => a constant (e.g. MAX_SIZE, PI).
+		if (this.isConstantName(word)) {
+			return 'constant';
 		}
 
 		// PascalCase (and not all-caps constant) => type/class
@@ -330,22 +483,61 @@ export class JavaTokenizer implements LanguageTokenizer {
 		return 'variable';
 	}
 
-	private tokenizeString(text: string, pos: number, delimiter: string): Token {
+	/** ALL_CAPS_WITH_UNDERSCORES, at least one letter, no lowercase (constants). */
+	private isConstantName(word: string): boolean {
+		return /^[A-Z][A-Z0-9_$]*$/.test(word) && /[A-Z]/.test(word) && word.length > 1;
+	}
+
+	/**
+	 * Tokenize a quoted string starting at `text`, pushing the literal as `string`
+	 * and any escape sequences within it as `string.escape`. Returns the number of
+	 * characters consumed (including both delimiters when the string is closed; up
+	 * to the newline / end-of-line for an unterminated string).
+	 */
+	private emitString(tokens: Token[], text: string, pos: number, delimiter: string): number {
 		let i = 1;
+		let end = -1;
 		while (i < text.length) {
-			if (text[i] === '\\' && i + 1 < text.length) {
+			const ch = text[i];
+			if (ch === '\\' && i + 1 < text.length) {
 				i += 2;
 				continue;
 			}
-			if (text[i] === delimiter) {
-				return createToken('string', text.slice(0, i + 1), pos);
-			}
-			if (text[i] === '\n') {
+			if (ch === delimiter) {
+				end = i + 1;
 				break;
 			}
+			if (ch === '\n') break;
 			i++;
 		}
-		return createToken('string', text.slice(0, i), pos);
+		const literal = end === -1 ? text.slice(0, i) : text.slice(0, end);
+		this.pushStringWithEscapes(tokens, literal, pos);
+		return literal.length;
+	}
+
+	/**
+	 * Push a string literal as alternating `string` / `string.escape` tokens so an
+	 * escape like `\n`, `\t`, `\uXXXX`, `\"`, `\\` or an octal `\012` renders with
+	 * the escape style. The concatenation of pushed tokens equals `literal`.
+	 */
+	private pushStringWithEscapes(tokens: Token[], literal: string, pos: number): void {
+		// Matches Java escapes: \b \t \n \f \r \s \" \' \\ , unicode \uXXXX (with
+		// extra leading u's allowed), and octal \0..\377.
+		const escapeRe = /\\(?:u+[0-9a-fA-F]{4}|[0-3][0-7]{2}|[0-7]{1,2}|[btnfrs0"'\\])/g;
+		let last = 0;
+		let m: RegExpExecArray | null;
+		while ((m = escapeRe.exec(literal)) !== null) {
+			if (m.index > last) {
+				tokens.push(createToken('string', literal.slice(last, m.index), pos + last));
+			}
+			tokens.push(createToken('string.escape', m[0], pos + m.index));
+			last = m.index + m[0].length;
+		}
+		if (last < literal.length) {
+			tokens.push(createToken('string', literal.slice(last), pos + last));
+		} else if (literal.length === 0) {
+			tokens.push(createToken('string', '', pos));
+		}
 	}
 }
 

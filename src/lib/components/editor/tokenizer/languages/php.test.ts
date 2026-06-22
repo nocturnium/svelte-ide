@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createPhpTokenizer } from './php';
 import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
 
@@ -106,43 +106,123 @@ describe('PHP tokenizer', () => {
 			expectToken(line, 'string', "'hello world'");
 		});
 
-		it('double-quoted strings without interpolation are plain strings', () => {
+		it('double-quoted strings without interpolation emit string parts', () => {
+			// Sub-tokenized: delimiters + literal body are `string` (no template needed).
 			const line = tok(php, '$s = "plain text";');
-			expectToken(line, 'string', '"plain text"');
+			expectToken(line, 'string', '"');
+			expectToken(line, 'string', 'plain text');
+			expectLossless(line, '$s = "plain text";');
 		});
 
-		it('double-quoted strings with $var interpolation are templates', () => {
+		it('sub-tokenizes $var interpolation inside double-quoted strings', () => {
+			// The literal stays `string`, the interpolated $name becomes a real variable.
 			const line = tok(php, '$s = "Hello $name!";');
-			expectToken(line, 'string.template', '"Hello $name!"');
+			expectToken(line, 'string', '"');
+			expectToken(line, 'string', 'Hello ');
+			expectToken(line, 'variable', '$name');
+			expectToken(line, 'string', '!');
+			expectLossless(line, '$s = "Hello $name!";');
 		});
 
-		it('double-quoted strings with {$expr} interpolation are templates', () => {
+		it('sub-tokenizes {$expr} complex interpolation', () => {
+			// "{" and "}" are template delimiters; $cart is a variable, ->total a property.
 			const line = tok(php, '$s = "Total: {$cart->total}";');
-			expectToken(line, 'string.template', '"Total: {$cart->total}"');
+			expectToken(line, 'string', 'Total: ');
+			expectToken(line, 'string.template', '{');
+			expectToken(line, 'variable', '$cart');
+			expectToken(line, 'punctuation.accessor', '->');
+			expectToken(line, 'property', 'total');
+			expectToken(line, 'string.template', '}');
+			expectLossless(line, '$s = "Total: {$cart->total}";');
 		});
 
-		it('handles escaped quotes inside strings', () => {
+		it('sub-tokenizes ${name} interpolation', () => {
+			const line = tok(php, '$s = "Hi ${name} there";');
+			expectToken(line, 'string.template', '${');
+			expectToken(line, 'variable', 'name');
+			expectToken(line, 'string.template', '}');
+			expectLossless(line, '$s = "Hi ${name} there";');
+		});
+
+		it('sub-tokenizes $arr[0] and $arr[key] simple index interpolation', () => {
+			const line = tok(php, '$s = "first=$arr[0] key=$arr[name]";');
+			expectToken(line, 'variable', '$arr');
+			expectToken(line, 'punctuation.bracket', '[');
+			expectToken(line, 'number.integer', '0');
+			expectToken(line, 'string', 'name'); // bareword key in simple interp syntax
+			expectLossless(line, '$s = "first=$arr[0] key=$arr[name]";');
+		});
+
+		it('sub-tokenizes $obj->prop simple property interpolation', () => {
+			const line = tok(php, '$s = "name=$user->name end";');
+			expectToken(line, 'variable', '$user');
+			expectToken(line, 'punctuation.accessor', '->');
+			expectToken(line, 'property', 'name');
+			expectLossless(line, '$s = "name=$user->name end";');
+		});
+
+		it('emits string.escape for escape sequences inside double-quoted strings', () => {
+			const line = tok(php, '$s = "a\\tb\\n\\u{1F600}\\x41\\101";');
+			expectToken(line, 'string.escape', '\\t');
+			expectToken(line, 'string.escape', '\\n');
+			expectToken(line, 'string.escape', '\\u{1F600}');
+			expectToken(line, 'string.escape', '\\x41');
+			expectToken(line, 'string.escape', '\\101');
+			expectLossless(line, '$s = "a\\tb\\n\\u{1F600}\\x41\\101";');
+		});
+
+		it("emits string.escape for \\\\ and \\' inside single-quoted strings only", () => {
+			const line = tok(php, "$s = 'a\\\\b\\'c\\nd';");
+			// In single quotes only \\ and \' are escapes; \n stays literal text.
+			expectToken(line, 'string.escape', '\\\\');
+			expectToken(line, 'string.escape', "\\'");
+			expectToken(line, 'string', "c\\nd'"); // \n is NOT an escape in single quotes
+			expectLossless(line, "$s = 'a\\\\b\\'c\\nd';");
+		});
+
+		it('handles escaped quotes inside strings losslessly', () => {
 			const line = tok(php, '$s = "she said \\"hi\\"";');
-			expectToken(line, 'string', '"she said \\"hi\\""');
+			expectToken(line, 'string.escape', '\\"');
+			expectLossless(line, '$s = "she said \\"hi\\"";');
+		});
+
+		it('threads an unterminated double-quoted string across lines', () => {
+			const lines = tokLines(php, ['$s = "line one', 'still $name string";']);
+			// First line: opens the string, never closes — interpolation still works.
+			expectToken(lines[0], 'string', '"');
+			expectToken(lines[0], 'string', 'line one');
+			// Second line continues the string and closes it.
+			expectToken(lines[1], 'variable', '$name');
+			expectToken(lines[1], 'string', '"');
+			expectToken(lines[1], 'punctuation.separator', ';');
+			expectLossless(lines[0], '$s = "line one');
+			expectLossless(lines[1], 'still $name string";');
 		});
 	});
 
 	describe('numbers', () => {
-		it('decimal integers', () => {
-			expectToken(tok(php, '$n = 42;'), 'number', '42');
+		it('decimal integers use number.integer', () => {
+			expectToken(tok(php, '$n = 42;'), 'number.integer', '42');
 		});
 
-		it('hex literals', () => {
-			expectToken(tok(php, '$n = 0xFF;'), 'number', '0xFF');
+		it('hex literals use number.hex', () => {
+			expectToken(tok(php, '$n = 0xFF;'), 'number.hex', '0xFF');
 		});
 
-		it('binary literals', () => {
-			expectToken(tok(php, '$n = 0b1010;'), 'number', '0b1010');
+		it('binary literals use number.binary', () => {
+			expectToken(tok(php, '$n = 0b1010;'), 'number.binary', '0b1010');
 		});
 
-		it('floats and underscores', () => {
-			expectToken(tok(php, '$n = 3.14;'), 'number', '3.14');
-			expectToken(tok(php, '$n = 1_000_000;'), 'number', '1_000_000');
+		it('octal literals use number.integer', () => {
+			expectToken(tok(php, '$n = 0o17;'), 'number.integer', '0o17');
+			expectToken(tok(php, '$n = 0755;'), 'number.integer', '0755');
+		});
+
+		it('floats use number.float; underscores stay integer', () => {
+			expectToken(tok(php, '$n = 3.14;'), 'number.float', '3.14');
+			expectToken(tok(php, '$n = 1_000_000;'), 'number.integer', '1_000_000');
+			expectToken(tok(php, '$n = 1.5e10;'), 'number.float', '1.5e10');
+			expectToken(tok(php, '$n = 2E-3;'), 'number.float', '2E-3');
 		});
 	});
 
@@ -243,11 +323,15 @@ describe('PHP tokenizer', () => {
 			expectToken(lines[2], 'variable', '$x');
 		});
 
-		it('threads a heredoc across lines', () => {
+		it('threads a heredoc across lines and interpolates the body', () => {
 			const lines = tokLines(php, ['$html = <<<HTML', '<p>Hello $name</p>', 'HTML;']);
 			expectTokenType(lines[0], 'string');
-			expectTokenType(lines[1], 'string');
+			// Heredoc body interpolates: literal stays string.template, $name a variable.
+			expectToken(lines[1], 'string.template', '<p>Hello ');
+			expectToken(lines[1], 'variable', '$name');
+			expectToken(lines[1], 'string.template', '</p>');
 			expectToken(lines[2], 'string', 'HTML');
+			expectLossless(lines[1], '<p>Hello $name</p>');
 		});
 
 		it('threads a nowdoc across lines', () => {
@@ -268,7 +352,8 @@ describe('PHP tokenizer', () => {
 			const line = tok(php, 'public function getName(): string {');
 			expectToken(line, 'keyword.storage', 'public');
 			expectToken(line, 'keyword.definition', 'function');
-			expectToken(line, 'function.call', 'getName');
+			// Name after `function` is a definition, not a call.
+			expectToken(line, 'function.definition', 'getName');
 			expectToken(line, 'type.builtin', 'string');
 			expectToken(line, 'punctuation.brace', '{');
 		});
@@ -346,6 +431,151 @@ describe('PHP tokenizer', () => {
 			expectLossless(lines[0], '$q = <<<SQL');
 			expectLossless(lines[1], '  SELECT * FROM users WHERE id = 1');
 			expectLossless(lines[2], 'SQL;');
+		});
+	});
+
+	describe('member access classification', () => {
+		it('classifies a property after -> as property, a method as function.call', () => {
+			const line = tok(php, '$obj->name; $obj->run();');
+			expectToken(line, 'property', 'name');
+			expectToken(line, 'function.call', 'run');
+		});
+
+		it('classifies a chained access correctly (call, property, call)', () => {
+			const line = tok(php, '$obj->foo()->bar->baz();');
+			const types = line.tokens.filter((t) => ['function.call', 'property'].includes(t.type));
+			expectToken(line, 'function.call', 'foo');
+			expectToken(line, 'property', 'bar');
+			expectToken(line, 'function.call', 'baz');
+			// bar must NOT be a call (no following paren).
+			if (types.find((t) => t.text === 'bar')?.type === 'function.call') {
+				throw new Error('bar misclassified as a call');
+			}
+		});
+
+		it('classifies ALL_CAPS after :: as a class constant', () => {
+			expectToken(tok(php, 'Status::ACTIVE;'), 'constant', 'ACTIVE');
+		});
+
+		it('classifies a static method call and Foo::class', () => {
+			expectToken(tok(php, 'Repo::make();'), 'function.call', 'make');
+			expectToken(tok(php, 'User::class;'), 'keyword', 'class');
+		});
+
+		it('classifies a static property access $instance after ::', () => {
+			expectToken(tok(php, 'Container::$instance;'), 'variable', '$instance');
+		});
+
+		it('classifies a nullsafe method call and a nullsafe property', () => {
+			const line = tok(php, '$a?->run()?->value;');
+			expectToken(line, 'function.call', 'run');
+			expectToken(line, 'property', 'value');
+		});
+	});
+
+	describe('definition-name classification', () => {
+		it('names the class/interface/trait/enum being defined with a type subtype', () => {
+			expectToken(tok(php, 'class UserModel {}'), 'type.class', 'UserModel');
+			expectToken(tok(php, 'interface Repository {}'), 'type.interface', 'Repository');
+			expectToken(tok(php, 'trait Loggable {}'), 'type.class', 'Loggable');
+			expectToken(tok(php, 'enum Suit {}'), 'type.class', 'Suit');
+		});
+
+		it('names a defined function as function.definition, not a call', () => {
+			expectToken(tok(php, 'function compute() {}'), 'function.definition', 'compute');
+		});
+
+		it('names the first namespace segment as type.namespace', () => {
+			expectToken(tok(php, 'namespace App\\Http;'), 'type.namespace', 'App');
+		});
+	});
+
+	describe('parameter classification', () => {
+		it('marks variables inside a function parameter list as variable.parameter', () => {
+			const line = tok(php, 'function f(int $a, ?string $b = null) {}');
+			expectToken(line, 'variable.parameter', '$a');
+			expectToken(line, 'variable.parameter', '$b');
+		});
+
+		it('marks the arrow-fn parameter as variable.parameter', () => {
+			const line = tok(php, '$f = fn($n) => $n * 2;');
+			expectToken(line, 'variable.parameter', '$n');
+			// The body reference $n is NOT in the param list — stays a plain variable.
+			const ns = line.tokens.filter((t) => t.text === '$n');
+			expect(ns.some((t) => t.type === 'variable')).toBe(true);
+		});
+
+		it('does not mark a call argument variable as a parameter', () => {
+			const line = tok(php, 'compute($a, $b);');
+			expectToken(line, 'variable', '$a');
+			expectToken(line, 'variable', '$b');
+		});
+	});
+
+	describe('named arguments and magic constants', () => {
+		it('classifies PHP 8 named arguments as property', () => {
+			const line = tok(php, 'setColor(red: 255, green: 0);');
+			expectToken(line, 'property', 'red');
+			expectToken(line, 'property', 'green');
+		});
+
+		it('classifies magic constants as constant.builtin', () => {
+			const line = tok(php, 'echo __LINE__ . __CLASS__ . __FUNCTION__;');
+			expectToken(line, 'constant.builtin', '__LINE__');
+			expectToken(line, 'constant.builtin', '__CLASS__');
+			expectToken(line, 'constant.builtin', '__FUNCTION__');
+		});
+	});
+
+	describe('interpolation sub-tokenization (deep)', () => {
+		it('tokenizes a method call inside {$...}', () => {
+			const line = tok(php, '$s = "Got: {$obj->getValue()}";');
+			expectToken(line, 'string.template', '{');
+			expectToken(line, 'variable', '$obj');
+			expectToken(line, 'function.call', 'getValue');
+			expectToken(line, 'punctuation.paren', '(');
+			expectToken(line, 'string.template', '}');
+			expectLossless(line, '$s = "Got: {$obj->getValue()}";');
+		});
+
+		it('tokenizes nested array keys inside {$...}', () => {
+			const src = "$s = \"v: {$data['user']['name']}\";";
+			const line = tok(php, src);
+			expectToken(line, 'variable', '$data');
+			expectToken(line, 'string', "'user'");
+			expectToken(line, 'string', "'name'");
+			expectLossless(line, src);
+		});
+
+		it('tokenizes $this->prop simple interpolation', () => {
+			const line = tok(php, '$s = "id={$this->id}";');
+			expectToken(line, 'variable', '$this');
+			expectToken(line, 'property', 'id');
+			expectLossless(line, '$s = "id={$this->id}";');
+		});
+
+		it('treats an escaped \\$ as an escape, not interpolation', () => {
+			const line = tok(php, '$s = "price \\$5 not $var";');
+			expectToken(line, 'string.escape', '\\$');
+			expectToken(line, 'variable', '$var');
+			// The 5 after \$ is literal string, not a variable.
+			expectLossless(line, '$s = "price \\$5 not $var";');
+		});
+
+		it('does not interpolate inside a nowdoc body', () => {
+			const lines = tokLines(php, ["$h = <<<'EOT'", 'raw $name {$x}', 'EOT;']);
+			// Whole nowdoc body is one literal string token — no variable tokens.
+			expectToken(lines[1], 'string', 'raw $name {$x}');
+			expect(lines[1].tokens.every((t) => t.type === 'string')).toBe(true);
+		});
+
+		it('interpolates inside a heredoc body', () => {
+			const lines = tokLines(php, ['$h = <<<HTML', '<p>Hi $name {$o->x}</p>', 'HTML;']);
+			expectToken(lines[1], 'variable', '$name');
+			expectToken(lines[1], 'string.template', '{');
+			expectToken(lines[1], 'variable', '$o');
+			expectToken(lines[1], 'property', 'x');
+			expectLossless(lines[1], '<p>Hi $name {$o->x}</p>');
 		});
 	});
 });

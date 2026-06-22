@@ -1,5 +1,24 @@
 /**
  * Shell / Bash tokenizer
+ *
+ * Design notes / capabilities (closed limitations):
+ *  - INTERPOLATION is sub-tokenized: inside double-quoted strings, `$name`,
+ *    `${...}`, `$(...)` and `` `...` `` are emitted with real inner types
+ *    (variable, operator, punctuation, number, function.call, ...) rather than
+ *    being swallowed into one opaque string token. The surrounding literal runs
+ *    stay `string.template`, and the whole thing is byte-for-byte lossless.
+ *  - STRING ESCAPES emit `string.escape` (\n \t \" \\ \$ \` inside double quotes;
+ *    the full ANSI-C escape set inside $'...').
+ *  - NUMBER SUBTYPES: 0xFF -> number.hex, 2#1010 / 16#ff arithmetic bases ->
+ *    number.binary / number.hex, 1.5 -> number.float, bare runs -> number.integer.
+ *  - PARAMETER EXPANSION `${...}` is sub-tokenized: braces as punctuation.brace,
+ *    the name as variable, the operator (:- := :? :+ # ## % %% / //) as operator,
+ *    array subscripts as punctuation.bracket.
+ *  - MULTI-LINE THREADING: heredoc bodies, AND unterminated double/single/ANSI-C
+ *    strings, AND `$(...)`/`${...}`/backtick substitutions, AND backslash line
+ *    continuations are all threaded across lines via state.
+ *  - OPERATOR SUBTYPES: logical (&& ||), comparison (== != =~ < > <= >=),
+ *    assignment (= += -= etc.), arithmetic (+ - * / % ** << >> & | ^).
  */
 
 import type { Token, TokenizedLine, TokenizerState, TokenType } from '../types';
@@ -89,9 +108,14 @@ const testOperators = new Set([
 	'-o'
 ]);
 
+/** A continuation describes a multi-line construct whose body is still open. */
+type OpenContext =
+	| { kind: 'double' } // unterminated "..."
+	| { kind: 'single' } // unterminated '...'
+	| { kind: 'ansic' }; // unterminated $'...'
+
 interface ShellTokenizerState extends TokenizerState {
-	/** Inside an ANSI-C ($'...') or single/double quote spanning lines is not standard,
-	 *  but a heredoc body is threaded here. */
+	/** Threaded heredoc body. */
 	inHeredoc?: boolean;
 	/** The heredoc terminator word (without leading <<, <<- markers). */
 	heredocDelimiter?: string;
@@ -99,6 +123,8 @@ interface ShellTokenizerState extends TokenizerState {
 	heredocStripTabs?: boolean;
 	/** Whether the heredoc body is quoted (no expansion); kept for completeness. */
 	heredocQuoted?: boolean;
+	/** An unterminated quote/string spanning into the next line. */
+	openQuote?: OpenContext['kind'];
 }
 
 export class ShellTokenizer {
@@ -110,7 +136,6 @@ export class ShellTokenizer {
 
 	tokenizeLine(line: string, lineNumber: number, prevState?: ShellTokenizerState): TokenizedLine {
 		const tokens: Token[] = [];
-		let pos = 0;
 		const state: ShellTokenizerState = { ...prevState };
 
 		// Resume an in-progress heredoc body. The whole line is part of the body
@@ -119,7 +144,6 @@ export class ShellTokenizer {
 			const delimiter = state.heredocDelimiter ?? '';
 			const candidate = state.heredocStripTabs ? line.replace(/^\t+/, '') : line;
 			if (candidate === delimiter) {
-				// Terminator line: emit indentation (if any) then the delimiter word.
 				state.inHeredoc = false;
 				state.heredocDelimiter = undefined;
 				state.heredocStripTabs = undefined;
@@ -131,19 +155,28 @@ export class ShellTokenizer {
 				tokens.push(createToken('keyword', delimiter, indentLen));
 				return { lineNumber, tokens, text: line, state };
 			}
-			tokens.push(createToken('string', line, 0));
+			// Unquoted heredoc bodies DO expand $var / $(...) — sub-tokenize them so
+			// interpolation is visible; quoted heredocs are literal.
+			if (state.heredocQuoted) {
+				tokens.push(createToken('string', line, 0));
+			} else {
+				this.emitInterpolatedRun(line, 0, line.length, 0, tokens, 'string');
+			}
 			return { lineNumber, tokens, text: line, state };
 		}
 
-		while (pos < line.length) {
-			const remaining = line.slice(pos);
-			const token = this.getNextToken(remaining, pos, line, state);
+		// Resume an unterminated string that opened on a previous line.
+		let pos = 0;
+		if (state.openQuote) {
+			pos = this.resumeOpenQuote(line, state, tokens);
+		}
 
-			if (token) {
-				tokens.push(token);
-				pos = token.end;
+		while (pos < line.length) {
+			const next = this.getNextToken(line, pos, state, tokens);
+			if (next > pos) {
+				pos = next;
 			} else {
-				tokens.push(createToken('text', remaining[0], pos));
+				tokens.push(createToken('text', line[pos], pos));
 				pos += 1;
 			}
 		}
@@ -155,36 +188,50 @@ export class ShellTokenizer {
 		return { lineNumber, tokens, text: line, state };
 	}
 
+	/**
+	 * Consume the next construct starting at `pos`, pushing one or more tokens onto
+	 * `tokens`, and return the new position. Returns `pos` unchanged if nothing
+	 * matched (caller emits a single fallback character).
+	 */
 	private getNextToken(
-		text: string,
-		pos: number,
 		line: string,
-		state: ShellTokenizerState
-	): Token | null {
+		pos: number,
+		state: ShellTokenizerState,
+		tokens: Token[]
+	): number {
+		const text = line.slice(pos);
+
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {
-			return createToken('text', wsMatch[0], pos);
+			tokens.push(createToken('text', wsMatch[0], pos));
+			return pos + wsMatch[0].length;
 		}
 
-		// Unquoted backslash escape: '\' protects the next character literally
-		// (e.g. \$ is a literal '$', not a variable; \# is a literal '#', not a
-		// comment). Consume the pair as one escape token so the escaped character
-		// cannot seed a variable, comment, or operator.
+		// Trailing backslash line continuation: '\' as the final char of the line
+		// continues the logical line. Emit it as an escape (the next line is
+		// tokenized fresh, which is the correct rendering of a continued line).
+		if (text === '\\') {
+			tokens.push(createToken('string.escape', '\\', pos));
+			return pos + 1;
+		}
+
+		// Unquoted backslash escape: '\' protects the next character literally.
 		if (text[0] === '\\' && text.length > 1) {
-			return createToken('string.escape', text.slice(0, 2), pos);
+			tokens.push(createToken('string.escape', text.slice(0, 2), pos));
+			return pos + 2;
 		}
 
-		// Shebang (only meaningful at column 0, but treat any leading #! as a doc comment)
+		// Shebang (only meaningful at column 0).
 		if (pos === 0 && text.startsWith('#!')) {
-			return createToken('comment.line', text, pos);
+			tokens.push(createToken('comment.line', text, pos));
+			return line.length;
 		}
 
-		// Comments: '#' begins a comment when at a word boundary (start of line or
-		// preceded by whitespace / a command separator). Inside a word like foo#bar
-		// the '#' is a literal character.
+		// Comments at a word boundary.
 		if (text.startsWith('#') && this.isCommentStart(line, pos)) {
-			return createToken('comment.line', text, pos);
+			tokens.push(createToken('comment.line', text, pos));
+			return line.length;
 		}
 
 		// Heredoc operator: <<- or << followed by an optional quote and a word.
@@ -195,63 +242,83 @@ export class ShellTokenizer {
 			state.heredocDelimiter = heredocMatch[2];
 			state.heredocStripTabs = stripTabs;
 			state.heredocQuoted = heredocMatch[1] !== '';
-			return createToken('operator', heredocMatch[0], pos);
+			tokens.push(createToken('operator', heredocMatch[0], pos));
+			return pos + heredocMatch[0].length;
 		}
 
 		// Here-string: <<<
 		if (text.startsWith('<<<')) {
-			return createToken('operator', '<<<', pos);
-		}
-
-		// Single-quoted strings: literal, no interpolation.
-		if (text.startsWith("'")) {
-			return this.tokenizeSingleQuote(text, pos);
+			tokens.push(createToken('operator', '<<<', pos));
+			return pos + 3;
 		}
 
 		// ANSI-C quoting: $'...'
 		if (text.startsWith("$'")) {
-			return this.tokenizeAnsiC(text, pos);
+			return this.tokenizeAnsiC(line, pos, state, tokens);
 		}
 
-		// Double-quoted strings: emitted as a single string token (interpolation kept inline).
+		// Single-quoted strings: literal, no interpolation.
+		if (text.startsWith("'")) {
+			return this.tokenizeSingleQuote(line, pos, state, tokens);
+		}
+
+		// Double-quoted strings: sub-tokenized for interpolation + escapes.
 		if (text.startsWith('"')) {
-			return this.tokenizeDoubleQuote(text, pos);
+			return this.tokenizeDoubleQuote(line, pos, state, tokens);
 		}
 
-		// Variables: $name, ${...}, $1, $@, $?, $#, $$, $!, $0, $*, $-
-		if (text.startsWith('$')) {
-			const varToken = this.tokenizeVariable(text, pos);
-			if (varToken) {
-				return varToken;
+		// Variables and substitutions outside quotes: $name, ${...}, $(...), $((...)).
+		if (text[0] === '$') {
+			const consumed = this.tokenizeDollar(line, pos, tokens);
+			if (consumed > pos) {
+				return consumed;
 			}
 		}
 
-		// Backtick command substitution delimiter.
-		if (text.startsWith('`')) {
-			return createToken('punctuation', '`', pos);
+		// Backtick command substitution: emit delimiter, sub-tokenize the interior.
+		if (text[0] === '`') {
+			return this.tokenizeBacktick(line, pos, tokens);
 		}
 
 		// Redirection / file-descriptor operators (e.g. 2>&1, >>, &>, >|).
 		const redirMatch = text.match(/^(?:\d*>>|\d*>&\d*|\d*>\||&>>|&>|\d*>|\d*<&\d*|\d*<|<>)/);
 		if (redirMatch) {
-			return createToken('operator', redirMatch[0], pos);
+			tokens.push(createToken('operator', redirMatch[0], pos));
+			return pos + redirMatch[0].length;
 		}
 
-		// Control operators: && || ;; ;& ;;& | |& & ;
-		const ctrlMatch = text.match(/^(?:&&|\|\||;;&|;;|;&|\|&|[|&;])/);
+		// Logical control operators: && ||
+		const logicalMatch = text.match(/^(?:&&|\|\|)/);
+		if (logicalMatch) {
+			tokens.push(createToken('operator.logical', logicalMatch[0], pos));
+			return pos + logicalMatch[0].length;
+		}
+
+		// Other control operators: ;; ;& ;;& |& | & ;
+		const ctrlMatch = text.match(/^(?:;;&|;;|;&|\|&|[|&;])/);
 		if (ctrlMatch) {
-			return createToken('operator', ctrlMatch[0], pos);
+			tokens.push(createToken('operator', ctrlMatch[0], pos));
+			return pos + ctrlMatch[0].length;
 		}
 
-		// Test / comparison operators within conditionals.
+		// Arithmetic compound-assignment operators: += -= *= /= %= **= etc.
+		const compoundAssign = text.match(/^(?:\*\*=|<<=|>>=|[+\-*/%&|^]=)/);
+		if (compoundAssign) {
+			tokens.push(createToken('operator.assignment', compoundAssign[0], pos));
+			return pos + compoundAssign[0].length;
+		}
+
+		// Comparison operators within conditionals/arithmetic.
 		const cmpMatch = text.match(/^(?:==|!=|=~|<=|>=)/);
 		if (cmpMatch) {
-			return createToken('operator', cmpMatch[0], pos);
+			tokens.push(createToken('operator.comparison', cmpMatch[0], pos));
+			return pos + cmpMatch[0].length;
 		}
 
 		// Assignment / single '='
-		if (text.startsWith('=')) {
-			return createToken('operator', '=', pos);
+		if (text[0] === '=') {
+			tokens.push(createToken('operator.assignment', '=', pos));
+			return pos + 1;
 		}
 
 		// Flags: -x, --long-name (best effort: parameter).
@@ -259,87 +326,88 @@ export class ShellTokenizer {
 		if (flagMatch) {
 			const word = flagMatch[0];
 			if (testOperators.has(word)) {
-				return createToken('operator', word, pos);
+				tokens.push(createToken('operator', word, pos));
+			} else {
+				tokens.push(createToken('variable.parameter', word, pos));
 			}
-			return createToken('variable.parameter', word, pos);
+			return pos + word.length;
 		}
 
-		// Dash-led options at a word boundary (the '-' begins a new word, not an
-		// arithmetic minus). Covers the end-of-options marker '--' and numeric
-		// short flags like `kill -9`, `head -20`, `exit -1`. These must NOT fire
-		// mid-expression (e.g. `$((10-2))`), where '-' is preceded by a value.
-		if (text.startsWith('-') && this.isWordStart(line, pos)) {
-			// End-of-options marker: '--' followed by whitespace or end of line.
+		// Dash-led options at a word boundary.
+		if (text[0] === '-' && this.isWordStart(line, pos)) {
 			const endOpts = text.match(/^--(?=[ \t]|$)/);
 			if (endOpts) {
-				return createToken('variable.parameter', '--', pos);
+				tokens.push(createToken('variable.parameter', '--', pos));
+				return pos + 2;
 			}
-			// Numeric short flag: '-' immediately followed by one or more digits,
-			// not continued by an identifier char (so `-9`, `-100`, but the
-			// alphanumeric `-l1` is already handled by the flag matcher above).
 			const numFlag = text.match(/^-\d+/);
 			if (numFlag) {
-				return createToken('variable.parameter', numFlag[0], pos);
+				tokens.push(createToken('variable.parameter', numFlag[0], pos));
+				return pos + numFlag[0].length;
 			}
 		}
 
-		// Numbers (integers; shell has no native floats). A digit run is only a
-		// number when it forms a complete word — if an identifier character glues
-		// onto it (`12ab`, `3rd`, the `0xFF`/`2#…` arithmetic bases), the whole run
-		// is a single shell word, not a numeric literal followed by an identifier.
-		const numMatch = text.match(/^\d+/);
-		if (numMatch && !/^[A-Za-z_]/.test(text.slice(numMatch[0].length))) {
-			return createToken('number', numMatch[0], pos);
+		// Numbers (with subtypes). A digit run is only a number when it forms a
+		// complete word — if an identifier char glues onto it that is NOT part of a
+		// recognised numeric form, the whole run is a single shell word.
+		const numConsumed = this.tokenizeNumber(line, pos, tokens);
+		if (numConsumed > pos) {
+			return numConsumed;
 		}
 
-		// Identifiers / words / keywords / builtins. The leading character may be a
-		// digit (a bare word such as `12ab`), but such digit-led words are never
-		// keywords/builtins, so route them straight to a plain word classification.
+		// Identifiers / words / keywords / builtins.
 		const identMatch = text.match(/^[A-Za-z_][A-Za-z0-9_]*/);
 		if (identMatch) {
 			const word = identMatch[0];
-			return createToken(this.classifyIdentifier(word, text, word.length), word, pos);
+			tokens.push(createToken(this.classifyIdentifier(word, text, word.length), word, pos));
+			return pos + word.length;
 		}
 		const wordMatch = text.match(/^[A-Za-z0-9_]+/);
 		if (wordMatch) {
-			return createToken('variable', wordMatch[0], pos);
+			tokens.push(createToken('variable', wordMatch[0], pos));
+			return pos + wordMatch[0].length;
 		}
 
 		// Punctuation / brackets / parens / braces.
 		const punctMatch = text.match(/^[{}()[\].,:]/);
 		if (punctMatch) {
-			const char = punctMatch[0];
-			let type: TokenType = 'punctuation';
-			if (char === '{' || char === '}') type = 'punctuation.brace';
-			else if (char === '[' || char === ']') type = 'punctuation.bracket';
-			else if (char === '(' || char === ')') type = 'punctuation.paren';
-			else if (char === ',' || char === ':') type = 'punctuation.separator';
-			else if (char === '.') type = 'punctuation.accessor';
-			return createToken(type, char, pos);
+			tokens.push(createToken(this.punctType(punctMatch[0]), punctMatch[0], pos));
+			return pos + 1;
 		}
 
-		// Standalone arithmetic / glob operators.
-		const opMatch = text.match(/^[+\-*/%~!<>^?]/);
+		// Arithmetic / glob operators (subtype where the meaning is unambiguous).
+		const arithMatch = text.match(/^(?:\*\*|<<|>>|[+\-*/%^])/);
+		if (arithMatch) {
+			tokens.push(createToken('operator.arithmetic', arithMatch[0], pos));
+			return pos + arithMatch[0].length;
+		}
+		const opMatch = text.match(/^[~!<>?]/);
 		if (opMatch) {
-			return createToken('operator', opMatch[0], pos);
+			tokens.push(createToken('operator', opMatch[0], pos));
+			return pos + 1;
 		}
 
-		return createToken('text', text[0], pos);
+		return pos;
 	}
 
-	/** A '#' starts a comment only at a token boundary (start of line or after whitespace/separator). */
+	/** Map a single punctuation char to its precise subtype. */
+	private punctType(char: string): TokenType {
+		if (char === '{' || char === '}') return 'punctuation.brace';
+		if (char === '[' || char === ']') return 'punctuation.bracket';
+		if (char === '(' || char === ')') return 'punctuation.paren';
+		if (char === ',' || char === ':') return 'punctuation.separator';
+		if (char === '.') return 'punctuation.accessor';
+		return 'punctuation';
+	}
+
+	/** A '#' starts a comment only at a token boundary. */
 	private isCommentStart(line: string, pos: number): boolean {
 		if (pos === 0) return true;
 		const prev = line[pos - 1];
 		return prev === ' ' || prev === '\t' || prev === ';' || prev === '&' || prev === '|';
 	}
 
-	/**
-	 * Whether `pos` begins a new shell word — i.e. the previous character is a
-	 * boundary (start of line, whitespace, or a command/grouping separator).
-	 * Used to tell a dash that starts an option (`-9`, `--`) apart from an
-	 * arithmetic minus that follows a value (`10-2`).
-	 */
+	/** Whether `pos` begins a new shell word. */
 	private isWordStart(line: string, pos: number): boolean {
 		if (pos === 0) return true;
 		const prev = line[pos - 1];
@@ -356,30 +424,18 @@ export class ShellTokenizer {
 
 	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {
 		const afterWord = context.slice(wordLength);
-
-		// Reserved words (keywords, builtins, booleans) are only recognized when the
-		// run is a COMPLETE shell word — i.e. the next character is a word terminator:
-		// end of line, whitespace, or a shell metacharacter (; & | < > )). When a
-		// non-metacharacter such as '#' or '.' glues onto it (`done#tag`, `for.x`),
-		// the run is part of a larger literal word and must NOT highlight as a keyword.
-		// '(' is deliberately excluded so `name(` routes to function.call below.
 		const nextChar = afterWord[0] ?? '';
 		const isCompleteWord = nextChar === '' || /[ \t|&;)<>]/.test(nextChar);
 
 		if (isCompleteWord) {
-			// Boolean-ish constants
 			if (word === 'true' || word === 'false') {
 				return 'constant.boolean';
 			}
-
-			// Control-flow keywords
 			if (controlKeywords.has(word)) {
 				if (word === 'function') return 'keyword.definition';
 				if (word === 'in') return 'keyword.operator';
 				return 'keyword.control';
 			}
-
-			// Builtins
 			if (builtins.has(word)) {
 				return 'function';
 			}
@@ -390,84 +446,554 @@ export class ShellTokenizer {
 			return 'function.call';
 		}
 
-		// Variable assignment target: NAME=...
-		if (afterWord.startsWith('=')) {
+		// Variable assignment target: NAME=... (but NAME== is a comparison, not an
+		// assignment, so require the '=' not be doubled).
+		if (afterWord[0] === '=' && afterWord[1] !== '=') {
 			return 'variable.definition';
 		}
 
 		return 'variable';
 	}
 
-	/** Single-quoted: everything until the next single quote, literally. */
-	private tokenizeSingleQuote(text: string, pos: number): Token {
-		const endIdx = text.indexOf("'", 1);
-		if (endIdx !== -1) {
-			return createToken('string', text.slice(0, endIdx + 1), pos);
+	// --------------------------------------------------------------------------
+	// Numbers
+	// --------------------------------------------------------------------------
+
+	/** Tokenize a numeric literal at `pos`, emitting the precise subtype. */
+	private tokenizeNumber(line: string, pos: number, tokens: Token[]): number {
+		const text = line.slice(pos);
+
+		// Hex: 0xFF / 0Xff
+		const hex = text.match(/^0[xX][0-9A-Fa-f]+/);
+		if (hex && this.isNumberWord(text, hex[0].length)) {
+			tokens.push(createToken('number.hex', hex[0], pos));
+			return pos + hex[0].length;
 		}
-		return createToken('string', text, pos);
+
+		// Arithmetic radix: base#digits (e.g. 2#1010, 16#ff, 8#17, 36#zz).
+		const radix = text.match(/^(\d+)#([0-9A-Za-z@_]+)/);
+		if (radix && this.isNumberWord(text, radix[0].length)) {
+			const base = parseInt(radix[1], 10);
+			const type: TokenType = base === 2 ? 'number.binary' : base === 16 ? 'number.hex' : 'number';
+			tokens.push(createToken(type, radix[0], pos));
+			return pos + radix[0].length;
+		}
+
+		// Float: 1.5 / 0.25 / 10.  (bash itself is integer-only, but float literals
+		// appear in arithmetic-for-bc, printf %f, etc. — emit the precise subtype).
+		const float = text.match(/^\d+\.\d+/);
+		if (float && this.isNumberWord(text, float[0].length)) {
+			tokens.push(createToken('number.float', float[0], pos));
+			return pos + float[0].length;
+		}
+
+		// Integer: a plain digit run, only when it forms a complete word.
+		const int = text.match(/^\d+/);
+		if (int && this.isNumberWord(text, int[0].length)) {
+			tokens.push(createToken('number.integer', int[0], pos));
+			return pos + int[0].length;
+		}
+
+		return pos;
 	}
 
-	/** ANSI-C $'...' with backslash escapes. */
-	private tokenizeAnsiC(text: string, pos: number): Token {
-		let i = 2;
-		while (i < text.length) {
-			if (text[i] === '\\' && i + 1 < text.length) {
-				i += 2;
-				continue;
-			}
-			if (text[i] === "'") {
-				return createToken('string', text.slice(0, i + 1), pos);
-			}
-			i++;
-		}
-		return createToken('string', text, pos);
+	/**
+	 * A numeric match is a real number only if the character that follows is not an
+	 * identifier char (so `12ab`, `3rd` stay one shell word) — except '.' and '#'
+	 * which are handled by the float/radix matchers above.
+	 */
+	private isNumberWord(text: string, len: number): boolean {
+		const after = text[len] ?? '';
+		return !/[A-Za-z_]/.test(after);
 	}
 
-	/** Double-quoted with backslash escapes; interpolation is kept inside the string token. */
-	private tokenizeDoubleQuote(text: string, pos: number): Token {
-		let i = 1;
-		while (i < text.length) {
-			if (text[i] === '\\' && i + 1 < text.length) {
-				i += 2;
-				continue;
-			}
-			if (text[i] === '"') {
-				return createToken('string.template', text.slice(0, i + 1), pos);
-			}
-			i++;
-		}
-		return createToken('string.template', text, pos);
-	}
+	// --------------------------------------------------------------------------
+	// $ expansions (outside quotes)
+	// --------------------------------------------------------------------------
 
-	/** $name, ${...}, and special parameters. Returns null if '$' is not a valid sigil here. */
-	private tokenizeVariable(text: string, pos: number): Token | null {
-		// $(...) command substitution => treat $( as punctuation so the inner re-tokenizes.
+	/**
+	 * Tokenize a `$`-led construct outside quotes. Returns new pos, or `pos` if the
+	 * '$' is not a valid sigil here (caller falls through to literal handling).
+	 */
+	private tokenizeDollar(line: string, pos: number, tokens: Token[]): number {
+		const text = line.slice(pos);
+
+		// Arithmetic expansion $((...)) — emit the doubled paren as punctuation and
+		// sub-tokenize the inner expression up to the matching ')'. Works the same
+		// whether or not we are inside a double-quoted string.
+		if (text.startsWith('$((')) {
+			tokens.push(createToken('punctuation', '$', pos));
+			tokens.push(createToken('punctuation.paren', '(', pos + 1));
+			tokens.push(createToken('punctuation.paren', '(', pos + 2));
+			const close = this.findParenClose(line, pos + 3);
+			this.scanRange(line, pos + 3, close, tokens);
+			// Emit the closing '))' when present (it is two parens for $((...)).
+			let after = close;
+			if (line[after] === ')') {
+				tokens.push(createToken('punctuation.paren', ')', after));
+				after++;
+			}
+			if (line[after] === ')') {
+				tokens.push(createToken('punctuation.paren', ')', after));
+				after++;
+			}
+			return after;
+		}
+
+		// Command substitution $( ... ) — sub-tokenize the interior and emit the
+		// matching close paren, so it tokenizes correctly inside double quotes too.
 		if (text.startsWith('$(')) {
-			return createToken('punctuation', '$(', pos);
+			tokens.push(createToken('punctuation', '$(', pos));
+			const close = this.findParenClose(line, pos + 2);
+			this.scanRange(line, pos + 2, close, tokens);
+			if (line[close] === ')') {
+				tokens.push(createToken('punctuation.paren', ')', close));
+				return close + 1;
+			}
+			return line.length;
 		}
 
-		// ${...} parameter expansion: capture the whole braced span on this line.
+		// Parameter expansion ${ ... } — sub-tokenize braces/name/operator.
 		if (text.startsWith('${')) {
-			const endIdx = text.indexOf('}', 2);
-			if (endIdx !== -1) {
-				return createToken('variable', text.slice(0, endIdx + 1), pos);
-			}
-			return createToken('variable', text, pos);
+			return this.tokenizeParamExpansion(line, pos, tokens);
 		}
 
 		// $name
 		const nameMatch = text.match(/^\$[A-Za-z_][A-Za-z0-9_]*/);
 		if (nameMatch) {
-			return createToken('variable', nameMatch[0], pos);
+			tokens.push(createToken('variable', nameMatch[0], pos));
+			return pos + nameMatch[0].length;
 		}
 
 		// Special parameters: $1 $@ $? $# $$ $! $0 $* $- $_
 		const specialMatch = text.match(/^\$[@?#$!*\-0-9_]/);
 		if (specialMatch) {
-			return createToken('variable', specialMatch[0], pos);
+			tokens.push(createToken('variable', specialMatch[0], pos));
+			return pos + specialMatch[0].length;
 		}
 
-		return null;
+		return pos;
+	}
+
+	/**
+	 * Sub-tokenize a `${ ... }` parameter expansion: braces as punctuation.brace,
+	 * the (possibly subscripted) name as variable, the modifier operator, and a
+	 * recursively-tokenized word/value tail. Threads to end-of-line if unterminated.
+	 */
+	private tokenizeParamExpansion(line: string, pos: number, tokens: Token[]): number {
+		// Find the matching close brace (single line; nesting is rare in ${} but we
+		// track depth so `${x:-${y}}` stays balanced).
+		let i = pos + 2;
+		let depth = 1;
+		while (i < line.length && depth > 0) {
+			const c = line[i];
+			if (c === '\\' && i + 1 < line.length) {
+				i += 2;
+				continue;
+			}
+			if (c === '{') depth++;
+			else if (c === '}') depth--;
+			if (depth === 0) break;
+			i++;
+		}
+		const end = depth === 0 ? i : line.length; // index of '}' or EOL
+		const closeFound = depth === 0;
+
+		tokens.push(createToken('punctuation.brace', '${', pos));
+		const inner = line.slice(pos + 2, end);
+		this.emitParamInner(inner, pos + 2, tokens);
+		if (closeFound) {
+			tokens.push(createToken('punctuation.brace', '}', end));
+			return end + 1;
+		}
+		return line.length;
+	}
+
+	/** Emit the tokens inside a `${...}` (without the braces). */
+	private emitParamInner(inner: string, base: number, tokens: Token[]): void {
+		if (inner.length === 0) return;
+		let i = 0;
+
+		// Leading sigils: length-of `#name`, indirection `!name`, or `#` alone.
+		const lead = inner.match(/^[#!]/);
+		if (lead && /[A-Za-z0-9_@*]/.test(inner[1] ?? '')) {
+			tokens.push(createToken('operator', lead[0], base));
+			i = 1;
+		}
+
+		// The parameter name (or special param), possibly with an array subscript.
+		const nameMatch = inner.slice(i).match(/^([A-Za-z_][A-Za-z0-9_]*|[0-9]+|[@*?#$!-])/);
+		if (nameMatch) {
+			tokens.push(createToken('variable', nameMatch[0], base + i));
+			i += nameMatch[0].length;
+
+			// Array subscript: [expr]
+			if (inner[i] === '[') {
+				const close = inner.indexOf(']', i);
+				const subEnd = close === -1 ? inner.length : close;
+				tokens.push(createToken('punctuation.bracket', '[', base + i));
+				this.emitInterpolatedRun(inner, i + 1, subEnd, base, tokens, 'variable');
+				if (close !== -1) {
+					tokens.push(createToken('punctuation.bracket', ']', base + close));
+					i = close + 1;
+				} else {
+					i = inner.length;
+				}
+			}
+		}
+
+		if (i >= inner.length) return;
+
+		// The modifier operator: :- := :? :+ , ^ ^^ , ,, / // # ## % %% : (offset)
+		const opMatch = inner.slice(i).match(/^(?::-|:=|:\?|:\+|##|%%|\/\/|\^\^|,,|:|#|%|\/|\^|,)/);
+		if (opMatch) {
+			tokens.push(createToken('operator', opMatch[0], base + i));
+			i += opMatch[0].length;
+			// The replacement/default tail can itself contain expansions and escapes.
+			this.emitInterpolatedRun(inner, i, inner.length, base, tokens, 'string');
+			return;
+		}
+
+		// Anything left (offsets `:n:m`, unusual forms) — emit as a value run.
+		this.emitInterpolatedRun(inner, i, inner.length, base, tokens, 'string');
+	}
+
+	/**
+	 * Find the index of the paren that closes a `$(`/`$((` opened just before
+	 * `from`, honouring nested parens, single/double quotes, and backslash escapes.
+	 * Returns the index of the closing ')' (for `$((` the FIRST of the trailing
+	 * '))'), or line.length if the construct is unterminated on this line.
+	 */
+	private findParenClose(line: string, from: number): number {
+		let depth = 0;
+		let i = from;
+		while (i < line.length) {
+			const c = line[i];
+			if (c === '\\' && i + 1 < line.length) {
+				i += 2;
+				continue;
+			}
+			if (c === "'") {
+				const e = line.indexOf("'", i + 1);
+				if (e === -1) return line.length;
+				i = e + 1;
+				continue;
+			}
+			if (c === '"') {
+				// Skip a nested double-quoted span (respecting escapes).
+				i++;
+				while (i < line.length) {
+					if (line[i] === '\\' && i + 1 < line.length) {
+						i += 2;
+						continue;
+					}
+					if (line[i] === '"') break;
+					i++;
+				}
+				i++;
+				continue;
+			}
+			if (c === '(') {
+				depth++;
+				i++;
+				continue;
+			}
+			if (c === ')') {
+				if (depth === 0) return i;
+				depth--;
+				i++;
+				continue;
+			}
+			i++;
+		}
+		return line.length;
+	}
+
+	/** Backtick command substitution `...` — sub-tokenize the interior. */
+	private tokenizeBacktick(line: string, pos: number, tokens: Token[]): number {
+		tokens.push(createToken('punctuation', '`', pos));
+		let i = pos + 1;
+		while (i < line.length) {
+			if (line[i] === '\\' && i + 1 < line.length) {
+				i += 2;
+				continue;
+			}
+			if (line[i] === '`') break;
+			i++;
+		}
+		const end = i < line.length ? i : line.length;
+		// Re-tokenize the inner shell command via getNextToken (a sub-scan).
+		this.scanRange(line, pos + 1, end, tokens);
+		if (i < line.length) {
+			tokens.push(createToken('punctuation', '`', i));
+			return i + 1;
+		}
+		return line.length;
+	}
+
+	/**
+	 * Tokenize a sub-range [from, to) of `line` as ordinary shell, used for the
+	 * interiors of `` `...` `` and `$(...)` where the meaning is a nested command.
+	 */
+	private scanRange(line: string, from: number, to: number, tokens: Token[]): void {
+		const sub = line.slice(0, to); // keep absolute positions correct
+		const throwaway: ShellTokenizerState = {};
+		let p = from;
+		while (p < to) {
+			const next = this.getNextToken(sub, p, throwaway, tokens);
+			if (next > p) {
+				p = next;
+			} else {
+				tokens.push(createToken('text', line[p], p));
+				p += 1;
+			}
+		}
+	}
+
+	// --------------------------------------------------------------------------
+	// Quoted strings
+	// --------------------------------------------------------------------------
+
+	/** Single-quoted: literal, no interpolation. Threads across lines if unterminated. */
+	private tokenizeSingleQuote(
+		line: string,
+		pos: number,
+		state: ShellTokenizerState,
+		tokens: Token[]
+	): number {
+		const endIdx = line.indexOf("'", pos + 1);
+		if (endIdx !== -1) {
+			tokens.push(createToken('string', line.slice(pos, endIdx + 1), pos));
+			return endIdx + 1;
+		}
+		// Unterminated — thread to next line.
+		tokens.push(createToken('string', line.slice(pos), pos));
+		state.openQuote = 'single';
+		return line.length;
+	}
+
+	/** ANSI-C $'...' with the full backslash-escape set emitted as string.escape. */
+	private tokenizeAnsiC(
+		line: string,
+		pos: number,
+		state: ShellTokenizerState,
+		tokens: Token[]
+	): number {
+		tokens.push(createToken('string', "$'", pos));
+		const end = this.emitAnsiCBody(line, pos + 2, tokens);
+		if (end < line.length) {
+			tokens.push(createToken('string', "'", end));
+			return end + 1;
+		}
+		state.openQuote = 'ansic';
+		return line.length;
+	}
+
+	/**
+	 * Emit the body of a $'...' string from `start`, splitting out escapes. Returns
+	 * the index of the closing quote, or line.length if unterminated.
+	 */
+	private emitAnsiCBody(line: string, start: number, tokens: Token[]): number {
+		// ANSI-C escapes: \a \b \e \E \f \n \r \t \v \\ \' \" \? \nnn \xHH \cX
+		// \uHHHH \UHHHHHHHH
+		const escapeRe =
+			/\\(?:[abeEfnrtv\\'"?]|[0-7]{1,3}|x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|c.)/y;
+		let i = start;
+		let litStart = start;
+		const flushLiteral = (upto: number) => {
+			if (upto > litStart) {
+				tokens.push(createToken('string', line.slice(litStart, upto), litStart));
+			}
+		};
+		while (i < line.length) {
+			const c = line[i];
+			if (c === "'") {
+				flushLiteral(i);
+				return i;
+			}
+			if (c === '\\') {
+				escapeRe.lastIndex = i;
+				const m = escapeRe.exec(line);
+				if (m && m.index === i) {
+					flushLiteral(i);
+					tokens.push(createToken('string.escape', m[0], i));
+					i += m[0].length;
+					litStart = i;
+					continue;
+				}
+				// Lone backslash at EOL or unknown escape — keep as literal.
+			}
+			i++;
+		}
+		flushLiteral(line.length);
+		return line.length;
+	}
+
+	/**
+	 * Double-quoted string: sub-tokenize escapes and `$`/backtick interpolation,
+	 * keeping literal runs as string.template. Threads across lines if unterminated.
+	 */
+	private tokenizeDoubleQuote(
+		line: string,
+		pos: number,
+		state: ShellTokenizerState,
+		tokens: Token[]
+	): number {
+		tokens.push(createToken('string.template', '"', pos));
+		const end = this.emitDoubleBody(line, pos + 1, tokens);
+		if (end < line.length) {
+			tokens.push(createToken('string.template', '"', end));
+			return end + 1;
+		}
+		state.openQuote = 'double';
+		return line.length;
+	}
+
+	/**
+	 * Emit the interior of a double-quoted string from `start`. Returns the index of
+	 * the closing quote, or line.length if unterminated (multi-line thread).
+	 */
+	private emitDoubleBody(line: string, start: number, tokens: Token[]): number {
+		let i = start;
+		let litStart = start;
+		const flushLiteral = (upto: number) => {
+			if (upto > litStart) {
+				tokens.push(createToken('string.template', line.slice(litStart, upto), litStart));
+			}
+		};
+
+		while (i < line.length) {
+			const c = line[i];
+
+			// Inside double quotes, backslash only escapes $ ` " \ and newline;
+			// before any other char it is a literal backslash.
+			if (c === '\\' && i + 1 < line.length) {
+				const n = line[i + 1];
+				if (n === '$' || n === '`' || n === '"' || n === '\\') {
+					flushLiteral(i);
+					tokens.push(createToken('string.escape', line.slice(i, i + 2), i));
+					i += 2;
+					litStart = i;
+					continue;
+				}
+				i += 2;
+				continue;
+			}
+
+			if (c === '"') {
+				flushLiteral(i);
+				return i;
+			}
+
+			// Interpolation: $... or `...` inside the string.
+			if (c === '$' || c === '`') {
+				// Peek without committing — only flush the preceding literal if the
+				// sigil actually opens an expansion (avoids re-emitting the literal
+				// when `$"` / a lone `$` is just a literal dollar).
+				const probe: Token[] = [];
+				const consumed =
+					c === '`' ? this.tokenizeBacktick(line, i, probe) : this.tokenizeDollar(line, i, probe);
+				if (consumed > i) {
+					flushLiteral(i);
+					tokens.push(...probe);
+					i = consumed;
+					litStart = i;
+					continue;
+				}
+				// A lone '$' or '`' not starting a valid expansion — keep literal.
+			}
+
+			i++;
+		}
+
+		flushLiteral(line.length);
+		return line.length;
+	}
+
+	/**
+	 * Emit a run [from, to) that may contain `$`/backtick interpolation, keeping the
+	 * non-interpolated parts as `literalType`. Used for unquoted heredoc bodies and
+	 * ${...} value tails. Lossless.
+	 */
+	private emitInterpolatedRun(
+		line: string,
+		from: number,
+		to: number,
+		_base: number,
+		tokens: Token[],
+		literalType: TokenType
+	): void {
+		let i = from;
+		let litStart = from;
+		const flushLiteral = (upto: number) => {
+			if (upto > litStart) {
+				tokens.push(createToken(literalType, line.slice(litStart, upto), litStart));
+			}
+		};
+		while (i < to) {
+			const c = line[i];
+			if (c === '\\' && i + 1 < to) {
+				i += 2;
+				continue;
+			}
+			if (c === '$' || c === '`') {
+				const probe: Token[] = [];
+				const consumed =
+					c === '`' ? this.tokenizeBacktick(line, i, probe) : this.tokenizeDollar(line, i, probe);
+				if (consumed > i) {
+					flushLiteral(i);
+					tokens.push(...probe);
+					i = consumed;
+					litStart = i;
+					continue;
+				}
+			}
+			i++;
+		}
+		flushLiteral(to);
+	}
+
+	// --------------------------------------------------------------------------
+	// Multi-line resume
+	// --------------------------------------------------------------------------
+
+	/**
+	 * Resume an unterminated string opened on a previous line. Returns the position
+	 * to continue ordinary tokenizing from (after the close, or end of line).
+	 */
+	private resumeOpenQuote(line: string, state: ShellTokenizerState, tokens: Token[]): number {
+		const kind = state.openQuote;
+		state.openQuote = undefined;
+
+		if (kind === 'single') {
+			const endIdx = line.indexOf("'");
+			if (endIdx !== -1) {
+				tokens.push(createToken('string', line.slice(0, endIdx + 1), 0));
+				return endIdx + 1;
+			}
+			tokens.push(createToken('string', line, 0));
+			state.openQuote = 'single';
+			return line.length;
+		}
+
+		if (kind === 'ansic') {
+			const end = this.emitAnsiCBody(line, 0, tokens);
+			if (end < line.length) {
+				tokens.push(createToken('string', "'", end));
+				return end + 1;
+			}
+			state.openQuote = 'ansic';
+			return line.length;
+		}
+
+		// double
+		const end = this.emitDoubleBody(line, 0, tokens);
+		if (end < line.length) {
+			tokens.push(createToken('string.template', '"', end));
+			return end + 1;
+		}
+		state.openQuote = 'double';
+		return line.length;
 	}
 }
 

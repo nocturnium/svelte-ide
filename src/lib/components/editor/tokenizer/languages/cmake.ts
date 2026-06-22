@@ -1,5 +1,14 @@
 /**
  * CMake tokenizer
+ *
+ * Sub-tokenizes interpolation losslessly: `${VAR}` / `$ENV{VAR}` references and
+ * `$<...>` generator expressions emit their delimiters, namespace, names,
+ * operators and nested references as distinct sub-tokens (not one opaque blob),
+ * both as bare arguments and INSIDE double-quoted strings. String escape
+ * sequences (`\n`, `\"`, `\$`, ...) are split out as `string.escape`, and number
+ * literals are classified into integer / float / hex subtypes. Multi-line
+ * constructs — bracket comments, bracket arguments, double-quoted strings, and an
+ * unterminated `${...}` / `$<...>` interior — are threaded across lines via state.
  */
 
 import type { LanguageTokenizer, Token, TokenizedLine, TokenizerState, TokenType } from '../types';
@@ -59,7 +68,25 @@ const builtinCommands = new Set([
 	'get_property',
 	'execute_process',
 	'mark_as_advanced',
-	'separate_arguments'
+	'separate_arguments',
+	'math',
+	'cmake_parse_arguments',
+	'cmake_policy',
+	'add_custom_command',
+	'add_custom_target',
+	'add_dependencies',
+	'get_filename_component',
+	'get_target_property',
+	'find_library',
+	'find_path',
+	'find_program',
+	'find_file',
+	'source_group',
+	'target_compile_features',
+	'target_link_directories',
+	'target_link_options',
+	'try_compile',
+	'try_run'
 ]);
 
 // Boolean constants (CMake treats these case-insensitively).
@@ -170,26 +197,36 @@ export class CMakeTokenizer implements LanguageTokenizer {
 
 		// Resume a multi-line double-quoted string
 		if (state.inString) {
-			const result = this.continueString(line, 0);
-			tokens.push(result.token);
-			pos = result.end;
-			if (result.closed) {
-				state.inString = false;
-			} else {
+			pos = this.continueString(line, 0, tokens, state);
+			if (state.inString) {
 				return { lineNumber, tokens, text: line, state };
 			}
 		}
 
+		// Track command position: an unknown word is a command call (and so may be
+		// separated from its `(` by blanks) only when it is the first significant
+		// word on the line. A word appearing later in an argument list that happens
+		// to precede a `(...)` sub-group (`set(FOO bar (baz))`) is an argument, not a
+		// call. `sawSignificant` flips true once any non-blank token is emitted.
+		let sawSignificant = false;
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
-			const token = this.getNextToken(remaining, pos, state);
+			const before = tokens.length;
+			const consumed = this.emitNextToken(remaining, pos, state, tokens, sawSignificant);
 
-			if (token) {
-				tokens.push(token);
-				pos = token.end;
-				this.trackConditionContext(token, state);
+			if (consumed > 0) {
+				if (!sawSignificant) {
+					for (let k = before; k < tokens.length; k++) {
+						if (tokens[k].type !== 'text' || tokens[k].text.trim() !== '') {
+							sawSignificant = true;
+							break;
+						}
+					}
+				}
+				pos += consumed;
 			} else {
 				tokens.push(createToken('text', remaining[0], pos));
+				sawSignificant = true;
 				pos += 1;
 			}
 		}
@@ -201,11 +238,24 @@ export class CMakeTokenizer implements LanguageTokenizer {
 		return { lineNumber, tokens, text: line, state };
 	}
 
-	private getNextToken(text: string, pos: number, state: CMakeTokenizerState): Token | null {
+	/**
+	 * Emit the next token(s) for `text` (the remaining slice starting at `pos`).
+	 * Most constructs push exactly one token; interpolation and strings push
+	 * several sub-tokens. Returns the number of characters consumed (0 if nothing
+	 * matched, so the caller can advance one char as `text`).
+	 */
+	private emitNextToken(
+		text: string,
+		pos: number,
+		state: CMakeTokenizerState,
+		out: Token[],
+		sawSignificant: boolean
+	): number {
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {
-			return createToken('text', wsMatch[0], pos);
+			out.push(createToken('text', wsMatch[0], pos));
+			return wsMatch[0].length;
 		}
 
 		// Bracket comment: #[[ ... ]] or #[=[ ... ]=]
@@ -216,19 +266,23 @@ export class CMakeTokenizer implements LanguageTokenizer {
 				const close = `]${'='.repeat(level)}]`;
 				const endIdx = text.indexOf(close, open[0].length);
 				if (endIdx !== -1) {
-					return createToken('comment.block', text.slice(0, endIdx + close.length), pos);
+					const slice = text.slice(0, endIdx + close.length);
+					out.push(createToken('comment.block', slice, pos));
+					return slice.length;
 				}
 				state.bracketCommentLevel = level;
-				return createToken('comment.block', text, pos);
+				out.push(createToken('comment.block', text, pos));
+				return text.length;
 			}
 		}
 
 		// Line comment: # to end of line
 		if (text.startsWith('#')) {
-			return createToken('comment.line', text, pos);
+			out.push(createToken('comment.line', text, pos));
+			return text.length;
 		}
 
-		// Bracket argument: [[ ... ]] or [=[ ... ]=]  (string literal)
+		// Bracket argument: [[ ... ]] or [=[ ... ]=]  (raw string literal)
 		if (text.startsWith('[')) {
 			const open = text.match(/^\[(=*)\[/);
 			if (open) {
@@ -236,44 +290,41 @@ export class CMakeTokenizer implements LanguageTokenizer {
 				const close = `]${'='.repeat(level)}]`;
 				const endIdx = text.indexOf(close, open[0].length);
 				if (endIdx !== -1) {
-					return createToken('string', text.slice(0, endIdx + close.length), pos);
+					const slice = text.slice(0, endIdx + close.length);
+					out.push(createToken('string', slice, pos));
+					return slice.length;
 				}
 				state.bracketArgLevel = level;
-				return createToken('string', text, pos);
+				out.push(createToken('string', text, pos));
+				return text.length;
 			}
 		}
 
 		// Variable references: ${VAR}, $ENV{VAR}, $CACHE{VAR}
 		if (text.startsWith('$') && (text[1] === '{' || /^\$[A-Za-z_][A-Za-z0-9_]*\{/.test(text))) {
-			const varToken = this.tokenizeVariable(text, pos);
-			if (varToken) {
-				return varToken;
+			const consumed = this.emitVariable(text, pos, out);
+			if (consumed > 0) {
+				return consumed;
 			}
 		}
 
-		// Generator expression: $<...> (best effort, single-line)
+		// Generator expression: $<...>
 		if (text.startsWith('$<')) {
-			const genToken = this.tokenizeGeneratorExpr(text, pos);
-			if (genToken) {
-				return genToken;
+			const consumed = this.emitGeneratorExpr(text, pos, out);
+			if (consumed > 0) {
+				return consumed;
 			}
 		}
 
 		// Double-quoted string (may span lines)
 		if (text.startsWith('"')) {
-			return this.tokenizeString(text, pos, state);
+			return this.emitString(text, pos, state, out);
 		}
 
-		// Numbers (integers and simple floats; version triples split on `.`)
-		const numMatch = text.match(/^\d+(?:\.\d+)?/);
-		if (numMatch) {
-			// Don't swallow a number that is actually the prefix of an identifier
-			// (e.g. `2nd`) — CMake identifiers don't start with a digit, so a
-			// trailing identifier char means this was never a number.
-			const after = text.slice(numMatch[0].length);
-			if (!/^[A-Za-z_]/.test(after)) {
-				return createToken('number', numMatch[0], pos);
-			}
+		// Numbers: hex (0x1A), float / version (1.2, 1.2.3), or integer (42).
+		const numConsumed = this.emitNumber(text, pos, out);
+		if (numConsumed > 0) {
+			return numConsumed;
 		}
 
 		// Identifiers / command names / constants
@@ -281,30 +332,42 @@ export class CMakeTokenizer implements LanguageTokenizer {
 		if (identMatch) {
 			const word = identMatch[0];
 			const inCondition = (state.condParenDepth ?? 0) > 0;
-			return createToken(this.classifyIdentifier(word, text, word.length, inCondition), word, pos);
+			const atCommandPos = !sawSignificant;
+			const type = this.classifyIdentifier(word, text, word.length, inCondition, atCommandPos);
+			const token = createToken(type, word, pos);
+			out.push(token);
+			this.trackConditionContext(token, state);
+			return word.length;
 		}
 
-		// Operators (assignment / comparison-ish characters appearing bare)
+		// Bare assignment character (e.g. `set(ENV{FOO}=bar)`).
 		if (text.startsWith('=')) {
-			return createToken('operator.assignment', '=', pos);
+			out.push(createToken('operator.assignment', '=', pos));
+			return 1;
 		}
 
 		// Punctuation
 		const ch = text[0];
 		if (ch === '(' || ch === ')') {
-			return createToken('punctuation.paren', ch, pos);
+			const token = createToken('punctuation.paren', ch, pos);
+			out.push(token);
+			this.trackConditionContext(token, state);
+			return 1;
 		}
 		if (ch === '{' || ch === '}') {
-			return createToken('punctuation.brace', ch, pos);
+			out.push(createToken('punctuation.brace', ch, pos));
+			return 1;
 		}
 		if (ch === '[' || ch === ']') {
-			return createToken('punctuation.bracket', ch, pos);
+			out.push(createToken('punctuation.bracket', ch, pos));
+			return 1;
 		}
 		if (ch === ';' || ch === ',') {
-			return createToken('punctuation.separator', ch, pos);
+			out.push(createToken('punctuation.separator', ch, pos));
+			return 1;
 		}
 
-		return null;
+		return 0;
 	}
 
 	/**
@@ -338,62 +401,185 @@ export class CMakeTokenizer implements LanguageTokenizer {
 	}
 
 	/**
-	 * Tokenize a variable reference: ${VAR}, $ENV{VAR}, $CACHE{VAR}.
-	 * Returns a single `variable` token spanning the whole reference, including a
-	 * balanced (best-effort) set of braces and any nested ${...}.
+	 * Emit a number literal, classified into a precise subtype:
+	 *   - number.hex     `0x1A`, `0XFF`
+	 *   - number.float   `1.5`, `1.2.3` (version triples), `3.14e10`
+	 *   - number.integer `42`
+	 * Returns 0 when the slice isn't a number, or when the digits are actually the
+	 * prefix of an identifier (CMake identifiers can't start with a digit, so a
+	 * trailing identifier char means this was never a number — e.g. `2nd`).
 	 */
-	private tokenizeVariable(text: string, pos: number): Token | null {
-		// Match an optional namespace prefix ($ENV, $CACHE, ...) then the `{`.
-		const head = text.match(/^\$([A-Za-z_][A-Za-z0-9_]*)?\{/);
-		if (!head) {
-			return null;
+	private emitNumber(text: string, pos: number, out: Token[]): number {
+		// Hexadecimal: 0x / 0X followed by hex digits.
+		const hexMatch = text.match(/^0[xX][0-9a-fA-F]+/);
+		if (hexMatch && !/^[A-Za-z_]/.test(text.slice(hexMatch[0].length))) {
+			out.push(createToken('number.hex', hexMatch[0], pos));
+			return hexMatch[0].length;
 		}
 
-		let depth = 0;
-		let i = 0;
-		while (i < text.length) {
-			const c = text[i];
-			if (c === '{') {
-				depth++;
-			} else if (c === '}') {
-				depth--;
-				if (depth === 0) {
-					return createToken('variable', text.slice(0, i + 1), pos);
-				}
+		// Decimal integer / float, including version-like triples and exponents.
+		const numMatch = text.match(/^\d+(?:\.\d+)*(?:[eE][+-]?\d+)?/);
+		if (numMatch) {
+			const after = text.slice(numMatch[0].length);
+			if (!/^[A-Za-z_]/.test(after)) {
+				const isFloat = /[.eE]/.test(numMatch[0]);
+				out.push(createToken(isFloat ? 'number.float' : 'number.integer', numMatch[0], pos));
+				return numMatch[0].length;
 			}
-			i++;
 		}
-		// Unterminated on this line — take the rest as a (best-effort) variable.
-		return createToken('variable', text, pos);
+		return 0;
 	}
 
 	/**
-	 * Tokenize a generator expression $<...> as a single token (best effort).
-	 * Brace-matched on `<`/`>`; falls back to the rest of the line if unbalanced.
+	 * Sub-tokenize a variable reference: `${VAR}`, `$ENV{VAR}`, `$CACHE{VAR}`,
+	 * including nested `${${inner}}`. The `$`/namespace and braces are emitted as
+	 * `string.template`/`punctuation.brace`, plain inner name characters as
+	 * `variable`, and any nested reference recursively. Returns the number of
+	 * characters consumed (0 if it isn't a variable reference after all).
 	 */
-	private tokenizeGeneratorExpr(text: string, pos: number): Token | null {
-		let depth = 0;
-		let i = 1; // start at the `<`
+	private emitVariable(text: string, pos: number, out: Token[]): number {
+		// Match `$` + optional namespace ($ENV, $CACHE, ...) + the opening `{`.
+		const head = text.match(/^\$([A-Za-z_][A-Za-z0-9_]*)?\{/);
+		if (!head) {
+			return 0;
+		}
+		const headLen = head[0].length;
+		// `$` and any namespace prefix as the interpolation delimiter; the `{`
+		// separately as a brace so the open/close pair reads as punctuation.
+		out.push(createToken('string.template', text.slice(0, headLen - 1), pos));
+		out.push(createToken('punctuation.brace', '{', pos + headLen - 1));
+
+		let i = headLen;
+		let nameStart = i;
+		let depth = 1;
+		const flushName = (end: number) => {
+			if (end > nameStart) {
+				out.push(createToken('variable', text.slice(nameStart, end), pos + nameStart));
+			}
+		};
+
 		while (i < text.length) {
-			const c = text[i];
-			if (c === '<') {
-				depth++;
-			} else if (c === '>') {
-				depth--;
-				if (depth === 0) {
-					return createToken('constant.builtin', text.slice(0, i + 1), pos);
+			// Nested ${...} / $ENV{...} inside the name.
+			if (
+				text[i] === '$' &&
+				(text[i + 1] === '{' || /^\$[A-Za-z_][A-Za-z0-9_]*\{/.test(text.slice(i)))
+			) {
+				flushName(i);
+				const consumed = this.emitVariable(text.slice(i), pos + i, out);
+				if (consumed > 0) {
+					i += consumed;
+					nameStart = i;
+					continue;
 				}
+			}
+			if (text[i] === '{') {
+				depth++;
+				i++;
+				continue;
+			}
+			if (text[i] === '}') {
+				flushName(i);
+				depth--;
+				out.push(createToken('punctuation.brace', '}', pos + i));
+				i++;
+				if (depth === 0) {
+					return i;
+				}
+				nameStart = i;
+				continue;
 			}
 			i++;
 		}
-		return createToken('constant.builtin', text, pos);
+		// Unterminated on this line — flush the trailing name (best effort).
+		flushName(i);
+		return i;
+	}
+
+	/**
+	 * Sub-tokenize a generator expression `$<...>`. The `$<` and `>` are emitted as
+	 * `string.template`, a leading expression name (e.g. `CONFIG`, `BOOL`,
+	 * `TARGET_PROPERTY`) as `function.call`, the `:` after it as
+	 * `punctuation.separator`, commas as separators, nested `$<...>` /  `${...}`
+	 * recursively, and remaining literal text as `constant.builtin`. Returns the
+	 * characters consumed.
+	 */
+	private emitGeneratorExpr(text: string, pos: number, out: Token[]): number {
+		// `$<`
+		out.push(createToken('string.template', '$<', pos));
+		let i = 2;
+		let litStart = i;
+		const flushLit = (end: number) => {
+			if (end > litStart) {
+				out.push(createToken('constant.builtin', text.slice(litStart, end), pos + litStart));
+			}
+		};
+
+		// A generator expression begins with an expression name when the first run
+		// of identifier chars is immediately followed by `:` or `>` — `$<CONFIG:..>`,
+		// `$<BOOL:..>`, `$<TARGET_FILE:t>`. Bare `$<1:..>` (a literal 0/1 condition)
+		// has no name, so we only treat a name-shaped head specially.
+		const nameMatch = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
+		if (
+			nameMatch &&
+			(text[i + nameMatch[0].length] === ':' || text[i + nameMatch[0].length] === '>')
+		) {
+			out.push(createToken('function.call', nameMatch[0], pos + i));
+			i += nameMatch[0].length;
+			litStart = i;
+			if (text[i] === ':') {
+				out.push(createToken('punctuation.separator', ':', pos + i));
+				i++;
+				litStart = i;
+			}
+		}
+
+		while (i < text.length) {
+			// Nested generator expression.
+			if (text[i] === '$' && text[i + 1] === '<') {
+				flushLit(i);
+				const consumed = this.emitGeneratorExpr(text.slice(i), pos + i, out);
+				i += consumed;
+				litStart = i;
+				continue;
+			}
+			// Nested variable reference.
+			if (
+				text[i] === '$' &&
+				(text[i + 1] === '{' || /^\$[A-Za-z_][A-Za-z0-9_]*\{/.test(text.slice(i)))
+			) {
+				flushLit(i);
+				const consumed = this.emitVariable(text.slice(i), pos + i, out);
+				if (consumed > 0) {
+					i += consumed;
+					litStart = i;
+					continue;
+				}
+			}
+			if (text[i] === ',') {
+				flushLit(i);
+				out.push(createToken('punctuation.separator', ',', pos + i));
+				i++;
+				litStart = i;
+				continue;
+			}
+			if (text[i] === '>') {
+				flushLit(i);
+				out.push(createToken('string.template', '>', pos + i));
+				return i + 1;
+			}
+			i++;
+		}
+		// Unterminated on this line — flush the remaining literal (best effort).
+		flushLit(i);
+		return i;
 	}
 
 	private classifyIdentifier(
 		word: string,
 		context: string,
 		wordLength: number,
-		inCondition: boolean
+		inCondition: boolean,
+		atCommandPos: boolean
 	): TokenType {
 		const lower = word.toLowerCase();
 
@@ -402,13 +588,15 @@ export class CMakeTokenizer implements LanguageTokenizer {
 			return 'constant.boolean';
 		}
 
+		const after = context.slice(wordLength);
+
 		// Control-flow commands are keywords whether or not the `(` is glued on,
-		// but in practice they're always called as commands.
+		// but in practice they're always called as commands. `function`/`macro`
+		// also live in builtinCommands; the control set wins so they color as
+		// control flow consistently with their `end*` partners.
 		if (controlCommands.has(lower)) {
 			return 'keyword.control';
 		}
-
-		const after = context.slice(wordLength);
 
 		// Conditional operators (AND/OR/NOT, comparisons, EXISTS/DEFINED/...): these
 		// are reserved operator words of the if()/while() sub-language, not argument
@@ -434,7 +622,16 @@ export class CMakeTokenizer implements LanguageTokenizer {
 			}
 			return 'variable';
 		}
+		// An UNKNOWN word glued to `(` is a call regardless of position
+		// (`set(FOO bar(baz))` — `bar(` is a nested call). When the `(` is separated
+		// by blanks, it is only a call in COMMAND POSITION (the first word on the
+		// line): `my_macro (a)` is a call, but a mid-list argument word that merely
+		// precedes a `(...)` sub-group (`set(FOO bar (baz))`) is an argument, so we
+		// must NOT treat the spaced form as a call there.
 		if (after.startsWith('(')) {
+			return 'function.call';
+		}
+		if (atCommandPos && /^[ \t]+\(/.test(after)) {
 			return 'function.call';
 		}
 
@@ -444,50 +641,104 @@ export class CMakeTokenizer implements LanguageTokenizer {
 	}
 
 	/**
-	 * Tokenize a double-quoted string starting at `text`. CMake strings may span
-	 * multiple lines; when unterminated we set state.inString and return the rest.
+	 * Emit a double-quoted string starting at `text`, sub-tokenizing its contents:
+	 * escape sequences (`\n`, `\"`, `\$`, ...) become `string.escape`, embedded
+	 * `${VAR}` references and `$<...>` generator expressions are sub-tokenized, and
+	 * the surrounding literal stays `string`. CMake strings may span lines; when
+	 * unterminated we set state.inString and consume the rest of the line.
+	 * Returns the number of characters consumed.
 	 */
-	private tokenizeString(text: string, pos: number, state: CMakeTokenizerState): Token {
-		let i = 1;
-		while (i < text.length) {
-			if (text[i] === '\\' && i + 1 < text.length) {
-				i += 2;
-				continue;
-			}
-			if (text[i] === '"') {
-				return createToken('string', text.slice(0, i + 1), pos);
-			}
-			i++;
-		}
-		// Unterminated: a trailing backslash escapes the newline / string continues.
-		state.inString = true;
-		return createToken('string', text.slice(0, i), pos);
+	private emitString(text: string, pos: number, state: CMakeTokenizerState, out: Token[]): number {
+		// Opening quote.
+		out.push(createToken('string', '"', pos));
+		const after = this.scanStringBody(text, 1, pos, out);
+		state.inString = !after.closed;
+		return after.end;
 	}
 
 	/**
-	 * Continue a multi-line double-quoted string on a fresh line. Returns the
-	 * token, the position after it, and whether the string closed on this line.
+	 * Continue a multi-line double-quoted string on a fresh line. Pushes sub-tokens
+	 * and updates state.inString. Returns the position after the string body.
 	 */
 	private continueString(
 		line: string,
-		pos: number
-	): { token: Token; end: number; closed: boolean } {
-		let i = 0;
-		while (i < line.length) {
-			if (line[i] === '\\' && i + 1 < line.length) {
+		pos: number,
+		out: Token[],
+		state: CMakeTokenizerState
+	): number {
+		const result = this.scanStringBody(line, 0, pos, out);
+		state.inString = !result.closed;
+		return result.end;
+	}
+
+	/**
+	 * Scan a double-quoted string body from `start`, pushing `string`,
+	 * `string.escape`, and interpolation sub-tokens. Stops at the closing unescaped
+	 * `"` (emitted as `string`) or the end of line. Returns the end position and
+	 * whether the string closed on this line.
+	 */
+	private scanStringBody(
+		text: string,
+		start: number,
+		basePos: number,
+		out: Token[]
+	): { end: number; closed: boolean } {
+		let i = start;
+		let litStart = start;
+		const flushLit = (end: number) => {
+			if (end > litStart) {
+				out.push(createToken('string', text.slice(litStart, end), basePos + litStart));
+			}
+		};
+
+		while (i < text.length) {
+			const c = text[i];
+
+			// Escape sequence: backslash + one char (CMake: \" \\ \n \t \r \; \$ \# ...).
+			if (c === '\\' && i + 1 < text.length) {
+				flushLit(i);
+				out.push(createToken('string.escape', text.slice(i, i + 2), basePos + i));
 				i += 2;
+				litStart = i;
 				continue;
 			}
-			if (line[i] === '"') {
-				return {
-					token: createToken('string', line.slice(0, i + 1), pos),
-					end: i + 1,
-					closed: true
-				};
+
+			// Embedded variable reference ${VAR} / $ENV{VAR}.
+			if (c === '$' && (text[i + 1] === '{' || /^\$[A-Za-z_][A-Za-z0-9_]*\{/.test(text.slice(i)))) {
+				flushLit(i);
+				const consumed = this.emitVariable(text.slice(i), basePos + i, out);
+				if (consumed > 0) {
+					i += consumed;
+					litStart = i;
+					continue;
+				}
 			}
+
+			// Embedded generator expression $<...>.
+			if (c === '$' && text[i + 1] === '<') {
+				flushLit(i);
+				const consumed = this.emitGeneratorExpr(text.slice(i), basePos + i, out);
+				if (consumed > 0) {
+					i += consumed;
+					litStart = i;
+					continue;
+				}
+			}
+
+			// Closing quote.
+			if (c === '"') {
+				flushLit(i);
+				out.push(createToken('string', '"', basePos + i));
+				return { end: i + 1, closed: true };
+			}
+
 			i++;
 		}
-		return { token: createToken('string', line, pos), end: line.length, closed: false };
+
+		// Unterminated — a trailing backslash escaped the newline, or the string
+		// simply continues on the next line.
+		flushLit(i);
+		return { end: i, closed: false };
 	}
 }
 

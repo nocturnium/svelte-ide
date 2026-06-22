@@ -1,5 +1,24 @@
 /**
  * Kotlin tokenizer
+ *
+ * Design notes / closed caveats:
+ *  - String templates ($name and ${expr}) are fully SUB-TOKENIZED in both regular
+ *    and raw strings: the $ / ${ / } delimiters become `string.template`, and the
+ *    inner expression is tokenized with real types (variable, property, operator,
+ *    number, function.call, punctuation) via the shared fragment tokenizer. The
+ *    surrounding literal text stays `string`. Everything is byte-for-byte lossless.
+ *  - Escape sequences (\n \t \uXXXX \" \$ ...) inside regular strings and char
+ *    literals are emitted as `string.escape`. Raw strings are literal (no escapes).
+ *  - Numbers are sub-typed: number.hex / number.binary / number.float / number.integer.
+ *  - Member access: an identifier after `.` / `?.` / `::` is classified `property`
+ *    (or `function.call` when followed by `(`).
+ *  - Generics: `<` `>` `>>` `>>>` in a type-argument position are emitted as
+ *    `punctuation.bracket`, tracked via an angle-bracket depth on a per-line basis.
+ *  - Soft / contextual keywords (get, set, by, where, etc.) are classified as
+ *    keywords; the implicit lambda parameter `it` is `variable.parameter`.
+ *  - Labels (`loop@`, `return@loop`, `this@Outer`) are handled.
+ *  - Multi-line constructs threaded via state: block comments, KDoc, and raw
+ *    triple-quoted strings (regular double-quoted strings do not span lines).
  */
 
 import type { Token, TokenizedLine, TokenizerState, TokenType } from '../types';
@@ -26,6 +45,7 @@ const storageKeywords = new Set([
 	'open',
 	'override',
 	'abstract',
+	'final',
 	'private',
 	'public',
 	'protected',
@@ -35,7 +55,14 @@ const storageKeywords = new Set([
 	'inline',
 	'noinline',
 	'crossinline',
-	'vararg'
+	'vararg',
+	'tailrec',
+	'operator',
+	'infix',
+	'external',
+	'expect',
+	'actual',
+	'inner'
 ]);
 
 // Control-flow keywords (keyword.control)
@@ -68,8 +95,18 @@ const otherKeywords = new Set([
 	'super',
 	'typealias',
 	'where',
-	'reified'
+	'reified',
+	'init',
+	'constructor',
+	'dynamic'
 ]);
+
+// Soft / contextual keywords that are only keywords in specific positions. They
+// remain valid identifiers elsewhere, so they are resolved with light context.
+// `field` is the backing-field reference inside an accessor; `get`/`set` are
+// intentionally NOT here because they always appear as `get()` / `set(v)` calls
+// and read better as function.call.
+const softKeywords = new Set(['field']);
 
 // Built-in types (type.builtin)
 const builtinTypes = new Set([
@@ -77,18 +114,40 @@ const builtinTypes = new Set([
 	'Long',
 	'Short',
 	'Byte',
+	'UInt',
+	'ULong',
+	'UShort',
+	'UByte',
 	'Char',
 	'Boolean',
 	'Double',
 	'Float',
 	'String',
+	'CharSequence',
 	'Unit',
 	'Any',
 	'Nothing',
+	'Number',
+	'Comparable',
 	'List',
+	'MutableList',
 	'Map',
+	'MutableMap',
 	'Set',
-	'Array'
+	'MutableSet',
+	'Collection',
+	'Iterable',
+	'Sequence',
+	'Pair',
+	'Triple',
+	'Array',
+	'IntArray',
+	'LongArray',
+	'DoubleArray',
+	'FloatArray',
+	'BooleanArray',
+	'CharArray',
+	'ByteArray'
 ]);
 
 interface KotlinTokenizerState extends TokenizerState {
@@ -111,6 +170,10 @@ export class KotlinTokenizer {
 		const tokens: Token[] = [];
 		let pos = 0;
 		const state: KotlinTokenizerState = { ...prevState };
+		// Tracks the previous SIGNIFICANT token so member access / generics can be
+		// classified by context. Reset per line; carrying it across lines is not
+		// needed for the heuristics here and keeps line tokenization independent.
+		const ctx: TokenContext = { prevType: null, prevText: null, angleDepth: 0 };
 
 		// Resume a block comment / KDoc continuation
 		if (state.inBlockComment) {
@@ -147,17 +210,35 @@ export class KotlinTokenizer {
 			// handled inline and push directly into the token stream.
 			if (remaining.startsWith('"""')) {
 				pos = this.tokenizeRawString(tokens, remaining, pos, state);
+				ctx.prevType = 'string';
+				ctx.prevText = '"""';
 				continue;
 			}
 			if (remaining.startsWith('"')) {
 				pos = this.tokenizeString(tokens, remaining, pos);
+				ctx.prevType = 'string';
+				ctx.prevText = '"';
 				continue;
 			}
 
-			const token = this.getNextToken(remaining, pos, state);
+			// Escaped char literal ('\n', '\uXXXX', '\'', ...) — breaks the escape out.
+			const charEsc = this.tokenizeCharLiteral(tokens, remaining, pos);
+			if (charEsc !== -1) {
+				pos = charEsc;
+				ctx.prevType = 'string';
+				ctx.prevText = "'";
+				continue;
+			}
+
+			const token = this.getNextToken(remaining, pos, state, ctx);
 			if (token) {
 				tokens.push(token);
 				pos = token.end;
+				// Whitespace is not "significant" for context heuristics.
+				if (token.type !== 'text' || token.text.trim().length > 0) {
+					ctx.prevType = token.type;
+					ctx.prevText = token.text;
+				}
 			} else {
 				tokens.push(createToken('text', remaining[0], pos));
 				pos += 1;
@@ -171,7 +252,12 @@ export class KotlinTokenizer {
 		return { lineNumber, tokens, text: line, state };
 	}
 
-	private getNextToken(text: string, pos: number, state: KotlinTokenizerState): Token | null {
+	private getNextToken(
+		text: string,
+		pos: number,
+		state: KotlinTokenizerState,
+		ctx: TokenContext
+	): Token | null {
 		// Whitespace
 		const wsMatch = text.match(/^[ \t]+/);
 		if (wsMatch) {
@@ -197,15 +283,33 @@ export class KotlinTokenizer {
 			}
 		}
 
-		// Char literals
+		// Plain char literal ('a'). Escaped char literals are split into
+		// quote/escape/quote tokens by tokenizeCharLiteral before this point.
 		if (text.startsWith("'")) {
-			const charMatch = text.match(/^'(?:\\(?:u[0-9a-fA-F]{4}|[btnr'"\\$]|.)|[^'\\])'/);
+			const charMatch = text.match(/^'[^'\\]'/);
 			if (charMatch) {
 				return createToken('string', charMatch[0], pos);
 			}
 		}
 
-		// Annotations: @Identifier (optionally use-site target, e.g. @field:Json)
+		// A `@label` reference after a jump/this/super keyword (return@loop,
+		// break@loop, continue@loop, this@Outer, super@Base) is a label, not an
+		// annotation. Classify the @name as variable so it reads as a label ref.
+		if (
+			text.startsWith('@') &&
+			(ctx.prevText === 'return' ||
+				ctx.prevText === 'break' ||
+				ctx.prevText === 'continue' ||
+				ctx.prevText === 'this' ||
+				ctx.prevText === 'super')
+		) {
+			const labelMatch = text.match(/^@[a-zA-Z_][a-zA-Z0-9_]*/);
+			if (labelMatch) {
+				return createToken('variable', labelMatch[0], pos);
+			}
+		}
+
+		// Annotations: @Identifier (optionally use-site target, e.g. @field:Json).
 		if (text.startsWith('@')) {
 			const annMatch = text.match(/^@[a-zA-Z_][a-zA-Z0-9_]*(?::[a-zA-Z_][a-zA-Z0-9_]*)?/);
 			if (annMatch) {
@@ -230,7 +334,11 @@ export class KotlinTokenizer {
 			const btMatch = text.match(/^`[^`\r\n]*`/);
 			if (btMatch) {
 				const after = text.slice(btMatch[0].length);
-				const type: TokenType = after.startsWith('(') ? 'function.call' : 'variable';
+				const accessor = ctx.prevType === 'punctuation.accessor' || ctx.prevText === '::';
+				let type: TokenType;
+				if (after.startsWith('(')) type = 'function.call';
+				else if (accessor) type = 'property';
+				else type = 'variable';
 				return createToken(type, btMatch[0], pos);
 			}
 		}
@@ -239,12 +347,35 @@ export class KotlinTokenizer {
 		const identMatch = text.match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
 		if (identMatch) {
 			const word = identMatch[0];
-			return createToken(this.classifyIdentifier(word, text, word.length), word, pos);
+			const after = text.slice(word.length);
+			// Label definition: `loop@` (a trailing @ NOT followed by an identifier —
+			// `this@Outer` is the keyword `this` + accessor, handled separately).
+			if (after.startsWith('@') && !/^[a-zA-Z_]/.test(after[1] ?? '')) {
+				return createToken('variable.definition', word + '@', pos);
+			}
+			return createToken(this.classifyIdentifier(word, text, word.length, ctx), word, pos);
+		}
+
+		// Generic angle brackets in a type-argument position become brackets. We
+		// open on a `<` that directly follows a type/identifier/`>`-ish context and
+		// close the matching `>` / `>>` / `>>>` while depth is positive.
+		if (
+			ctx.angleDepth > 0 &&
+			(text.startsWith('>>>') || text.startsWith('>>') || text[0] === '>')
+		) {
+			const run = text.startsWith('>>>') ? '>>>' : text.startsWith('>>') ? '>>' : '>';
+			const consumed = Math.min(run.length, ctx.angleDepth);
+			ctx.angleDepth -= consumed;
+			return createToken('punctuation.bracket', run.slice(0, consumed), pos);
+		}
+		if (text[0] === '<' && this.opensGeneric(ctx, text)) {
+			ctx.angleDepth += 1;
+			return createToken('punctuation.bracket', '<', pos);
 		}
 
 		// Operators
 		const opMatch = text.match(
-			/^(?:===|!==|\?:|\?\.|!!|\.\.|->|::|==|!=|<=|>=|&&|\|\||\+\+|--|[+\-*/%]=|[+\-*/%<>=!&|]=?)/
+			/^(?:===|!==|\?:|\?\.|!!|\.\.<|\.\.|->|::|==|!=|<=|>=|&&|\|\||\+\+|--|[+\-*/%]=|[+\-*/%<>=!&|]=?)/
 		);
 		if (opMatch) {
 			return createToken(this.classifyOperator(opMatch[0]), opMatch[0], pos);
@@ -264,6 +395,47 @@ export class KotlinTokenizer {
 		}
 
 		return createToken('text', text[0], pos);
+	}
+
+	/**
+	 * Decide whether a `<` opens a generic / type-argument list (so it and its
+	 * matching `>` render as brackets) rather than a less-than comparison.
+	 * Heuristic: a `<` opens generics when it directly follows a type or an
+	 * identifier (a constructor/function name or type reference) — `List<`,
+	 * `Map<`, `mutableMapOf<`, `Foo<` — and is itself followed by a plausible
+	 * type-argument start (identifier, `*` star-projection, `>` empty-ish, or
+	 * whitespace then one of those). Comparisons like `a < b` follow a value but
+	 * the disambiguation that matters visually is the dotted/typed case, so we
+	 * require the next non-space char to look like a type argument.
+	 */
+	private opensGeneric(ctx: TokenContext, text: string): boolean {
+		// `fun <T> ...` / `class Foo<...>` — a type-parameter list directly after a
+		// definition keyword always opens generics.
+		if (ctx.prevText === 'fun' || ctx.prevText === 'class' || ctx.prevText === 'interface') {
+			return true;
+		}
+		const next = text.slice(1).replace(/^[ \t]+/, '');
+		// A type/builtin name before `<` is unambiguously a generic: List<…>, Map<…>.
+		if (
+			ctx.prevType === 'type.builtin' ||
+			ctx.prevType === 'type.class' ||
+			ctx.prevType === 'type'
+		) {
+			return /^[A-Za-z_(*?>]/.test(next) || next === '';
+		}
+		// A value-ish name (function call, property, plain variable) before `<` is
+		// ambiguous with the less-than operator (`a < b`). Only treat it as generics
+		// when the first type argument clearly looks like a type: an uppercase name,
+		// a star/`?` projection, or a `(` function-type opener. This keeps `a < b`
+		// and `i < size` as comparisons while still catching `mutableMapOf<String>`.
+		const valueish =
+			ctx.prevType === 'function.call' ||
+			ctx.prevType === 'function.definition' ||
+			ctx.prevType === 'property' ||
+			ctx.prevType === 'constant' ||
+			ctx.prevType === 'variable';
+		if (!valueish) return false;
+		return /^[A-Z(*?]/.test(next);
 	}
 
 	private classifyOperator(op: string): TokenType {
@@ -304,10 +476,35 @@ export class KotlinTokenizer {
 		return createToken('number.integer', num, pos);
 	}
 
-	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {
+	private classifyIdentifier(
+		word: string,
+		context: string,
+		wordLength: number,
+		ctx: TokenContext
+	): TokenType {
+		const afterWord = context.slice(wordLength);
+		// `.` and `?.` are member accessors. `::` is a callable/property reference
+		// (`String::length`, `obj::method`) when the referenced name is a member —
+		// but `::User` is a constructor reference and stays a type, so the `::` case
+		// only binds as a member for a lowercase-initial name.
+		const accessor =
+			ctx.prevType === 'punctuation.accessor' ||
+			ctx.prevText === '?.' ||
+			(ctx.prevText === '::' && /^[a-z_]/.test(word));
+
+		// Member access binds before keyword classification: `x.class`, `it.value`,
+		// `obj.get` are members, NOT keywords.
+		if (accessor) {
+			if (afterWord.startsWith('(')) return 'function.call';
+			return 'property';
+		}
+
 		// Boolean / null constants
 		if (word === 'true' || word === 'false') return 'constant.boolean';
 		if (word === 'null') return 'constant.null';
+
+		// The implicit single lambda parameter.
+		if (word === 'it') return 'variable.parameter';
 
 		// Keywords
 		if (definitionKeywords.has(word)) return 'keyword.definition';
@@ -316,15 +513,26 @@ export class KotlinTokenizer {
 		if (moduleKeywords.has(word)) return 'keyword.module';
 		if (otherKeywords.has(word)) return 'keyword';
 
+		// Soft keywords (get/set/field) — only as keywords when not used as a call
+		// or member; `getThing()` is a call, `obj.get` is a member (handled above).
+		if (softKeywords.has(word) && !afterWord.startsWith('(')) {
+			return 'keyword';
+		}
+
 		// Built-in types
 		if (builtinTypes.has(word)) {
 			return 'type.builtin';
 		}
 
 		// Function call: identifier immediately followed by (
-		const afterWord = context.slice(wordLength);
 		if (afterWord.startsWith('(')) {
 			return 'function.call';
+		}
+
+		// CONSTANT_CASE => constant (all-caps screaming-snake; checked before the
+		// PascalCase rule, which would otherwise swallow MAX_SIZE as a type).
+		if (/^[A-Z][A-Z0-9_]*$/.test(word) && word.length > 1) {
+			return 'constant';
 		}
 
 		// PascalCase => type
@@ -336,13 +544,31 @@ export class KotlinTokenizer {
 	}
 
 	/**
+	 * Tokenize an ESCAPED char literal ('\n', '\uXXXX', '\'', ...), pushing the
+	 * opening quote (string), the escape body (string.escape), and the closing
+	 * quote (string). Returns the new absolute position, or -1 when `text` does not
+	 * start with an escaped char literal (a plain 'a' is handled in getNextToken).
+	 */
+	private tokenizeCharLiteral(tokens: Token[], text: string, pos: number): number {
+		const m = text.match(/^'(\\(?:u[0-9a-fA-F]{4}|[btnr'"\\$]|.))'/);
+		if (!m) return -1;
+		const esc = m[1]; // the \… escape body
+		tokens.push(createToken('string', "'", pos));
+		tokens.push(createToken('string.escape', esc, pos + 1));
+		tokens.push(createToken('string', "'", pos + 1 + esc.length));
+		return pos + m[0].length;
+	}
+
+	/**
 	 * Tokenize a double-quoted string, breaking out string templates ($name and
 	 * ${expr}) and escape sequences. Pushes directly into `tokens`; returns the
 	 * new position after the closing quote (or end of line).
 	 */
 	private tokenizeString(tokens: Token[], text: string, pos: number): number {
+		// Opening quote is its own string token so the literal delimiters render.
+		tokens.push(createToken('string', '"', pos));
 		let i = 1; // consume opening "
-		let segStart = 0; // start of the current plain-string segment (relative to text)
+		let segStart = 1; // start of the current plain-string segment (relative to text)
 
 		const flushSegment = (end: number) => {
 			if (end > segStart) {
@@ -353,7 +579,7 @@ export class KotlinTokenizer {
 		while (i < text.length) {
 			const ch = text[i];
 
-			// Escape sequence (\uXXXX unicode escape, or \<char>)
+			// Escape sequence (\uXXXX unicode escape, or \<char> incl. \$ and \").
 			if (ch === '\\' && i + 1 < text.length) {
 				flushSegment(i);
 				const uniMatch = text.slice(i).match(/^\\u[0-9a-fA-F]{4}/);
@@ -364,38 +590,28 @@ export class KotlinTokenizer {
 				continue;
 			}
 
-			// Template: ${ expr }
+			// Template: ${ expr } — sub-tokenize the inner expression.
 			if (ch === '$' && text[i + 1] === '{') {
 				flushSegment(i);
-				let depth = 1;
-				let j = i + 2;
-				while (j < text.length && depth > 0) {
-					if (text[j] === '{') depth++;
-					else if (text[j] === '}') depth--;
-					if (depth === 0) break;
-					j++;
-				}
-				const end = j < text.length ? j + 1 : text.length;
-				tokens.push(createToken('string.template', text.slice(i, end), pos + i));
+				const end = this.emitBraceTemplate(tokens, text, i, pos);
 				i = end;
 				segStart = i;
 				continue;
 			}
 
-			// Template: $name
+			// Template: $name(.member)* — sub-tokenize the simple reference chain.
 			if (ch === '$' && /[a-zA-Z_]/.test(text[i + 1] ?? '')) {
 				flushSegment(i);
-				const nameMatch = text.slice(i).match(/^\$[a-zA-Z_][a-zA-Z0-9_]*/);
-				const tmpl = nameMatch ? nameMatch[0] : '$';
-				tokens.push(createToken('string.template', tmpl, pos + i));
-				i += tmpl.length;
+				const end = this.emitSimpleTemplate(tokens, text, i, pos);
+				i = end;
 				segStart = i;
 				continue;
 			}
 
 			// Closing quote
 			if (ch === '"') {
-				flushSegment(i + 1);
+				flushSegment(i);
+				tokens.push(createToken('string', '"', pos + i));
 				return pos + i + 1;
 			}
 
@@ -449,16 +665,7 @@ export class KotlinTokenizer {
 
 			if (ch === '$' && chunk[i + 1] === '{') {
 				flushSegment(i);
-				let depth = 1;
-				let j = i + 2;
-				while (j < chunk.length && depth > 0) {
-					if (chunk[j] === '{') depth++;
-					else if (chunk[j] === '}') depth--;
-					if (depth === 0) break;
-					j++;
-				}
-				const end = j < chunk.length ? j + 1 : chunk.length;
-				tokens.push(createToken('string.template', chunk.slice(i, end), chunkPos + i));
+				const end = this.emitBraceTemplate(tokens, chunk, i, chunkPos);
 				i = end;
 				segStart = i;
 				continue;
@@ -466,10 +673,8 @@ export class KotlinTokenizer {
 
 			if (ch === '$' && /[a-zA-Z_]/.test(chunk[i + 1] ?? '')) {
 				flushSegment(i);
-				const nameMatch = chunk.slice(i).match(/^\$[a-zA-Z_][a-zA-Z0-9_]*/);
-				const tmpl = nameMatch ? nameMatch[0] : '$';
-				tokens.push(createToken('string.template', tmpl, chunkPos + i));
-				i += tmpl.length;
+				const end = this.emitSimpleTemplate(tokens, chunk, i, chunkPos);
+				i = end;
 				segStart = i;
 				continue;
 			}
@@ -479,6 +684,142 @@ export class KotlinTokenizer {
 
 		flushSegment(chunk.length);
 	}
+
+	/**
+	 * Emit a `$name` / `$name.member.chain` template. The leading `$` is a
+	 * `string.template` delimiter; the first identifier is a `variable`; each
+	 * `.member` is `punctuation.accessor` + `property`. `start` indexes the `$`.
+	 * Returns the index just past the template.
+	 */
+	private emitSimpleTemplate(
+		tokens: Token[],
+		text: string,
+		start: number,
+		basePos: number
+	): number {
+		tokens.push(createToken('string.template', '$', basePos + start));
+		let i = start + 1;
+		const first = text.slice(i).match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
+		if (!first) return i; // shouldn't happen given the call guard
+		tokens.push(createToken('variable', first[0], basePos + i));
+		i += first[0].length;
+		// A simple template only extends through dotted member access (no calls,
+		// brackets, or operators — those require ${ ... }). Stop otherwise.
+		while (text[i] === '.' && /[a-zA-Z_]/.test(text[i + 1] ?? '')) {
+			tokens.push(createToken('punctuation.accessor', '.', basePos + i));
+			i += 1;
+			const member = text.slice(i).match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
+			if (!member) break;
+			tokens.push(createToken('property', member[0], basePos + i));
+			i += member[0].length;
+		}
+		return i;
+	}
+
+	/**
+	 * Emit a `${ expr }` template: the `${` and matching `}` are `string.template`
+	 * delimiters and the inner expression is fully tokenized with real types.
+	 * Handles nested braces. `start` indexes the `$`. Returns the index just past
+	 * the closing `}` (or end of text when unterminated on this line).
+	 */
+	private emitBraceTemplate(tokens: Token[], text: string, start: number, basePos: number): number {
+		tokens.push(createToken('string.template', '${', basePos + start));
+		let depth = 1;
+		let j = start + 2;
+		const exprStart = j;
+		while (j < text.length && depth > 0) {
+			const cj = text[j];
+			// Skip over nested string literals so their braces/quotes don't throw off
+			// the brace matcher (e.g. ${ m["}"] } or a nested "$x" template string).
+			if (cj === '"') {
+				if (text.startsWith('"""', j)) {
+					const close = text.indexOf('"""', j + 3);
+					j = close === -1 ? text.length : close + 3;
+					continue;
+				}
+				j++;
+				while (j < text.length && text[j] !== '"') {
+					if (text[j] === '\\') j++; // skip an escaped char
+					j++;
+				}
+				j++; // consume closing quote (or run off the end harmlessly)
+				continue;
+			}
+			if (cj === '{') depth++;
+			else if (cj === '}') {
+				depth--;
+				if (depth === 0) break;
+			}
+			j++;
+		}
+		const exprEnd = j; // index of the closing } (or text.length if unterminated)
+		const inner = text.slice(exprStart, exprEnd);
+		if (inner.length > 0) {
+			this.tokenizeFragment(tokens, inner, basePos + exprStart);
+		}
+		if (j < text.length && text[j] === '}') {
+			tokens.push(createToken('string.template', '}', basePos + j));
+			return j + 1;
+		}
+		// Unterminated template (truncated line) — nothing more to emit.
+		return text.length;
+	}
+
+	/**
+	 * Tokenize a fragment of plain Kotlin expression source (the inside of a
+	 * `${ ... }` template) with real token types, pushing into `tokens`. This is a
+	 * self-contained pass — it does not recurse into nested strings spanning lines,
+	 * but it does handle nested double-quoted strings, numbers, identifiers,
+	 * member access, operators and punctuation, all lossless.
+	 */
+	private tokenizeFragment(tokens: Token[], fragment: string, basePos: number): void {
+		const fragState: KotlinTokenizerState = {};
+		const ctx: TokenContext = { prevType: null, prevText: null, angleDepth: 0 };
+		let p = 0;
+		while (p < fragment.length) {
+			const rest = fragment.slice(p);
+			if (rest.startsWith('"""')) {
+				// tokenizeRawString/tokenizeString return ABSOLUTE positions; convert
+				// back to a fragment-relative index for the loop.
+				p = this.tokenizeRawString(tokens, rest, basePos + p, fragState) - basePos;
+				ctx.prevType = 'string';
+				ctx.prevText = '"""';
+				continue;
+			}
+			if (rest.startsWith('"')) {
+				p = this.tokenizeString(tokens, rest, basePos + p) - basePos;
+				ctx.prevType = 'string';
+				ctx.prevText = '"';
+				continue;
+			}
+			const charEsc = this.tokenizeCharLiteral(tokens, rest, basePos + p);
+			if (charEsc !== -1) {
+				p = charEsc - basePos;
+				ctx.prevType = 'string';
+				ctx.prevText = "'";
+				continue;
+			}
+			const token = this.getNextToken(rest, basePos + p, fragState, ctx);
+			if (token) {
+				tokens.push(token);
+				p += token.text.length;
+				if (token.type !== 'text' || token.text.trim().length > 0) {
+					ctx.prevType = token.type;
+					ctx.prevText = token.text;
+				}
+			} else {
+				tokens.push(createToken('text', rest[0], basePos + p));
+				p += 1;
+			}
+		}
+	}
+}
+
+/** Lightweight per-line context for member-access and generic disambiguation. */
+interface TokenContext {
+	prevType: TokenType | null;
+	prevText: string | null;
+	angleDepth: number;
 }
 
 export function createKotlinTokenizer() {

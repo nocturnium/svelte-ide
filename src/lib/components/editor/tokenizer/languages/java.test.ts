@@ -1,6 +1,13 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createJavaTokenizer } from './java';
-import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
+import {
+	tok,
+	tokLines,
+	expectToken,
+	expectTokenType,
+	expectLossless,
+	findTokens
+} from '../test-helpers';
 
 describe('JavaTokenizer', () => {
 	const java = createJavaTokenizer();
@@ -116,18 +123,24 @@ describe('JavaTokenizer', () => {
 			expectToken(line, 'string', '"hello world"');
 		});
 
-		it('tokenizes a string with escapes', () => {
+		it('tokenizes a string with escapes as escape sub-tokens', () => {
 			const line = tok(java, 'String s = "a\\tb\\"c";');
-			expectToken(line, 'string', '"a\\tb\\"c"');
+			expectToken(line, 'string.escape', '\\t');
+			expectToken(line, 'string.escape', '\\"');
+			expectLossless(line, 'String s = "a\\tb\\"c";');
 		});
 
 		it('tokenizes a simple char literal', () => {
 			expectToken(tok(java, "char c = 'a';"), 'string', "'a'");
 		});
 
-		it('tokenizes escaped and unicode char literals', () => {
-			expectToken(tok(java, "char nl = '\\n';"), 'string', "'\\n'");
-			expectToken(tok(java, "char u = '\\u0041';"), 'string', "'\\u0041'");
+		it('tokenizes escaped and unicode char literals with escape sub-tokens', () => {
+			const nl = tok(java, "char nl = '\\n';");
+			expectToken(nl, 'string.escape', '\\n');
+			expectLossless(nl, "char nl = '\\n';");
+			const u = tok(java, "char u = '\\u0041';");
+			expectToken(u, 'string.escape', '\\u0041');
+			expectLossless(u, "char u = '\\u0041';");
 		});
 	});
 
@@ -264,6 +277,207 @@ describe('JavaTokenizer', () => {
 			for (let i = 0; i < lines.length; i++) {
 				expectLossless(results[i], lines[i]);
 			}
+		});
+	});
+
+	// --- String escape sub-tokenization (string.escape) -------------------------
+	describe('string escapes', () => {
+		it('emits string.escape for common backslash escapes inside a string', () => {
+			const code = 'String s = "a\\tb\\nc\\rd";';
+			const line = tok(java, code);
+			expectToken(line, 'string.escape', '\\t');
+			expectToken(line, 'string.escape', '\\n');
+			expectToken(line, 'string.escape', '\\r');
+			expectLossless(line, code);
+		});
+
+		it('emits string.escape for an escaped quote and backslash', () => {
+			const code = 'String s = "say \\"hi\\" \\\\ done";';
+			const line = tok(java, code);
+			expectToken(line, 'string.escape', '\\"');
+			expectToken(line, 'string.escape', '\\\\');
+			// the non-escape body remains plain string
+			expectToken(line, 'string', '"say ');
+			expectLossless(line, code);
+		});
+
+		it('emits string.escape for a unicode escape', () => {
+			const code = 'String s = "\\u0041\\u00e9";';
+			const line = tok(java, code);
+			expectToken(line, 'string.escape', '\\u0041');
+			expectToken(line, 'string.escape', '\\u00e9');
+			expectLossless(line, code);
+		});
+
+		it('emits string.escape for octal escapes', () => {
+			const code = 'String s = "\\101\\0\\377";';
+			const line = tok(java, code);
+			const escapes = findTokens(line, 'string.escape').map((t) => t.text);
+			expect(escapes).toEqual(['\\101', '\\0', '\\377']);
+			expectLossless(line, code);
+		});
+
+		it('emits string.escape inside a char literal', () => {
+			const tab = tok(java, "char t = '\\t';");
+			expectToken(tab, 'string.escape', '\\t');
+			expectLossless(tab, "char t = '\\t';");
+		});
+
+		it('does not treat a lone backslash-less body as an escape', () => {
+			const code = 'String s = "plain text";';
+			const line = tok(java, code);
+			expect(findTokens(line, 'string.escape')).toHaveLength(0);
+			expectToken(line, 'string', '"plain text"');
+		});
+
+		it('sub-tokenizes escapes inside a multi-line text block body', () => {
+			const lines = tokLines(java, ['String s = """', '  tab\\there \\"q\\"', '  """;']);
+			expectToken(lines[1], 'string.escape', '\\t');
+			expectToken(lines[1], 'string.escape', '\\"');
+			lines.forEach((l, i) =>
+				expectLossless(l, ['String s = """', '  tab\\there \\"q\\"', '  """;'][i])
+			);
+		});
+	});
+
+	// --- Number subtypes (float double-suffix, long-hex) ------------------------
+	describe('number subtypes', () => {
+		it('classifies a double-suffixed literal without a dot as float', () => {
+			expectToken(tok(java, 'double d = 3.0d;'), 'number.float', '3.0d');
+			expectToken(tok(java, 'float f = 5f;'), 'number.float', '5f');
+			expectToken(tok(java, 'double x = 7D;'), 'number.float', '7D');
+		});
+
+		it('keeps a long-suffixed hex literal as hex', () => {
+			expectToken(tok(java, 'long l = 0xCAFEL;'), 'number.hex', '0xCAFEL');
+		});
+
+		it('keeps an underscore-separated plain integer as integer', () => {
+			expectToken(tok(java, 'int big = 1_000_000;'), 'number.integer', '1_000_000');
+		});
+	});
+
+	// --- Generics: angle brackets as punctuation.bracket ------------------------
+	describe('generics', () => {
+		it('emits the angle brackets of a generic type as punctuation.bracket', () => {
+			const line = tok(java, 'List<String> names;');
+			expectToken(line, 'punctuation.bracket', '<');
+			expectToken(line, 'punctuation.bracket', '>');
+			expectLossless(line, 'List<String> names;');
+		});
+
+		it('splits a nested generic close >> into two bracket tokens', () => {
+			const line = tok(java, 'Map<K, List<V>> m;');
+			const closers = findTokens(line, 'punctuation.bracket').filter((t) => t.text === '>');
+			expect(closers).toHaveLength(2);
+			// none of the closers leaked as a shift operator
+			expect(findTokens(line, 'operator').filter((t) => t.text === '>>')).toHaveLength(0);
+			expectLossless(line, 'Map<K, List<V>> m;');
+		});
+
+		it('splits a triple-nested close >>> into three bracket tokens', () => {
+			const line = tok(java, 'Map<K, Map<A, List<V>>> m;');
+			const closers = findTokens(line, 'punctuation.bracket').filter((t) => t.text === '>');
+			expect(closers).toHaveLength(3);
+			expectLossless(line, 'Map<K, Map<A, List<V>>> m;');
+		});
+
+		it('brackets the diamond operator', () => {
+			const line = tok(java, 'var x = new ArrayList<>();');
+			const brackets = findTokens(line, 'punctuation.bracket')
+				.map((t) => t.text)
+				.filter((t) => t === '<' || t === '>');
+			expect(brackets).toEqual(['<', '>']);
+			expectLossless(line, 'var x = new ArrayList<>();');
+		});
+
+		it('brackets a single-letter generic type parameter declaration', () => {
+			const line = tok(java, 'class A<T extends B & C> {}');
+			expectToken(line, 'punctuation.bracket', '<');
+			expectToken(line, 'punctuation.bracket', '>');
+			expectLossless(line, 'class A<T extends B & C> {}');
+		});
+
+		it('does NOT treat relational < and shift >> as generic brackets', () => {
+			const lt = tok(java, 'if (a < b) {}');
+			expectToken(lt, 'operator', '<');
+			expect(findTokens(lt, 'punctuation.bracket').filter((t) => t.text === '<')).toHaveLength(0);
+
+			const sh = tok(java, 'int z = a >> 2;');
+			expectToken(sh, 'operator', '>>');
+
+			const lsh = tok(java, 'int y = 1 << n;');
+			expectToken(lsh, 'operator', '<<');
+		});
+
+		it('keeps >>= and >>>= as assignment operators (not generic closes)', () => {
+			expectToken(tok(java, 'x >>= 2;'), 'operator.assignment', '>>=');
+			expectToken(tok(java, 'x >>>= 1;'), 'operator.assignment', '>>>=');
+		});
+
+		it('threads generic angle-depth across lines', () => {
+			const lines = tokLines(java, ['Map<String,', '    List<Integer>> m;']);
+			// the close on line 2 is bracketed even though it opened on line 1
+			const closers = findTokens(lines[1], 'punctuation.bracket').filter((t) => t.text === '>');
+			expect(closers).toHaveLength(2);
+			expectLossless(lines[0], 'Map<String,');
+			expectLossless(lines[1], '    List<Integer>> m;');
+		});
+
+		it('resets a misfired generic depth at a statement boundary', () => {
+			// `Foo < bar;` is not real generics; the `;` must reset depth so a later
+			// `>` on the next line stays a relational operator, uncorrupted.
+			const lines = tokLines(java, ['boolean ok = Foo < bar;', 'boolean b = a > c;']);
+			expectToken(lines[1], 'operator', '>');
+			expect(findTokens(lines[1], 'punctuation.bracket')).toHaveLength(0);
+			expectLossless(lines[0], 'boolean ok = Foo < bar;');
+			expectLossless(lines[1], 'boolean b = a > c;');
+		});
+
+		it('handles generic arrays and casts losslessly', () => {
+			expectLossless(tok(java, 'Map<String, int[]> m;'), 'Map<String, int[]> m;');
+			expectLossless(tok(java, '(List<String>) obj;'), '(List<String>) obj;');
+		});
+	});
+
+	// --- Context classification: properties & constants after accessor ----------
+	describe('member access classification', () => {
+		it('classifies an identifier after . as a property', () => {
+			const line = tok(java, 'System.out.println(x);');
+			expectToken(line, 'type.class', 'System');
+			expectToken(line, 'property', 'out');
+			expectToken(line, 'function.call', 'println');
+			expectLossless(line, 'System.out.println(x);');
+		});
+
+		it('classifies an ALL_CAPS member after . as a constant', () => {
+			const line = tok(java, 'int n = Integer.MAX_VALUE;');
+			expectToken(line, 'constant', 'MAX_VALUE');
+			expectLossless(line, 'int n = Integer.MAX_VALUE;');
+		});
+
+		it('classifies an enum constant access as a constant', () => {
+			const line = tok(java, 'Color c = Color.RED;');
+			expectToken(line, 'constant', 'RED');
+			expectLossless(line, 'Color c = Color.RED;');
+		});
+
+		it('classifies a keyword-named member after . as a property, not a keyword', () => {
+			// `Foo.class` / `obj.new` — `class`/`new` are member names here.
+			const c = tok(java, 'Class<?> k = Foo.class;');
+			expectToken(c, 'property', 'class');
+			expectLossless(c, 'Class<?> k = Foo.class;');
+		});
+
+		it('classifies a standalone ALL_CAPS identifier as a constant', () => {
+			const line = tok(java, 'static final int MAX_SIZE = 10;');
+			expectToken(line, 'constant', 'MAX_SIZE');
+			expectLossless(line, 'static final int MAX_SIZE = 10;');
+		});
+
+		it('does not classify a single-letter or short cap word as a constant', () => {
+			// `T` (type param) and `OK`? OK is two letters -> constant; T alone -> not.
+			expectToken(tok(java, 'T value;'), 'variable', 'T');
 		});
 	});
 });
