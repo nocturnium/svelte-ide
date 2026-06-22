@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/nocturnium/svelte-ide/compare/v1.15.0...v1.16.0) (2026-06-22)
+
+
+### Features
+
+* **demo:** make the playground responsive at all sizes + add fullscreen ([77a4375](https://github.com/nocturnium/svelte-ide/commit/77a4375a0eaeed1a9e69aa451798ea1fb6c7f582))
+
 # [1.15.0](https://github.com/nocturnium/svelte-ide/compare/v1.14.0...v1.15.0) (2026-06-22)
 
 
