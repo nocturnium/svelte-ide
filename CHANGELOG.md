@@ -1,3 +1,15 @@
+# [1.14.0](https://github.com/nocturnium/svelte-ide/compare/v1.13.1...v1.14.0) (2026-06-22)
+
+
+### Bug Fixes
+
+* **editor:** independent re-audit — repair regressions from the A+ push ([37b0de0](https://github.com/nocturnium/svelte-ide/commit/37b0de07f7a36c2e463624069092704f54f6f309))
+
+
+### Features
+
+* **editor:** elevate all 19 tokenizers to A+ (sub-tokenized interpolation, escapes, subtypes) ([67a1383](https://github.com/nocturnium/svelte-ide/commit/67a1383189c9baff70f464c426a5a8d2541386ef))
+
 ## [1.13.1](https://github.com/nocturnium/svelte-ide/compare/v1.13.0...v1.13.1) (2026-06-21)
 
 
