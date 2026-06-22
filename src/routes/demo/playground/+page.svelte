@@ -317,28 +317,91 @@ MIT License - see LICENSE file for details
 	// Reset to 1,1 on tab switch since the {#key activeTabId} block remounts the editor.
 	let cursor = $state({ line: 1, column: 1 });
 
-	// Responsive: below 860px the shell becomes single-pane with drawer overlays.
-	let isMobile = $state(false);
+	// Responsive: the shell is sized to its OWN width, not the viewport, so it
+	// adapts correctly whether it's inset beside the demo sidebar, embedded, or
+	// maximized to fullscreen. Below this width the three panes can't coexist with
+	// a usable editor, so panels collapse into single-pane drawer overlays.
+	const NARROW_WIDTH = 1040;
+	let isNarrow = $state(false);
+	let playgroundEl = $state<HTMLElement | null>(null);
 
-	// First-run affordance: pulse the Explorer rail icon on mobile until the user
-	// opens any drawer, signalling that files/AI live behind the activity rail.
+	// First-run affordance: pulse the Explorer rail icon on narrow layouts until the
+	// user opens any drawer, signalling that files/AI live behind the activity rail.
 	let railHintSeen = $state(false);
 
 	$effect(() => {
-		const mql = window.matchMedia('(max-width: 860px)');
-		const apply = (matches: boolean) => {
-			isMobile = matches;
-			if (matches) {
-				// On small screens, drawers start closed so the editor owns the viewport.
+		const el = playgroundEl;
+		if (!el) return;
+		const apply = (width: number) => {
+			const narrow = width > 0 && width < NARROW_WIDTH;
+			if (narrow === isNarrow) return;
+			isNarrow = narrow;
+			if (narrow) {
+				// When narrow, drawers start closed so the editor owns the width.
 				leftPanelOpen = false;
 				rightPanelOpen = false;
 				bottomPanelOpen = false;
+			} else {
+				// Back to a wide layout — restore the tiled file + AI panels.
+				leftPanelOpen = true;
+				rightPanelOpen = true;
 			}
 		};
-		apply(mql.matches);
-		const onChange = (e: MediaQueryListEvent) => apply(e.matches);
-		mql.addEventListener('change', onChange);
-		return () => mql.removeEventListener('change', onChange);
+		apply(el.getBoundingClientRect().width);
+		const ro = new ResizeObserver((entries) => {
+			for (const entry of entries) apply(entry.contentRect.width);
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
+	});
+
+	// ----- Fullscreen / maximize -----
+	// Lets the IDE escape the demo chrome (sidebar + header) and fill the whole
+	// screen — the single biggest win for small/medium viewports. Backed by the
+	// native Fullscreen API when available, with a CSS-fixed overlay either way so
+	// it works even where requestFullscreen is blocked (iframes, some browsers).
+	let isFullscreen = $state(false);
+
+	function enterFullscreen() {
+		isFullscreen = true;
+		const el = playgroundEl;
+		if (el && !document.fullscreenElement && el.requestFullscreen) {
+			el.requestFullscreen().catch(() => {
+				/* CSS-fixed overlay still maximizes within the viewport */
+			});
+		}
+	}
+
+	function exitFullscreen() {
+		isFullscreen = false;
+		if (document.fullscreenElement && document.exitFullscreen) {
+			document.exitFullscreen().catch(() => {});
+		}
+	}
+
+	function toggleFullscreen() {
+		if (isFullscreen) exitFullscreen();
+		else enterFullscreen();
+	}
+
+	$effect(() => {
+		// Keep state in sync when the user leaves native fullscreen via Esc / F11,
+		// and let Esc exit the CSS-overlay fullscreen when native FS isn't active.
+		const onFsChange = () => {
+			if (!document.fullscreenElement) isFullscreen = false;
+		};
+		const onKeydown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape' && isFullscreen) {
+				e.preventDefault();
+				exitFullscreen();
+			}
+		};
+		document.addEventListener('fullscreenchange', onFsChange);
+		document.addEventListener('keydown', onKeydown);
+		return () => {
+			document.removeEventListener('fullscreenchange', onFsChange);
+			document.removeEventListener('keydown', onKeydown);
+		};
 	});
 
 	// On mobile, only one drawer may be open at a time (single-pane overlay model).
@@ -350,13 +413,13 @@ MIT License - see LICENSE file for details
 		}
 		leftPanel = panel;
 		leftPanelOpen = true;
-		if (isMobile) rightPanelOpen = false;
+		if (isNarrow) rightPanelOpen = false;
 	}
 
 	function toggleRight() {
 		railHintSeen = true;
 		rightPanelOpen = !rightPanelOpen;
-		if (rightPanelOpen && isMobile) leftPanelOpen = false;
+		if (rightPanelOpen && isNarrow) leftPanelOpen = false;
 	}
 
 	function closeDrawers() {
@@ -459,13 +522,19 @@ MIT License - see LICENSE file for details
 	description="The full Nocturnium IDE composed from the library — file explorer, tabbed editors, an AI panel, and a live status bar — all in pure Svelte 5."
 />
 
-<div class="playground" class:playground--resizing={isResizing}>
+<div
+	class="playground"
+	class:playground--resizing={isResizing}
+	class:playground--fullscreen={isFullscreen}
+	class:is-narrow={isNarrow}
+	bind:this={playgroundEl}
+>
 	<!-- Activity Bar -->
 	<div class="activity-bar">
 		<button
 			class="activity-btn"
 			class:active={leftPanelOpen && leftPanel === 'files'}
-			class:activity-btn--hint={isMobile && !railHintSeen}
+			class:activity-btn--hint={isNarrow && !railHintSeen}
 			onclick={() => openLeft('files')}
 			aria-label="Toggle Explorer"
 			aria-pressed={leftPanelOpen && leftPanel === 'files'}
@@ -504,10 +573,20 @@ MIT License - see LICENSE file for details
 		>
 			<Icon name="terminal" size={20} />
 		</button>
+		<button
+			class="activity-btn"
+			class:active={isFullscreen}
+			onclick={toggleFullscreen}
+			aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+			aria-pressed={isFullscreen}
+			title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
+		>
+			<Icon name={isFullscreen ? 'minimize' : 'maximize'} size={20} />
+		</button>
 	</div>
 
 	<!-- Mobile scrim: tapping outside an open drawer closes it -->
-	{#if isMobile && (leftPanelOpen || rightPanelOpen)}
+	{#if isNarrow && (leftPanelOpen || rightPanelOpen)}
 		<button class="mobile-scrim" aria-label="Close panel" onclick={closeDrawers}></button>
 	{/if}
 
@@ -515,8 +594,8 @@ MIT License - see LICENSE file for details
 	{#if leftPanelOpen}
 		<div
 			class="left-panel"
-			class:left-panel--drawer={isMobile}
-			style={isMobile ? '' : `width: ${leftPanelWidth}px;`}
+			class:left-panel--drawer={isNarrow}
+			style={isNarrow ? '' : `width: ${leftPanelWidth}px;`}
 		>
 			{#if leftPanel === 'files'}
 				<div class="panel-header">
@@ -577,7 +656,7 @@ MIT License - see LICENSE file for details
 			{/if}
 		</div>
 
-		{#if !isMobile}
+		{#if !isNarrow}
 			<ResizeHandle
 				direction="vertical"
 				position="end"
@@ -686,7 +765,7 @@ MIT License - see LICENSE file for details
 
 	<!-- Right Panel (AI) -->
 	{#if rightPanelOpen}
-		{#if !isMobile}
+		{#if !isNarrow}
 			<ResizeHandle
 				direction="vertical"
 				position="start"
@@ -701,8 +780,8 @@ MIT License - see LICENSE file for details
 
 		<div
 			class="right-panel"
-			class:right-panel--drawer={isMobile}
-			style={isMobile ? '' : `width: ${rightPanelWidth}px;`}
+			class:right-panel--drawer={isNarrow}
+			style={isNarrow ? '' : `width: ${rightPanelWidth}px;`}
 		>
 			<AIPanel />
 		</div>
@@ -714,6 +793,15 @@ MIT License - see LICENSE file for details
 			<Badge variant="secondary">Demo</Badge>
 		</div>
 		<div class="status-right">
+			<button
+				class="status-fullscreen-btn"
+				onclick={toggleFullscreen}
+				aria-pressed={isFullscreen}
+				title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen'}
+			>
+				<Icon name={isFullscreen ? 'minimize' : 'maximize'} size={13} />
+				<span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
+			</button>
 			<span class="status-item">{language}</span>
 			<span class="status-item status-item--secondary">UTF-8</span>
 			<span class="status-item">Ln {cursor.line}, Col {cursor.column}</span>
@@ -728,6 +816,15 @@ MIT License - see LICENSE file for details
 		height: calc(100vh - 60px);
 		background: var(--ide-bg-primary);
 		overflow-x: hidden;
+	}
+
+	/* Fullscreen: escape the demo chrome (sidebar + header) and fill the screen. */
+	.playground--fullscreen {
+		position: fixed;
+		inset: 0;
+		z-index: 1000;
+		width: 100vw;
+		height: 100vh;
 	}
 
 	/* Upper row (everything except status bar) */
@@ -1045,6 +1142,35 @@ MIT License - see LICENSE file for details
 		color: var(--ide-text-primary);
 	}
 
+	.status-fullscreen-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		height: 18px;
+		padding: 0 0.5rem;
+		border: 1px solid var(--ide-border);
+		border-radius: 4px;
+		background: transparent;
+		color: var(--ide-text-primary);
+		font-size: 0.72rem;
+		font-weight: 500;
+		line-height: 1;
+		cursor: pointer;
+		transition:
+			background 0.12s ease,
+			border-color 0.12s ease;
+	}
+
+	.status-fullscreen-btn:hover {
+		background: var(--ide-bg-hover, rgba(255, 255, 255, 0.06));
+		border-color: var(--ide-accent, #6a92e8);
+	}
+
+	.status-fullscreen-btn:focus-visible {
+		outline: 2px solid var(--ide-accent, #6a92e8);
+		outline-offset: 1px;
+	}
+
 	/* Mobile scrim behind drawers */
 	.mobile-scrim {
 		position: absolute;
@@ -1066,75 +1192,79 @@ MIT License - see LICENSE file for details
 		}
 	}
 
-	/* ===== Tablet -> mobile: single-pane shell with drawer overlays ===== */
-	@media (max-width: 860px) {
-		.playground {
-			position: relative;
-		}
+	/* ===== Narrow shell: single-pane with drawer overlays =====
+	   Driven by the playground's OWN width (the .is-narrow class set via
+	   ResizeObserver), not the viewport — so it triggers correctly whether the
+	   shell is inset beside the demo sidebar, embedded, or maximized. */
+	.playground.is-narrow {
+		position: relative;
+	}
 
-		/* Activity bar stays as the persistent rail to drive drawers */
-		.activity-bar {
-			z-index: 30;
-		}
+	/* Activity bar stays as the persistent rail to drive drawers */
+	.playground.is-narrow .activity-bar {
+		z-index: 30;
+	}
 
-		/* Larger, comfortable touch targets on mobile */
-		.activity-btn {
-			width: 44px;
-			height: 44px;
-			opacity: 0.75;
-		}
+	/* Larger, comfortable touch targets when narrow */
+	.playground.is-narrow .activity-btn {
+		width: 44px;
+		height: 44px;
+		opacity: 0.75;
+	}
 
-		/* Editor sits BESIDE the 48px activity rail and owns the remaining width.
-		   flex-basis must be 0 (not 100%) — with the shell's flex-wrap:wrap a 100%
-		   basis would wrap main-content onto a new row below the full-height rail,
-		   leaving it zero height and the editor blank. */
-		.main-content {
-			flex: 1 1 0;
-			min-width: 0;
-			height: calc(100% - 24px);
-		}
+	/* Editor sits BESIDE the 48px activity rail and owns the remaining width.
+	   flex-basis must be 0 (not 100%) — with the shell's flex-wrap:wrap a 100%
+	   basis would wrap main-content onto a new row below the full-height rail,
+	   leaving it zero height and the editor blank. */
+	.playground.is-narrow .main-content {
+		flex: 1 1 0;
+		min-width: 0;
+		height: calc(100% - 24px);
+	}
 
-		/* Left + right panels become full-width drawers anchored beside the rail */
-		.left-panel--drawer,
-		.right-panel--drawer {
-			position: absolute;
-			top: 0;
-			bottom: 24px;
-			z-index: 25;
-			width: calc(100vw - 48px) !important;
-			max-width: calc(100vw - 48px);
-			box-shadow: 0 0 24px rgba(0, 0, 0, 0.45);
-		}
+	/* Left + right panels become drawers anchored beside the rail. Widths are
+	   container-relative (% of the shell), so a drawer never overflows the shell
+	   when it's inset by the demo sidebar. */
+	.playground.is-narrow .left-panel--drawer,
+	.playground.is-narrow .right-panel--drawer {
+		position: absolute;
+		top: 0;
+		bottom: 24px;
+		z-index: 25;
+		width: min(360px, calc(100% - 48px)) !important;
+		max-width: calc(100% - 48px);
+		box-shadow: 0 0 24px rgba(0, 0, 0, 0.45);
+	}
 
-		.left-panel--drawer {
-			left: 48px;
-			transition: none;
-		}
+	.playground.is-narrow .left-panel--drawer {
+		left: 48px;
+		transition: none;
+	}
 
-		.right-panel--drawer {
-			right: 0;
-			transition: none;
-		}
+	.playground.is-narrow .right-panel--drawer {
+		right: 0;
+		transition: none;
+	}
 
-		/* AI drawer must have enough room to be usable, not a thin strip */
-		.right-panel--drawer :global(.ai-panel) {
-			min-height: 100%;
-		}
+	/* AI drawer must have enough room to be usable, not a thin strip */
+	.playground.is-narrow .right-panel--drawer :global(.ai-panel) {
+		min-height: 100%;
 	}
 
 	/* ===== Phones ===== */
 	@media (max-width: 640px) {
-		/* Drawers span the full viewport edge-to-edge over the editor */
-		.left-panel--drawer,
-		.right-panel--drawer {
-			width: 100vw !important;
-			max-width: 100vw;
-			left: 0;
-			right: 0;
+		/* Drawers span the shell width beside the rail (not under it, which would
+		   clip the panel header/contents) over the editor */
+		.playground.is-narrow .left-panel--drawer,
+		.playground.is-narrow .right-panel--drawer {
+			width: calc(100% - 48px) !important;
+			max-width: calc(100% - 48px);
+			left: 48px;
+			right: auto;
 		}
 
 		.mobile-scrim {
-			inset: 0 0 24px 0;
+			inset: 0 0 24px 48px;
 		}
 
 		/* Tighter chrome so content gets the space */
