@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createRubyTokenizer } from './ruby';
 import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
 
@@ -65,74 +65,187 @@ describe('ruby: module and storage directives', () => {
 
 describe('ruby: strings', () => {
 	it('tokenizes single-quoted literal strings', () => {
+		// Delimiters + body are separate string tokens; the whole span is lossless.
 		const line = tok(rb, "name = 'Ada'");
-		expectToken(line, 'string', "'Ada'");
+		expectToken(line, 'string', "'");
+		expectToken(line, 'string', 'Ada');
+		expectLossless(line, "name = 'Ada'");
 	});
 
 	it('tokenizes double-quoted strings without interpolation', () => {
 		const line = tok(rb, 'greeting = "hello"');
-		expectToken(line, 'string', '"hello"');
+		expectToken(line, 'string', '"');
+		expectToken(line, 'string', 'hello');
+		expectLossless(line, 'greeting = "hello"');
 	});
 
-	it('marks interpolated double-quoted strings as string.template', () => {
+	it('sub-tokenizes interpolation in double-quoted strings', () => {
+		// The literal runs stay `string`; the `#{` / `}` delimiters become
+		// string.template; the inner expression gets real types.
 		const line = tok(rb, 'msg = "hi #{name}!"');
-		expectToken(line, 'string.template', '"hi #{name}!"');
+		expectToken(line, 'string', '"');
+		expectToken(line, 'string', 'hi ');
+		expectToken(line, 'string.template', '#{');
+		expectToken(line, 'variable', 'name');
+		expectToken(line, 'string.template', '}');
+		expectLossless(line, 'msg = "hi #{name}!"');
+	});
+
+	it('sub-tokenizes a method chain inside interpolation', () => {
+		const line = tok(rb, 'm = "v=#{user.name.upcase}"');
+		expectToken(line, 'string.template', '#{');
+		expectToken(line, 'variable', 'user');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'property', 'name');
+		expectToken(line, 'property', 'upcase');
+		expectLossless(line, 'm = "v=#{user.name.upcase}"');
+	});
+
+	it('handles #@ivar / #$global short interpolation', () => {
+		const line = tok(rb, 's = "a#@x b#$g"');
+		expectToken(line, 'string.template', '#');
+		expectToken(line, 'variable', '@x');
+		expectToken(line, 'variable', '$g');
+		expectLossless(line, 's = "a#@x b#$g"');
 	});
 
 	it('keeps single-quoted strings literal even with #{ }', () => {
 		const line = tok(rb, "raw = 'no #{interp} here'");
-		expectToken(line, 'string', "'no #{interp} here'");
+		// No interpolation tokens — the #{...} is literal body in a single-quoted string.
+		expectToken(line, 'string', 'no #{interp} here');
+		expectLossless(line, "raw = 'no #{interp} here'");
 	});
 
-	it('handles escapes inside double-quoted strings', () => {
+	it('emits string.escape for escapes inside double-quoted strings', () => {
 		const line = tok(rb, 'path = "a\\"b\\nc"');
-		expectToken(line, 'string', '"a\\"b\\nc"');
+		expectToken(line, 'string.escape', '\\"');
+		expectToken(line, 'string.escape', '\\n');
+		expectLossless(line, 'path = "a\\"b\\nc"');
+	});
+
+	it('emits string.escape for unicode and hex escapes', () => {
+		const line = tok(rb, 'u = "\\u00e9 \\u{1F600} \\x41 \\101"');
+		expectToken(line, 'string.escape', '\\u00e9');
+		expectToken(line, 'string.escape', '\\u{1F600}');
+		expectToken(line, 'string.escape', '\\x41');
+		expectToken(line, 'string.escape', '\\101');
+		expectLossless(line, 'u = "\\u00e9 \\u{1F600} \\x41 \\101"');
 	});
 
 	it('tokenizes percent word arrays', () => {
 		const line = tok(rb, 'tags = %w[red green blue]');
-		expectToken(line, 'string', '%w[red green blue]');
+		expectToken(line, 'string', '%w[');
+		expectToken(line, 'string', 'red green blue');
+		expectLossless(line, 'tags = %w[red green blue]');
 	});
 
 	it('tokenizes percent symbol arrays', () => {
 		const line = tok(rb, 'syms = %i(a b c)');
-		expectToken(line, 'string', '%i(a b c)');
+		expectToken(line, 'string', '%i(');
+		expectLossless(line, 'syms = %i(a b c)');
+	});
+
+	it('sub-tokenizes interpolation in %W and %Q literals', () => {
+		const w = tok(rb, 'a = %W[#{x} two]');
+		expectToken(w, 'string.template', '#{');
+		expectToken(w, 'variable', 'x');
+		expectLossless(w, 'a = %W[#{x} two]');
+		const q = tok(rb, 'b = %Q{hi #{name}}');
+		expectToken(q, 'string.template', '#{');
+		expectToken(q, 'variable', 'name');
+		expectLossless(q, 'b = %Q{hi #{name}}');
+	});
+
+	it('treats backtick command strings as interpolating strings', () => {
+		const line = tok(rb, 'out = `ls #{dir}`');
+		expectToken(line, 'string', '`');
+		expectToken(line, 'string.template', '#{');
+		expectToken(line, 'variable', 'dir');
+		expectLossless(line, 'out = `ls #{dir}`');
+	});
+
+	it('does not close interpolation early on a nested string brace/quote', () => {
+		// The `}` and `"` inside `inner["nested"]` must not terminate the #{...} block.
+		const code = 's = "outer #{inner["nested"]} done"';
+		const line = tok(rb, code);
+		expectToken(line, 'string.template', '#{');
+		expectToken(line, 'variable', 'inner');
+		expectToken(line, 'string.template', '}');
+		expectToken(line, 'string', ' done');
+		expectLossless(line, code);
+	});
+
+	it('tokenizes a nested ternary-with-strings inside interpolation', () => {
+		const code = 'r = "a #{x > 0 ? "p" : "n"} b"';
+		const line = tok(rb, code);
+		expectToken(line, 'operator', '>');
+		expectToken(line, 'operator', '?');
+		expectLossless(line, code);
 	});
 });
 
 describe('ruby: percent-literals beyond %w/%i', () => {
-	it('tokenizes %q and %Q string literals as a single string token', () => {
-		expectToken(tok(rb, 'a = %q{single quoted}'), 'string', '%q{single quoted}');
+	it('tokenizes %q (non-interpolating) literals losslessly', () => {
+		const q = tok(rb, 'a = %q{single quoted}');
+		expectToken(q, 'string', '%q{');
+		expectToken(q, 'string', 'single quoted');
+		expectLossless(q, 'a = %q{single quoted}');
 		// Regression: the inner `#{x}` must NOT bleed into a line comment.
 		const dq = tok(rb, 'b = %Q<double #{x} quoted>');
-		expectToken(dq, 'string', '%Q<double #{x} quoted>');
+		expectToken(dq, 'string.template', '#{');
+		expectToken(dq, 'variable', 'x');
 		expectLossless(dq, 'b = %Q<double #{x} quoted>');
 	});
 
 	it('tokenizes %r regex literals (with flags) as string.regex', () => {
-		expectToken(tok(rb, 'e = %r{[a-z]+}i'), 'string.regex', '%r{[a-z]+}i');
+		const r = tok(rb, 'e = %r{[a-z]+}i');
+		expectToken(r, 'string.regex', '%r{');
+		expectToken(r, 'string.regex', '}i');
+		expectLossless(r, 'e = %r{[a-z]+}i');
 	});
 
 	it('tokenizes %x command literals as a string', () => {
-		expectToken(tok(rb, 'f = %x(ls -la)'), 'string', '%x(ls -la)');
+		const x = tok(rb, 'f = %x(ls -la)');
+		expectToken(x, 'string', '%x(');
+		expectLossless(x, 'f = %x(ls -la)');
+	});
+
+	it('supports non-bracket percent delimiters like %q|...|', () => {
+		const p = tok(rb, 'g = %q|pipe delim|');
+		expectToken(p, 'string', '%q|');
+		expectLossless(p, 'g = %q|pipe delim|');
 	});
 });
 
 describe('ruby: regex vs division', () => {
 	it('treats a slash literal in value position as a regex', () => {
-		expectToken(tok(rb, 'r = /foo.*bar/i'), 'string.regex', '/foo.*bar/i');
+		const line = tok(rb, 'r = /foo.*bar/i');
+		expectToken(line, 'string.regex', '/');
+		expectToken(line, 'string.regex', 'foo.*bar');
+		expectToken(line, 'string.regex', '/i');
+		expectLossless(line, 'r = /foo.*bar/i');
+	});
+
+	it('sub-tokenizes escapes and interpolation inside a regex', () => {
+		const line = tok(rb, 'm = /^#{prefix}\\d+$/');
+		expectToken(line, 'string.escape', '\\d');
+		expectToken(line, 'string.template', '#{');
+		expectToken(line, 'variable', 'prefix');
+		expectLossless(line, 'm = /^#{prefix}\\d+$/');
 	});
 
 	it('does not let a # inside a regex bleed into a line comment', () => {
 		// Before the fix `#/` was tokenized as a `comment.line`, swallowing the close.
 		const line = tok(rb, 'if line =~ /^\\s*#/');
-		expectToken(line, 'string.regex', '/^\\s*#/');
+		// The literal still closes; a `string.regex` close `/` exists and it is lossless.
+		expectToken(line, 'string.regex', '/');
 		expectLossless(line, 'if line =~ /^\\s*#/');
 	});
 
 	it('recognizes a regex argument right after an opening paren or comma', () => {
 		const line = tok(rb, 'gsub(/\\d+/, "N")');
-		expectToken(line, 'string.regex', '/\\d+/');
+		expectToken(line, 'string.escape', '\\d');
+		expectLossless(line, 'gsub(/\\d+/, "N")');
 	});
 
 	it('keeps a slash between two values as the division operator', () => {
@@ -151,9 +264,17 @@ describe('ruby: symbols', () => {
 		expectToken(line, 'constant.builtin', ':name');
 	});
 
-	it('tokenizes quoted symbols', () => {
-		const line = tok(rb, 'send(:"dynamic name")');
-		expectToken(line, 'constant.builtin', ':"dynamic name"');
+	it('tokenizes non-interpolating quoted symbols', () => {
+		const line = tok(rb, "send(:'dynamic name')");
+		expectToken(line, 'constant.builtin', ":'dynamic name'");
+	});
+
+	it('sub-tokenizes an interpolating quoted symbol', () => {
+		const line = tok(rb, 'd = :"key_#{n}"');
+		expectToken(line, 'constant.builtin', ':');
+		expectToken(line, 'string.template', '#{');
+		expectToken(line, 'variable', 'n');
+		expectLossless(line, 'd = :"key_#{n}"');
 	});
 
 	it('tokenizes predicate and bang symbols', () => {
@@ -175,20 +296,28 @@ describe('ruby: comments', () => {
 });
 
 describe('ruby: numbers', () => {
-	it('tokenizes integers with underscores', () => {
+	it('tokenizes integers with underscores as number.integer', () => {
 		const line = tok(rb, 'big = 1_000_000');
-		expectToken(line, 'number', '1_000_000');
+		expectToken(line, 'number.integer', '1_000_000');
 	});
 
-	it('tokenizes hex, binary, and octal', () => {
-		expectToken(tok(rb, 'h = 0xFF'), 'number', '0xFF');
-		expectToken(tok(rb, 'b = 0b1010'), 'number', '0b1010');
-		expectToken(tok(rb, 'o = 0o17'), 'number', '0o17');
+	it('emits precise subtypes for hex, binary, and octal', () => {
+		expectToken(tok(rb, 'h = 0xFF'), 'number.hex', '0xFF');
+		expectToken(tok(rb, 'b = 0b1010'), 'number.binary', '0b1010');
+		expectToken(tok(rb, 'o = 0o17'), 'number.integer', '0o17');
+		expectToken(tok(rb, 'l = 0755'), 'number.integer', '0755');
 	});
 
-	it('tokenizes floats with exponent', () => {
-		const line = tok(rb, 'f = 3.14e-2');
-		expectToken(line, 'number', '3.14e-2');
+	it('tokenizes floats (with exponent) as number.float', () => {
+		expectToken(tok(rb, 'f = 3.14e-2'), 'number.float', '3.14e-2');
+		expectToken(tok(rb, 'g = 1e9'), 'number.float', '1e9');
+		expectToken(tok(rb, 'h = 2.5'), 'number.float', '2.5');
+	});
+
+	it('handles rational and imaginary suffixes', () => {
+		expectToken(tok(rb, 'r = 3r'), 'number.integer', '3r');
+		expectToken(tok(rb, 'i = 4i'), 'number.integer', '4i');
+		expectToken(tok(rb, 'c = 2.0i'), 'number.float', '2.0i');
 	});
 });
 
@@ -248,21 +377,22 @@ describe('ruby: identifiers, builtins, and variables', () => {
 });
 
 describe('ruby: keyword-named method calls (after an accessor)', () => {
-	it('treats a reserved word after a dot as a method, not a keyword', () => {
+	it('treats a reserved word after a dot as a property, not a keyword', () => {
 		// `obj.class` is the Object#class method, NOT the `class` definition keyword.
+		// Members after an accessor are emitted as `property` (a distinct, styled type).
 		const line = tok(rb, 'obj.class.name');
 		expectToken(line, 'variable', 'obj');
-		expectToken(line, 'variable', 'class');
-		expectToken(line, 'variable', 'name');
+		expectToken(line, 'property', 'class');
+		expectToken(line, 'property', 'name');
 		expectLossless(line, 'obj.class.name');
 	});
 
 	it('does not mark `.then`/`.begin`/`.end` after a dot as keywords', () => {
 		const line = tok(rb, 'value.then { |v| v }');
 		// `then` here is Object#then (yield_self), a method — must not be keyword.control.
-		expectToken(line, 'variable', 'then');
+		expectToken(line, 'property', 'then');
 		const ends = tok(rb, 'range.begin');
-		expectToken(ends, 'variable', 'begin');
+		expectToken(ends, 'property', 'begin');
 	});
 
 	it('keeps a builtin used as a method call after a dot a function call', () => {
@@ -282,9 +412,14 @@ describe('ruby: keyword-named method calls (after an accessor)', () => {
 		expectToken(line, 'keyword', 'self');
 	});
 
-	it('still resolves a Capitalized member after a dot as a constant/type', () => {
+	it('resolves an ALL_CAPS member after a dot as a constant', () => {
 		const line = tok(rb, 'mod.CONST');
-		expectToken(line, 'type.class', 'CONST');
+		expectToken(line, 'constant', 'CONST');
+	});
+
+	it('resolves a Capitalized (mixed-case) member after a dot as a class/type', () => {
+		const line = tok(rb, 'mod.Klass');
+		expectToken(line, 'type.class', 'Klass');
 	});
 });
 
@@ -303,7 +438,7 @@ describe('ruby: multi-line constructs', () => {
 		expectTokenType(lines[3], 'comment.block');
 		// After =end the next line is normal code again.
 		expectToken(lines[4], 'variable', 'code');
-		expectToken(lines[4], 'number', '1');
+		expectToken(lines[4], 'number.integer', '1');
 	});
 
 	it('threads a heredoc body across lines', () => {
@@ -320,15 +455,134 @@ describe('ruby: multi-line constructs', () => {
 		expectTokenType(lines[3], 'string'); // terminator line
 		expectToken(lines[4], 'function', 'puts'); // back to code
 	});
+
+	it('sub-tokenizes interpolation in an interpolating heredoc body', () => {
+		const src = ['sql = <<~SQL', '  SELECT #{col} FROM t', 'SQL'];
+		const lines = tokLines(rb, src);
+		expectToken(lines[1], 'string.template', '#{');
+		expectToken(lines[1], 'variable', 'col');
+		expectToken(lines[1], 'string.template', '}');
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+	});
+
+	it("keeps a single-quoted heredoc (<<~'X') raw — no interpolation", () => {
+		const src = ["raw = <<~'TXT'", '  no #{interp} here', 'TXT'];
+		const lines = tokLines(rb, src);
+		// The body line is a plain string; `#{interp}` is NOT split out.
+		expectToken(lines[1], 'string', '  no #{interp} here');
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+	});
+
+	it('threads an unterminated interpolating string across lines', () => {
+		const src = ['x = "start #{a}', 'middle', 'end"'];
+		const lines = tokLines(rb, src);
+		expectToken(lines[0], 'string.template', '#{');
+		expectToken(lines[0], 'variable', 'a');
+		// Continuation lines are still string content until the closing quote.
+		expectTokenType(lines[1], 'string');
+		expectToken(lines[2], 'string', '"');
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+		// Back to normal code after the string closes.
+		const after = rb.tokenizeLine('y = 1', 4, lines[2].state);
+		expectToken(after, 'number.integer', '1');
+	});
+
+	it('threads an unterminated regex across lines (with flags on close)', () => {
+		const src = ['m = /start', 'rest/i', 'code = 1'];
+		const lines = tokLines(rb, src);
+		expectTokenType(lines[0], 'string.regex');
+		expectToken(lines[1], 'string.regex', '/i');
+		expectToken(lines[2], 'number.integer', '1');
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+	});
+});
+
+describe('ruby: character literals', () => {
+	it('tokenizes simple and escaped character literals as strings', () => {
+		expectToken(tok(rb, 'c = ?a'), 'string', '?a');
+		expectToken(tok(rb, 'n = ?\\n'), 'string', '?\\n');
+		expectToken(tok(rb, 'u = ?\\u{1F600}'), 'string', '?\\u{1F600}');
+	});
+
+	it('does not mistake a ternary for a character literal', () => {
+		const line = tok(rb, 'r = cond ? x : y');
+		// The `?` here is the ternary operator, NOT a `?x` char literal.
+		expectToken(line, 'operator', '?');
+		expectToken(line, 'variable', 'x');
+		expectLossless(line, 'r = cond ? x : y');
+	});
+});
+
+describe('ruby: special globals', () => {
+	it('tokenizes named and punctuation globals as variables', () => {
+		const line = tok(rb, 'puts $stdout, $LOAD_PATH, $1, $~, $!, $0');
+		expectToken(line, 'variable', '$stdout');
+		expectToken(line, 'variable', '$LOAD_PATH');
+		expectToken(line, 'variable', '$1');
+		expectToken(line, 'variable', '$~');
+		expectToken(line, 'variable', '$!');
+		expectToken(line, 'variable', '$0');
+		expectLossless(line, 'puts $stdout, $LOAD_PATH, $1, $~, $!, $0');
+	});
+});
+
+describe('ruby: labels, namespaces, and constants', () => {
+	it('classifies a hash/keyword label as a property', () => {
+		const line = tok(rb, 'h = { name: 1, age: 2 }');
+		expectToken(line, 'property', 'name');
+		expectToken(line, 'property', 'age');
+	});
+
+	it('classifies scope-resolved names as namespace then class', () => {
+		const line = tok(rb, 'x = Foo::Bar::Baz');
+		expectToken(line, 'type.namespace', 'Foo');
+		expectToken(line, 'type.namespace', 'Bar');
+		expectToken(line, 'type.class', 'Baz');
+		expectLossless(line, 'x = Foo::Bar::Baz');
+	});
+
+	it('classifies an ALL_CAPS bareword as a constant', () => {
+		expectToken(tok(rb, 'MAX = 10'), 'constant', 'MAX');
+	});
+});
+
+describe('ruby: __END__ / DATA section', () => {
+	it('treats everything after a lone __END__ as a verbatim data block', () => {
+		const src = ['puts 1', '__END__', 'raw #{not} interpolated', '<<not a heredoc'];
+		const lines = tokLines(rb, src);
+		expectToken(lines[0], 'number.integer', '1');
+		expectToken(lines[1], 'keyword', '__END__');
+		expectTokenType(lines[2], 'comment.block');
+		expectTokenType(lines[3], 'comment.block');
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+	});
+});
+
+describe('ruby: shovel operator vs heredoc', () => {
+	it('keeps `<<` after a value as the append operator', () => {
+		const line = tok(rb, 'list << item');
+		expectToken(line, 'operator', '<<');
+		expectToken(line, 'variable', 'item');
+		expectLossless(line, 'list << item');
+	});
+
+	it('still opens a heredoc in value position', () => {
+		const src = ['x = <<HEREDOC', 'body', 'HEREDOC'];
+		const lines = tokLines(rb, src);
+		expectTokenType(lines[0], 'string');
+		expectTokenType(lines[1], 'string');
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+	});
 });
 
 describe('ruby: realistic lines', () => {
 	it('tokenizes a method definition with interpolation', () => {
 		const line = tok(rb, 'def greet(name) = "Hello, #{name}"');
 		expectToken(line, 'keyword.definition', 'def');
-		expectToken(line, 'function.call', 'greet');
+		expectToken(line, 'function.definition', 'greet');
 		expectToken(line, 'variable', 'name');
-		expectToken(line, 'string.template', '"Hello, #{name}"');
+		expectToken(line, 'string.template', '#{');
+		expectLossless(line, 'def greet(name) = "Hello, #{name}"');
 	});
 
 	it('tokenizes a class with attr_accessor and a constant', () => {
@@ -337,6 +591,96 @@ describe('ruby: realistic lines', () => {
 		expectToken(line, 'type.class', 'Account');
 		expectToken(line, 'operator', '<');
 		expectToken(line, 'type.class', 'ApplicationRecord');
+	});
+});
+
+describe('ruby: re-audit regressions (multi-line %-literals, number suffix, ?c after ?)', () => {
+	it('threads an unterminated interpolating %Q{ } across lines (no # bleed)', () => {
+		// Regression: before the fix, tokenizePercentLiteral never recorded an
+		// openLiteral, so the continuation line was tokenized as code and `#{a}`
+		// became a `comment.line` — the `#` bled into a comment and the body was lost.
+		const src = ['q = %Q{', 'line #{a}', 'more}'];
+		const lines = tokLines(rb, src);
+		expectToken(lines[0], 'string', '%Q{');
+		// Continuation body stays string; interpolation is sub-tokenized, NOT a comment.
+		expectToken(lines[1], 'string', 'line ');
+		expectToken(lines[1], 'string.template', '#{');
+		expectToken(lines[1], 'variable', 'a');
+		expectToken(lines[1], 'string.template', '}');
+		lines[1].tokens.forEach((t) => expect(t.type).not.toBe('comment.line'));
+		expectToken(lines[2], 'string', 'more');
+		expectToken(lines[2], 'string', '}'); // the closing delimiter
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+	});
+
+	it('threads a multi-line %r{ } regex (flags consumed on close) and a raw %q( )', () => {
+		const rx = ['r = %r{', 'pat #{x}', '}imx'];
+		const rl = tokLines(rb, rx);
+		expectToken(rl[0], 'string.regex', '%r{');
+		expectToken(rl[1], 'string.regex', 'pat ');
+		expectToken(rl[1], 'string.template', '#{');
+		expectToken(rl[2], 'string.regex', '}imx'); // closer + flags
+		rl.forEach((l, i) => expectLossless(l, rx[i]));
+
+		// %q( ) does NOT interpolate — `#{a}` on a continuation line stays literal.
+		const raw = ['x = %q(', 'no interp #{a}', ')'];
+		const rawL = tokLines(rb, raw);
+		expectToken(rawL[1], 'string', 'no interp #{a}');
+		rawL[1].tokens.forEach((t) => expect(t.type).not.toBe('comment.line'));
+		rawL.forEach((l, i) => expectLossless(l, raw[i]));
+	});
+
+	it('balances nested delimiters in a multi-line nestable %-literal', () => {
+		// `%Q{ ... { ... } ... }` must not close on an inner `}`, even across lines.
+		const src = ['s = %Q{outer {inner', 'still {deep} here', '} done}'];
+		const lines = tokLines(rb, src);
+		// The literal only closes on the FINAL `}` of line 3.
+		expectToken(lines[2], 'string', '} done');
+		expectToken(lines[2], 'string', '}');
+		lines.forEach((l, i) => expectLossless(l, src[i]));
+		// Back to code after it closes.
+		const after = rb.tokenizeLine('z = 1', 4, lines[2].state);
+		expectToken(after, 'number.integer', '1');
+	});
+
+	it('does not let a rational/imaginary suffix eat a following keyword/identifier', () => {
+		// Regression: `numberWithSuffix` greedily matched a leading `r`/`i`, so
+		// `5rescue`, `2in`, `1if_true`, `0xffrescue` split the next word.
+		const a = tok(rb, 'b = 5rescue 6');
+		expectToken(a, 'number.integer', '5'); // not "5r"
+		expectToken(a, 'keyword.control', 'rescue'); // not "escue"
+		const b = tok(rb, 'c = 2in [1]');
+		expectToken(b, 'number.integer', '2'); // not "2i"
+		expectToken(b, 'keyword.control', 'in'); // not "n"
+		const c = tok(rb, 'x = 1if_true');
+		expectToken(c, 'number.integer', '1'); // not "1i"
+		expectToken(c, 'variable', 'if_true');
+		const d = tok(rb, 'e = 0xffrescue');
+		expectToken(d, 'number.hex', '0xff'); // not "0xffr"
+		// Genuine suffixes still attach when the literal actually ends there.
+		expectToken(tok(rb, 'r = 3r'), 'number.integer', '3r');
+		expectToken(tok(rb, 'i = 4i'), 'number.integer', '4i');
+		expectToken(tok(rb, 'c = 2.0i'), 'number.float', '2.0i');
+		expectLossless(a, 'b = 5rescue 6');
+		expectLossless(b, 'c = 2in [1]');
+		expectLossless(c, 'x = 1if_true');
+		expectLossless(d, 'e = 0xffrescue');
+	});
+
+	it('recognizes a ?c character literal in the true/false arms of a ternary', () => {
+		// Regression: a preceding standalone `?` was treated as a value, so `?y` after
+		// the ternary `?` was mis-split into two `?` operators plus `y`.
+		const line = tok(rb, 'z = c ? ?y : ?n');
+		expectToken(line, 'operator', '?'); // the ternary question
+		expectToken(line, 'string', '?y'); // the true-arm char literal
+		expectToken(line, 'string', '?n'); // the false-arm char literal
+		expectLossless(line, 'z = c ? ?y : ?n');
+		// A predicate-method `?` (glued to a word) must NOT enable a char/regex literal
+		// where division/operators belong, and the ternary still parses.
+		const pred = tok(rb, 'x = valid? ? 1 : 2');
+		expectToken(pred, 'variable', 'valid?');
+		expectToken(pred, 'operator', '?');
+		expectLossless(pred, 'x = valid? ? 1 : 2');
 	});
 });
 

@@ -1,6 +1,13 @@
 import { describe, it } from 'vitest';
 import { createKotlinTokenizer } from './kotlin';
-import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
+import {
+	tok,
+	tokLines,
+	expectToken,
+	expectTokenType,
+	expectLossless,
+	findTokens
+} from '../test-helpers';
 
 const kotlin = createKotlinTokenizer();
 
@@ -53,24 +60,59 @@ describe('Kotlin tokenizer', () => {
 			expectToken(line, 'string.escape', '\\t');
 		});
 
-		it('breaks out a simple $name template', () => {
+		it('sub-tokenizes a simple $name template', () => {
+			// The $ delimiter is string.template; the reference is a real variable.
 			const line = tok(kotlin, 'val s = "Hi $name!"');
-			expectToken(line, 'string.template', '$name');
+			expectToken(line, 'string.template', '$');
+			expectToken(line, 'variable', 'name');
+			expectLossless(line, 'val s = "Hi $name!"');
 		});
 
-		it('breaks out a ${expr} template', () => {
+		it('sub-tokenizes a ${expr} template with real inner types', () => {
+			// ${ and } are template delimiters; a + b becomes variable/operator/variable.
 			const line = tok(kotlin, 'val s = "sum=${a + b}"');
-			expectToken(line, 'string.template', '${a + b}');
+			expectToken(line, 'string.template', '${');
+			expectToken(line, 'string.template', '}');
+			expectToken(line, 'operator.arithmetic', '+');
+			const vars = line.tokens.filter((t) => t.type === 'variable').map((t) => t.text);
+			if (!vars.includes('a') || !vars.includes('b')) {
+				throw new Error(`Expected a and b as variables, got ${JSON.stringify(vars)}`);
+			}
+			expectLossless(line, 'val s = "sum=${a + b}"');
 		});
 
-		it('handles nested braces inside ${...}', () => {
+		it('handles nested braces and an inner string inside ${...}', () => {
 			const line = tok(kotlin, 'val s = "${m["k"]}"');
-			expectToken(line, 'string.template', '${m["k"]}');
+			expectToken(line, 'string.template', '${');
+			expectToken(line, 'string.template', '}');
+			expectToken(line, 'punctuation.bracket', '[');
+			expectToken(line, 'punctuation.bracket', ']');
+			// The inner "k" is a real (nested) string, not literal text.
+			expectToken(line, 'string', 'k');
+			expectLossless(line, 'val s = "${m["k"]}"');
 		});
 
-		it('tokenizes char literals as string', () => {
+		it('sub-tokenizes a dotted $a.b.c template chain', () => {
+			const line = tok(kotlin, 'val s = "name=$user.name"');
+			expectToken(line, 'string.template', '$');
+			expectToken(line, 'variable', 'user');
+			expectToken(line, 'punctuation.accessor', '.');
+			expectToken(line, 'property', 'name');
+			expectLossless(line, 'val s = "name=$user.name"');
+		});
+
+		it('tokenizes a plain char literal as one string token', () => {
 			expectToken(tok(kotlin, "val c = 'a'"), 'string', "'a'");
-			expectToken(tok(kotlin, "val n = '\\n'"), 'string', "'\\n'");
+		});
+
+		it('breaks out an escaped char literal escape body', () => {
+			// '\n' -> ' (string) + \n (string.escape) + ' (string), lossless.
+			const line = tok(kotlin, "val n = '\\n'");
+			expectToken(line, 'string.escape', '\\n');
+			expectLossless(line, "val n = '\\n'");
+			const u = tok(kotlin, "val u = '\\u0041'");
+			expectToken(u, 'string.escape', '\\u0041');
+			expectLossless(u, "val u = '\\u0041'");
 		});
 
 		it('breaks out a \\uXXXX unicode escape as a single escape token', () => {
@@ -241,9 +283,11 @@ describe('Kotlin tokenizer', () => {
 			expectTokenType(lines[2], 'string');
 		});
 
-		it('breaks out templates inside a raw string', () => {
+		it('sub-tokenizes templates inside a raw string', () => {
 			const lines = tokLines(kotlin, ['val q = """name=$name', 'done"""']);
-			expectToken(lines[0], 'string.template', '$name');
+			expectToken(lines[0], 'string.template', '$');
+			expectToken(lines[0], 'variable', 'name');
+			expectLossless(lines[0], 'val q = """name=$name');
 		});
 	});
 
@@ -252,7 +296,8 @@ describe('Kotlin tokenizer', () => {
 			const line = tok(kotlin, 'fun greet(name: String): String = "Hello, $name"');
 			expectToken(line, 'keyword.definition', 'fun');
 			expectToken(line, 'type.builtin', 'String');
-			expectToken(line, 'string.template', '$name');
+			expectToken(line, 'string.template', '$');
+			expectToken(line, 'variable', 'name');
 		});
 
 		it('tokenizes a property with elvis operator', () => {
@@ -283,6 +328,244 @@ describe('Kotlin tokenizer', () => {
 			const lines = tokLines(kotlin, ['val q = """SELECT ${cols}', '  FROM t WHERE id = $id"""']);
 			expectLossless(lines[0], 'val q = """SELECT ${cols}');
 			expectLossless(lines[1], '  FROM t WHERE id = $id"""');
+		});
+	});
+
+	// ---------------------------------------------------------------------------
+	// Regression suite for the A+ closures. Each test fails on the pre-closure
+	// tokenizer (template blobs, no member/property/generic/escape sub-typing) and
+	// passes now. Losslessness is asserted alongside every classification.
+	// ---------------------------------------------------------------------------
+	describe('interpolation sub-tokenization', () => {
+		it('sub-tokenizes ${expr} inner with operator + variables + property + call', () => {
+			const code = 'val s = "owe ${count * user.price.value + tax(rate)}"';
+			const line = tok(kotlin, code);
+			expectToken(line, 'string.template', '${');
+			expectToken(line, 'string.template', '}');
+			expectToken(line, 'operator.arithmetic', '*');
+			expectToken(line, 'operator.arithmetic', '+');
+			expectToken(line, 'variable', 'count');
+			expectToken(line, 'variable', 'user');
+			expectToken(line, 'punctuation.accessor', '.');
+			expectToken(line, 'property', 'price');
+			expectToken(line, 'property', 'value');
+			expectToken(line, 'function.call', 'tax');
+			expectLossless(line, code);
+		});
+
+		it('sub-tokenizes a number inside ${...}', () => {
+			const line = tok(kotlin, 'val s = "n=${x + 0xFF}"');
+			expectToken(line, 'number.hex', '0xFF');
+			expectLossless(line, 'val s = "n=${x + 0xFF}"');
+		});
+
+		it('handles a nested string and call inside ${...}', () => {
+			const code = 'val s = "name=${user["${k}"].trim()}"';
+			const line = tok(kotlin, code);
+			expectToken(line, 'function.call', 'trim');
+			// The deeply nested ${k} is itself a template inside the inner string.
+			const tmpl = findTokens(line, 'string.template').map((t) => t.text);
+			if (!tmpl.includes('${') || !tmpl.includes('}')) {
+				throw new Error(`Expected nested template delimiters, got ${JSON.stringify(tmpl)}`);
+			}
+			expectLossless(line, code);
+		});
+
+		it('sub-tokenizes the dotted $a.b.c simple template as variable + properties', () => {
+			const line = tok(kotlin, 'val s = "$user.profile.id"');
+			expectToken(line, 'string.template', '$');
+			expectToken(line, 'variable', 'user');
+			expectToken(line, 'property', 'profile');
+			expectToken(line, 'property', 'id');
+			expectLossless(line, 'val s = "$user.profile.id"');
+		});
+
+		it('keeps the surrounding literal and quotes as string', () => {
+			const line = tok(kotlin, 'val s = "Hi $name!"');
+			expectToken(line, 'string', '"');
+			expectToken(line, 'string', 'Hi ');
+			expectToken(line, 'string', '!');
+		});
+
+		it('sub-tokenizes a template inside a multi-line raw string body', () => {
+			const lines = tokLines(kotlin, ['val q = """', 'id=${row.id} name=$row.name', '"""']);
+			expectToken(lines[1], 'string.template', '${');
+			expectToken(lines[1], 'property', 'id');
+			expectToken(lines[1], 'string.template', '$');
+			expectToken(lines[1], 'variable', 'row');
+			expectLossless(lines[1], 'id=${row.id} name=$row.name');
+		});
+	});
+
+	describe('string + char escapes', () => {
+		it('breaks out an escaped dollar \\$ as a string.escape', () => {
+			const line = tok(kotlin, 'val s = "price is \\$5"');
+			expectToken(line, 'string.escape', '\\$');
+			expectLossless(line, 'val s = "price is \\$5"');
+		});
+
+		it('breaks out an escaped quote \\" without ending the string early', () => {
+			const code = 'val s = "say \\"hi\\" now"';
+			const line = tok(kotlin, code);
+			expectToken(line, 'string.escape', '\\"');
+			expectLossless(line, code);
+		});
+
+		it('breaks out an escaped char-literal escape body', () => {
+			const line = tok(kotlin, "val c = '\\t'");
+			expectToken(line, 'string.escape', '\\t');
+			expectLossless(line, "val c = '\\t'");
+		});
+	});
+
+	describe('member access classification', () => {
+		it('classifies an identifier after . as property', () => {
+			const line = tok(kotlin, 'val n = obj.field');
+			expectToken(line, 'punctuation.accessor', '.');
+			expectToken(line, 'property', 'field');
+		});
+
+		it('classifies a call after . as function.call and a non-call member as property', () => {
+			const line = tok(kotlin, 'obj.compute().result');
+			expectToken(line, 'function.call', 'compute');
+			expectToken(line, 'property', 'result');
+		});
+
+		it('classifies a member reference after :: as property and a ctor ref as a type', () => {
+			const ref = tok(kotlin, 'val r = String::length');
+			expectToken(ref, 'operator', '::');
+			expectToken(ref, 'property', 'length');
+			expectLossless(ref, 'val r = String::length');
+			// A PascalCase name after :: is a constructor reference, not a member.
+			const ctor = tok(kotlin, 'val c = ::User');
+			expectToken(ctor, 'type.class', 'User');
+			expectLossless(ctor, 'val c = ::User');
+		});
+
+		it('classifies a member after ?. as property', () => {
+			const line = tok(kotlin, 'val n = obj?.size');
+			expectToken(line, 'operator', '?.');
+			expectToken(line, 'property', 'size');
+		});
+
+		it('does NOT treat a keyword-named member as a keyword', () => {
+			// `x.is` / `x.in` are member accesses, not the is/in keywords.
+			const line = tok(kotlin, 'val r = x.`in`.value');
+			const kws = findTokens(line, 'keyword');
+			if (kws.length !== 0) {
+				throw new Error(
+					`Keyword leaked through member access: ${JSON.stringify(kws.map((t) => t.text))}`
+				);
+			}
+			expectLossless(line, 'val r = x.`in`.value');
+		});
+
+		it('classifies the implicit lambda parameter it as variable.parameter', () => {
+			const line = tok(kotlin, 'list.map { it.length }');
+			expectToken(line, 'variable.parameter', 'it');
+			expectToken(line, 'property', 'length');
+		});
+	});
+
+	describe('generics as brackets', () => {
+		it('emits < > as punctuation.bracket in a type-argument position', () => {
+			const line = tok(kotlin, 'val l: List<String> = listOf()');
+			expectToken(line, 'punctuation.bracket', '<');
+			expectToken(line, 'punctuation.bracket', '>');
+		});
+
+		it('splits a >> generic close against angle depth', () => {
+			const line = tok(kotlin, 'val m: Map<String, List<Int>> = mapOf()');
+			expectToken(line, 'punctuation.bracket', '>>');
+			// The two opens and one >> close are all brackets, none comparison ops.
+			const cmp = findTokens(line, 'operator.comparison');
+			if (cmp.length !== 0) {
+				throw new Error(
+					`Generic angle brackets leaked as comparison: ${JSON.stringify(cmp.map((t) => t.text))}`
+				);
+			}
+			expectLossless(line, 'val m: Map<String, List<Int>> = mapOf()');
+		});
+
+		it('opens generics for a fun type-parameter list', () => {
+			const line = tok(kotlin, 'fun <T> id(x: T): T = x');
+			expectToken(line, 'punctuation.bracket', '<');
+			expectToken(line, 'punctuation.bracket', '>');
+		});
+
+		it('still treats a bare a < b as a comparison operator', () => {
+			const line = tok(kotlin, 'val ok = a < b');
+			expectToken(line, 'operator.comparison', '<');
+		});
+	});
+
+	describe('contextual keywords, constants, and labels', () => {
+		it('classifies SCREAMING_CASE identifiers as constant, not type', () => {
+			expectToken(tok(kotlin, 'val MAX_SIZE = 100'), 'constant', 'MAX_SIZE');
+			expectToken(tok(kotlin, 'const val PI_VALUE = 3.14'), 'constant', 'PI_VALUE');
+		});
+
+		it('classifies a label definition (loop@) as variable.definition', () => {
+			const line = tok(kotlin, 'loop@ for (i in xs) {}');
+			expectToken(line, 'variable.definition', 'loop@');
+			expectLossless(line, 'loop@ for (i in xs) {}');
+		});
+
+		it('classifies a @label reference after a jump keyword as a label, not annotation', () => {
+			const line = tok(kotlin, 'return@forEach');
+			expectToken(line, 'variable', '@forEach');
+			const types = findTokens(line, 'type');
+			if (types.length !== 0) {
+				throw new Error(
+					`@label leaked as an annotation type: ${JSON.stringify(types.map((t) => t.text))}`
+				);
+			}
+		});
+
+		it('still classifies a leading @Annotation as a type', () => {
+			expectToken(tok(kotlin, '@Inject lateinit var x: Foo'), 'type', '@Inject');
+		});
+
+		it('classifies the backing-field reference `field` as a soft keyword', () => {
+			const line = tok(kotlin, 'set(value) { field = value }');
+			expectToken(line, 'keyword', 'field');
+			expectLossless(line, 'set(value) { field = value }');
+		});
+
+		it('treats `field` declared after val/var as a variable name, not the soft keyword', () => {
+			// Regression: `field` is a soft keyword only inside an accessor body. As the
+			// NAME in `val field = 1` / `var field: Int` it is an ordinary identifier and
+			// must NOT be colored as the backing-field keyword.
+			const v = tok(kotlin, 'val field = 1');
+			expectToken(v, 'variable', 'field');
+			if (findTokens(v, 'keyword').some((t) => t.text === 'field')) {
+				throw new Error('declared `val field` leaked as the soft keyword');
+			}
+			expectLossless(v, 'val field = 1');
+
+			const m = tok(kotlin, 'var field: Int = 0');
+			expectToken(m, 'variable', 'field');
+			if (findTokens(m, 'keyword').some((t) => t.text === 'field')) {
+				throw new Error('declared `var field` leaked as the soft keyword');
+			}
+			expectLossless(m, 'var field: Int = 0');
+		});
+
+		it('classifies the new unsigned built-in types', () => {
+			expectToken(tok(kotlin, 'val u: UInt = 1u'), 'type.builtin', 'UInt');
+			expectToken(tok(kotlin, 'val a: IntArray = intArrayOf()'), 'type.builtin', 'IntArray');
+		});
+	});
+
+	describe('lossless on deeply nested interpolation', () => {
+		it('is lossless for a template containing nested strings, braces, and brackets', () => {
+			const code = 'val deep = "${a[b["${c}"]]}"';
+			expectLossless(tok(kotlin, code), code);
+		});
+
+		it('is lossless for an if/else expression inside ${...}', () => {
+			const code = 'val s = "${ if (x > 0) "pos" else "neg" }"';
+			expectLossless(tok(kotlin, code), code);
 		});
 	});
 });

@@ -65,13 +65,20 @@ describe('SqlTokenizer', () => {
 
 		it('treats a doubled single-quote as an escaped quote inside the string', () => {
 			const line = tok(createSqlTokenizer(), "WHERE name = 'O''Brien'");
-			expectToken(line, 'string', "'O''Brien'");
+			// The doubled '' is split out as string.escape; the body stays string.
+			expectToken(line, 'string', "'O");
+			expectToken(line, 'string.escape', "''");
+			expectToken(line, 'string', "Brien'");
+			expectLossless(line, "WHERE name = 'O''Brien'");
 		});
 
 		it('does not terminate early on the escaped quote', () => {
 			const line = tok(createSqlTokenizer(), "VALUES ('a''b', 1)");
-			expectToken(line, 'string', "'a''b'");
-			expectToken(line, 'number', '1');
+			expectToken(line, 'string', "'a");
+			expectToken(line, 'string.escape', "''");
+			expectToken(line, 'string', "b'");
+			expectToken(line, 'number.integer', '1');
+			expectLossless(line, "VALUES ('a''b', 1)");
 		});
 	});
 
@@ -113,22 +120,57 @@ describe('SqlTokenizer', () => {
 	describe('numbers', () => {
 		it('tokenizes an integer', () => {
 			const line = tok(createSqlTokenizer(), 'LIMIT 42');
-			expectToken(line, 'number', '42');
+			expectToken(line, 'number.integer', '42');
 		});
 
 		it('tokenizes a decimal', () => {
 			const line = tok(createSqlTokenizer(), 'SET price = 19.99');
-			expectToken(line, 'number', '19.99');
+			expectToken(line, 'number.float', '19.99');
 		});
 
 		it('tokenizes scientific notation', () => {
 			const line = tok(createSqlTokenizer(), 'SELECT 1.5e10');
-			expectToken(line, 'number', '1.5e10');
+			expectToken(line, 'number.float', '1.5e10');
 		});
 
 		it('tokenizes a leading-dot decimal', () => {
 			const line = tok(createSqlTokenizer(), 'SELECT .5');
-			expectToken(line, 'number', '.5');
+			expectToken(line, 'number.float', '.5');
+		});
+
+		it('tokenizes a hex literal as number.hex', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT 0xFF, 0Xa0');
+			expectToken(line, 'number.hex', '0xFF');
+			expectToken(line, 'number.hex', '0Xa0');
+			expectLossless(line, 'SELECT 0xFF, 0Xa0');
+		});
+
+		it('tokenizes a binary literal as number.binary', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT 0b1010, 0B11');
+			expectToken(line, 'number.binary', '0b1010');
+			expectToken(line, 'number.binary', '0B11');
+			expectLossless(line, 'SELECT 0b1010, 0B11');
+		});
+
+		it("tokenizes a hex bit-string literal X'..' as number.hex", () => {
+			const line = tok(createSqlTokenizer(), "SELECT X'1F', x'00ab'");
+			expectToken(line, 'number.hex', "X'1F'");
+			expectToken(line, 'number.hex', "x'00ab'");
+			expectLossless(line, "SELECT X'1F', x'00ab'");
+		});
+
+		it("tokenizes a binary bit-string literal B'..' as number.binary", () => {
+			const line = tok(createSqlTokenizer(), "SELECT B'101', b'0'");
+			expectToken(line, 'number.binary', "B'101'");
+			expectToken(line, 'number.binary', "b'0'");
+			expectLossless(line, "SELECT B'101', b'0'");
+		});
+
+		it('classifies a plain integer as number.integer (not float)', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT 100');
+			expectToken(line, 'number.integer', '100');
+			const floats = line.tokens.filter((t) => t.type === 'number.float');
+			if (floats.length !== 0) throw new Error('integer misclassified as float');
 		});
 
 		it('does not let a leading-dot number swallow a member accessor', () => {
@@ -136,14 +178,14 @@ describe('SqlTokenizer', () => {
 			const line = tok(createSqlTokenizer(), 'SELECT t1.5 FROM t1');
 			expectToken(line, 'variable', 't1');
 			expectToken(line, 'punctuation.accessor', '.');
-			expectToken(line, 'number', '5');
+			expectToken(line, 'number.integer', '5');
 			expectLossless(line, 'SELECT t1.5 FROM t1');
 		});
 
 		it('keeps a leading-dot decimal after a closing paren as an accessor', () => {
 			const line = tok(createSqlTokenizer(), 'SELECT (a).5');
 			expectToken(line, 'punctuation.accessor', '.');
-			expectToken(line, 'number', '5');
+			expectToken(line, 'number.integer', '5');
 			expectLossless(line, 'SELECT (a).5');
 		});
 	});
@@ -210,7 +252,7 @@ describe('SqlTokenizer', () => {
 			expectTokenType(lines[1], 'comment.block');
 			expectToken(lines[2], 'comment.block', '   ends here */');
 			expectToken(lines[2], 'keyword.control', 'SELECT');
-			expectToken(lines[2], 'number', '1');
+			expectToken(lines[2], 'number.integer', '1');
 		});
 
 		it('keeps an interior block-comment line entirely as comment', () => {
@@ -259,7 +301,7 @@ describe('SqlTokenizer', () => {
 
 		it('does not confuse a $1 bind parameter with a dollar-quote opener', () => {
 			const line = tok(createSqlTokenizer(), 'WHERE id = $1');
-			expectToken(line, 'number', '1');
+			expectToken(line, 'variable.parameter', '$1');
 			expectLossless(line, 'WHERE id = $1');
 		});
 	});
@@ -276,21 +318,46 @@ describe('SqlTokenizer', () => {
 	describe('escape strings', () => {
 		it('honours a backslash-escaped quote inside a string (MySQL / E-string)', () => {
 			const line = tok(createSqlTokenizer(), "SELECT 'quote\\'inside' FROM t");
-			expectToken(line, 'string', "'quote\\'inside'");
+			// The \' is split out as string.escape; the literal does not terminate on it.
+			expectToken(line, 'string', "'quote");
+			expectToken(line, 'string.escape', "\\'");
+			expectToken(line, 'string', "inside'");
 			expectToken(line, 'keyword.control', 'FROM');
 			expectLossless(line, "SELECT 'quote\\'inside' FROM t");
 		});
 
-		it('folds an E-prefix into the string literal', () => {
+		it('folds an E-prefix into the string literal and splits the escape', () => {
 			const line = tok(createSqlTokenizer(), "SELECT E'it\\'s escaped' AS v");
-			expectToken(line, 'string', "E'it\\'s escaped'");
+			// E prefix + opening quote are a string sub-token; \' is a string.escape.
+			expectToken(line, 'string', 'E');
+			expectToken(line, 'string', "'it");
+			expectToken(line, 'string.escape', "\\'");
+			expectToken(line, 'string', "s escaped'");
 			expectToken(line, 'keyword', 'AS');
 			expectLossless(line, "SELECT E'it\\'s escaped' AS v");
 		});
 
 		it('folds an N-prefix (T-SQL unicode) into the string literal', () => {
 			const line = tok(createSqlTokenizer(), "SELECT N'unicode literal'");
-			expectToken(line, 'string', "N'unicode literal'");
+			expectToken(line, 'string', 'N');
+			expectToken(line, 'string', "'unicode literal'");
+			expectLossless(line, "SELECT N'unicode literal'");
+		});
+
+		it('emits common C escapes (\\n, \\t, \\\\) as string.escape', () => {
+			const line = tok(createSqlTokenizer(), "SELECT E'line1\\nline2\\tend\\\\done'");
+			expectToken(line, 'string.escape', '\\n');
+			expectToken(line, 'string.escape', '\\t');
+			expectToken(line, 'string.escape', '\\\\');
+			expectLossless(line, "SELECT E'line1\\nline2\\tend\\\\done'");
+		});
+
+		it('emits \\uXXXX / \\xHH / octal escapes as string.escape', () => {
+			const line = tok(createSqlTokenizer(), "SELECT E'\\u00e9\\x41\\101'");
+			expectToken(line, 'string.escape', '\\u00e9');
+			expectToken(line, 'string.escape', '\\x41');
+			expectToken(line, 'string.escape', '\\101');
+			expectLossless(line, "SELECT E'\\u00e9\\x41\\101'");
 		});
 	});
 
@@ -311,10 +378,10 @@ describe('SqlTokenizer', () => {
 			expectLossless(line, 'SELECT arr::int[]');
 		});
 
-		it('classifies @local and @@global as variables', () => {
+		it('classifies @@global as a system variable and @local as a parameter', () => {
 			const line = tok(createSqlTokenizer(), 'SELECT @@ROWCOUNT, @count');
 			expectToken(line, 'variable', '@@ROWCOUNT');
-			expectToken(line, 'variable', '@count');
+			expectToken(line, 'variable.parameter', '@count');
 			expectLossless(line, 'SELECT @@ROWCOUNT, @count');
 		});
 	});
@@ -330,13 +397,13 @@ describe('SqlTokenizer', () => {
 			expectToken(lines[1], 'comment.block', '  nested /* inner */ still going');
 			expectToken(lines[2], 'comment.block', '   end */');
 			expectToken(lines[2], 'keyword.control', 'SELECT');
-			expectToken(lines[2], 'number', '99');
+			expectToken(lines[2], 'number.integer', '99');
 		});
 
 		it('closes a single-line nested block comment at the outer */', () => {
 			const line = tok(createSqlTokenizer(), 'SELECT /* a /* b */ c */ 1');
 			expectToken(line, 'comment.block', '/* a /* b */ c */');
-			expectToken(line, 'number', '1');
+			expectToken(line, 'number.integer', '1');
 			expectLossless(line, 'SELECT /* a /* b */ c */ 1');
 		});
 	});
@@ -362,6 +429,311 @@ describe('SqlTokenizer', () => {
 			expectToken(line, 'keyword.control', 'ON');
 			expectToken(line, 'operator.comparison', '=');
 			expectToken(line, 'punctuation.accessor', '.');
+		});
+	});
+
+	describe('PostgreSQL JSON / array / range operators', () => {
+		it('classifies -> and ->> JSON access operators', () => {
+			const line = tok(createSqlTokenizer(), "SELECT data->'a', data->>'b' FROM t");
+			expectToken(line, 'operator', '->');
+			expectToken(line, 'operator', '->>');
+			expectLossless(line, "SELECT data->'a', data->>'b' FROM t");
+		});
+
+		it('classifies #> and #>> JSON path operators (not a hash comment)', () => {
+			const line = tok(createSqlTokenizer(), "SELECT meta#>'{x}', meta#>>'{y}' FROM t");
+			expectToken(line, 'operator', '#>');
+			expectToken(line, 'operator', '#>>');
+			// No part of the line leaked into a line comment.
+			const comments = line.tokens.filter((t) => t.type === 'comment.line');
+			if (comments.length !== 0) throw new Error('JSON path # misread as a comment');
+			expectLossless(line, "SELECT meta#>'{x}', meta#>>'{y}' FROM t");
+		});
+
+		it('classifies containment and overlap operators @> <@ &&', () => {
+			const line = tok(createSqlTokenizer(), "WHERE tags @> '{a}' AND '{b}' <@ tags AND a && b");
+			expectToken(line, 'operator', '@>');
+			expectToken(line, 'operator', '<@');
+			expectToken(line, 'operator', '&&');
+			expectLossless(line, "WHERE tags @> '{a}' AND '{b}' <@ tags AND a && b");
+		});
+
+		it('classifies the #- delete-path operator', () => {
+			const line = tok(createSqlTokenizer(), "SELECT a #- '{p}' FROM t");
+			expectToken(line, 'operator', '#-');
+			expectLossless(line, "SELECT a #- '{p}' FROM t");
+		});
+
+		it('classifies bit-shift << >> and full-text @@ operators', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT a << 2, b >> 1, tsv @@ q FROM t');
+			expectToken(line, 'operator', '<<');
+			expectToken(line, 'operator', '>>');
+			expectToken(line, 'operator', '@@');
+			expectLossless(line, 'SELECT a << 2, b >> 1, tsv @@ q FROM t');
+		});
+
+		it('classifies regex match operators ~ ~* !~ !~*', () => {
+			const line = tok(
+				createSqlTokenizer(),
+				"WHERE a ~ 'x' AND b ~* 'y' AND c !~ 'z' AND d !~* 'w'"
+			);
+			expectToken(line, 'operator', '~');
+			expectToken(line, 'operator', '~*');
+			expectToken(line, 'operator', '!~');
+			expectToken(line, 'operator', '!~*');
+			expectLossless(line, "WHERE a ~ 'x' AND b ~* 'y' AND c !~ 'z' AND d !~* 'w'");
+		});
+
+		it('classifies the jsonb existence operators ? ?| ?&', () => {
+			const line = tok(createSqlTokenizer(), "WHERE doc ? 'k' AND doc ?| a AND doc ?& b");
+			// A bare ? after an operand is the existence operator, not a placeholder.
+			expectToken(line, 'operator', '?');
+			expectToken(line, 'operator', '?|');
+			expectToken(line, 'operator', '?&');
+			expectLossless(line, "WHERE doc ? 'k' AND doc ?| a AND doc ?& b");
+		});
+	});
+
+	describe('bind parameters', () => {
+		it('classifies a positional $N parameter as variable.parameter', () => {
+			const line = tok(createSqlTokenizer(), 'WHERE id = $1 AND x = $42');
+			expectToken(line, 'variable.parameter', '$1');
+			expectToken(line, 'variable.parameter', '$42');
+			expectLossless(line, 'WHERE id = $1 AND x = $42');
+		});
+
+		it('classifies a named :name parameter as variable.parameter (not a :: cast)', () => {
+			const line = tok(createSqlTokenizer(), 'WHERE id = :id AND s = :status');
+			expectToken(line, 'variable.parameter', ':id');
+			expectToken(line, 'variable.parameter', ':status');
+			// The :: cast operator must still win over named-param parsing.
+			const cast = tok(createSqlTokenizer(), 'SELECT x::int');
+			expectToken(cast, 'operator', '::');
+			expectLossless(line, 'WHERE id = :id AND s = :status');
+		});
+
+		it('classifies a ? placeholder in operand position as variable.parameter', () => {
+			const line = tok(createSqlTokenizer(), 'INSERT INTO t VALUES (?, ?, ?)');
+			const params = line.tokens.filter((t) => t.type === 'variable.parameter' && t.text === '?');
+			if (params.length !== 3) throw new Error('expected three ? placeholders');
+			expectLossless(line, 'INSERT INTO t VALUES (?, ?, ?)');
+		});
+
+		it('classifies @local as a parameter and @@global as a system variable', () => {
+			const line = tok(createSqlTokenizer(), 'SET @x = @@SPID');
+			expectToken(line, 'variable.parameter', '@x');
+			expectToken(line, 'variable', '@@SPID');
+			expectLossless(line, 'SET @x = @@SPID');
+		});
+	});
+
+	describe('number subtypes', () => {
+		it('classifies 0x.. as number.hex and 0b.. as number.binary', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT 0xFF + 0b101');
+			expectToken(line, 'number.hex', '0xFF');
+			expectToken(line, 'number.binary', '0b101');
+			expectLossless(line, 'SELECT 0xFF + 0b101');
+		});
+
+		it("classifies X'..' / B'..' bit-string literals as hex/binary numbers", () => {
+			const line = tok(createSqlTokenizer(), "SELECT X'1a', B'10'");
+			expectToken(line, 'number.hex', "X'1a'");
+			expectToken(line, 'number.binary', "B'10'");
+			expectLossless(line, "SELECT X'1a', B'10'");
+		});
+
+		it('distinguishes integer from float', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT 7, 7.0, 7e3, .7');
+			expectToken(line, 'number.integer', '7');
+			expectToken(line, 'number.float', '7.0');
+			expectToken(line, 'number.float', '7e3');
+			expectToken(line, 'number.float', '.7');
+			expectLossless(line, 'SELECT 7, 7.0, 7e3, .7');
+		});
+	});
+
+	describe('string.escape sub-tokens', () => {
+		it('splits C-style escapes inside an E-string', () => {
+			const line = tok(createSqlTokenizer(), "SELECT E'a\\nb\\tc\\\\d'");
+			expectToken(line, 'string.escape', '\\n');
+			expectToken(line, 'string.escape', '\\t');
+			expectToken(line, 'string.escape', '\\\\');
+			expectLossless(line, "SELECT E'a\\nb\\tc\\\\d'");
+		});
+
+		it('splits \\uXXXX, \\xHH and octal escapes', () => {
+			const line = tok(createSqlTokenizer(), "SELECT E'\\u00e9\\x41\\101'");
+			expectToken(line, 'string.escape', '\\u00e9');
+			expectToken(line, 'string.escape', '\\x41');
+			expectToken(line, 'string.escape', '\\101');
+			expectLossless(line, "SELECT E'\\u00e9\\x41\\101'");
+		});
+
+		it('splits the doubled-quote escape and keeps the body as string', () => {
+			const line = tok(createSqlTokenizer(), "SELECT 'a''b'");
+			expectToken(line, 'string', "'a");
+			expectToken(line, 'string.escape', "''");
+			expectToken(line, 'string', "b'");
+			expectLossless(line, "SELECT 'a''b'");
+		});
+	});
+
+	describe('member-access properties', () => {
+		it('classifies an identifier after an accessor as a property', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT u.name, s.t.col FROM s.users u');
+			expectToken(line, 'property', 'name');
+			expectToken(line, 'property', 'col');
+			expectLossless(line, 'SELECT u.name, s.t.col FROM s.users u');
+		});
+
+		it('classifies a keyword-named column after an accessor as a property, not a keyword', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT t.order, t.from FROM orders t');
+			expectToken(line, 'property', 'order');
+			expectToken(line, 'property', 'from');
+			// The standalone FROM is still a control keyword.
+			expectToken(line, 'keyword.control', 'FROM');
+			expectLossless(line, 'SELECT t.order, t.from FROM orders t');
+		});
+
+		it('classifies a property immediately before ( as a method-style call', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT obj.method(x)');
+			expectToken(line, 'function.call', 'method');
+			expectLossless(line, 'SELECT obj.method(x)');
+		});
+
+		it('classifies a property after a quoted-identifier accessor', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT t."Col".inner FROM t');
+			expectToken(line, 'property', 'inner');
+			expectLossless(line, 'SELECT t."Col".inner FROM t');
+		});
+	});
+
+	describe('multi-line single-quoted string threading', () => {
+		it('threads an unterminated single-quoted literal across lines via state', () => {
+			const inputs = [
+				"SELECT 'line one \\",
+				'still in string; SELECT not-a-keyword',
+				"ends here' AS x"
+			];
+			const lines = tokLines(createSqlTokenizer(), inputs);
+			// Interior line is wholly string — no keyword leakage.
+			expectToken(lines[1], 'string', 'still in string; SELECT not-a-keyword');
+			expectToken(lines[2], 'string', "ends here'");
+			expectToken(lines[2], 'keyword', 'AS');
+			for (let i = 0; i < inputs.length; i++) {
+				expectLossless(lines[i], inputs[i]);
+			}
+		});
+
+		it('keeps doubled-quote escapes intact across the continuation', () => {
+			const inputs = ["SELECT 'it''s open", "and ''closes'' here' AS x"];
+			const lines = tokLines(createSqlTokenizer(), inputs);
+			expectToken(lines[1], 'string.escape', "''");
+			expectToken(lines[1], 'keyword', 'AS');
+			for (let i = 0; i < inputs.length; i++) {
+				expectLossless(lines[i], inputs[i]);
+			}
+		});
+	});
+
+	describe('array subscript punctuation', () => {
+		it('classifies int[] array brackets as punctuation.bracket', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT x::int[]');
+			expectToken(line, 'operator', '::');
+			expectToken(line, 'type.builtin', 'int');
+			const brackets = line.tokens.filter((t) => t.type === 'punctuation.bracket');
+			if (brackets.length !== 2) throw new Error('expected two array-subscript brackets');
+			expectLossless(line, 'SELECT x::int[]');
+		});
+	});
+
+	describe('re-audit hardening (seam regressions)', () => {
+		it('does not turn comparisons or shifts into brackets/generics', () => {
+			// A generic-depth tracker (if ever added) must never claim < > << >>.
+			const line = tok(createSqlTokenizer(), 'WHERE a < b AND c > d AND a << 2 AND b >> 1');
+			expectToken(line, 'operator.comparison', '<');
+			expectToken(line, 'operator.comparison', '>');
+			expectToken(line, 'operator', '<<');
+			expectToken(line, 'operator', '>>');
+			const brackets = line.tokens.filter((t) => t.type === 'punctuation.bracket');
+			if (brackets.length !== 0) throw new Error('comparison/shift leaked into a bracket');
+			expectLossless(line, 'WHERE a < b AND c > d AND a << 2 AND b >> 1');
+		});
+
+		it('keeps numbers and operators distinct when glued together', () => {
+			const line = tok(createSqlTokenizer(), 'SELECT 1<2, 3>4, 5<>6, 1+2, 9%2');
+			expectToken(line, 'number.integer', '1');
+			expectToken(line, 'operator.comparison', '<');
+			expectToken(line, 'operator.comparison', '<>');
+			expectToken(line, 'operator.arithmetic', '+');
+			expectToken(line, 'operator.arithmetic', '%');
+			expectLossless(line, 'SELECT 1<2, 3>4, 5<>6, 1+2, 9%2');
+		});
+
+		it('leaves a string open when its closing quote is backslash-escaped', () => {
+			// `'a\'` — the \' escapes the quote, so the literal is unterminated and the
+			// escape must not be dropped/duplicated (lossless) and state stays open.
+			const line = tok(createSqlTokenizer(), "SELECT 'a\\'");
+			expectToken(line, 'string', "'a");
+			expectToken(line, 'string.escape', "\\'");
+			if ((line.state as { inString?: boolean } | undefined)?.inString !== true)
+				throw new Error('escaped close-quote should leave string open');
+			expectLossless(line, "SELECT 'a\\'");
+		});
+
+		it('keeps a doubled-quote run open when no real close quote follows', () => {
+			// `'\\''` is backslash-escape + escaped-quote with no terminator: unterminated.
+			const line = tok(createSqlTokenizer(), "SELECT '\\\\''");
+			expectToken(line, 'string.escape', '\\\\');
+			expectToken(line, 'string.escape', "''");
+			if ((line.state as { inString?: boolean } | undefined)?.inString !== true)
+				throw new Error('quote run should leave string open');
+			expectLossless(line, "SELECT '\\\\''");
+		});
+
+		it('keeps a terminated prefixed E-string lossless when it abuts a cast', () => {
+			// Regression on the prefixed-string return-length math: E'ends' must stop
+			// at the close quote so ::text is re-scanned, not swallowed.
+			const line = tok(createSqlTokenizer(), "SELECT E'ends'::text");
+			expectToken(line, 'string', 'E');
+			expectToken(line, 'string', "'ends'");
+			expectToken(line, 'operator', '::');
+			expectToken(line, 'type.builtin', 'text');
+			expectLossless(line, "SELECT E'ends'::text");
+		});
+
+		it('threads an unterminated prefixed E-string across lines losslessly', () => {
+			const inputs = ["SELECT E'open\\", 'still in string', "close' AS y"];
+			const lines = tokLines(createSqlTokenizer(), inputs);
+			expectToken(lines[1], 'string', 'still in string');
+			expectToken(lines[2], 'string', "close'");
+			expectToken(lines[2], 'keyword', 'AS');
+			for (let i = 0; i < inputs.length; i++) {
+				expectLossless(lines[i], inputs[i]);
+			}
+		});
+
+		it('distinguishes the jsonb ? operator from a ? placeholder by operand context', () => {
+			// `?` after an operand (here a string from data->'a') is the existence
+			// operator; a `?` in operand position is a placeholder.
+			const op = tok(createSqlTokenizer(), "WHERE data->'a' ? 'k'");
+			expectToken(op, 'operator', '?');
+			const ph = tok(createSqlTokenizer(), 'SELECT ? FROM t');
+			expectToken(ph, 'variable.parameter', '?');
+			expectLossless(op, "WHERE data->'a' ? 'k'");
+		});
+
+		it('produces contiguous, in-bounds token offsets on a dense mixed line', () => {
+			const original = "SELECT t.col, E'x\\n', 0xFF, a->>'b', x::int[] FROM s.t WHERE id = $1;";
+			const line = tok(createSqlTokenizer(), original);
+			let cursor = 0;
+			for (const t of line.tokens) {
+				if (t.start !== cursor) throw new Error('non-contiguous token start at ' + cursor);
+				if (t.end !== cursor + t.text.length) throw new Error('bad token end at ' + cursor);
+				cursor = t.end;
+			}
+			if (cursor !== original.length) throw new Error('offsets do not span the line');
+			expectLossless(line, original);
 		});
 	});
 

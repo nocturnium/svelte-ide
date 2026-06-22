@@ -145,19 +145,23 @@ describe('SwiftTokenizer - comments', () => {
 });
 
 describe('SwiftTokenizer - numbers', () => {
-	it('tokenizes decimal integers and underscores', () => {
-		expectToken(tok(swift, 'let n = 1_000_000'), 'number', '1_000_000');
+	it('tokenizes decimal integers and underscores as number.integer', () => {
+		expectToken(tok(swift, 'let n = 1_000_000'), 'number.integer', '1_000_000');
 	});
 
-	it('tokenizes hex, octal, and binary literals', () => {
-		expectToken(tok(swift, 'let h = 0xFF'), 'number', '0xFF');
-		expectToken(tok(swift, 'let o = 0o17'), 'number', '0o17');
-		expectToken(tok(swift, 'let b = 0b1010'), 'number', '0b1010');
+	it('tokenizes hex, octal, and binary literals with precise subtypes', () => {
+		expectToken(tok(swift, 'let h = 0xFF'), 'number.hex', '0xFF');
+		// No octal subtype in the vocabulary -> integer.
+		expectToken(tok(swift, 'let o = 0o17'), 'number.integer', '0o17');
+		expectToken(tok(swift, 'let b = 0b1010'), 'number.binary', '0b1010');
 	});
 
-	it('tokenizes floats with exponents', () => {
-		expectToken(tok(swift, 'let f = 3.14'), 'number', '3.14');
-		expectToken(tok(swift, 'let e = 1.5e10'), 'number', '1.5e10');
+	it('tokenizes floats with exponents as number.float', () => {
+		expectToken(tok(swift, 'let f = 3.14'), 'number.float', '3.14');
+		expectToken(tok(swift, 'let e = 1.5e10'), 'number.float', '1.5e10');
+		// Bare integers stay number.integer; a p-exponent hex float stays number.hex.
+		expectToken(tok(swift, 'let i = 42'), 'number.integer', '42');
+		expectToken(tok(swift, 'let hf = 0x1.8p3'), 'number.hex', '0x1.8p3');
 	});
 });
 
@@ -181,8 +185,11 @@ describe('SwiftTokenizer - operators', () => {
 });
 
 describe('SwiftTokenizer - identifiers, builtins, attributes', () => {
-	it('classifies a plain identifier as variable', () => {
-		expectToken(tok(swift, 'let counter = 0'), 'variable', 'counter');
+	it('classifies a binding name as variable.definition and a use as variable', () => {
+		// `let counter` is the DEFINING occurrence -> variable.definition.
+		expectToken(tok(swift, 'let counter = 0'), 'variable.definition', 'counter');
+		// A bare use of an identifier (the RHS) stays a plain variable.
+		expectToken(tok(swift, 'total = counter'), 'variable', 'counter');
 	});
 
 	it('classifies a function call', () => {
@@ -280,5 +287,233 @@ describe('SwiftTokenizer - realistic lines', () => {
 		expectToken(line, 'keyword.definition', 'func');
 		expectToken(line, 'type.builtin', 'Int');
 		expectLossless(line, 'func add(_ a: Int, _ b: Int) -> Int {');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// A+ closures: interpolation sub-tokenization, escapes, number subtypes,
+// member-access context, generics, definition naming, contextual keywords.
+// Each `it` is a fail-before/pass-after regression for one closed gap.
+// ---------------------------------------------------------------------------
+
+describe('SwiftTokenizer - interpolation sub-tokenization', () => {
+	it('sub-tokenizes a single interpolation with member access', () => {
+		// Before: the whole `\(user.name)` body was one flat string.template token.
+		const line = tok(swift, 'let s = "Hi \\(user.name)!"');
+		expectToken(line, 'string.template', '\\(');
+		expectToken(line, 'string.template', ')');
+		expectToken(line, 'variable', 'user');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'property', 'name');
+		expectToken(line, 'string', '"Hi ');
+		expectLossless(line, 'let s = "Hi \\(user.name)!"');
+	});
+
+	it('sub-tokenizes an arithmetic interpolation with real number + operators', () => {
+		const line = tok(swift, 'print("sum = \\(a + b * 2)")');
+		expectToken(line, 'variable', 'a');
+		expectToken(line, 'operator.arithmetic', '+');
+		expectToken(line, 'operator.arithmetic', '*');
+		expectToken(line, 'number.integer', '2');
+		expectLossless(line, 'print("sum = \\(a + b * 2)")');
+	});
+
+	it('classifies a call inside interpolation as function.call', () => {
+		const line = tok(swift, 'let t = "\\(obj.method(x).prop)"');
+		expectToken(line, 'function.call', 'method');
+		expectToken(line, 'property', 'prop');
+		expectLossless(line, 'let t = "\\(obj.method(x).prop)"');
+	});
+
+	it('keeps a nested string literal inside interpolation as a string', () => {
+		const line = tok(swift, 'Text("\\(item.price, specifier: "%.2f")")');
+		expectToken(line, 'string', '"%.2f"');
+		expectToken(line, 'property', 'price');
+		expectLossless(line, 'Text("\\(item.price, specifier: "%.2f")")');
+	});
+});
+
+describe('SwiftTokenizer - string escapes', () => {
+	it('emits string.escape for \\n \\t \\" \\\\ and \\0', () => {
+		const line = tok(swift, 'let s = "a\\tb\\nc\\"d\\\\e\\0"');
+		expectToken(line, 'string.escape', '\\t');
+		expectToken(line, 'string.escape', '\\n');
+		expectToken(line, 'string.escape', '\\"');
+		expectToken(line, 'string.escape', '\\\\');
+		expectToken(line, 'string.escape', '\\0');
+		expectLossless(line, 'let s = "a\\tb\\nc\\"d\\\\e\\0"');
+	});
+
+	it('emits string.escape for a unicode-scalar escape \\u{...}', () => {
+		const line = tok(swift, 'let u = "\\u{1F600}!"');
+		expectToken(line, 'string.escape', '\\u{1F600}');
+		expectLossless(line, 'let u = "\\u{1F600}!"');
+	});
+
+	it('does not treat an unrecognized backslash as an escape token', () => {
+		const line = tok(swift, 'let q = "\\q"');
+		// `\q` is not a Swift escape — it stays plain string content, still lossless.
+		expectTokenType(line, 'string');
+		expectLossless(line, 'let q = "\\q"');
+	});
+});
+
+describe('SwiftTokenizer - member access context', () => {
+	it('classifies a leading dot member as property and a dot call as function.call', () => {
+		const line = tok(swift, '.padding(.horizontal, 16)');
+		expectToken(line, 'function.call', 'padding');
+		expectToken(line, 'property', 'horizontal');
+		expectLossless(line, '.padding(.horizontal, 16)');
+	});
+
+	it('classifies optional-chained members as properties', () => {
+		const line = tok(swift, 'let v = obj?.value');
+		expectToken(line, 'property', 'value');
+		expectLossless(line, 'let v = obj?.value');
+	});
+});
+
+describe('SwiftTokenizer - generics as bracket punctuation', () => {
+	it('classifies generic < > and the >> close as punctuation.bracket', () => {
+		const line = tok(swift, 'let d: Dictionary<String, Array<Int>> = [:]');
+		expectToken(line, 'punctuation.bracket', '<');
+		expectToken(line, 'punctuation.bracket', '>>');
+		expectLossless(line, 'let d: Dictionary<String, Array<Int>> = [:]');
+	});
+
+	it('keeps a < or > used as comparison as an operator', () => {
+		const lt = tok(swift, 'if a < b {}');
+		expectToken(lt, 'operator', '<');
+		const gt = tok(swift, 'if count > 10 {}');
+		expectToken(gt, 'operator', '>');
+	});
+
+	it('keeps a shift operator >> as a single operator in value context', () => {
+		const line = tok(swift, 'let m = bits >> 2');
+		expectToken(line, 'operator', '>>');
+		expectLossless(line, 'let m = bits >> 2');
+	});
+
+	it('classifies a generic instantiation name as function.call', () => {
+		const line = tok(swift, 'let g = Foo<Bar>(value: 1)');
+		expectToken(line, 'function.call', 'Foo');
+		expectToken(line, 'punctuation.bracket', '<');
+		expectToken(line, 'punctuation.bracket', '>');
+		expectLossless(line, 'let g = Foo<Bar>(value: 1)');
+	});
+
+	it('keeps dual comparisons joined by && / || as operators, not generic brackets', () => {
+		// Regression (generic rewrite): looksLikeGenericOpen scanned the rest of the line
+		// for ANY matching `>` while only bailing on `; { } = + % "`. So in idiomatic
+		// boolean conditions like `i < n && j > 0`, the `<` reached the unrelated `>` and
+		// BOTH were misclassified as punctuation.bracket. A `&&`/`||` between them can only
+		// be a value expression, so the `<`/`>` must stay comparison operators.
+		const w = tok(swift, 'while i < n && j > 0 {}');
+		expectToken(w, 'operator', '<');
+		expectToken(w, 'operator', '>');
+		expectToken(w, 'operator.logical', '&&');
+		expectLossless(w, 'while i < n && j > 0 {}');
+
+		const g = tok(swift, 'guard lower < value || value > upper else { return }');
+		expectToken(g, 'operator', '<');
+		expectToken(g, 'operator', '>');
+		expectToken(g, 'operator.logical', '||');
+		expectLossless(g, 'guard lower < value || value > upper else { return }');
+
+		const i = tok(swift, 'if a < b && c > d {}');
+		expectToken(i, 'operator', '<');
+		expectToken(i, 'operator', '>');
+		expectLossless(i, 'if a < b && c > d {}');
+	});
+
+	it('still classifies real generics as brackets across the tightened heuristic', () => {
+		// The fix must not regress legitimate type-argument lists, including function-type
+		// args (`-> ` inside) and single-`&` protocol composition.
+		const fn = tok(swift, 'var handler: Optional<() -> Void>');
+		expectToken(fn, 'punctuation.bracket', '<');
+		expectToken(fn, 'punctuation.bracket', '>');
+		expectToken(fn, 'operator', '->');
+		expectLossless(fn, 'var handler: Optional<() -> Void>');
+
+		const comp = tok(swift, 'let p: Foo<A & B>');
+		expectToken(comp, 'punctuation.bracket', '<');
+		expectToken(comp, 'punctuation.bracket', '>');
+		expectToken(comp, 'operator', '&');
+		expectLossless(comp, 'let p: Foo<A & B>');
+	});
+});
+
+describe('SwiftTokenizer - definition naming context', () => {
+	it('names a function definition as function.definition', () => {
+		expectToken(tok(swift, 'func greet() {}'), 'function.definition', 'greet');
+		expectToken(tok(swift, 'func map<T>(_ f: T) {}'), 'function.definition', 'map');
+		expectToken(tok(swift, 'class func make() {}'), 'function.definition', 'make');
+	});
+
+	it('names type definitions, with protocol as type.interface', () => {
+		expectToken(tok(swift, 'struct Point {}'), 'type.class', 'Point');
+		expectToken(tok(swift, 'enum Color {}'), 'type.class', 'Color');
+		expectToken(tok(swift, 'protocol Drawable {}'), 'type.interface', 'Drawable');
+		expectToken(tok(swift, 'actor BankAccount {}'), 'type.class', 'BankAccount');
+		expectToken(tok(swift, 'typealias Handler = () -> Void'), 'type.class', 'Handler');
+	});
+
+	it('names a let/var binding as variable.definition', () => {
+		expectToken(tok(swift, 'let counter = 0'), 'variable.definition', 'counter');
+		expectToken(tok(swift, 'var total = 0'), 'variable.definition', 'total');
+	});
+});
+
+describe('SwiftTokenizer - contextual / soft keywords', () => {
+	it('treats get/set as keywords in accessor position but not as identifiers', () => {
+		const acc = tok(swift, 'var x: Int { get { return _x } set { _x = newValue } }');
+		expectToken(acc, 'keyword', 'get');
+		expectToken(acc, 'keyword', 'set');
+		expectLossless(acc, 'var x: Int { get { return _x } set { _x = newValue } }');
+		// `get` used as an ordinary binding name is NOT a keyword.
+		expectToken(tok(swift, 'let get = 5'), 'variable.definition', 'get');
+	});
+
+	it('keeps class as storage in class func and as definition in class Foo', () => {
+		expectToken(tok(swift, 'class func make() {}'), 'keyword.storage', 'class');
+		expectToken(tok(swift, 'class Foo {}'), 'keyword.definition', 'class');
+	});
+});
+
+describe('SwiftTokenizer - raw-string interpolation + escapes', () => {
+	it('sub-tokenizes \\#( ) interpolation in a single-pound raw string', () => {
+		const line = tok(swift, 'let r = #"path \\#(dir)/\\#(file)"#');
+		expectToken(line, 'string.template', '\\#(');
+		expectToken(line, 'variable', 'dir');
+		expectToken(line, 'variable', 'file');
+		expectLossless(line, 'let r = #"path \\#(dir)/\\#(file)"#');
+	});
+
+	it('keeps a \\n with the wrong pound count literal in a raw string', () => {
+		const line = tok(swift, 'let r = #"literal \\n stays"#');
+		// No string.escape token: `\n` is literal text in a raw string.
+		expectTokenType(line, 'string');
+		expectLossless(line, 'let r = #"literal \\n stays"#');
+	});
+});
+
+describe('SwiftTokenizer - multi-line string threading with interpolation', () => {
+	it('sub-tokenizes interpolation and escapes inside a triple-quoted block', () => {
+		const lines = tokLines(swift, ['let s = """', 'Hi \\(name)!', 'tab\\there', '"""']);
+		expectToken(lines[1], 'string.template', '\\(');
+		expectToken(lines[1], 'variable', 'name');
+		expectToken(lines[2], 'string.escape', '\\t');
+		expectLossless(lines[1], 'Hi \\(name)!');
+		expectLossless(lines[2], 'tab\\there');
+	});
+
+	it('threads a multi-line raw string and sub-tokenizes \\#( ) while keeping \\n literal', () => {
+		const lines = tokLines(swift, ['let r = #"""', 'raw \\#(x)', 'lit \\n', '"""#']);
+		expectToken(lines[1], 'string.template', '\\#(');
+		expectToken(lines[1], 'variable', 'x');
+		// `\n` in the raw block stays literal string content.
+		expectTokenType(lines[2], 'string');
+		expectLossless(lines[1], 'raw \\#(x)');
+		expectLossless(lines[2], 'lit \\n');
 	});
 });

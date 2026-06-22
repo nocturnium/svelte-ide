@@ -2,16 +2,31 @@
  * Vue Single-File Component tokenizer for syntax highlighting
  *
  * Supports:
- * - Top-level <template>, <script> (with `setup` / `lang="ts"`) and <style> blocks
+ * - Top-level <template>, <script> (with `setup` / `lang="ts"`) and <style> blocks,
+ *   including opening tags whose `>` lands on a later line (multi-line threading).
  * - Inside <template>: HTML tags, attributes, Vue directives (v-if, v-for, v-bind,
  *   v-on, v-model, v-show, v-html, ...) and their shorthands `:` (v-bind),
- *   `@` (v-on) and `#` (v-slot)
- * - Mustache interpolation {{ expr }} with the inner expression tokenized
- * - Inside <script>: delegated to the JavaScript/TypeScript tokenizer
- * - Inside <style>: delegated to the CSS tokenizer
+ *   `@` (v-on) and `#` (v-slot).
+ * - Mustache interpolation {{ expr }} with the inner expression sub-tokenized as
+ *   real JS/TS (a string literal containing `}}` does NOT falsely close the
+ *   interpolation — the close is scanned respecting quotes).
+ * - Directive / binding attribute values (`:foo="…"`, `@click="…"`, `v-if="…"`,
+ *   `v-for="… in …"`, `v-slot="{ … }"`, `v-model="…"`) have their EXPRESSION
+ *   interior sub-tokenized as JS/TS; the surrounding quotes stay `string`. Plain
+ *   static attributes (`class="card"`) keep their value as one tag.attribute.value.
+ * - Inside <script>: delegated to the JavaScript/TypeScript tokenizer.
+ * - Inside <style>: delegated to the CSS tokenizer.
  *
- * Block context and the active child tokenizer state are threaded via the
- * returned `state` so multi-line <script>/<style> bodies resume correctly.
+ * `lang="ts"` anywhere in the SFC's <script> promotes the whole file to TS, so
+ * template expressions (mustache + directive values) are tokenized with the TS
+ * tokenizer too. Because a line tokenizer reads top-to-bottom and the <template>
+ * usually precedes the <script>, the TS flavour only takes effect once the
+ * <script lang="ts"> tag has been seen; expressions above it default to JS (the
+ * one honest forward-reference limit of a single-pass line tokenizer).
+ *
+ * Block context, the SFC language, and the active child tokenizer state are
+ * threaded via the returned `state` so multi-line <script>/<style> bodies, tags,
+ * comments and interpolations resume correctly.
  */
 
 import type { LanguageTokenizer, Token, TokenizedLine, TokenizerState } from '../types';
@@ -46,6 +61,12 @@ export interface VueTokenizerState extends TokenizerState {
 	context: 'template' | 'script' | 'style';
 	/** Which script flavour the open <script> uses (lang="ts" => 'ts') */
 	scriptLang?: 'js' | 'ts';
+	/**
+	 * SFC-wide expression language. Set to 'ts' once a `<script lang="ts">` has been
+	 * seen; template expressions (mustache + directive values) are sub-tokenized with
+	 * the TS tokenizer thereafter. Defaults to 'js'.
+	 */
+	sfcLang?: 'js' | 'ts';
 	/** Child (script/style) tokenizer state */
 	innerState?: TokenizerState;
 	/** Inside a multi-line HTML comment `<!-- ... -->` opened on a previous line */
@@ -54,6 +75,14 @@ export interface VueTokenizerState extends TokenizerState {
 	inMustache?: boolean;
 	/** Inside an open start-tag `<el ...` whose `>` lands on a later line */
 	inTag?: boolean;
+	/**
+	 * Inside an open `<script ...` / `<style ...` opening tag whose `>` lands on a
+	 * later line. The accumulated tag text (across lines) is kept so `lang="ts"` /
+	 * `scoped` etc. can be detected once the `>` finally arrives.
+	 */
+	pendingBlock?: 'script' | 'style';
+	/** Opening-tag text accumulated so far for a multi-line <script>/<style> tag. */
+	pendingBlockText?: string;
 }
 
 /**
@@ -84,6 +113,38 @@ export class VueTokenizer implements LanguageTokenizer {
 			...prevState,
 			innerState: prevState?.innerState ? { ...prevState.innerState } : undefined
 		};
+
+		// Resume a multi-line <script ...> / <style ...> OPENING tag whose `>` landed
+		// on a later line. Parse the attribute region here; once the `>` arrives,
+		// detect lang/scoped and switch into the script/style body.
+		if (state.pendingBlock) {
+			const endIdx = this.indexOfTagEnd(line);
+			const block = state.pendingBlock;
+			if (endIdx === -1) {
+				// Still open — whole line is attribute region; stay in the opening tag.
+				tokens.push(...this.tokenizeTagBody(line));
+				state.pendingBlockText = (state.pendingBlockText ?? '') + line + '\n';
+				return { lineNumber, tokens: reindexTokens(tokens), text: line, state };
+			}
+			// `>` (or the `/` of `/>`) closes the opening tag on this line.
+			const closeLen = line[endIdx] === '/' ? 2 : 1;
+			tokens.push(...this.tokenizeTagBody(line.slice(0, endIdx + closeLen)));
+			const fullTag = (state.pendingBlockText ?? '') + line.slice(0, endIdx + closeLen);
+			state.pendingBlock = undefined;
+			state.pendingBlockText = undefined;
+			// A self-closing `<script .../>` never opens a body.
+			if (line[endIdx] === '/') {
+				const rest = line.slice(endIdx + closeLen);
+				if (rest) tokens.push(...this.tokenizeTemplate(rest, state));
+				return { lineNumber, tokens: reindexTokens(tokens), text: line, state };
+			}
+			this.enterBlock(block, fullTag, state);
+			const rest = line.slice(endIdx + closeLen);
+			if (rest) {
+				tokens.push(...this.tokenizeLine(rest, lineNumber, state).tokens);
+			}
+			return { lineNumber, tokens: reindexTokens(tokens), text: line, state };
+		}
 
 		// Resume an open <script> block.
 		if (state.context === 'script') {
@@ -182,19 +243,21 @@ export class VueTokenizer implements LanguageTokenizer {
 			pos = closeIdx + 3;
 		}
 
-		// Resume a multi-line mustache `{{ ... }}` opened on a previous line.
+		// Resume a multi-line mustache `{{ ... }}` opened on a previous line. The close
+		// is scanned respecting string literals so a `}}` INSIDE a string in the
+		// expression does not falsely terminate the interpolation.
 		if (state.inMustache) {
-			const closeIdx = line.indexOf('}}');
+			const closeIdx = this.indexOfMustacheClose(line);
 			if (closeIdx === -1) {
 				// Whole line is still inside the interpolation expression.
 				if (line) {
-					tokens.push(...this.tokenizeJSExpression(line));
+					tokens.push(...this.tokenizeExpression(line, state));
 				}
 				return tokens;
 			}
 			const expr = line.slice(0, closeIdx);
 			if (expr) {
-				tokens.push(...this.tokenizeJSExpression(expr));
+				tokens.push(...this.tokenizeExpression(expr, state));
 			}
 			tokens.push({ type: 'punctuation.brace', text: '}}' });
 			state.inMustache = false;
@@ -208,13 +271,13 @@ export class VueTokenizer implements LanguageTokenizer {
 			const endIdx = this.indexOfTagEnd(line);
 			if (endIdx === -1) {
 				// Still open — the whole line is attribute region; stay in-tag.
-				tokens.push(...this.tokenizeTagBody(line));
+				tokens.push(...this.tokenizeTagBody(line, state));
 				return tokens;
 			}
 			// Include the closing punctuation (`>` or the `/` of `/>`) so the body
 			// parser emits it as tag.punctuation.
 			const closeLen = line[endIdx] === '/' ? 2 : 1;
-			tokens.push(...this.tokenizeTagBody(line.slice(0, endIdx + closeLen)));
+			tokens.push(...this.tokenizeTagBody(line.slice(0, endIdx + closeLen), state));
 			state.inTag = false;
 			pos = endIdx + closeLen;
 		}
@@ -223,17 +286,31 @@ export class VueTokenizer implements LanguageTokenizer {
 			const rest = line.slice(pos);
 			const char = line[pos];
 
-			// <script ...> opening tag — switch context after the tag closes.
-			const scriptMatch = rest.match(/^<script(\s+[^>]*)?>?/i);
-			if (scriptMatch && /^<script(\s|>|$)/i.test(rest)) {
-				tokens.push(...this.tokenizeTag(scriptMatch[0]));
-				pos += scriptMatch[0].length;
-				if (scriptMatch[0].endsWith('>')) {
-					state.context = 'script';
-					state.scriptLang = /lang\s*=\s*["']ts["']/i.test(scriptMatch[0]) ? 'ts' : 'js';
-					const child = state.scriptLang === 'ts' ? this.tsTokenizer : this.jsTokenizer;
-					state.innerState = child.getInitialState();
-					// Tokenize any inline body after the opening tag on the same line.
+			// <script ...> / <style ...> opening tag — switch context after the tag
+			// closes. The `>` may land on a LATER line; thread `pendingBlock` so the
+			// continuation lines parse as the opening-tag attribute region (and the
+			// lang/scoped detection runs once the `>` arrives), instead of bleeding the
+			// attributes out as plain template text.
+			const blockMatch = rest.match(/^<(script|style)\b/i);
+			if (blockMatch) {
+				const block = blockMatch[1].toLowerCase() as 'script' | 'style';
+				const endIdx = this.indexOfTagEnd(rest);
+				if (endIdx === -1) {
+					// Opening tag does not close on this line — emit what we have and
+					// thread `pendingBlock` for the continuation lines.
+					tokens.push(...this.tokenizeTag(rest));
+					state.pendingBlock = block;
+					state.pendingBlockText = rest + '\n';
+					pos = line.length;
+					continue;
+				}
+				const closeLen = rest[endIdx] === '/' ? 2 : 1;
+				const tagText = rest.slice(0, endIdx + closeLen);
+				tokens.push(...this.tokenizeTag(tagText));
+				pos += tagText.length;
+				// A self-closing `<script .../>` (rare) never opens a body.
+				if (rest[endIdx] !== '/') {
+					this.enterBlock(block, tagText, state);
 					const inline = line.slice(pos);
 					if (inline) {
 						tokens.push(...this.tokenizeLine(inline, 0, state).tokens);
@@ -243,34 +320,19 @@ export class VueTokenizer implements LanguageTokenizer {
 				continue;
 			}
 
-			// <style ...> opening tag.
-			const styleMatch = rest.match(/^<style(\s+[^>]*)?>?/i);
-			if (styleMatch && /^<style(\s|>|$)/i.test(rest)) {
-				tokens.push(...this.tokenizeTag(styleMatch[0]));
-				pos += styleMatch[0].length;
-				if (styleMatch[0].endsWith('>')) {
-					state.context = 'style';
-					state.innerState = this.cssTokenizer.getInitialState();
-					const inline = line.slice(pos);
-					if (inline) {
-						tokens.push(...this.tokenizeLine(inline, 0, state).tokens);
-						pos = line.length;
-					}
-				}
-				continue;
-			}
-
-			// Mustache interpolation: {{ expr }}
+			// Mustache interpolation: {{ expr }}. The close is scanned respecting string
+			// literals so a `}}` inside a string in the expression (e.g.
+			// `{{ obj['}}'] }}` or `{{ a + "}}" }}`) does not falsely close it.
 			if (char === '{' && line[pos + 1] === '{') {
-				const endIdx = rest.indexOf('}}', 2);
+				const endIdx = this.indexOfMustacheClose(rest.slice(2));
 				if (endIdx !== -1) {
-					const expr = rest.slice(2, endIdx);
+					const expr = rest.slice(2, endIdx + 2);
 					tokens.push({ type: 'punctuation.brace', text: '{{' });
 					if (expr) {
-						tokens.push(...this.tokenizeJSExpression(expr));
+						tokens.push(...this.tokenizeExpression(expr, state));
 					}
 					tokens.push({ type: 'punctuation.brace', text: '}}' });
-					pos += endIdx + 2;
+					pos += endIdx + 4;
 				} else {
 					// Unterminated mustache — emit opener + inner expr and thread the
 					// open-mustache state so following lines resume as interpolation
@@ -278,7 +340,7 @@ export class VueTokenizer implements LanguageTokenizer {
 					tokens.push({ type: 'punctuation.brace', text: '{{' });
 					const expr = rest.slice(2);
 					if (expr) {
-						tokens.push(...this.tokenizeJSExpression(expr));
+						tokens.push(...this.tokenizeExpression(expr, state));
 					}
 					state.inMustache = true;
 					pos = line.length;
@@ -303,26 +365,30 @@ export class VueTokenizer implements LanguageTokenizer {
 				continue;
 			}
 
-			// HTML tags (opening / closing / self-closing). The match may run to
-			// end-of-line when the `>` lands on a later line; in that case thread
-			// `inTag` so the following line(s) resume attribute parsing rather than
-			// bleeding the attributes out as plain template text.
+			// HTML tags (opening / closing / self-closing). The tag end (`>` / `/>`) is
+			// located with the QUOTE-AWARE scanner so a `>` (or `>>`, `>=`, …) inside a
+			// quoted attribute value — e.g. `<p v-if="a > b">` or `<a href="x>y">` — is
+			// NOT mistaken for the closing bracket. A `>` may also land on a LATER line;
+			// in that case thread `inTag` so the following line(s) resume attribute
+			// parsing rather than bleeding the attributes out as plain template text.
 			if (char === '<' && /^<\/?[\w.-]/.test(rest)) {
-				const tagMatch = rest.match(/^<\/?[\w.-]+(?:\s+[^>]*)?\/?>?/);
-				if (tagMatch) {
-					const tag = tagMatch[0];
-					tokens.push(...this.tokenizeTag(tag));
-					pos += tag.length;
-					// An opening tag (not `</...`) that did not close on this line —
-					// no `>` and no self-closing `/>` terminator was consumed. Thread
-					// `inTag` so following lines resume attribute parsing instead of
-					// bleeding the attributes out as plain template text.
-					if (!tag.startsWith('</') && !/\/?>$/.test(tag)) {
-						state.inTag = true;
-						pos = line.length;
-					}
+				const endIdx = this.indexOfTagEnd(rest);
+				if (endIdx === -1) {
+					// `>` lands on a later line — consume the rest as the tag (opening-tag
+					// attribute region) and thread `inTag` for the continuation. A `</…`
+					// closing tag that does not close on the line is degenerate, but
+					// threading `inTag` keeps the following attribute region highlighted
+					// (and stays lossless either way).
+					tokens.push(...this.tokenizeTag(rest, state));
+					state.inTag = true;
+					pos = line.length;
 					continue;
 				}
+				const closeLen = rest[endIdx] === '/' ? 2 : 1;
+				const tag = rest.slice(0, endIdx + closeLen);
+				tokens.push(...this.tokenizeTag(tag, state));
+				pos += tag.length;
+				continue;
 			}
 
 			// Plain text up to the next `<` or `{`.
@@ -341,7 +407,7 @@ export class VueTokenizer implements LanguageTokenizer {
 		return tokens;
 	}
 
-	private tokenizeTag(tag: string): RawToken[] {
+	private tokenizeTag(tag: string, state?: VueTokenizerState): RawToken[] {
 		const tokens: RawToken[] = [];
 		let pos = 0;
 
@@ -362,17 +428,28 @@ export class VueTokenizer implements LanguageTokenizer {
 		}
 
 		// Attributes / directives / closing bracket(s).
-		tokens.push(...this.tokenizeTagBody(tag.slice(pos)));
+		tokens.push(...this.tokenizeTagBody(tag.slice(pos), state));
 		return tokens;
+	}
+
+	/**
+	 * Whether a Vue attribute's value is a JS/TS EXPRESSION (and so should be
+	 * sub-tokenized) rather than a static string. True for directives (`v-…`) and the
+	 * shorthands `:` (v-bind), `@` (v-on), `#` (v-slot). Plain HTML attributes like
+	 * `class="card"` keep their value as one static `tag.attribute.value`.
+	 */
+	private isExpressionAttr(name: string): boolean {
+		return /^(v-|[:@#])/.test(name);
 	}
 
 	/**
 	 * Tokenize the attribute region of a tag (everything after `<name`): whitespace,
 	 * attributes/directives with optional `=value`, and the closing `>` / `/>`. This
 	 * is split out so an opening tag whose `>` lands on a later line can resume here
-	 * line-by-line via the threaded `inTag` state.
+	 * line-by-line via the threaded `inTag` / `pendingBlock` state. `state` selects
+	 * the JS/TS flavour for sub-tokenized directive/binding expression values.
 	 */
-	private tokenizeTagBody(body: string): RawToken[] {
+	private tokenizeTagBody(body: string, state?: VueTokenizerState): RawToken[] {
 		const tokens: RawToken[] = [];
 		let pos = 0;
 
@@ -418,8 +495,13 @@ export class VueTokenizer implements LanguageTokenizer {
 
 					const valueMatch = body.slice(pos).match(/^(?:"[^"]*"|'[^']*'|[^\s>]+)/);
 					if (valueMatch) {
-						tokens.push({ type: 'tag.attribute.value', text: valueMatch[0] });
-						pos += valueMatch[0].length;
+						const value = valueMatch[0];
+						if (this.isExpressionAttr(attrName)) {
+							tokens.push(...this.tokenizeAttrExpressionValue(value, state));
+						} else {
+							tokens.push({ type: 'tag.attribute.value', text: value });
+						}
+						pos += value.length;
 					}
 				}
 				continue;
@@ -431,6 +513,27 @@ export class VueTokenizer implements LanguageTokenizer {
 		}
 
 		return tokens;
+	}
+
+	/**
+	 * Sub-tokenize the value of a directive / binding attribute. When the value is
+	 * quoted, the surrounding quotes are emitted as `string` delimiters and the
+	 * interior is tokenized as a JS/TS expression (variables, properties, operators,
+	 * calls, numbers, …) — the single biggest highlighting lever for templates, since
+	 * `@click="count++"`, `:style="{ color: 'red' }"` and `v-for="i in items"` are
+	 * real code. An unquoted value (rare) is tokenized directly as an expression.
+	 */
+	private tokenizeAttrExpressionValue(value: string, state?: VueTokenizerState): RawToken[] {
+		const quote = value[0];
+		if ((quote === '"' || quote === "'") && value.length >= 2 && value.endsWith(quote)) {
+			const inner = value.slice(1, -1);
+			const tokens: RawToken[] = [{ type: 'string', text: quote }];
+			if (inner) tokens.push(...this.tokenizeExpression(inner, state));
+			tokens.push({ type: 'string', text: quote });
+			return tokens;
+		}
+		// Unquoted (or malformed) — tokenize the whole thing as an expression.
+		return this.tokenizeExpression(value, state);
 	}
 
 	/**
@@ -458,9 +561,68 @@ export class VueTokenizer implements LanguageTokenizer {
 		return -1;
 	}
 
-	private tokenizeJSExpression(expression: string): RawToken[] {
-		const result = this.jsTokenizer.tokenizeLine(expression, 1, this.jsTokenizer.getInitialState());
+	/**
+	 * Switch into a <script>/<style> body after its opening tag has fully closed.
+	 * Detects `lang="ts"` for <script> (which also promotes the SFC-wide expression
+	 * language so subsequent template expressions tokenize as TS) and primes the
+	 * matching child tokenizer's initial state. `fullTag` is the complete opening-tag
+	 * text (possibly accumulated across several lines).
+	 */
+	private enterBlock(block: 'script' | 'style', fullTag: string, state: VueTokenizerState): void {
+		state.context = block;
+		if (block === 'script') {
+			const isTs = /lang\s*=\s*["']tsx?["']/i.test(fullTag);
+			state.scriptLang = isTs ? 'ts' : 'js';
+			if (isTs) state.sfcLang = 'ts';
+			const child = state.scriptLang === 'ts' ? this.tsTokenizer : this.jsTokenizer;
+			state.innerState = child.getInitialState();
+		} else {
+			state.innerState = this.cssTokenizer.getInitialState();
+		}
+	}
+
+	/**
+	 * Sub-tokenize a Vue template EXPRESSION (mustache interior or a directive /
+	 * binding attribute value) as JS or TS, picking the tokenizer from the SFC-wide
+	 * language. Using TS in a `lang="ts"` SFC means `as`, type assertions and
+	 * built-in type names in template expressions classify correctly.
+	 */
+	private tokenizeExpression(expression: string, state?: VueTokenizerState): RawToken[] {
+		const child = state?.sfcLang === 'ts' ? this.tsTokenizer : this.jsTokenizer;
+		const result = child.tokenizeLine(expression, 1, child.getInitialState());
 		return result.tokens;
+	}
+
+	/**
+	 * Find the index of the `}}` that closes a mustache interpolation, scanning the
+	 * expression interior and SKIPPING over `}}` that sits inside a string literal
+	 * (single, double or backtick quotes, honouring `\` escapes). Returns the index
+	 * of the first `}` of the closing `}}`, or -1 if it does not close on this line.
+	 *
+	 * Without this, a naive `indexOf('}}')` mis-closes on e.g. `{{ obj['}}'] }}` or
+	 * `{{ a + "}}" }}`, bleeding the real tail out as plain text.
+	 */
+	private indexOfMustacheClose(expr: string): number {
+		let quote: string | null = null;
+		for (let i = 0; i < expr.length; i++) {
+			const ch = expr[i];
+			if (quote) {
+				if (ch === '\\') {
+					i++; // skip the escaped char
+					continue;
+				}
+				if (ch === quote) quote = null;
+				continue;
+			}
+			if (ch === '"' || ch === "'" || ch === '`') {
+				quote = ch;
+				continue;
+			}
+			if (ch === '}' && expr[i + 1] === '}') {
+				return i;
+			}
+		}
+		return -1;
 	}
 }
 

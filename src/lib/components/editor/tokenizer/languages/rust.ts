@@ -133,6 +133,52 @@ interface RustTokenizerState extends TokenizerState {
 	inRawString?: boolean;
 	/** Number of closing hashes the active raw string requires */
 	rawHashes?: number;
+	/** Currently inside a multi-line (quote) string carried across lines */
+	inString?: boolean;
+	/** The prefix length of the active multi-line string (0 = plain, 1 = b") */
+	stringPrefixLen?: number;
+	/**
+	 * Nesting depth of block comments. Rust block comments NEST, so we count how
+	 * many open-comment markers are pending and only leave the comment when the
+	 * matching close-comment markers bring the depth back to zero.
+	 */
+	blockCommentDepth?: number;
+	/**
+	 * Depth of open type-argument angle brackets (`<` ... `>`). When > 0 we are
+	 * inside a generic/type-argument list, so `<`, `>`, and `>>` lex as
+	 * `punctuation.bracket` rather than comparison/shift operators. Reset at
+	 * statement boundaries within a line so a stray `<` in an expression does
+	 * not poison the rest of the line.
+	 */
+	angleDepth?: number;
+}
+
+/**
+ * The most recent token that is not insignificant whitespace. Whitespace is
+ * emitted as a `text` token of spaces/tabs; context classification (definition
+ * position, property access, generic open) must look past it.
+ */
+function lastMeaningful(tokens: Token[]): Token | undefined {
+	for (let k = tokens.length - 1; k >= 0; k--) {
+		const t = tokens[k];
+		if (t.type === 'text' && /^[ \t]*$/.test(t.text)) continue;
+		return t;
+	}
+	return undefined;
+}
+
+/**
+ * Classify a numeric literal into a precise number subtype based on its
+ * radix / shape. Octal has no dedicated TokenType, so it maps to integer.
+ */
+function classifyNumber(num: string): TokenType {
+	if (/^0[xX]/.test(num)) return 'number.hex';
+	if (/^0[bB]/.test(num)) return 'number.binary';
+	// A float has a fractional part (`.` followed by a digit), an exponent, or
+	// an explicit float suffix (f32/f64). Hex/binary/octal are integers.
+	if (/^0[oO]/.test(num)) return 'number.integer';
+	if (/\.\d|[eE][+-]?\d|f(?:32|64)$/.test(num)) return 'number.float';
+	return 'number.integer';
 }
 
 export class RustTokenizer implements LanguageTokenizer {
@@ -156,15 +202,14 @@ export class RustTokenizer implements LanguageTokenizer {
 			return { lineNumber, tokens, text: line, state };
 		}
 
-		// Handle block comment continuation
+		// Handle block comment continuation (nesting-aware). `state.inBlockComment`
+		// is kept in sync for compatibility, but `blockCommentDepth` is the source
+		// of truth so nested `/* ... /* ... */ ... */` close correctly.
 		if (state.inBlockComment) {
-			const endIdx = line.indexOf('*/');
-			if (endIdx !== -1) {
-				tokens.push(createToken('comment.block', line.slice(0, endIdx + 2), 0));
-				pos = endIdx + 2;
-				state.inBlockComment = false;
-			} else {
-				tokens.push(createToken('comment.block', line, 0));
+			const consumed = this.consumeBlockComment(line, 0, state);
+			tokens.push(createToken('comment.block', line.slice(0, consumed), 0));
+			pos = consumed;
+			if (state.inBlockComment) {
 				return { lineNumber, tokens, text: line, state };
 			}
 		}
@@ -184,9 +229,24 @@ export class RustTokenizer implements LanguageTokenizer {
 			}
 		}
 
+		// Handle plain/byte string continuation (Rust strings can span lines).
+		// Sub-tokenize the continuation for escapes and format interpolation just
+		// like an opening line, threading state when it still does not close.
+		if (state.inString) {
+			const strTokens = this.tokenizeString(line, 0, 0, state, true);
+			tokens.push(...strTokens);
+			pos = strTokens.length > 0 ? strTokens[strTokens.length - 1].end : line.length;
+			if (state.inString) {
+				return { lineNumber, tokens, text: line, state };
+			}
+		}
+
 		while (pos < line.length) {
 			const remaining = line.slice(pos);
-			const prevToken = tokens.length > 0 ? tokens[tokens.length - 1] : undefined;
+			// The previous *meaningful* token drives context classification (def
+			// position, property access, generic open). Skip whitespace, which is
+			// emitted as a `text` token of spaces/tabs, so `fn  name` still sees `fn`.
+			const prevToken = lastMeaningful(tokens);
 			const subTokens = this.getNextToken(remaining, pos, state, prevToken);
 
 			if (subTokens && subTokens.length > 0) {
@@ -227,14 +287,13 @@ export class RustTokenizer implements LanguageTokenizer {
 			return [createToken('comment.line', text, pos)];
 		}
 
-		// Block comments (treated as non-nesting)
+		// Block comments (NESTING — Rust block comments nest, unlike C). We open
+		// one level and let consumeBlockComment count matching `/*` / `*/` pairs.
 		if (text.startsWith('/*')) {
-			const endIdx = text.indexOf('*/', 2);
-			if (endIdx !== -1) {
-				return [createToken('comment.block', text.slice(0, endIdx + 2), pos)];
-			}
 			state.inBlockComment = true;
-			return [createToken('comment.block', text, pos)];
+			state.blockCommentDepth = (state.blockCommentDepth ?? 0) + 1;
+			const consumed = this.consumeBlockComment(text, 2, state);
+			return [createToken('comment.block', text.slice(0, consumed), pos)];
 		}
 
 		// Attributes: #[...] and #![...]
@@ -272,7 +331,7 @@ export class RustTokenizer implements LanguageTokenizer {
 
 		// Byte strings: b"..."
 		if (text.startsWith('b"')) {
-			return this.tokenizeString(text, pos, 1);
+			return this.tokenizeString(text, pos, 1, state);
 		}
 
 		// Byte char literal: b'A', b'\n', b'\xFF'. The `b` prefix is part of the
@@ -286,7 +345,7 @@ export class RustTokenizer implements LanguageTokenizer {
 
 		// Regular strings: "..."
 		if (text.startsWith('"')) {
-			return this.tokenizeString(text, pos, 0);
+			return this.tokenizeString(text, pos, 0, state);
 		}
 
 		// Character literals vs lifetimes — both begin with an apostrophe
@@ -312,7 +371,9 @@ export class RustTokenizer implements LanguageTokenizer {
 					/^(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?[\d_]+)?)(?:[iuf](?:8|16|32|64|128|size))?/
 				);
 		if (numMatch) {
-			return [createToken('number', numMatch[0], pos)];
+			// A tuple-field index after an accessor is always an integer index.
+			const type = afterAccessor ? 'number.integer' : classifyNumber(numMatch[0]);
+			return [createToken(type, numMatch[0], pos)];
 		}
 
 		// Identifiers, keywords, macros
@@ -324,7 +385,37 @@ export class RustTokenizer implements LanguageTokenizer {
 			if (after.startsWith('!') && !after.startsWith('!=')) {
 				return [createToken('function.call', word + '!', pos)];
 			}
-			return [createToken(this.classifyIdentifier(word, text, word.length), word, pos)];
+			return [createToken(this.classifyIdentifier(word, text, word.length, prevToken), word, pos)];
+		}
+
+		// Generic / type-argument angle brackets. We only treat `<` as a bracket
+		// when it opens a type-argument list — i.e. it directly follows a type
+		// name or a turbofish `::`. Once depth > 0, the matching `>` (and the
+		// fused `>>` that closes two nested lists) are brackets too. This keeps a
+		// genuine comparison `a < b` as a comparison operator while painting
+		// `Vec<HashMap<String, u32>>` and `parse::<u32>()` as brackets.
+		if (text[0] === '<' && text[1] !== '<' && text[1] !== '=') {
+			if (this.opensGeneric(prevToken)) {
+				state.angleDepth = (state.angleDepth ?? 0) + 1;
+				return [createToken('punctuation.bracket', '<', pos)];
+			}
+		}
+		// `>=` and `>>=` inside a generic list are impossible, so leave them to the
+		// comparison/assignment path. Any other `>` closes one (or two) open levels.
+		const isShiftAssign = text[0] === '>' && text[1] === '>' && text[2] === '=';
+		if (text[0] === '>' && text[1] !== '=' && !isShiftAssign && (state.angleDepth ?? 0) > 0) {
+			if (text[1] === '>' && (state.angleDepth ?? 0) >= 2) {
+				// `>>` closes two nested type-argument lists at once.
+				state.angleDepth = (state.angleDepth ?? 0) - 2;
+				return [
+					createToken('punctuation.bracket', '>', pos),
+					createToken('punctuation.bracket', '>', pos + 1)
+				];
+			}
+			// Single `>` closes one level; a `>>` with depth 1 closes one here and
+			// the loop re-examines the trailing `>` on the next iteration.
+			state.angleDepth = (state.angleDepth ?? 0) - 1;
+			return [createToken('punctuation.bracket', '>', pos)];
 		}
 
 		// Operators (longest-match first)
@@ -346,6 +437,12 @@ export class RustTokenizer implements LanguageTokenizer {
 			else if (char === '(' || char === ')') type = 'punctuation.paren';
 			else if (char === ',' || char === ';' || char === ':') type = 'punctuation.separator';
 			else if (char === '.') type = 'punctuation.accessor';
+			// A `;` or a brace ends any statement/block; an unclosed generic `<`
+			// could not survive it, so clear the angle depth to avoid poisoning the
+			// rest of the line/file with phantom brackets.
+			if (char === ';' || char === '{' || char === '}') {
+				state.angleDepth = 0;
+			}
 			return [createToken(type, char, pos)];
 		}
 
@@ -375,10 +472,105 @@ export class RustTokenizer implements LanguageTokenizer {
 		return 'operator';
 	}
 
-	private classifyIdentifier(word: string, context: string, wordLength: number): TokenType {
+	/**
+	 * Decide whether a `<` opens a generic / type-argument list. It does when it
+	 * directly follows a type name (`Vec<`, `Foo<`), a turbofish path (`::<`), or
+	 * a closing generic bracket (`Foo<Bar><` is not valid, but `>` then `<` does
+	 * not occur — kept for completeness). A `<` after a value or in `a < b` is a
+	 * comparison and is left to the operator path.
+	 */
+	private opensGeneric(prevToken?: Token): boolean {
+		if (!prevToken) return false;
+		if (
+			prevToken.type === 'type.builtin' ||
+			prevToken.type === 'type.class' ||
+			prevToken.type === 'type.interface' ||
+			prevToken.type === 'type.namespace' ||
+			prevToken.type === 'constant' ||
+			// Generic parameter list on a definition: `fn first<'a>`, `struct S<T>`.
+			prevToken.type === 'function.definition'
+		) {
+			return true;
+		}
+		// Turbofish: `parse::<u32>()` — the `<` follows the `::` path operator.
+		if (prevToken.type === 'operator' && prevToken.text === '::') {
+			return true;
+		}
+		// `impl<T>` / `impl<T: Trait>`: the generic parameter list on an impl block
+		// puts `<` DIRECTLY after the `impl` keyword (no intervening name), so the
+		// `function.definition` case above never fires for it. `impl` is the only
+		// definition keyword that is immediately followed by a generic `<`; `fn`,
+		// `struct`, `enum`, `trait`, `type`, etc. are followed by a name first.
+		if (prevToken.type === 'keyword.definition' && prevToken.text === 'impl') {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Consume a (possibly nested) block comment starting at `start` within `text`,
+	 * using and updating `state.blockCommentDepth`. Returns the index one past the
+	 * last consumed character on this line. Leaves `state.inBlockComment` true iff
+	 * the comment is still open at end of line.
+	 */
+	private consumeBlockComment(text: string, start: number, state: RustTokenizerState): number {
+		let i = start;
+		let depth = state.blockCommentDepth ?? 1;
+		while (i < text.length) {
+			if (text[i] === '/' && text[i + 1] === '*') {
+				depth++;
+				i += 2;
+				continue;
+			}
+			if (text[i] === '*' && text[i + 1] === '/') {
+				depth--;
+				i += 2;
+				if (depth === 0) {
+					state.blockCommentDepth = 0;
+					state.inBlockComment = false;
+					return i;
+				}
+				continue;
+			}
+			i++;
+		}
+		state.blockCommentDepth = depth;
+		state.inBlockComment = depth > 0;
+		return text.length;
+	}
+
+	private classifyIdentifier(
+		word: string,
+		context: string,
+		wordLength: number,
+		prevToken?: Token
+	): TokenType {
 		// Booleans
 		if (word === 'true' || word === 'false') {
 			return 'constant.boolean';
+		}
+
+		const afterWord = context.slice(wordLength).trimStart();
+		const isCall = afterWord.startsWith('(');
+
+		// Definition position: the name immediately after `fn` is the function
+		// being DEFINED, and the name after a type-introducing keyword is the
+		// type/namespace being defined. We read the previous meaningful token.
+		if (prevToken) {
+			if (prevToken.type === 'keyword.definition') {
+				if (prevToken.text === 'fn') return 'function.definition';
+				if (prevToken.text === 'mod') return 'type.namespace';
+				// struct / enum / trait / union / type / impl introduce a type name.
+				if (definitionKeywords.has(prevToken.text)) return 'type.class';
+			}
+			// Property / method access: an identifier directly after a `.` accessor.
+			// A trailing `(` makes it a method call; otherwise it is a field/property.
+			if (prevToken.type === 'punctuation.accessor' && prevToken.text === '.') {
+				if (isCall) return 'function.call';
+				// `await` is a postfix keyword in `expr.await`, not a property.
+				if (word === 'await') return 'keyword.control';
+				return 'property';
+			}
 		}
 
 		// Built-in enum variants / constants (Some, None, Ok, Err)
@@ -401,8 +593,7 @@ export class RustTokenizer implements LanguageTokenizer {
 		}
 
 		// Function call: identifier immediately followed by (
-		const afterWord = context.slice(wordLength).trim();
-		if (afterWord.startsWith('(')) {
+		if (isCall) {
 			return 'function.call';
 		}
 
@@ -440,13 +631,35 @@ export class RustTokenizer implements LanguageTokenizer {
 
 	/**
 	 * Tokenize a double-quoted (or byte) string into a string token plus inline
-	 * string.escape tokens for recognized escape sequences.
+	 * tokens for recognized escape sequences AND `std::fmt` format interpolation:
+	 *
+	 *   - `\n`, `\u{1F}`, `\xFF`, `\"`         -> string.escape
+	 *   - `{{` and `}}`                        -> string.escape (literal braces)
+	 *   - `{name}`, `{0}`, `{expr:spec}`, `{}` -> braces as string.template, with
+	 *      the inner argument expression sub-tokenized (variable / property /
+	 *      number / accessor) and the format spec painted as string.template.
+	 *
+	 * Strings can span lines; when the closing quote is not found the open state
+	 * is threaded so the continuation line resumes as a string. Pass
+	 * `continuation = true` (with prefixLen 0) for a line that resumes an already
+	 * open string from a previous line.
 	 */
-	private tokenizeString(text: string, pos: number, prefixLen: number): Token[] {
+	private tokenizeString(
+		text: string,
+		pos: number,
+		prefixLen: number,
+		state: RustTokenizerState,
+		continuation = false
+	): Token[] {
 		const tokens: Token[] = [];
-		// Opening prefix + quote
 		let segStart = 0;
-		let i = prefixLen + 1; // skip prefix (b) and opening quote
+		// On an opening line skip the prefix (`b`) and the opening quote; a
+		// continuation line resumes at column 0 inside the string body.
+		let i = continuation ? 0 : prefixLen + 1;
+		// Byte strings (`b"..."`) are never format-macro arguments, so they carry
+		// no `{}` interpolation — only escapes. Plain strings do interpolation.
+		const effectivePrefix = continuation ? (state.stringPrefixLen ?? 0) : prefixLen;
+		const interpolate = effectivePrefix === 0;
 
 		const flushPlain = (end: number) => {
 			if (end > segStart) {
@@ -456,6 +669,8 @@ export class RustTokenizer implements LanguageTokenizer {
 
 		while (i < text.length) {
 			const ch = text[i];
+
+			// Escape sequence
 			if (ch === '\\' && i + 1 < text.length) {
 				const escMatch = text
 					.slice(i)
@@ -467,16 +682,111 @@ export class RustTokenizer implements LanguageTokenizer {
 				segStart = i;
 				continue;
 			}
+
+			// Literal-brace escapes `{{` / `}}` — not interpolation.
+			if (
+				interpolate &&
+				((ch === '{' && text[i + 1] === '{') || (ch === '}' && text[i + 1] === '}'))
+			) {
+				flushPlain(i);
+				tokens.push(createToken('string.escape', text.slice(i, i + 2), pos + i));
+				i += 2;
+				segStart = i;
+				continue;
+			}
+
+			// Format interpolation `{ ... }`
+			if (interpolate && ch === '{') {
+				const closeRel = text.indexOf('}', i + 1);
+				if (closeRel !== -1) {
+					flushPlain(i);
+					this.tokenizeFormatArg(text.slice(i, closeRel + 1), pos + i, tokens);
+					i = closeRel + 1;
+					segStart = i;
+					continue;
+				}
+				// No closing brace on this line — fall through and treat as plain.
+			}
+
 			if (ch === '"') {
 				flushPlain(i + 1);
+				state.inString = false;
+				state.stringPrefixLen = undefined;
 				return tokens;
 			}
 			i++;
 		}
-		// Unterminated string (Rust strings can span lines, but we treat the
-		// remainder of the line as string so the line stays lossless)
+
+		// Unterminated on this line: thread the open string forward. Plain `"` and
+		// byte `b"` strings span lines in Rust source; raw strings are handled
+		// separately. This keeps the line lossless and resumes next line.
 		flushPlain(text.length);
+		state.inString = true;
+		state.stringPrefixLen = continuation ? (state.stringPrefixLen ?? 0) : prefixLen;
 		return tokens;
+	}
+
+	/**
+	 * Sub-tokenize a single format-interpolation group, e.g. `{}`, `{0}`,
+	 * `{name}`, `{self.count}`, `{value:>width$.2}`, `{:?}`. The braces become
+	 * `string.template` delimiters; the argument expression (before any `:`) is
+	 * tokenized into variable / property / number / accessor tokens; the format
+	 * spec (after `:`) is painted as `string.template`. Always lossless.
+	 */
+	private tokenizeFormatArg(group: string, pos: number, out: Token[]): void {
+		// Opening brace
+		out.push(createToken('string.template', '{', pos));
+		const inner = group.slice(1, group.length - 1);
+		const innerStart = pos + 1;
+
+		// Split argument reference from the format spec on the first ':'.
+		const colonIdx = inner.indexOf(':');
+		const argPart = colonIdx === -1 ? inner : inner.slice(0, colonIdx);
+		const specPart = colonIdx === -1 ? '' : inner.slice(colonIdx);
+
+		// Tokenize the argument reference: dotted/indexed path of names and
+		// integer tuple indices, e.g. `self.count`, `0`, `items.len`.
+		let j = 0;
+		while (j < argPart.length) {
+			const rest = argPart.slice(j);
+			const ws = rest.match(/^\s+/);
+			if (ws) {
+				out.push(createToken('string', ws[0], innerStart + j));
+				j += ws[0].length;
+				continue;
+			}
+			const id = rest.match(/^[A-Za-z_][A-Za-z0-9_]*/);
+			if (id) {
+				// A name right after a `.` is a property; otherwise a variable.
+				const prev = out[out.length - 1];
+				const isProp = prev?.type === 'punctuation.accessor' && prev.text === '.';
+				out.push(createToken(isProp ? 'property' : 'variable', id[0], innerStart + j));
+				j += id[0].length;
+				continue;
+			}
+			const num = rest.match(/^\d+/);
+			if (num) {
+				out.push(createToken('number.integer', num[0], innerStart + j));
+				j += num[0].length;
+				continue;
+			}
+			if (rest[0] === '.') {
+				out.push(createToken('punctuation.accessor', '.', innerStart + j));
+				j += 1;
+				continue;
+			}
+			// Anything else inside the arg part stays as plain string content.
+			out.push(createToken('string', rest[0], innerStart + j));
+			j += 1;
+		}
+
+		// The format spec (including its leading ':') is template metadata.
+		if (specPart) {
+			out.push(createToken('string.template', specPart, innerStart + argPart.length));
+		}
+
+		// Closing brace
+		out.push(createToken('string.template', '}', pos + group.length - 1));
 	}
 
 	/**

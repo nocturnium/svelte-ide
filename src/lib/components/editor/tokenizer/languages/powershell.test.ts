@@ -1,6 +1,13 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createPowerShellTokenizer } from './powershell';
-import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
+import {
+	tok,
+	tokLines,
+	findTokens,
+	expectToken,
+	expectTokenType,
+	expectLossless
+} from '../test-helpers';
 
 const ps = createPowerShellTokenizer();
 
@@ -105,9 +112,81 @@ describe('PowerShell tokenizer', () => {
 			expectToken(line, 'string', "'hello world'");
 		});
 
-		it('detects double-quoted expandable strings as templates', () => {
+		it('detects double-quoted expandable strings as templates and sub-tokenizes interpolation', () => {
 			const line = tok(ps, '$x = "Hello $name"');
-			expectToken(line, 'string.template', '"Hello $name"');
+			// The literal run, the quotes, and the embedded variable are now distinct.
+			expectToken(line, 'string.template', '"');
+			expectToken(line, 'string.template', 'Hello ');
+			expectToken(line, 'variable', '$name');
+			expectLossless(line, '$x = "Hello $name"');
+		});
+
+		it('sub-tokenizes a $(...) subexpression inside an expandable string', () => {
+			const line = tok(ps, '"Result: $($a + $b)"');
+			expectToken(line, 'string.template', '$(');
+			expectToken(line, 'variable', '$a');
+			expectToken(line, 'operator.arithmetic', '+');
+			expectToken(line, 'variable', '$b');
+			expectToken(line, 'string.template', ')');
+			expectLossless(line, '"Result: $($a + $b)"');
+		});
+
+		it('sub-tokenizes a method-call subexpression with a nested string', () => {
+			const line = tok(ps, '"Now: $($d.ToString("o"))"');
+			expectToken(line, 'string.template', '$(');
+			expectToken(line, 'variable', '$d');
+			expectToken(line, 'function.call', 'ToString');
+			expectLossless(line, '"Now: $($d.ToString("o"))"');
+		});
+
+		it('sub-tokenizes a NESTED $(...) subexpression without mangling the inner $(', () => {
+			// Regression: a `$(` nested inside another `$(...)` was tokenized by the
+			// inner lexer as a lone `$` variable + a `(` paren, because `$(` was not
+			// recognized as the subexpression operator outside the string-body scanner.
+			// The inner `$(...)` must stay a single subexpression-operator token and
+			// the bogus lone `$` must NOT appear.
+			const line = tok(ps, '"deep $($a + $($b * 2))"');
+			expectToken(line, 'string.template', '$('); // the outer (string-body) delimiter
+			expectToken(line, 'operator', '$('); // the nested subexpression operator
+			expectToken(line, 'variable', '$a');
+			expectToken(line, 'variable', '$b');
+			expectToken(line, 'number.integer', '2');
+			// No bogus standalone `$` token leaked from the split.
+			expect(findTokens(line, 'variable').some((t) => t.text === '$')).toBe(false);
+			expectLossless(line, '"deep $($a + $($b * 2))"');
+		});
+
+		it('treats a top-level $(...) subexpression operator as a single operator token', () => {
+			// Regression: `$(Get-Date)` in code context split `$(` into a lone `$`
+			// variable + `(` paren. `$(` is the subexpression operator and must be one
+			// token; the matching `)` is a normal paren.
+			const line = tok(ps, '$x = $(Get-Date)');
+			expectToken(line, 'operator', '$(');
+			expectToken(line, 'function.call', 'Get-Date');
+			expectToken(line, 'punctuation.paren', ')');
+			expect(findTokens(line, 'variable').some((t) => t.text === '$')).toBe(false);
+			expectLossless(line, '$x = $(Get-Date)');
+		});
+
+		it('still emits a lone $ as a variable when not the subexpression operator', () => {
+			// Guard the fix: `$( ` is special, but a bare `$` (e.g. at end of input)
+			// must still tokenize as a variable, not get dropped.
+			const line = tok(ps, 'echo $');
+			expectToken(line, 'variable', '$');
+			expectLossless(line, 'echo $');
+		});
+
+		it('emits a braced variable inside an expandable string', () => {
+			const line = tok(ps, '"value=${my var}"');
+			expectToken(line, 'variable', '${my var}');
+			expectLossless(line, '"value=${my var}"');
+		});
+
+		it('classifies $true / $null inside an expandable string', () => {
+			const line = tok(ps, '"flag=$true null=$null"');
+			expectToken(line, 'constant.boolean', '$true');
+			expectToken(line, 'constant.null', '$null');
+			expectLossless(line, '"flag=$true null=$null"');
 		});
 
 		it('handles doubled-quote escapes in literal strings', () => {
@@ -115,9 +194,26 @@ describe('PowerShell tokenizer', () => {
 			expectToken(line, 'string', "'it''s here'");
 		});
 
-		it('handles backtick escapes in expandable strings', () => {
+		it('emits backtick escapes inside expandable strings as string.escape', () => {
 			const line = tok(ps, '$x = "tab`tend"');
-			expectToken(line, 'string.template', '"tab`tend"');
+			expectToken(line, 'string.escape', '`t');
+			expectToken(line, 'string.template', 'tab');
+			expectToken(line, 'string.template', 'end');
+			expectLossless(line, '$x = "tab`tend"');
+		});
+
+		it('emits `n / `" / a unicode escape distinctly', () => {
+			const line = tok(ps, '"line1`nq=`"x`" `u{1F600}"');
+			expectToken(line, 'string.escape', '`n');
+			expectToken(line, 'string.escape', '`"');
+			expectToken(line, 'string.escape', '`u{1F600}');
+			expectLossless(line, '"line1`nq=`"x`" `u{1F600}"');
+		});
+
+		it('emits a doubled-quote escape inside an expandable string', () => {
+			const line = tok(ps, '"she said ""hi"" now"');
+			expectToken(line, 'string.escape', '""');
+			expectLossless(line, '"she said ""hi"" now"');
 		});
 	});
 
@@ -134,51 +230,51 @@ describe('PowerShell tokenizer', () => {
 	});
 
 	describe('numbers', () => {
-		it('detects decimal integers', () => {
+		it('detects decimal integers as number.integer', () => {
 			const line = tok(ps, '$n = 42');
-			expectToken(line, 'number', '42');
+			expectToken(line, 'number.integer', '42');
 		});
 
-		it('detects hexadecimal numbers', () => {
+		it('detects hexadecimal numbers as number.hex', () => {
 			const line = tok(ps, '$n = 0xFF');
-			expectToken(line, 'number', '0xFF');
+			expectToken(line, 'number.hex', '0xFF');
 		});
 
-		it('detects floats', () => {
+		it('detects floats as number.float', () => {
 			const line = tok(ps, '$n = 3.14');
-			expectToken(line, 'number', '3.14');
+			expectToken(line, 'number.float', '3.14');
 		});
 
-		it('detects size-suffixed numbers', () => {
+		it('detects size-suffixed numbers as number.integer', () => {
 			const line = tok(ps, '$size = 5MB');
-			expectToken(line, 'number', '5MB');
+			expectToken(line, 'number.integer', '5MB');
 		});
 
-		it('detects binary literals as a single number', () => {
+		it('detects binary literals as a single number.binary', () => {
 			// Regression: `0b1010` previously tokenized as `0` + the identifier
 			// `b1010`, because the number pattern only understood the `0x` prefix.
 			const line = tok(ps, '$mask = 0b1010');
-			expectToken(line, 'number', '0b1010');
+			expectToken(line, 'number.binary', '0b1010');
 			expectLossless(line, '$mask = 0b1010');
 		});
 
 		it('keeps numeric type suffixes attached to the number', () => {
 			// Regression: `100L`, `1.5d`, `10ul`, `0xFFL` previously split the type
 			// suffix off as a bogus trailing identifier.
-			expectToken(tok(ps, '$l = 100L'), 'number', '100L');
-			expectToken(tok(ps, '$d = 1.5d'), 'number', '1.5d');
-			expectToken(tok(ps, '$u = 10ul'), 'number', '10ul');
-			expectToken(tok(ps, '$h = 0xFFL'), 'number', '0xFFL');
+			expectToken(tok(ps, '$l = 100L'), 'number.integer', '100L');
+			expectToken(tok(ps, '$d = 1.5d'), 'number.float', '1.5d');
+			expectToken(tok(ps, '$u = 10ul'), 'number.integer', '10ul');
+			expectToken(tok(ps, '$h = 0xFFL'), 'number.hex', '0xFFL');
 			expectLossless(tok(ps, '$l = 100L'), '$l = 100L');
 		});
 
 		it('does not break ordinary numbers or the range operator', () => {
-			expectToken(tok(ps, '$x = 5MB'), 'number', '5MB');
-			expectToken(tok(ps, '$x = 1kb'), 'number', '1kb');
+			expectToken(tok(ps, '$x = 5MB'), 'number.integer', '5MB');
+			expectToken(tok(ps, '$x = 1kb'), 'number.integer', '1kb');
 			const range = tok(ps, '1..10');
-			expectToken(range, 'number', '1');
+			expectToken(range, 'number.integer', '1');
 			expectToken(range, 'operator', '..');
-			expectToken(range, 'number', '10');
+			expectToken(range, 'number.integer', '10');
 		});
 	});
 
@@ -187,34 +283,34 @@ describe('PowerShell tokenizer', () => {
 			// Regression: `1..10` previously tokenized as `1.` + `.10` (two malformed
 			// numbers) because the float pattern ate the first dot of `..`.
 			const line = tok(ps, '1..10');
-			expectToken(line, 'number', '1');
+			expectToken(line, 'number.integer', '1');
 			expectToken(line, 'operator', '..');
-			expectToken(line, 'number', '10');
+			expectToken(line, 'number.integer', '10');
 			expectLossless(line, '1..10');
 		});
 
 		it('handles a range inside a pipeline expression', () => {
 			const line = tok(ps, '1..5 | ForEach-Object { $_ }');
-			expectToken(line, 'number', '1');
+			expectToken(line, 'number.integer', '1');
 			expectToken(line, 'operator', '..');
-			expectToken(line, 'number', '5');
+			expectToken(line, 'number.integer', '5');
 			expectToken(line, 'function.call', 'ForEach-Object');
 			expectLossless(line, '1..5 | ForEach-Object { $_ }');
 		});
 
 		it('keeps a range adjacent to a parenthesized bound intact', () => {
 			const line = tok(ps, '0..($n - 1)');
-			expectToken(line, 'number', '0');
+			expectToken(line, 'number.integer', '0');
 			expectToken(line, 'operator', '..');
 			expectToken(line, 'variable', '$n');
 			expectLossless(line, '0..($n - 1)');
 		});
 
 		it('still tokenizes ordinary floats and size suffixes correctly', () => {
-			expectToken(tok(ps, '$x = 3.14'), 'number', '3.14');
-			expectToken(tok(ps, '$x = .5'), 'number', '.5');
-			expectToken(tok(ps, '$x = 1.5e3'), 'number', '1.5e3');
-			expectToken(tok(ps, '$x = 5MB'), 'number', '5MB');
+			expectToken(tok(ps, '$x = 3.14'), 'number.float', '3.14');
+			expectToken(tok(ps, '$x = .5'), 'number.float', '.5');
+			expectToken(tok(ps, '$x = 1.5e3'), 'number.float', '1.5e3');
+			expectToken(tok(ps, '$x = 5MB'), 'number.integer', '5MB');
 		});
 	});
 
@@ -228,15 +324,25 @@ describe('PowerShell tokenizer', () => {
 	});
 
 	describe('operators and parameters', () => {
-		it('detects named comparison operators', () => {
+		it('detects named comparison operators as operator.comparison', () => {
 			const line = tok(ps, 'if ($a -eq $b) { }');
-			expectToken(line, 'operator.logical', '-eq');
+			expectToken(line, 'operator.comparison', '-eq');
 		});
 
-		it('detects -match and -like operators', () => {
+		it('detects -match and -like as comparison operators', () => {
 			const line = tok(ps, '$s -match $p; $s -like $g');
-			expectToken(line, 'operator.logical', '-match');
-			expectToken(line, 'operator.logical', '-like');
+			expectToken(line, 'operator.comparison', '-match');
+			expectToken(line, 'operator.comparison', '-like');
+		});
+
+		it('classifies -and / -or / -not as logical and -band / -shl as bitwise', () => {
+			const line = tok(ps, '$a -and $b -or -not $c');
+			expectToken(line, 'operator.logical', '-and');
+			expectToken(line, 'operator.logical', '-or');
+			expectToken(line, 'operator.logical', '-not');
+			const bits = tok(ps, '$x -band $y -shl 2');
+			expectToken(bits, 'operator', '-band');
+			expectToken(bits, 'operator', '-shl');
 		});
 
 		it('distinguishes -ParameterName flags from operators', () => {
@@ -275,6 +381,119 @@ describe('PowerShell tokenizer', () => {
 		});
 	});
 
+	describe('type literals', () => {
+		it('classifies a builtin accelerator [int] with bracket punctuation', () => {
+			const line = tok(ps, '[int]$n = 5');
+			expectToken(line, 'punctuation.bracket', '[');
+			expectToken(line, 'type.builtin', 'int');
+			expectToken(line, 'punctuation.bracket', ']');
+			expectToken(line, 'variable', '$n');
+			expectLossless(line, '[int]$n = 5');
+		});
+
+		it('splits a namespaced type [System.Math] into namespace + class', () => {
+			const line = tok(ps, '[System.Math]::Pi');
+			expectToken(line, 'type.namespace', 'System');
+			expectToken(line, 'punctuation.accessor', '.');
+			expectToken(line, 'type.class', 'Math');
+			expectToken(line, 'operator', '::');
+			expectToken(line, 'property', 'Pi');
+			expectLossless(line, '[System.Math]::Pi');
+		});
+
+		it('handles an array type [string[]] losslessly', () => {
+			const line = tok(ps, '[string[]]$arr = @()');
+			expectToken(line, 'type.builtin', 'string');
+			expectLossless(line, '[string[]]$arr = @()');
+		});
+
+		it('handles a nested generic type argument', () => {
+			const line = tok(ps, '[System.Collections.Generic.List[int]]::new()');
+			expectToken(line, 'type.namespace', 'Generic');
+			expectToken(line, 'type.class', 'List');
+			expectToken(line, 'type.builtin', 'int');
+			expectToken(line, 'function.call', 'new');
+			expectLossless(line, '[System.Collections.Generic.List[int]]::new()');
+		});
+	});
+
+	describe('member access', () => {
+		it('classifies a property after a dot accessor', () => {
+			const line = tok(ps, '$_.Length');
+			expectToken(line, 'variable', '$_');
+			expectToken(line, 'punctuation.accessor', '.');
+			expectToken(line, 'property', 'Length');
+			expectLossless(line, '$_.Length');
+		});
+
+		it('classifies a method call after a dot accessor', () => {
+			const line = tok(ps, '$obj.GetType()');
+			expectToken(line, 'function.call', 'GetType');
+			expectLossless(line, '$obj.GetType()');
+		});
+
+		it('classifies a property after a null-conditional accessor', () => {
+			const line = tok(ps, '$str?.Length');
+			expectToken(line, 'operator', '?.');
+			expectToken(line, 'property', 'Length');
+			expectLossless(line, '$str?.Length');
+		});
+
+		it('classifies a static method after ::', () => {
+			const line = tok(ps, '[Math]::Max(1, 2)');
+			expectToken(line, 'type.class', 'Math');
+			expectToken(line, 'operator', '::');
+			expectToken(line, 'function.call', 'Max');
+			expectLossless(line, '[Math]::Max(1, 2)');
+		});
+	});
+
+	describe('redirection operators', () => {
+		it('treats 2>&1 as a single operator', () => {
+			const line = tok(ps, 'cmd 2>&1');
+			expectToken(line, 'operator', '2>&1');
+			expectLossless(line, 'cmd 2>&1');
+		});
+
+		it('treats *> and 2>> as single operators', () => {
+			expectToken(tok(ps, 'cmd *> out.txt'), 'operator', '*>');
+			expectToken(tok(ps, 'cmd 2>> err.txt'), 'operator', '2>>');
+		});
+	});
+
+	describe('definition names', () => {
+		it('classifies a function name as function.definition', () => {
+			const line = tok(ps, 'function Get-Thing { }');
+			expectToken(line, 'function.definition', 'Get-Thing');
+		});
+
+		it('classifies a class / enum name as type.class', () => {
+			const cls = tok(ps, 'class Widget { }');
+			expectToken(cls, 'type.class', 'Widget');
+			const en = tok(ps, 'enum Color { Red }');
+			expectToken(en, 'type.class', 'Color');
+		});
+	});
+
+	describe('ternary and null operators', () => {
+		it('classifies the PowerShell 7 ternary operator', () => {
+			const line = tok(ps, '$r = $a ? $b : $c');
+			expectToken(line, 'operator', '?');
+			expectToken(line, 'operator', ':');
+			expectLossless(line, '$r = $a ? $b : $c');
+		});
+
+		it('classifies null-coalescing and null-conditional operators', () => {
+			const coalesce = tok(ps, '$v = $a ?? $b');
+			expectToken(coalesce, 'operator', '??');
+			const assign = tok(ps, '$a ??= $b');
+			expectToken(assign, 'operator.assignment', '??=');
+			const cond = tok(ps, '$len = $str?.Length');
+			expectToken(cond, 'operator', '?.');
+			expectLossless(cond, '$len = $str?.Length');
+		});
+	});
+
 	describe('multi-line constructs', () => {
 		it('threads block comments across lines', () => {
 			const lines = tokLines(ps, ['<#', 'multi line', 'comment #>', '$after = 1']);
@@ -290,6 +509,29 @@ describe('PowerShell tokenizer', () => {
 			expectTokenType(lines[2], 'string.template');
 			expectTokenType(lines[3], 'string.template');
 			expectToken(lines[4], 'variable', '$done');
+		});
+
+		it('sub-tokenizes interpolation on here-string continuation lines', () => {
+			const lines = tokLines(ps, ['$t = @"', 'Hi $name total $($a + $b)', '"@', '$end = 1']);
+			// The embedded variable and subexpression are tokenized even mid here-string.
+			expectToken(lines[1], 'variable', '$name');
+			expectToken(lines[1], 'string.template', '$(');
+			expectToken(lines[1], 'variable', '$a');
+			expectToken(lines[1], 'operator.arithmetic', '+');
+			lines.forEach((l, i) =>
+				expectLossless(l, ['$t = @"', 'Hi $name total $($a + $b)', '"@', '$end = 1'][i])
+			);
+		});
+
+		it('threads an unterminated double-quoted string across lines with interpolation', () => {
+			const src = ['$x = "start $a', 'middle $b', 'end"', '$y = 2'];
+			const lines = tokLines(ps, src);
+			expectToken(lines[0], 'variable', '$a');
+			expectToken(lines[1], 'string.template', 'middle ');
+			expectToken(lines[1], 'variable', '$b');
+			expectToken(lines[2], 'string.template', '"');
+			expectToken(lines[3], 'variable', '$y');
+			lines.forEach((l, i) => expectLossless(l, src[i]));
 		});
 
 		it('threads literal here-strings across lines', () => {
@@ -308,14 +550,16 @@ describe('PowerShell tokenizer', () => {
 			expectToken(line, 'operator.logical', '|');
 			expectToken(line, 'function.call', 'Where-Object');
 			expectToken(line, 'variable', '$_');
-			expectToken(line, 'operator.logical', '-gt');
-			expectToken(line, 'number', '1KB');
+			expectToken(line, 'property', 'Length');
+			expectToken(line, 'operator.comparison', '-gt');
+			expectToken(line, 'number.integer', '1KB');
 		});
 
 		it('tokenizes a function definition header', () => {
 			const line = tok(ps, 'function Test-Connection { param($Host) }');
 			expectToken(line, 'keyword.definition', 'function');
-			expectToken(line, 'function.call', 'Test-Connection');
+			// The name right after `function` is now the definition site, not a call.
+			expectToken(line, 'function.definition', 'Test-Connection');
 			expectToken(line, 'keyword', 'param');
 			expectToken(line, 'variable', '$Host');
 		});

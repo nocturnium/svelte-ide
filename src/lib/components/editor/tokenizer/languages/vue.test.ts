@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createVueTokenizer } from './vue';
 import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
 
@@ -273,12 +273,17 @@ describe('VueTokenizer', () => {
 		});
 
 		// A `>` inside a quoted attribute value on a continuation line must NOT be
-		// mistaken for the tag's closing bracket.
+		// mistaken for the tag's closing bracket. (`:x` is a v-bind binding, so its
+		// value is sub-tokenized as an expression: the `>` is a comparison operator,
+		// NOT the tag close — the real close lands on line 2.)
 		it('does not close a multi-line tag on a `>` inside a quoted value', () => {
 			const lines = tokLines(createVueTokenizer(), ['<div', '  :x="a > b"', '>ok</div>']);
 			expectToken(lines[1], 'tag.attribute', ':x');
-			expectToken(lines[1], 'tag.attribute.value', '"a > b"');
-			// The real close is on line 2.
+			// The binding value is sub-tokenized; the `>` inside it is an operator.
+			expectToken(lines[1], 'operator', '>');
+			expectToken(lines[1], 'variable', 'a');
+			expectToken(lines[1], 'variable', 'b');
+			// The real tag close is on line 2.
 			expectToken(lines[2], 'tag.punctuation', '>');
 			for (let i = 0; i < lines.length; i++) {
 				expectLossless(lines[i], lines[i].text);
@@ -355,6 +360,211 @@ describe('VueTokenizer', () => {
 			// Script + style closing tags emitted as template tags.
 			expectToken(lines[10], 'tag.name', 'script');
 			expectToken(lines[16], 'tag.name', 'style');
+		});
+	});
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// A+ closures: precise sub-tokenization of template expressions, robust
+	// brace/quote scanning, multi-line opening <script>/<style> tags, and routing
+	// template expressions to the TS tokenizer in a lang="ts" SFC. Each test below
+	// fails on the pre-improvement tokenizer and passes after.
+	// ─────────────────────────────────────────────────────────────────────────
+
+	describe('mustache close scanning (string-aware)', () => {
+		// Regression: `}}` INSIDE a string literal in the interpolation must NOT close
+		// the mustache. A prior naive indexOf('}}') closed early, bleeding the real
+		// tail (`'] }}`) out as plain `text` and mis-placing the closing brace.
+		it('does not close on `}}` inside a single-quoted string', () => {
+			const line = tok(createVueTokenizer(), "<p>{{ obj['}}'] }}</p>");
+			expectToken(line, 'string', "'}}'");
+			expectToken(line, 'punctuation.bracket', ']');
+			expectToken(line, 'punctuation.brace', '}}');
+			expectToken(line, 'tag.name', 'p');
+			expectLossless(line, "<p>{{ obj['}}'] }}</p>");
+		});
+
+		it('does not close on `}}` inside a double-quoted string', () => {
+			const line = tok(createVueTokenizer(), '{{ a + "}}" }}');
+			expectToken(line, 'string', '"}}"');
+			// Exactly one real closing brace (the trailing `}}`), not the one in the string.
+			const braces = line.tokens.filter((t) => t.type === 'punctuation.brace' && t.text === '}}');
+			expect(braces.length).toBe(1);
+			expectLossless(line, '{{ a + "}}" }}');
+		});
+
+		it('threads an open mustache whose close is guarded by a string across lines', () => {
+			const lines = tokLines(createVueTokenizer(), ['{{ obj[', "  '}}' ] }}"]);
+			expectToken(lines[0], 'punctuation.brace', '{{');
+			// The `'}}'` on line 1 is a string, not the close; the real `}}` follows.
+			expectToken(lines[1], 'string', "'}}'");
+			expectToken(lines[1], 'punctuation.brace', '}}');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+	});
+
+	describe('directive / binding value expressions (sub-tokenized)', () => {
+		// Regression: a directive/binding value is real JS, not a static string. A
+		// prior version emitted the whole value as one `tag.attribute.value`; now the
+		// quotes are `string` delimiters and the interior is tokenized as code.
+		it('sub-tokenizes a v-on handler expression', () => {
+			const line = tok(createVueTokenizer(), '<button @click="count++">');
+			expectToken(line, 'tag.attribute', '@click');
+			expectToken(line, 'variable', 'count');
+			// Quotes survive as string delimiters; whole thing stays lossless.
+			expectToken(line, 'string', '"');
+			expectLossless(line, '<button @click="count++">');
+		});
+
+		it('sub-tokenizes a v-bind object-literal value', () => {
+			const line = tok(createVueTokenizer(), '<div :style="{ color: \'red\' }">');
+			expectToken(line, 'tag.attribute', ':style');
+			expectToken(line, 'punctuation.brace', '{');
+			expectToken(line, 'variable', 'color');
+			expectToken(line, 'string', "'red'");
+			expectLossless(line, '<div :style="{ color: \'red\' }">');
+		});
+
+		it('sub-tokenizes a v-for expression with destructuring', () => {
+			const line = tok(createVueTokenizer(), '<li v-for="(item, i) in items">');
+			expectToken(line, 'tag.attribute', 'v-for');
+			expectToken(line, 'variable', 'item');
+			expectToken(line, 'punctuation.separator', ',');
+			expectToken(line, 'keyword', 'in');
+			expectToken(line, 'variable', 'items');
+			expectLossless(line, '<li v-for="(item, i) in items">');
+		});
+
+		it('sub-tokenizes a number inside a binding value', () => {
+			const line = tok(createVueTokenizer(), '<el :count="0xff">');
+			expectToken(line, 'number.hex', '0xff');
+			expectLossless(line, '<el :count="0xff">');
+		});
+
+		it('sub-tokenizes a single-quoted directive value', () => {
+			const line = tok(createVueTokenizer(), "<div :title='a + b'>");
+			expectToken(line, 'string', "'");
+			expectToken(line, 'operator', '+');
+			expectLossless(line, "<div :title='a + b'>");
+		});
+
+		// A PLAIN (non-directive) attribute keeps a static value — it is NOT code.
+		it('keeps a plain attribute value as a single static token', () => {
+			const line = tok(createVueTokenizer(), '<div class="card">');
+			expectToken(line, 'tag.attribute.value', '"card"');
+			expectLossless(line, '<div class="card">');
+		});
+
+		// Regression: a `>` (or `>=`, `>>`, `>>>`) INSIDE a quoted directive value on a
+		// SINGLE line must NOT be mistaken for the tag's closing bracket. A prior bug
+		// matched the tag with a quote-blind `[^>]*` regex that stopped at the first
+		// `>`, so `<p v-if="a > b">` truncated the value to `"a`, bled ` b">` out as
+		// plain text, and emitted a bogus early close. The tag end is now located with
+		// the quote-aware scanner (the same one the multi-line path already used).
+		it('does not close a single-line tag on a `>` inside a quoted directive value', () => {
+			const line = tok(createVueTokenizer(), '<p v-if="count > 0">');
+			expectToken(line, 'tag.attribute', 'v-if');
+			expectToken(line, 'operator', '>');
+			expectToken(line, 'variable', 'count');
+			expectToken(line, 'number.integer', '0');
+			// Exactly one real tag close (the trailing `>`), not an early bogus one.
+			const closes = line.tokens.filter((t) => t.type === 'tag.punctuation' && t.text === '>');
+			expect(closes.length).toBe(1);
+			expectLossless(line, '<p v-if="count > 0">');
+		});
+
+		it('does not close a single-line tag on a `>` inside a quoted PLAIN value', () => {
+			const line = tok(createVueTokenizer(), '<a href="x>y">link</a>');
+			// The plain (non-directive) value keeps its `>` and stays one static token.
+			expectToken(line, 'tag.attribute.value', '"x>y"');
+			expectToken(line, 'tag.name', 'a');
+			expectLossless(line, '<a href="x>y">link</a>');
+		});
+
+		it('treats `>>>` inside a single-line binding value as a shift operator', () => {
+			const line = tok(createVueTokenizer(), '<C :v="x>>>y" />');
+			expectToken(line, 'operator', '>>>');
+			expectToken(line, 'tag.punctuation', '/>');
+			expectLossless(line, '<C :v="x>>>y" />');
+		});
+	});
+
+	describe('multi-line opening <script>/<style> tags', () => {
+		// Regression: a `<script ...>` opening tag whose `>` lands on a LATER line
+		// (multi-attribute formatting) must keep parsing attributes and then enter the
+		// script body. A prior version bled the continuation lines out as plain `text`
+		// and never entered the script context.
+		it('threads a multi-line <script> opening tag and enters the body', () => {
+			const lines = tokLines(createVueTokenizer(), [
+				'<script',
+				'  setup',
+				'  lang="ts">',
+				'const n: number = 1',
+				'</script>'
+			]);
+			expectToken(lines[0], 'tag.name', 'script');
+			expectToken(lines[1], 'tag.attribute', 'setup');
+			expectToken(lines[2], 'tag.attribute', 'lang');
+			expectToken(lines[2], 'tag.punctuation', '>');
+			// Body is tokenized as TS (the lang="ts" was detected across the lines).
+			expectToken(lines[3], 'keyword.definition', 'const');
+			expectToken(lines[3], 'type.builtin', 'number');
+			expectToken(lines[4], 'tag.name', 'script');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+
+		it('threads a multi-line <style> opening tag and enters the CSS body', () => {
+			const lines = tokLines(createVueTokenizer(), [
+				'<style',
+				'  scoped',
+				'  lang="scss">',
+				'.a { color: red; }',
+				'</style>'
+			]);
+			expectToken(lines[1], 'tag.attribute', 'scoped');
+			expectToken(lines[2], 'tag.punctuation', '>');
+			// CSS body actually tokenizes (selector + property), not bled-out text.
+			expectToken(lines[3], 'property', 'color');
+			expectToken(lines[4], 'tag.name', 'style');
+			for (let i = 0; i < lines.length; i++) {
+				expectLossless(lines[i], lines[i].text);
+			}
+		});
+	});
+
+	describe('TS-aware template expressions', () => {
+		// Once a `<script lang="ts">` has been seen, template expressions
+		// (mustache + directive values) tokenize with the TS tokenizer, so built-in
+		// type names and `as` casts classify precisely.
+		it('routes a mustache type assertion to the TS tokenizer in a ts SFC', () => {
+			const lines = tokLines(createVueTokenizer(), [
+				'<script setup lang="ts">',
+				'const x = 1',
+				'</script>',
+				'<template>',
+				'  <p>{{ (count as number) }}</p>',
+				'</template>'
+			]);
+			// `number` is a TS built-in type here (would be a bare variable under JS).
+			expectToken(lines[4], 'type.builtin', 'number');
+			expectToken(lines[4], 'keyword.module', 'as');
+			expectLossless(lines[4], '  <p>{{ (count as number) }}</p>');
+		});
+
+		it('sub-tokenizes a binding value as TS in a ts SFC', () => {
+			const lines = tokLines(createVueTokenizer(), [
+				'<script setup lang="ts">',
+				'let a = 1',
+				'</script>',
+				'<template>',
+				'  <el :n="a as number" />',
+				'</template>'
+			]);
+			expectToken(lines[4], 'type.builtin', 'number');
+			expectLossless(lines[4], '  <el :n="a as number" />');
 		});
 	});
 });

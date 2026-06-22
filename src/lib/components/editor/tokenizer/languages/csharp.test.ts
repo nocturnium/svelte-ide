@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createCSharpTokenizer } from './csharp';
 import { tok, tokLines, expectToken, expectTokenType, expectLossless } from '../test-helpers';
 
@@ -52,58 +52,183 @@ describe('csharp: strings', () => {
 		expectToken(line, 'string', '"hello"');
 	});
 
-	it('handles escape sequences inside strings', () => {
-		const line = tok(cs, 'var s = "line\\n\\t\\"end\\"";');
-		expectToken(line, 'string', '"line\\n\\t\\"end\\""');
+	it('breaks out escape sequences inside strings as string.escape', () => {
+		// The literal stays `string` but each escape is its own `string.escape` token,
+		// so the theme can style \n \t \" distinctly. Still byte-for-byte lossless.
+		const src = 'var s = "line\\n\\t\\"end\\"";';
+		const line = tok(cs, src);
+		expectToken(line, 'string', '"line');
+		expectToken(line, 'string.escape', '\\n');
+		expectToken(line, 'string.escape', '\\t');
+		expectToken(line, 'string.escape', '\\"');
+		expectLossless(line, src);
 	});
 
-	it('tokenizes char literals', () => {
+	it('breaks out a unicode escape \\uXXXX as a single string.escape', () => {
+		const src = 'var s = "caf\\u00e9";';
+		const line = tok(cs, src);
+		expectToken(line, 'string.escape', '\\u00e9');
+		expectLossless(line, src);
+	});
+
+	it('tokenizes char literals, with the escape broken out', () => {
 		expectToken(tok(cs, "char c = 'a';"), 'string', "'a'");
-		expectToken(tok(cs, "char nl = '\\n';"), 'string', "'\\n'");
+		const nl = tok(cs, "char nl = '\\n';");
+		expectToken(nl, 'string.escape', '\\n');
+		expectLossless(nl, "char nl = '\\n';");
+		const uni = tok(cs, "char u = '\\u00e9';");
+		expectToken(uni, 'string.escape', '\\u00e9');
+		expectLossless(uni, "char u = '\\u00e9';");
 	});
 
 	it('tokenizes single-line verbatim strings as string', () => {
-		const line = tok(cs, 'var p = @"C:\\temp\\file.txt";');
-		expectToken(line, 'string', '@"C:\\temp\\file.txt"');
+		const src = 'var p = @"C:\\temp\\file.txt";';
+		const line = tok(cs, src);
+		// Verbatim opener + body. Backslashes are literal in verbatim strings (no escape).
+		expectToken(line, 'string', '@"');
+		expectToken(line, 'string', 'C:\\temp\\file.txt');
+		expectLossless(line, src);
 	});
 
-	it('treats doubled quote in verbatim as a literal quote', () => {
-		const line = tok(cs, 'var q = @"say ""hi"" now";');
-		expectToken(line, 'string', '@"say ""hi"" now"');
+	it('treats doubled quote in verbatim as a literal quote (string.escape)', () => {
+		const src = 'var q = @"say ""hi"" now";';
+		const line = tok(cs, src);
+		expectToken(line, 'string.escape', '""');
+		expectLossless(line, src);
 	});
 
-	it('tokenizes interpolated strings as string.template', () => {
-		const line = tok(cs, 'var s = $"Hello {name}!";');
-		expectToken(line, 'string.template', '$"Hello {name}!"');
+	it('sub-tokenizes interpolated strings: literal + hole expression', () => {
+		const src = 'var s = $"Hello {name}!";';
+		const line = tok(cs, src);
+		expectToken(line, 'string.template', '$"');
+		expectToken(line, 'string', 'Hello ');
+		expectToken(line, 'punctuation.brace', '{');
+		expectToken(line, 'variable', 'name');
+		expectToken(line, 'punctuation.brace', '}');
+		expectToken(line, 'string', '!');
+		expectLossless(line, src);
 	});
 
-	it('tokenizes interpolated-verbatim strings as string.template', () => {
-		const line = tok(cs, 'var s = $@"path {dir}";');
-		expectToken(line, 'string.template', '$@"path {dir}"');
+	it('sub-tokenizes an interpolation hole expression with operators and numbers', () => {
+		const src = 'var s = $"Sum = {a + b * 2}";';
+		const line = tok(cs, src);
+		expectToken(line, 'variable', 'a');
+		expectToken(line, 'operator.arithmetic', '+');
+		expectToken(line, 'operator.arithmetic', '*');
+		expectToken(line, 'number.integer', '2');
+		expectLossless(line, src);
+	});
+
+	it('keeps the :format / ,alignment suffix of a hole as string content', () => {
+		const src = 'var s = $"{x,5:F2} items";';
+		const line = tok(cs, src);
+		expectToken(line, 'variable', 'x');
+		expectToken(line, 'string', ',5:F2');
+		expectLossless(line, src);
+	});
+
+	it('treats {{ and }} as literal braces, not interpolation', () => {
+		const src = 'var s = $"Literal {{ braces }} here {x}";';
+		const line = tok(cs, src);
+		expectToken(line, 'string', 'Literal {{ braces }} here ');
+		expectToken(line, 'variable', 'x');
+		expectLossless(line, src);
+	});
+
+	it('tokenizes a method call inside an interpolation hole', () => {
+		const src = 'Console.WriteLine($"Result: {Compute(n):X8}");';
+		const line = tok(cs, src);
+		expectToken(line, 'function.call', 'Compute');
+		expectToken(line, 'variable', 'n');
+		expectToken(line, 'string', ':X8');
+		expectLossless(line, src);
+	});
+
+	it('does not treat a comma/colon inside a call or indexer in a hole as a format spec', () => {
+		// Regression: the `,alignment`/`:format` separator is only valid at the TOP of an
+		// interpolation hole. A `,` or `:` nested inside `(...)`/`[...]` used to be eaten
+		// as a format specifier — so `$"{Foo(a, b)}"` swallowed `, b)` into one `string`
+		// token, losing the argument separator, the `b` variable and the `)` paren.
+		const call = tok(cs, 'var s = $"{Foo(a, b)}";');
+		expectToken(call, 'function.call', 'Foo');
+		expectToken(call, 'punctuation.separator', ',');
+		expectToken(call, 'variable', 'b');
+		expectToken(call, 'punctuation.paren', ')');
+		expectLossless(call, 'var s = $"{Foo(a, b)}";');
+
+		const idx = tok(cs, 'var s = $"{arr[a, b]}";');
+		expectToken(idx, 'punctuation.separator', ',');
+		expectToken(idx, 'variable', 'b');
+		expectToken(idx, 'punctuation.bracket', ']');
+		expectLossless(idx, 'var s = $"{arr[a, b]}";');
+
+		// A genuine top-level `:format` AFTER a nested call must still be a format string.
+		const fmt = tok(cs, 'var s = $"{Math.Max(a, b):F2}";');
+		expectToken(fmt, 'punctuation.separator', ',');
+		expectToken(fmt, 'variable', 'b');
+		expectToken(fmt, 'string', ':F2');
+		expectLossless(fmt, 'var s = $"{Math.Max(a, b):F2}";');
+	});
+
+	it('treats a parenthesized ternary colon in a hole as an operator, not a format spec', () => {
+		// Regression: `$"{(cond ? a : b)}"` — the grammatically-required parenthesized
+		// conditional — had its `:` eaten as a format specifier, turning `: b)` into a
+		// single `string` token. With paren tracking the `:` is a separator and `b` a var.
+		const src = 'var s = $"{(cond ? a : b)}";';
+		const line = tok(cs, src);
+		expectToken(line, 'variable', 'b');
+		expectToken(line, 'punctuation.paren', ')');
+		expectLossless(line, src);
+	});
+
+	it('threads hole paren-depth across lines so a continuation comma is a separator', () => {
+		// Regression: a hole opening inside `(...)` that runs onto the next line must keep
+		// treating `,` as an argument separator on the continuation, not a format spec.
+		const lines = tokLines(cs, ['var s = $@"x {Foo(a,', '  b, c)} y";']);
+		expectToken(lines[1], 'variable', 'b');
+		expectToken(lines[1], 'variable', 'c');
+		expectToken(lines[1], 'punctuation.separator', ',');
+		expectLossless(lines[0], 'var s = $@"x {Foo(a,');
+		expectLossless(lines[1], '  b, c)} y";');
+	});
+
+	it('sub-tokenizes interpolated-verbatim strings as string.template + hole', () => {
+		const src = 'var s = $@"path {dir}";';
+		const line = tok(cs, src);
+		expectToken(line, 'string.template', '$@"');
+		expectToken(line, 'punctuation.brace', '{');
+		expectToken(line, 'variable', 'dir');
+		expectLossless(line, src);
 	});
 
 	it('tokenizes a single-line raw string literal without bleeding on interior quotes', () => {
 		// Regression: """She said "hi" to me.""" used to split into an empty "" string,
 		// then "She said ", an exposed `hi` variable, " to me.", and another "" — with
-		// the interior quotes flipping the string boundaries. It must be ONE string.
+		// the interior quotes flipping the string boundaries. It must stay string content.
 		const src = 'var raw = """She said "hi" to me.""";';
 		const line = tok(cs, src);
-		expectToken(line, 'string', '"""She said "hi" to me."""');
+		expectToken(line, 'string', '"""');
+		expectToken(line, 'string', 'She said "hi" to me.');
 		expectLossless(line, src);
 	});
 
-	it('tokenizes an interpolated raw string ($"""...""") as one string.template', () => {
+	it('sub-tokenizes an interpolated raw string ($"""...""")', () => {
 		const src = 'var s = $"""Value is {x} here.""";';
 		const line = tok(cs, src);
-		expectToken(line, 'string.template', '$"""Value is {x} here."""');
+		expectToken(line, 'string.template', '$"""');
+		expectToken(line, 'punctuation.brace', '{');
+		expectToken(line, 'variable', 'x');
+		expectToken(line, 'string.template', '"""');
 		expectLossless(line, src);
 	});
 
-	it('tokenizes a raw string with extra interpolation dollars ($$"""...) as one token', () => {
-		// Regression: the leading $$ used to leave a stray ["text","$"] before the string.
-		const src = 'var s = $$"""Literal {{ and {x}.""";';
+	it('tokenizes a $$"""...""" raw string where {{ opens the hole', () => {
+		// In a $$ raw string a hole needs TWO braces; a single { is literal content.
+		const src = 'var s = $$"""Literal { and {{x}}.""";';
 		const line = tok(cs, src);
-		expectToken(line, 'string.template', '$$"""Literal {{ and {x}."""');
+		expectToken(line, 'string.template', '$$"""');
+		expectToken(line, 'punctuation.brace', '{');
+		expectToken(line, 'variable', 'x');
 		expectLossless(line, src);
 	});
 
@@ -112,7 +237,7 @@ describe('csharp: strings', () => {
 		expectToken(lines[0], 'string', '"""');
 		// The interior line is entirely string content even though it contains quotes.
 		expectToken(lines[1], 'string', '  { "key": "value" }');
-		expectToken(lines[2], 'string', '  """');
+		expectToken(lines[2], 'string', '"""');
 		expectToken(lines[2], 'punctuation.separator', ';');
 		expectLossless(lines[0], 'var json = """');
 		expectLossless(lines[1], '  { "key": "value" }');
@@ -176,28 +301,29 @@ describe('csharp: comments', () => {
 });
 
 describe('csharp: numbers', () => {
-	it('tokenizes decimal integers and floats', () => {
-		expectTokenType(tok(cs, '42'), 'number');
-		expectToken(tok(cs, '3.14'), 'number', '3.14');
+	it('tokenizes decimal integers and floats with precise subtypes', () => {
+		expectToken(tok(cs, '42'), 'number.integer', '42');
+		expectToken(tok(cs, '3.14'), 'number.float', '3.14');
+		expectToken(tok(cs, '1.5e10'), 'number.float', '1.5e10');
 	});
 
-	it('tokenizes hex and binary literals', () => {
-		expectToken(tok(cs, '0xFF_AA'), 'number', '0xFF_AA');
-		expectToken(tok(cs, '0b1010_0101'), 'number', '0b1010_0101');
+	it('tokenizes hex and binary literals with precise subtypes', () => {
+		expectToken(tok(cs, '0xFF_AA'), 'number.hex', '0xFF_AA');
+		expectToken(tok(cs, '0b1010_0101'), 'number.binary', '0b1010_0101');
 	});
 
-	it('tokenizes numeric suffixes', () => {
-		expectToken(tok(cs, '1.5f'), 'number', '1.5f');
-		expectToken(tok(cs, '100m'), 'number', '100m');
-		expectToken(tok(cs, '64L'), 'number', '64L');
-		expectToken(tok(cs, '1_000_000'), 'number', '1_000_000');
+	it('tokenizes numeric suffixes (f/m => float, L/u => integer)', () => {
+		expectToken(tok(cs, '1.5f'), 'number.float', '1.5f');
+		expectToken(tok(cs, '100m'), 'number.float', '100m');
+		expectToken(tok(cs, '64L'), 'number.integer', '64L');
+		expectToken(tok(cs, '1_000_000'), 'number.integer', '1_000_000');
 	});
 
 	it('does not let an integer swallow a trailing dot (member access on a literal)', () => {
 		// Regression: `\.?` in the number regex used to absorb the dot, producing the
 		// invalid float `1.` and stealing the `.` accessor from `1.ToString()`.
 		const line = tok(cs, '1.ToString()');
-		expectToken(line, 'number', '1');
+		expectToken(line, 'number.integer', '1');
 		expectToken(line, 'punctuation.accessor', '.');
 		expectToken(line, 'function.call', 'ToString');
 		expectLossless(line, '1.ToString()');
@@ -207,18 +333,18 @@ describe('csharp: numbers', () => {
 		// Regression: `1..5` used to tokenize as the two bogus numbers `1.` and `.5`,
 		// erasing the `..` range operator entirely.
 		const line = tok(cs, 'var r = 1..5;');
-		expectToken(line, 'number', '1');
+		expectToken(line, 'number.integer', '1');
 		expectToken(line, 'operator', '..');
-		expectToken(line, 'number', '5');
+		expectToken(line, 'number.integer', '5');
 		expectLossless(line, 'var r = 1..5;');
 	});
 
 	it('keeps float operands intact around a range operator', () => {
 		// Regression: `1.0..2.0` used to disintegrate into `1.0 . .2 .0`.
 		const line = tok(cs, 'var d = 1.0..2.0;');
-		expectToken(line, 'number', '1.0');
+		expectToken(line, 'number.float', '1.0');
 		expectToken(line, 'operator', '..');
-		expectToken(line, 'number', '2.0');
+		expectToken(line, 'number.float', '2.0');
 		expectLossless(line, 'var d = 1.0..2.0;');
 	});
 });
@@ -290,15 +416,36 @@ describe('csharp: multi-line constructs', () => {
 
 	it('threads a multi-line verbatim string across lines', () => {
 		const lines = tokLines(cs, ['var sql = @"SELECT *', 'FROM Users', 'WHERE id = 1";']);
-		expectToken(lines[0], 'string', '@"SELECT *');
+		expectToken(lines[0], 'string', '@"');
+		expectToken(lines[0], 'string', 'SELECT *');
 		expectTokenType(lines[1], 'string');
-		expectToken(lines[2], 'string', 'WHERE id = 1"');
+		expectToken(lines[2], 'string', 'WHERE id = 1');
+		expectLossless(lines[0], 'var sql = @"SELECT *');
+		expectLossless(lines[2], 'WHERE id = 1";');
 	});
 
-	it('threads a multi-line interpolated-verbatim string', () => {
+	it('threads a multi-line interpolated-verbatim string, sub-tokenizing the hole', () => {
 		const lines = tokLines(cs, ['var s = $@"Hello {name},', 'welcome home";']);
-		expectToken(lines[0], 'string.template', '$@"Hello {name},');
-		expectToken(lines[1], 'string.template', 'welcome home"');
+		expectToken(lines[0], 'string.template', '$@"');
+		expectToken(lines[0], 'punctuation.brace', '{');
+		expectToken(lines[0], 'variable', 'name');
+		expectToken(lines[0], 'string', ',');
+		expectToken(lines[1], 'string', 'welcome home');
+		expectLossless(lines[0], 'var s = $@"Hello {name},');
+		expectLossless(lines[1], 'welcome home";');
+	});
+
+	it('threads an interpolation hole that itself spans lines', () => {
+		// The hole `{GetName(\n user)}` opens on line 0 and closes on line 1; the
+		// expression keeps tokenizing across the boundary, then the string resumes.
+		const lines = tokLines(cs, ['var s = $@"Hi {GetName(', '  who)}!";']);
+		expectToken(lines[0], 'punctuation.brace', '{');
+		expectToken(lines[0], 'function.call', 'GetName');
+		expectToken(lines[1], 'variable', 'who');
+		expectToken(lines[1], 'punctuation.brace', '}');
+		expectToken(lines[1], 'string', '!');
+		expectLossless(lines[0], 'var s = $@"Hi {GetName(');
+		expectLossless(lines[1], '  who)}!";');
 	});
 });
 
@@ -327,5 +474,89 @@ describe('csharp: realistic lines and losslessness', () => {
 		const lines = tokLines(cs, ['  var q = @"a ""b""', '  c";']);
 		expectLossless(lines[0], '  var q = @"a ""b""');
 		expectLossless(lines[1], '  c";');
+	});
+});
+
+describe('csharp: context classification', () => {
+	it('classifies a member after an accessor as a property', () => {
+		const line = tok(cs, 'var n = customer.Name;');
+		expectToken(line, 'variable', 'customer');
+		expectToken(line, 'punctuation.accessor', '.');
+		expectToken(line, 'property', 'Name');
+		expectLossless(line, 'var n = customer.Name;');
+	});
+
+	it('classifies a member after a null-conditional ?. as a property', () => {
+		const line = tok(cs, 'var n = customer?.Name;');
+		expectToken(line, 'operator', '?.');
+		expectToken(line, 'property', 'Name');
+		expectLossless(line, 'var n = customer?.Name;');
+	});
+
+	it('classifies a method member as function.call, not a property', () => {
+		const line = tok(cs, 'obj.DoWork(x);');
+		expectToken(line, 'function.call', 'DoWork');
+		expectToken(line, 'variable', 'x');
+		expectLossless(line, 'obj.DoWork(x);');
+	});
+
+	it('treats generic angle brackets as punctuation.bracket, not comparison', () => {
+		const line = tok(cs, 'List<int> xs;');
+		expectToken(line, 'type.builtin', 'List');
+		expectToken(line, 'punctuation.bracket', '<');
+		expectToken(line, 'type.builtin', 'int');
+		expectToken(line, 'punctuation.bracket', '>');
+		expectLossless(line, 'List<int> xs;');
+	});
+
+	it('splits the close of a nested generic (>>) into two brackets', () => {
+		const line = tok(cs, 'Dictionary<string, List<int>> m;');
+		const brackets = line.tokens.filter((t) => t.type === 'punctuation.bracket');
+		// Two opens + two closes = four bracket tokens, none merged into >>.
+		expect(brackets.map((t) => t.text)).toEqual(['<', '<', '>', '>']);
+		expectLossless(line, 'Dictionary<string, List<int>> m;');
+	});
+
+	it('keeps value comparisons as operators, not generic brackets', () => {
+		const line = tok(cs, 'if (a < b && c > d) { }');
+		expectToken(line, 'operator.comparison', '<');
+		expectToken(line, 'operator.comparison', '>');
+		expectLossless(line, 'if (a < b && c > d) { }');
+	});
+
+	it('classifies a generic method invocation member as function.call with bracket args', () => {
+		const line = tok(cs, 'var r = items.Cast<Item>();');
+		expectToken(line, 'function.call', 'Cast');
+		expectToken(line, 'punctuation.bracket', '<');
+		expectToken(line, 'type.class', 'Item');
+		expectToken(line, 'punctuation.bracket', '>');
+		expectLossless(line, 'var r = items.Cast<Item>();');
+	});
+
+	it('classifies type-test / introspection words as keyword.operator', () => {
+		const isLine = tok(cs, 'if (o is string s) { }');
+		expectToken(isLine, 'keyword.operator', 'is');
+		const asLine = tok(cs, 'var x = o as Foo;');
+		expectToken(asLine, 'keyword.operator', 'as');
+		const newLine = tok(cs, 'var x = new Foo();');
+		expectToken(newLine, 'keyword.operator', 'new');
+		const tofLine = tok(cs, 'var t = typeof(int);');
+		expectToken(tofLine, 'keyword.operator', 'typeof');
+	});
+
+	it('treats a verbatim identifier (@class) as a variable, not the keyword', () => {
+		const line = tok(cs, '@class.DoThing();');
+		expectToken(line, 'variable', '@class');
+		// A member followed by `(` is a call even when it comes after the accessor.
+		expectToken(line, 'function.call', 'DoThing');
+		expectLossless(line, '@class.DoThing();');
+	});
+
+	it('classifies a default-context word and switch arms', () => {
+		const line = tok(cs, 'switch (x) { default: break; }');
+		expectToken(line, 'keyword.control', 'switch');
+		expectToken(line, 'keyword.control', 'default');
+		expectToken(line, 'keyword.control', 'break');
+		expectLossless(line, 'switch (x) { default: break; }');
 	});
 });
