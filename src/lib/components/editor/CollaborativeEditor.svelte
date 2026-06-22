@@ -10,6 +10,7 @@
 	import * as Y from 'yjs';
 	import type { Awareness } from 'y-protocols/awareness';
 	import CustomEditor from './CustomEditor.svelte';
+	import { type RemoteCursor } from './RemoteCursorLayer.svelte';
 	import { createEditorState } from './core/state';
 	import { createCRDTBinding, type CRDTBinding } from './core/crdt-binding';
 	import { createAwarenessProtocol, type AwarenessProtocol } from '$lib/crdt/awareness';
@@ -58,6 +59,8 @@
 		onCursorChange?: (line: number, column: number) => void;
 		/** Called when save is triggered (Ctrl+S) */
 		onSave?: () => void;
+		/** Remote collaborators' carets/selections to render in the editor */
+		remoteCursors?: RemoteCursor[];
 	}
 
 	let {
@@ -78,7 +81,8 @@
 		editingFile,
 		onChange,
 		onCursorChange,
-		onSave
+		onSave,
+		remoteCursors = []
 	}: Props = $props();
 
 	// Create internal doc if none provided
@@ -235,6 +239,7 @@
 			onChange={handleChange}
 			onCursorChange={handleCursorChange}
 			{onSave}
+			{remoteCursors}
 		/>
 	{:else}
 		<div class="collab-editor__loading">
@@ -242,10 +247,8 @@
 		</div>
 	{/if}
 
-	<!-- Remote cursors overlay would go here -->
-	<div class="collab-editor__cursors">
-		<!-- Remote collaborator cursors will be rendered here -->
-	</div>
+	<!-- Remote collaborator carets render inside CustomEditor's scrolling content
+	     (via the remoteCursors prop) so they track scroll with the text. -->
 </div>
 
 <style>
@@ -263,15 +266,5 @@
 		height: 100%;
 		background: var(--ide-bg-primary);
 		color: var(--ide-text-muted);
-	}
-
-	.collab-editor__cursors {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		pointer-events: none;
-		z-index: 100;
 	}
 </style>
