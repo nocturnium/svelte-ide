@@ -360,7 +360,12 @@ MIT License - see LICENSE file for details
 	// screen — the single biggest win for small/medium viewports. Backed by the
 	// native Fullscreen API when available, with a CSS-fixed overlay either way so
 	// it works even where requestFullscreen is blocked (iframes, some browsers).
-	let isFullscreen = $state(false);
+	// Default ON: the playground opens filling the whole browser window (the CSS-fixed
+	// overlay below), so the demo reads as a real IDE rather than a panel beside the demo
+	// nav. The status-bar "Exit" button and Esc drop back to the embedded, navigable view.
+	// We deliberately do NOT auto-call the native Fullscreen API on load (requestFullscreen
+	// requires a user gesture and would be rejected); the CSS overlay fills the window anyway.
+	let isFullscreen = $state(true);
 
 	function enterFullscreen() {
 		isFullscreen = true;
