@@ -28,6 +28,7 @@
 	import ComplexityLayer from './ComplexityLayer.svelte';
 	import ComplexityHeatLayer from './ComplexityHeatLayer.svelte';
 	import AIFocusLayer from './AIFocusLayer.svelte';
+	import RemoteCursorLayer, { type RemoteCursor } from './RemoteCursorLayer.svelte';
 	import EditorSelections from './EditorSelections.svelte';
 	import EditorLines from './EditorLines.svelte';
 	import CommandPalette from './CommandPalette.svelte';
@@ -74,6 +75,10 @@
 		showAILabels?: boolean;
 		/** Show AI focus regions (default: false) */
 		showAIFocusRegions?: boolean;
+		/** Remote human collaborators' carets/selections to render (default: none) */
+		remoteCursors?: RemoteCursor[];
+		/** Show remote collaborator name flags (default: true) */
+		showRemoteCursorLabels?: boolean;
 		onChange?: (content: string) => void;
 		onCursorChange?: (line: number, column: number) => void;
 		/** Callback when cursors change (for multi-cursor) */
@@ -97,6 +102,8 @@
 		aiAgents = [],
 		showAILabels = true,
 		showAIFocusRegions = false,
+		remoteCursors = [],
+		showRemoteCursorLabels = true,
 		onChange,
 		onCursorChange,
 		onCursorsChange,
@@ -1152,6 +1159,18 @@
 				showLabels={showAILabels}
 				showFocusRegions={showAIFocusRegions}
 				enabled={true}
+			/>
+		{/if}
+
+		<!-- Remote collaborator cursors (other people's carets + selections) -->
+		{#if remoteCursors.length > 0}
+			<RemoteCursorLayer
+				cursors={remoteCursors}
+				{lineHeight}
+				{charWidth}
+				{gutterWidth}
+				contentPadding={CONTENT_PADDING}
+				showLabels={showRemoteCursorLabels}
 			/>
 		{/if}
 

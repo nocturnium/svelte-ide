@@ -48,11 +48,23 @@
 		{
 			userId: '2',
 			user: collaborators[1],
-			position: { line: 10, column: 8 },
-			selection: { anchor: { line: 10, column: 8 }, head: { line: 10, column: 24 } },
+			position: { line: 8, column: 16 },
+			selection: { anchor: { line: 8, column: 3 }, head: { line: 8, column: 16 } },
 			lastActivity: new Date()
 		}
 	];
+
+	// Remote carets rendered IN the editor (mapped from the sample awareness above).
+	// A live provider would feed these from each peer's onCursorChange; here they are
+	// fixed sample positions so you can see what multi-collaborator presence looks like.
+	const remoteCursors = cursors.map((c) => ({
+		id: c.userId,
+		name: c.user.name,
+		color: c.user.color,
+		line: c.position.line,
+		column: c.position.column,
+		selection: c.selection
+	}));
 
 	// Live local caret position, driven by the editor's real onCursorChange callback.
 	let localCursor = $state({ line: 1, column: 1 });
@@ -265,9 +277,10 @@ class CollaborationSession {
 	<section class="component-section">
 		<h2>Collaborative Editor</h2>
 		<p class="section-desc">
-			The editor is CRDT-backed (Yjs) and exposes a live <code>onCursorChange</code> callback. This instance
-			runs standalone with no provider, so the presence strip below is illustrative sample data — but
-			your own caret position underneath is genuinely live.
+			The editor is CRDT-backed (Yjs) and exposes a live <code>onCursorChange</code> callback. Other collaborators'
+			carets (Alice, Bob) are rendered right in the editor — coloured, named, and selection-aware — at
+			illustrative sample positions, since this instance runs standalone with no provider. Your own caret
+			position is genuinely live.
 		</p>
 
 		<DemoExhibit code={editorCode} language="svelte" filename="collaboration.ts" padded={false}>
@@ -294,12 +307,13 @@ class CollaborationSession {
 					documentId="demo-doc"
 					initialContent={sampleContent}
 					language="typescript"
+					{remoteCursors}
 					onCursorChange={(line, column) => (localCursor = { line, column })}
 				/>
 			</div>
 
 			<div class="editor-footer">
-				<span class="presence-note">Presence strip above is sample data.</span>
+				<span class="presence-note">Remote carets are sample positions; yours is live.</span>
 				<span class="live-caret">
 					Your caret: <strong>Ln {localCursor.line}, Col {localCursor.column}</strong> (live)
 				</span>
