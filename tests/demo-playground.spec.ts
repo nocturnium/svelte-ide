@@ -6,9 +6,9 @@ import { waitForNetworkIdle } from './utils/editor-helpers';
  *
  * This route had no e2e coverage, which is how an uncaught defect that left the
  * whole page inert survived svelte-check, eslint, vitest and prettier: the page
- * still server-renders and looks correct in a screenshot, so only an
- * interaction proves it is alive. Every test here asserts *behaviour after a
- * click or keypress*, never just that markup exists.
+ * still paints — markup and styling look completely correct in a screenshot —
+ * so only an interaction proves it is alive. Every test here asserts *behaviour
+ * after a click or keypress*, never just that markup exists.
  */
 test.describe('Demo playground', () => {
 	test.beforeEach(async ({ page }) => {
@@ -17,7 +17,7 @@ test.describe('Demo playground', () => {
 	});
 
 	test('hydrates: the full-page toggle actually responds to a click', async ({ page }) => {
-		const toggle = page.locator('.status-fullscreen-btn');
+		const toggle = page.locator('.status-full-page-btn');
 		await expect(toggle).toBeVisible();
 
 		// Opens full page, so the control starts pressed.
@@ -39,7 +39,7 @@ test.describe('Demo playground', () => {
 
 		await page.reload();
 		await waitForNetworkIdle(page);
-		await page.locator('.status-fullscreen-btn').click();
+		await page.locator('.status-full-page-btn').click();
 
 		// Vite's dev-time HMR websocket noise is not a page defect.
 		const real = errors.filter((e) => !/WebSocket|net::ERR_/i.test(e));
@@ -47,7 +47,7 @@ test.describe('Demo playground', () => {
 	});
 
 	test('Esc leaves full page, and is a no-op once already exited', async ({ page }) => {
-		const toggle = page.locator('.status-fullscreen-btn');
+		const toggle = page.locator('.status-full-page-btn');
 		await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 
 		await page.keyboard.press('Escape');
@@ -59,7 +59,7 @@ test.describe('Demo playground', () => {
 	});
 
 	test('advertises the Esc shortcut only in the state where it works', async ({ page }) => {
-		const toggle = page.locator('.status-fullscreen-btn');
+		const toggle = page.locator('.status-full-page-btn');
 
 		await expect(toggle).toHaveAttribute('aria-keyshortcuts', 'Escape');
 		await expect(toggle).toHaveAttribute('title', /Esc/);
@@ -70,7 +70,7 @@ test.describe('Demo playground', () => {
 	});
 
 	test('the toggle keeps a stable accessible name across states (WCAG 2.5.3)', async ({ page }) => {
-		const toggle = page.locator('.status-fullscreen-btn');
+		const toggle = page.locator('.status-full-page-btn');
 		const railToggle = page.locator('.activity-btn[aria-label="Toggle Full Page"]');
 
 		const before = (await toggle.textContent())?.trim();
@@ -103,7 +103,7 @@ test.describe('Demo playground', () => {
 		await expect(mobileToggle.click({ trial: true, timeout: 2000 })).rejects.toThrow();
 
 		// Exiting hands the navigation back, and now the toggle is really reachable.
-		await page.locator('.status-fullscreen-btn').click();
+		await page.locator('.status-full-page-btn').click();
 		await expect(shell).not.toHaveClass(/playground--full-page/);
 		await mobileToggle.click({ trial: true });
 	});

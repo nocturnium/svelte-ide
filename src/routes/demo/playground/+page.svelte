@@ -790,7 +790,7 @@ MIT License - see LICENSE file for details
 		</div>
 		<div class="status-right">
 			<button
-				class="status-fullscreen-btn"
+				class="status-full-page-btn"
 				onclick={toggleFullPage}
 				aria-pressed={isFullPage}
 				aria-keyshortcuts={isFullPage ? 'Escape' : undefined}
@@ -1150,7 +1150,7 @@ MIT License - see LICENSE file for details
 		color: var(--ide-text-primary);
 	}
 
-	.status-fullscreen-btn {
+	.status-full-page-btn {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.35rem;
@@ -1169,12 +1169,12 @@ MIT License - see LICENSE file for details
 			border-color 0.12s ease;
 	}
 
-	.status-fullscreen-btn:hover {
+	.status-full-page-btn:hover {
 		background: var(--ide-bg-hover, rgba(255, 255, 255, 0.06));
 		border-color: var(--ide-accent, #6a92e8);
 	}
 
-	.status-fullscreen-btn:focus-visible {
+	.status-full-page-btn:focus-visible {
 		outline: 2px solid var(--ide-accent, #6a92e8);
 		outline-offset: 1px;
 	}
