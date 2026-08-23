@@ -9,7 +9,9 @@
 	import FileIcon from '$lib/components/editor/FileIcon.svelte';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
 	import { browser } from '$app/environment';
+	import { onDestroy } from 'svelte';
 	import { seedProposals } from '$lib/stores/plugin.svelte';
+	import { installScopedChatMock } from '../_components/scoped-chat-mock';
 	import type { EditorTab } from '$lib/types';
 	import type { PluginProposal } from '$lib/types/plugin';
 
@@ -355,59 +357,47 @@ MIT License - see LICENSE file for details
 		return () => ro.disconnect();
 	});
 
-	// ----- Fullscreen / maximize -----
-	// Lets the IDE escape the demo chrome (sidebar + header) and fill the whole
-	// screen — the single biggest win for small/medium viewports. Backed by the
-	// native Fullscreen API when available, with a CSS-fixed overlay either way so
-	// it works even where requestFullscreen is blocked (iframes, some browsers).
-	// Default ON: the playground opens filling the whole browser window (the CSS-fixed
-	// overlay below), so the demo reads as a real IDE rather than a panel beside the demo
-	// nav. The status-bar "Exit" button and Esc drop back to the embedded, navigable view.
-	// We deliberately do NOT auto-call the native Fullscreen API on load (requestFullscreen
-	// requires a user gesture and would be rejected); the CSS overlay fills the window anyway.
-	let isFullscreen = $state(true);
+	// ----- Full page -----
+	// The playground always opens full page: the CSS overlay below
+	// (.playground--full-page) fills the browser window so it reads as a real IDE,
+	// consistently, however you arrive at the route. Exiting restores the demo
+	// chrome — the docs sidebar on desktop, the sticky mobile bar and its drawer
+	// toggle below 861px. There is intentionally NO OS-level fullscreen
+	// (requestFullscreen): it behaved differently from the windowed overlay (OS
+	// fullscreen on click vs a windowed overlay on load), which is the very
+	// inconsistency this replaces.
+	//
+	// The control is labelled by its mechanism ("Full page"), not by a destination:
+	// what exiting reveals differs by viewport, so a "docs sidebar" label would be
+	// wrong on mobile, where the sidebar stays a closed drawer behind the layout's
+	// own hamburger.
+	let isFullPage = $state(true);
 
-	function enterFullscreen() {
-		isFullscreen = true;
-		const el = playgroundEl;
-		if (el && !document.fullscreenElement && el.requestFullscreen) {
-			el.requestFullscreen().catch(() => {
-				/* CSS-fixed overlay still maximizes within the viewport */
-			});
-		}
-	}
-
-	function exitFullscreen() {
-		isFullscreen = false;
-		if (document.fullscreenElement && document.exitFullscreen) {
-			document.exitFullscreen().catch(() => {});
-		}
-	}
-
-	function toggleFullscreen() {
-		if (isFullscreen) exitFullscreen();
-		else enterFullscreen();
+	function toggleFullPage() {
+		isFullPage = !isFullPage;
 	}
 
 	$effect(() => {
-		// Keep state in sync when the user leaves native fullscreen via Esc / F11,
-		// and let Esc exit the CSS-overlay fullscreen when native FS isn't active.
-		const onFsChange = () => {
-			if (!document.fullscreenElement) isFullscreen = false;
-		};
+		// Esc leaves full page: an escape hatch back to the demo navigation. It is a
+		// no-op when already exited, so the shortcut is advertised (aria-keyshortcuts
+		// + the title hint) only in the state where it does something.
 		const onKeydown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape' && isFullscreen) {
+			if (e.key === 'Escape' && isFullPage) {
 				e.preventDefault();
-				exitFullscreen();
+				isFullPage = false;
 			}
 		};
-		document.addEventListener('fullscreenchange', onFsChange);
 		document.addEventListener('keydown', onKeydown);
-		return () => {
-			document.removeEventListener('fullscreenchange', onFsChange);
-			document.removeEventListener('keydown', onKeydown);
-		};
+		return () => document.removeEventListener('keydown', onKeydown);
 	});
+
+	// No AI backend exists on the static demo host, so the embedded <AIPanel> would
+	// fetch /api/chat and surface a red error band. Install the same scoped,
+	// ref-counted mock the dedicated AI demo uses: it intercepts that one request
+	// and streams a canned reply. Installed synchronously during setup (before the
+	// panel can send anything) and released on teardown, so nothing leaks to other
+	// routes. NOT an $effect — updating store state from inside one self-invalidates.
+	onDestroy(installScopedChatMock());
 
 	// On mobile, only one drawer may be open at a time (single-pane overlay model).
 	function openLeft(panel: 'files' | 'plugins') {
@@ -530,7 +520,7 @@ MIT License - see LICENSE file for details
 <div
 	class="playground"
 	class:playground--resizing={isResizing}
-	class:playground--fullscreen={isFullscreen}
+	class:playground--full-page={isFullPage}
 	class:is-narrow={isNarrow}
 	bind:this={playgroundEl}
 >
@@ -580,13 +570,14 @@ MIT License - see LICENSE file for details
 		</button>
 		<button
 			class="activity-btn"
-			class:active={isFullscreen}
-			onclick={toggleFullscreen}
-			aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-			aria-pressed={isFullscreen}
-			title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
+			class:active={isFullPage}
+			onclick={toggleFullPage}
+			aria-label="Toggle Full Page"
+			aria-pressed={isFullPage}
+			aria-keyshortcuts={isFullPage ? 'Escape' : undefined}
+			title={isFullPage ? 'Exit full page (Esc)' : 'Full page'}
 		>
-			<Icon name={isFullscreen ? 'minimize' : 'maximize'} size={20} />
+			<Icon name={isFullPage ? 'minimize' : 'maximize'} size={20} />
 		</button>
 	</div>
 
@@ -800,12 +791,15 @@ MIT License - see LICENSE file for details
 		<div class="status-right">
 			<button
 				class="status-fullscreen-btn"
-				onclick={toggleFullscreen}
-				aria-pressed={isFullscreen}
-				title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen'}
+				onclick={toggleFullPage}
+				aria-pressed={isFullPage}
+				aria-keyshortcuts={isFullPage ? 'Escape' : undefined}
+				title={isFullPage ? 'Exit full page (Esc)' : 'Full page'}
 			>
-				<Icon name={isFullscreen ? 'minimize' : 'maximize'} size={13} />
-				<span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
+				<Icon name={isFullPage ? 'minimize' : 'maximize'} size={13} />
+				<!-- Label stays stable so the accessible name matches the visible text
+				     (WCAG 2.5.3); aria-pressed carries the state. -->
+				<span>Full page</span>
 			</button>
 			<span class="status-item">{language}</span>
 			<span class="status-item status-item--secondary">UTF-8</span>
@@ -823,13 +817,22 @@ MIT License - see LICENSE file for details
 		overflow-x: hidden;
 	}
 
-	/* Fullscreen: escape the demo chrome (sidebar + header) and fill the screen. */
-	.playground--fullscreen {
+	/* Full page: escape the demo chrome (sidebar + header) and fill the window.
+	   Sits above the layout's mobile bar and drawer (--ide-z-overlay: 300) so the
+	   demo nav cannot peek through; exiting drops back below it. */
+	.playground--full-page {
 		position: fixed;
 		inset: 0;
 		z-index: 1000;
-		width: 100vw;
-		height: 100vh;
+		/* Size from `inset: 0` alone — it resolves against the *visible* viewport.
+		   Do NOT reintroduce width/height here: `100vh` overshoots the visible area
+		   on mobile browsers that exclude the address bar, which pushed the
+		   status-bar exit off-screen (both exits sat in the last 32px), and `100vw`
+		   ignores the desktop scrollbar. `auto` is required rather than simply
+		   omitting them, so `.playground`'s own `height: calc(100vh - 60px)` cannot
+		   over-constrain the box and cancel `bottom: 0`. */
+		width: auto;
+		height: auto;
 	}
 
 	/* Upper row (everything except status bar) */
@@ -1201,7 +1204,12 @@ MIT License - see LICENSE file for details
 	   Driven by the playground's OWN width (the .is-narrow class set via
 	   ResizeObserver), not the viewport — so it triggers correctly whether the
 	   shell is inset beside the demo sidebar, embedded, or maximized. */
-	.playground.is-narrow {
+	/* `position: relative` here only exists to give the drawer overlays a containing
+	   block. Full page already provides one via `position: fixed`, so stand down
+	   rather than out-specify it: `.playground.is-narrow` (0,2,0) would otherwise
+	   beat `.playground--full-page` (0,1,0) and silently disable full page on every
+	   viewport under 1040px — which is what shipped in v1.16.0. */
+	.playground.is-narrow:not(.playground--full-page) {
 		position: relative;
 	}
 
