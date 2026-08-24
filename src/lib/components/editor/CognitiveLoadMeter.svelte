@@ -6,7 +6,7 @@
 	 * Shows an animated gauge with color-coded levels and optional tooltip details.
 	 */
 
-	import type { ComplexityMetrics } from './core/complexity-analyzer';
+	import { COGNITIVE_COMPLEXITY_BANDS, type ComplexityMetrics } from './core/complexity-analyzer';
 
 	interface Props {
 		/** Current complexity metrics */
@@ -22,30 +22,53 @@
 	let showTooltip = $state(false);
 
 	// Derived values
-	let score = $derived(metrics?.overall ?? 0);
+	// The headline is the hottest region's raw Cognitive Complexity, not the
+	// deprecated `overall`: that one is a region-length-weighted mean, so padding a
+	// file with simple functions dragged it down while the hard code sat untouched.
+	let cognitiveComplexity = $derived(metrics?.maxCognitiveComplexity ?? 0);
 	let level = $derived(metrics?.level ?? 'low');
 
+	// Dedicated complexity ramp — never the semantic error/warning/info/success
+	// tokens, which are all syntax-token colours in the editor this sits beside.
 	let levelColor = $derived(
 		level === 'critical'
-			? 'var(--ide-error, #ef4444)'
+			? 'var(--ide-complexity-critical, #d4664a)'
 			: level === 'high'
-				? 'var(--ide-warning, #facc15)'
+				? 'var(--ide-complexity-high, #c9944a)'
 				: level === 'medium'
-					? 'var(--ide-info, #60a5fa)'
-					: 'var(--ide-success, #4ade80)'
+					? 'var(--ide-complexity-medium, #4d9db0)'
+					: 'var(--ide-text-muted, #8b9bb4)'
 	);
 
+	// Band names, matching ComplexityLegend. "Refactor" rather than "Critical":
+	// the band starts at SonarSource's refactor threshold, which is a prompt to
+	// restructure, not an emergency.
 	let levelLabel = $derived(
 		level === 'critical'
-			? 'Critical'
+			? 'Refactor'
 			: level === 'high'
-				? 'High'
+				? 'Complex'
 				: level === 'medium'
-					? 'Medium'
-					: 'Low'
+					? 'Moderate'
+					: 'Simple'
 	);
 
-	let highComplexityRegions = $derived(metrics?.regions.filter((r) => r.score >= 50) ?? []);
+	/**
+	 * Gauge fill as progress toward the refactor threshold, clamped.
+	 *
+	 * Cognitive Complexity is unbounded, so it cannot fill a percentage bar. The
+	 * meter previously bound `width: {score}%` to the deprecated 0-100 score and
+	 * declared aria-valuemax=100, announcing "out of 100" — a percentage the value
+	 * never was. Past the threshold the bar is simply full and the number carries
+	 * the rest of the story.
+	 */
+	let thresholdProgress = $derived(
+		Math.min(100, Math.round((cognitiveComplexity / COGNITIVE_COMPLEXITY_BANDS.critical) * 100))
+	);
+
+	let highComplexityRegions = $derived(
+		metrics?.regions.filter((r) => r.cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.medium) ?? []
+	);
 
 	function handleMouseEnter() {
 		if (showDetails) {
@@ -62,10 +85,10 @@
 <div
 	class="cognitive-meter"
 	role={onclick ? 'button' : 'meter'}
-	aria-valuenow={score}
+	aria-valuenow={Math.min(cognitiveComplexity, COGNITIVE_COMPLEXITY_BANDS.critical)}
 	aria-valuemin={0}
-	aria-valuemax={100}
-	aria-label="Code complexity: {score} out of 100, {levelLabel} complexity"
+	aria-valuemax={COGNITIVE_COMPLEXITY_BANDS.critical}
+	aria-label="Cognitive complexity {cognitiveComplexity}, {levelLabel}. Refactor threshold {COGNITIVE_COMPLEXITY_BANDS.critical}."
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
 	{onclick}
@@ -97,14 +120,14 @@
 	<div class="cognitive-meter__gauge">
 		<div
 			class="cognitive-meter__fill"
-			style="width: {score}%; background-color: {levelColor}"
+			style="width: {thresholdProgress}%; background-color: {levelColor}"
 			class:cognitive-meter__fill--animated={level === 'critical'}
 		></div>
 	</div>
 
 	<!-- Score value -->
 	<span class="cognitive-meter__value" style="color: {levelColor}">
-		{score}
+		{cognitiveComplexity}<span class="cognitive-meter__unit">cc</span>
 	</span>
 
 	<!-- Tooltip -->
@@ -113,7 +136,7 @@
 			<div class="cognitive-meter__tooltip-header">
 				<span class="cognitive-meter__tooltip-title">Cognitive Complexity</span>
 				<span class="cognitive-meter__tooltip-score" style="color: {levelColor}">
-					{score}/100 ({levelLabel})
+					{cognitiveComplexity} cc ({levelLabel})
 				</span>
 			</div>
 
@@ -127,7 +150,7 @@
 									{region.name || `${region.type} at line ${region.startLine + 1}`}
 								</span>
 								<span class="cognitive-meter__tooltip-region-score">
-									{region.score}
+									{region.cognitiveComplexity}
 								</span>
 							</li>
 						{/each}
@@ -157,15 +180,22 @@
 </div>
 
 <!-- Always-available screen-reader equivalent of the visual, hover-only per-region
-     complexity breakdown. The thermal map and the hover tooltip are decorative/sighted,
-     so this exposes the same cognitive-load data to assistive technology. -->
+     complexity breakdown. The overlay and the hover tooltip are sighted-only, so this
+     carries the same data to assistive technology.
+
+     role="status" (polite) because the whole point of the feature is that the number
+     moves as you type: without it, editing announced only "Line 1, Column 1" from the
+     cursor status while complexity went from Refactor to Simple in silence. Reports
+     raw Cognitive Complexity, never the deprecated "out of 100" score, which saturated
+     and implied a percentage it never was. -->
 {#if metrics && highComplexityRegions.length > 0}
-	<div class="cognitive-meter__sr-only">
-		Overall cognitive complexity {score} out of 100, {levelLabel}. {highComplexityRegions.length}
+	<div class="cognitive-meter__sr-only" role="status" aria-live="polite">
+		Hottest function cognitive complexity {metrics.maxCognitiveComplexity}, {levelLabel}. Refactor
+		threshold is {COGNITIVE_COMPLEXITY_BANDS.critical}. {highComplexityRegions.length}
 		high-complexity {highComplexityRegions.length === 1 ? 'region' : 'regions'}:
 		{#each highComplexityRegions.slice(0, 8) as region (region.startLine)}
 			{region.name || `${region.type} at line ${region.startLine + 1}`}, cognitive complexity
-			{region.cognitiveComplexity}, score {region.score} out of 100.
+			{region.cognitiveComplexity}.
 		{/each}
 	</div>
 {/if}
@@ -276,6 +306,15 @@
 	.cognitive-meter__tooltip-title {
 		font-weight: 600;
 		color: var(--ide-text-primary, #f4f1e0);
+	}
+
+	.cognitive-meter__unit {
+		margin-left: 2px;
+		font-size: 0.72em;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		opacity: 0.75;
 	}
 
 	.cognitive-meter__tooltip-score {

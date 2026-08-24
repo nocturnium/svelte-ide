@@ -1,5 +1,9 @@
 <script lang="ts">
-	import type { ComplexityMetrics, ComplexityRegion } from './core/complexity-analyzer';
+	import {
+		COGNITIVE_COMPLEXITY_BANDS,
+		type ComplexityMetrics,
+		type ComplexityRegion
+	} from './core/complexity-analyzer';
 
 	interface Props {
 		/** Complexity metrics for the current document */
@@ -12,9 +16,12 @@
 		totalHeight?: number;
 		/** Estimated full scrollable content width in pixels */
 		contentWidth?: number;
-		/** Minimum score to show heat (default: 50) */
-		minScore?: number;
-		/** Whether heat rendering is enabled */
+		/**
+		 * Lowest Cognitive Complexity that gets a mark. Defaults to the `medium`
+		 * band, so trivially readable code stays completely unmarked.
+		 */
+		minCognitiveComplexity?: number;
+		/** Whether depth rendering is enabled */
 		enabled?: boolean;
 		/** Region key to briefly emphasize after jump-to-hottest */
 		flashRegionKey?: string;
@@ -28,30 +35,50 @@
 		gutterWidth = 50,
 		totalHeight = 0,
 		contentWidth = 0,
-		minScore = 50,
+		minCognitiveComplexity = COGNITIVE_COMPLEXITY_BANDS.medium,
 		enabled = true,
 		flashRegionKey = '',
 		lineToVisualRow = (line: number) => line
 	}: Props = $props();
 
-	let highlightedRegions = $derived(
-		enabled && metrics ? metrics.regions.filter((region) => region.score >= minScore) : []
+	let markedRegions = $derived(
+		enabled && metrics
+			? metrics.regions.filter((r) => r.cognitiveComplexity >= minCognitiveComplexity)
+			: []
 	);
 
 	function getRegionKey(region: ComplexityRegion): string {
-		return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.score}`;
+		return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.cognitiveComplexity}`;
 	}
 
-	function getColor(score: number): string {
-		if (score >= 85) return 'var(--ide-error)';
-		if (score >= 70) return 'var(--ide-warning)';
-		if (score >= 50) return 'var(--ide-info)';
-		return 'var(--ide-success)';
+	/**
+	 * Veil alpha by band. Capped at 0.22 and applied with NORMAL blending over a
+	 * near-black, so the region reads as depth and light-on-dark tokens gain
+	 * contrast. The previous implementation screen-blended a saturated hue at up
+	 * to 0.48, which could only lighten: it dragged the backdrop toward the exact
+	 * mid-luminance this syntax palette occupies and pushed comments to 1.7:1.
+	 */
+	function getVeilAlpha(level: ComplexityRegion['level']): number {
+		if (level === 'critical') return 0.22;
+		if (level === 'high') return 0.16;
+		if (level === 'medium') return 0.1;
+		return 0;
 	}
 
-	function getWashOpacity(score: number): number {
-		const normalized = Math.min(1, Math.max(0, score / 100));
-		return Number((0.14 + normalized * 0.34).toFixed(3));
+	function getEdgeColor(level: ComplexityRegion['level']): string {
+		if (level === 'critical') return 'var(--ide-complexity-critical)';
+		if (level === 'high') return 'var(--ide-complexity-high)';
+		return 'var(--ide-complexity-medium)';
+	}
+
+	/**
+	 * Edge thickness in px — a second, non-colour channel for the band, so the
+	 * severity survives any form of colour blindness (WCAG 1.4.1).
+	 */
+	function getEdgeWidth(level: ComplexityRegion['level']): number {
+		if (level === 'critical') return 5;
+		if (level === 'high') return 3;
+		return 2;
 	}
 
 	function getRegionTop(region: ComplexityRegion): number {
@@ -65,7 +92,7 @@
 	}
 </script>
 
-{#if enabled && highlightedRegions.length > 0}
+{#if enabled && markedRegions.length > 0}
 	<div
 		class="complexity-heat"
 		aria-hidden="true"
@@ -74,18 +101,18 @@
 			width: {contentWidth ? `${contentWidth}px` : '100%'};
 		"
 	>
-		{#each highlightedRegions as region (getRegionKey(region))}
+		{#each markedRegions as region (getRegionKey(region))}
 			<div
 				class="complexity-heat__region"
-				class:complexity-heat__region--critical={region.score >= 85}
 				class:complexity-heat__region--flash={flashRegionKey === getRegionKey(region)}
 				style="
 					top: {getRegionTop(region)}px;
 					left: {gutterWidth}px;
 					width: {Math.max(0, contentWidth - gutterWidth)}px;
 					height: {getRegionHeight(region)}px;
-					--heat-color: {getColor(region.score)};
-					--heat-opacity: {getWashOpacity(region.score)};
+					--edge-color: {getEdgeColor(region.level)};
+					--edge-width: {getEdgeWidth(region.level)}px;
+					--veil-alpha: {getVeilAlpha(region.level)};
 				"
 			></div>
 		{/each}
@@ -104,34 +131,17 @@
 		overflow: hidden;
 	}
 
+	/* Flat veil, no gradient. Complexity is a property of the whole region and has
+	   no horizontal dimension, so the old 90deg ramp encoded nothing while doing
+	   all the damage — it hit hardest at the left margin, exactly where the
+	   indentation and closing-brace ladder of deeply nested code lives. Its stops
+	   were percentages of the scrollable content width, so the column at which
+	   text became readable also moved when you resized the window. */
 	.complexity-heat__region {
 		position: absolute;
-		min-width: calc(100% - var(--editor-gutter-width, 50px));
-		background: linear-gradient(
-			90deg,
-			color-mix(in srgb, var(--heat-color) 90%, transparent) 0%,
-			color-mix(in srgb, var(--heat-color) 38%, transparent) 18%,
-			color-mix(in srgb, var(--heat-color) 14%, transparent) 60%,
-			transparent 100%
-		);
-		opacity: var(--heat-opacity);
-		mix-blend-mode: screen;
-		border-left: 1px solid color-mix(in srgb, var(--heat-color) 35%, transparent);
+		background: rgba(var(--ide-complexity-veil), var(--veil-alpha));
+		border-left: var(--edge-width) solid var(--edge-color);
 		box-sizing: border-box;
-		-webkit-mask-image: linear-gradient(
-			to bottom,
-			transparent 0,
-			#000 8px,
-			#000 calc(100% - 8px),
-			transparent 100%
-		);
-		mask-image: linear-gradient(
-			to bottom,
-			transparent 0,
-			#000 8px,
-			#000 calc(100% - 8px),
-			transparent 100%
-		);
 	}
 
 	.complexity-heat__region--flash {
@@ -140,11 +150,11 @@
 
 	@keyframes complexity-heat-flash {
 		0% {
-			opacity: min(0.58, calc(var(--heat-opacity) + 0.1));
-			box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--heat-color) 65%, transparent);
+			background: rgba(var(--ide-complexity-veil), calc(var(--veil-alpha) + 0.1));
+			box-shadow: inset 0 0 0 1px var(--edge-color);
 		}
 		100% {
-			opacity: var(--heat-opacity);
+			background: rgba(var(--ide-complexity-veil), var(--veil-alpha));
 			box-shadow: none;
 		}
 	}

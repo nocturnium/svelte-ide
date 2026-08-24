@@ -92,6 +92,22 @@
 	--ide-error: #f87171;
 	--ide-info: var(--color-nocturnium-aurora-blue);
 
+	/* Cognitive-complexity bands.
+	   A DEDICATED ramp, deliberately not the semantic four above. Every one of
+	   those is already a syntax-token colour in the same viewport — --ide-error
+	   is literally --editor-token-invalid, i.e. "this code does not parse" — so
+	   painting complexity with them told the reader something false and made
+	   function names camouflage against their own highlight. Complexity is a
+	   property of correct code; it never borrows the error colour.
+	   Cyan -> amber -> terracotta is ordinal and stops short of red. */
+	--ide-complexity-medium: #4d9db0;
+	--ide-complexity-high: #c9944a;
+	--ide-complexity-critical: #d4664a;
+	/* Regions DEEPEN rather than glow: a near-black veil at low alpha. On a dark
+	   theme this raises token contrast instead of destroying it, which is the
+	   opposite of the previous `mix-blend-mode: screen` wash. */
+	--ide-complexity-veil: 6, 11, 20;
+
 	/* AI Panel Colors */
 	--ide-ai-user: var(--color-nocturnium-ocean);
 	--ide-ai-assistant: var(--color-nocturnium-aurora-purple);

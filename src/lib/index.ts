@@ -136,6 +136,35 @@ export { default as Editor } from './components/editor/Editor.svelte';
 export { default as CustomEditor } from './components/editor/CustomEditor.svelte';
 
 /**
+ * Cognitive-complexity visualization.
+ *
+ * `CustomEditor` is exported here and its props include
+ * `onComplexityChange?: (metrics: ComplexityMetrics | null) => void`, but
+ * `ComplexityMetrics` was reachable only through the '/components/editor'
+ * subpath — so a root-entry consumer was handed a callback whose parameter type
+ * they could not name. The overlays themselves were exported from nowhere at
+ * all. Both are fixed here.
+ *
+ * @public - Stable API
+ */
+export { default as ComplexityLayer } from './components/editor/ComplexityLayer.svelte';
+export { default as ComplexityHeatLayer } from './components/editor/ComplexityHeatLayer.svelte';
+export { default as ComplexityLegend } from './components/editor/ComplexityLegend.svelte';
+export { default as CognitiveLoadMeter } from './components/editor/CognitiveLoadMeter.svelte';
+export {
+	COGNITIVE_COMPLEXITY_BANDS,
+	getComplexityLevel,
+	getComplexityAnalyzer,
+	createComplexityAnalyzer
+} from './components/editor/core/complexity-analyzer';
+export type {
+	ComplexityMetrics,
+	ComplexityRegion,
+	ComplexityFactors,
+	ComplexityContribution
+} from './components/editor/core/complexity-analyzer';
+
+/**
  * Editor tab bar component
  * @public - Stable API
  */

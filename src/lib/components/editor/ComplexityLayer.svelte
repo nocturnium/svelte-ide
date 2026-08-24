@@ -7,7 +7,11 @@
 	 * Hover over gutter indicators for details.
 	 */
 
-	import type { ComplexityMetrics, ComplexityRegion } from './core/complexity-analyzer';
+	import {
+		COGNITIVE_COMPLEXITY_BANDS,
+		type ComplexityMetrics,
+		type ComplexityRegion
+	} from './core/complexity-analyzer';
 
 	interface Props {
 		/** Complexity metrics for the current document */
@@ -25,8 +29,15 @@
 		totalHeight?: number;
 		/** Estimated full scrollable content width in pixels */
 		contentWidth?: number;
-		/** Minimum score to show indicators (default: 50) */
-		minScore?: number;
+		/**
+		 * Lowest Cognitive Complexity that gets a mark. Raw Cognitive Complexity,
+		 * not the deprecated 0-100 score.
+		 */
+		minCognitiveComplexity?: number;
+		/** Visible width of the editor viewport, for anchoring the score chip. */
+		viewportWidth?: number;
+		/** Current horizontal scroll offset, for anchoring the score chip. */
+		scrollLeft?: number;
 		/** Whether indicators are enabled */
 		enabled?: boolean;
 		/** Region key to briefly emphasize after jump-to-hottest */
@@ -41,36 +52,65 @@
 		gutterWidth = 50,
 		totalHeight = 0,
 		contentWidth = 0,
-		minScore = 50,
+		minCognitiveComplexity = COGNITIVE_COMPLEXITY_BANDS.medium,
+		viewportWidth = 0,
+		scrollLeft = 0,
 		enabled = true,
 		flashRegionKey = '',
 		lineToVisualRow = (line: number) => line
 	}: Props = $props();
 
-	// Filter regions that exceed the threshold
 	let highlightedRegions = $derived(
-		enabled && metrics ? metrics.regions.filter((r) => r.score >= minScore) : []
+		enabled && metrics
+			? metrics.regions.filter((r) => r.cognitiveComplexity >= minCognitiveComplexity)
+			: []
 	);
 
 	/**
-	 * Get the color based on score level
+	 * Band colour, from the dedicated complexity ramp.
+	 *
+	 * Never the semantic error/warning/info/success tokens: all four are already
+	 * syntax-token colours in this same viewport, and --ide-error specifically is
+	 * --editor-token-invalid, i.e. "this code does not parse". Complexity is a
+	 * property of code that is perfectly valid.
 	 */
-	function getColor(score: number): string {
-		// Bands match the analyzer's levels: critical >= 85, high >= 70,
-		// medium otherwise (lines below the minScore threshold aren't shown).
-		if (score >= 85) return 'var(--ide-error)'; // Critical
-		if (score >= 70) return 'var(--ide-warning)'; // High
-		if (score >= 50) return 'var(--ide-info)'; // Medium
-		return 'var(--ide-success)'; // Low
+	function getColor(level: ComplexityRegion['level']): string {
+		if (level === 'critical') return 'var(--ide-complexity-critical)';
+		if (level === 'high') return 'var(--ide-complexity-high)';
+		return 'var(--ide-complexity-medium)';
 	}
 
 	/**
-	 * Get opacity based on score
+	 * Spine thickness in px — a second, non-colour channel for the band so
+	 * severity survives colour blindness (WCAG 1.4.1). Previously the spine was a
+	 * fixed 4px and the intended size redundancy (`--indicator-glow`) was computed
+	 * but never referenced by any rule.
 	 */
-	function getOpacity(score: number): number {
-		const normalized = Math.min(1, Math.max(0, (score - minScore) / (100 - minScore)));
-		return 0.65 + normalized * 0.35;
+	function getSpineWidth(level: ComplexityRegion['level']): number {
+		if (level === 'critical') return 5;
+		if (level === 'high') return 3;
+		return 2;
 	}
+
+	/**
+	 * Horizontal position of the score chip, in the layer's content coordinates.
+	 *
+	 * Anchored to the VISIBLE viewport rather than to the scrollable content
+	 * width. The chip used to be `right: 18px` inside a container sized to the
+	 * full content width, so as soon as any line was longer than the viewport the
+	 * chip was laid out past the right edge and the region's number silently
+	 * disappeared until you scrolled sideways — reproducibly, at a 760px viewport
+	 * on the demo page. Following scrollLeft keeps it pinned to the right of
+	 * whatever is actually on screen.
+	 */
+	const CHIP_INSET = 18;
+	const CHIP_WIDTH = 54;
+	let badgeLeft = $derived(
+		Math.max(
+			gutterWidth + 8,
+			(viewportWidth > 0 ? scrollLeft + viewportWidth : contentWidth) - CHIP_INSET - CHIP_WIDTH
+		)
+	);
 
 	let hoveredRegion = $state<ComplexityRegion | null>(null);
 	let tooltipPosition = $state({ top: 0, left: 0, right: 0 });
@@ -87,14 +127,11 @@
 	);
 
 	function getRegionKey(region: ComplexityRegion): string {
-		return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.score}`;
+		return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.cognitiveComplexity}`;
 	}
 
-	function getLevelLabel(score: number): string {
-		if (score >= 85) return 'Critical';
-		if (score >= 70) return 'High';
-		if (score >= 50) return 'Medium';
-		return 'Low';
+	function getLevelLabel(level: ComplexityRegion['level']): string {
+		return level.charAt(0).toUpperCase() + level.slice(1);
 	}
 
 	function getRegionTop(region: ComplexityRegion): number {
@@ -146,14 +183,13 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="complexity-gutter__spine"
-				class:complexity-gutter__spine--critical={region.score >= 85}
+				class:complexity-gutter__spine--critical={region.level === 'critical'}
 				class:complexity-gutter__spine--flash={flashRegionKey === getRegionKey(region)}
 				style="
 					top: {getRegionTop(region)}px;
 					height: {getRegionHeight(region)}px;
-					--indicator-color: {getColor(region.score)};
-					--indicator-opacity: {getOpacity(region.score)};
-					--indicator-glow: {region.score >= 85 ? 18 : region.score >= 70 ? 14 : 9}px;
+					--indicator-color: {getColor(region.level)};
+					--indicator-width: {getSpineWidth(region.level)}px;
 				"
 				onmouseenter={(e) => handleMouseEnter(region, e)}
 				onmouseleave={handleMouseLeave}
@@ -161,18 +197,18 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="complexity-gutter__score"
-				class:complexity-gutter__score--critical={region.score >= 85}
+				class:complexity-gutter__score--critical={region.level === 'critical'}
 				class:complexity-gutter__score--flash={flashRegionKey === getRegionKey(region)}
 				style="
 					top: {getRegionTop(region) + 3}px;
-					right: 18px;
-					--indicator-color: {getColor(region.score)};
-					--indicator-opacity: {getOpacity(region.score)};
+					left: {badgeLeft}px;
+					--indicator-color: {getColor(region.level)};
 				"
 				onmouseenter={(e) => handleMouseEnter(region, e, 'left')}
 				onmouseleave={handleMouseLeave}
 			>
-				{region.score}
+				<span class="complexity-gutter__score-value">{region.cognitiveComplexity}</span>
+				<span class="complexity-gutter__score-unit">cc</span>
 			</div>
 		{/each}
 	</div>
@@ -186,12 +222,12 @@
 				: `top: ${tooltipPosition.top}px; left: ${tooltipPosition.left}px;`}
 		>
 			<div class="complexity-tooltip__header">
-				<span class="complexity-tooltip__badge" style="color: {getColor(hoveredRegion.score)}">
+				<span class="complexity-tooltip__badge" style="color: {getColor(hoveredRegion.level)}">
 					{hoveredRegion.cognitiveComplexity}
 				</span>
 				<div class="complexity-tooltip__heading">
 					<span class="complexity-tooltip__title">
-						{getLevelLabel(hoveredRegion.score)} Cognitive Complexity
+						{getLevelLabel(hoveredRegion.level)} Cognitive Complexity
 					</span>
 					<span class="complexity-tooltip__source">SonarSource Cognitive Complexity metric</span>
 				</div>
@@ -199,7 +235,7 @@
 			<div class="complexity-tooltip__lines">
 				{hoveredRegion.name || hoveredRegion.type} · Lines {hoveredRegion.startLine + 1} - {hoveredRegion.endLine +
 					1}
-				· Score {hoveredRegion.score}
+				· Refactor threshold {COGNITIVE_COMPLEXITY_BANDS.critical}
 			</div>
 			{#if visibleContributions.length > 0}
 				<ul class="complexity-tooltip__contributions">
@@ -245,11 +281,10 @@
 	.complexity-gutter__spine {
 		position: absolute;
 		left: calc(var(--editor-gutter-width, 50px) - 3px);
-		width: 4px;
+		width: var(--indicator-width, 2px);
 		pointer-events: auto;
 		cursor: help;
 		background: var(--indicator-color);
-		opacity: var(--indicator-opacity);
 		border-radius: 999px;
 		box-shadow: 0 0 0 1px color-mix(in srgb, var(--indicator-color) 35%, transparent);
 		isolation: isolate;
@@ -295,27 +330,40 @@
 		animation: complexity-spine-bloom-flash 0.9s ease-out 1;
 	}
 
+	.complexity-gutter__score-value {
+		font-weight: 700;
+	}
+
+	/* The unit, always rendered. A bare number cannot say what scale it is on or
+	   which direction is worse; "cc" ties it to Cognitive Complexity, which the
+	   tooltip and the meter then name in full. */
+	.complexity-gutter__score-unit {
+		font-size: 9px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		opacity: 0.75;
+	}
+
 	.complexity-gutter__score {
 		position: absolute;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 44px;
-		height: 30px;
-		padding: 0 10px;
-		border: 1px solid color-mix(in srgb, var(--indicator-color) 65%, transparent);
+		gap: 3px;
+		min-width: 0;
+		height: 22px;
+		padding: 0 8px;
+		border: 1px solid color-mix(in srgb, var(--indicator-color) 55%, transparent);
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--indicator-color) 18%, var(--ide-bg-primary));
-		box-shadow:
-			0 0 18px color-mix(in srgb, var(--indicator-color) 32%, transparent),
-			inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+		/* Opaque, not a translucent glow: the chip sits in front of code, so it has
+		   to occlude cleanly rather than blend into the tokens behind it. */
+		background: var(--ide-bg-elevated, #17203a);
 		color: var(--indicator-color);
-		font-size: 22px;
-		font-weight: 800;
+		font-size: 12px;
+		font-weight: 650;
 		font-variant-numeric: tabular-nums;
 		line-height: 1;
-		text-shadow: 0 0 12px color-mix(in srgb, var(--indicator-color) 48%, transparent);
-		opacity: calc(0.76 + (var(--indicator-opacity) - 0.65) * 0.7);
 		transform: scale(1);
 		transform-origin: center;
 		/* The badge is a primary hover target for the explain-on-hover tooltip,
@@ -395,7 +443,6 @@
 			transform: translateX(-2px);
 		}
 		100% {
-			opacity: var(--indicator-opacity);
 			width: 4px;
 			transform: translateX(0);
 		}

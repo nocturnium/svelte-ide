@@ -9,6 +9,7 @@
 	import Icon from '$lib/components/core/Icon.svelte';
 	import BrandMark from '$lib/components/BrandMark.svelte';
 	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
+	import ComplexityLegend from '$lib/components/editor/ComplexityLegend.svelte';
 
 	// Live editor showcased in the hero, lazy-mounted and read-only (edits are
 	// discarded so the sample always reads cleanly).
@@ -266,7 +267,7 @@ export function triageLoad(
 			<div class="hero-copy">
 				<div class="eyebrow">
 					<Badge variant="info">v{__APP_VERSION__}</Badge>
-					<span class="eyebrow-text">Live cognitive-load thermal map</span>
+					<span class="eyebrow-text">Live cognitive-complexity layer</span>
 				</div>
 				<h1 id="hero-title">
 					See your code's <span class="grad">cognitive load</span> as a live visual layer.
@@ -323,6 +324,9 @@ export function triageLoad(
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -- heroHTML is produced by highlightToHTML which escapes all user content through the tokenizer -->
 							<pre class="hero-static" aria-hidden="true"><code>{@html heroHTML}</code></pre>
 						{/if}
+					</div>
+					<div class="window-legend">
+						<ComplexityLegend compact />
 					</div>
 				</div>
 				<div class="hero-editor-glow" aria-hidden="true"></div>
@@ -704,6 +708,15 @@ export function triageLoad(
 		color: var(--ide-text-primary);
 		white-space: pre;
 		tab-size: 2;
+	}
+
+	/* Legend sits inside the window frame, directly under the code it explains —
+	   the eyebrow copy is 500px away in the other column and was never read as
+	   describing the widget. */
+	.window-legend {
+		padding: 10px 14px;
+		border-top: 1px solid var(--ide-border, rgba(168, 197, 217, 0.14));
+		background: color-mix(in srgb, var(--ide-bg-secondary, #141d33) 70%, transparent);
 	}
 
 	.hero-editor-glow {

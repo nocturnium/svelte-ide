@@ -11,7 +11,9 @@
 	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 	import CognitiveLoadMeter from '$lib/components/editor/CognitiveLoadMeter.svelte';
+	import ComplexityLegend from '$lib/components/editor/ComplexityLegend.svelte';
 	import {
+		COGNITIVE_COMPLEXITY_BANDS,
 		type ComplexityMetrics,
 		type ComplexityRegion,
 		type AIAwareness,
@@ -32,7 +34,7 @@
   onChange={(value) => (content = value)}
   language="typescript"
   complexityHighlighting={true}
-  complexityThreshold={30}
+  complexityThreshold={COGNITIVE_COMPLEXITY_BANDS.medium}
   {aiAgents}
   showAILabels={true}
   showAIFocusRegions={true}
@@ -225,7 +227,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	let hottestRegion = $derived.by(() => {
 		if (!complexityMetrics || complexityMetrics.regions.length === 0) return null;
 		return complexityMetrics.regions.reduce<ComplexityRegion | null>((hottest, region) => {
-			if (!hottest || region.score > hottest.score) return region;
+			if (!hottest || region.cognitiveComplexity > hottest.cognitiveComplexity) return region;
 			return hottest;
 		}, null);
 	});
@@ -368,7 +370,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 <DemoPage
 	eyebrow="Intelligence"
 	title="Cognitive Load"
-	description="Real-time complexity visualization and AI presence."
+	description="SonarSource Cognitive Complexity, measured live, plus AI presence."
 	docTitle="Cognitive Load & Ghost Pair"
 >
 	<!-- Cognitive Load Meter Demo -->
@@ -388,14 +390,15 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				onclick={jumpToHottestRegion}
 				disabled={!hottestRegion}
 				aria-label={hottestRegion
-					? `Jump to hottest region ${hottestRegion.name || hottestRegion.type}, score ${hottestRegion.score}`
+					? `Jump to hottest region ${hottestRegion.name || hottestRegion.type}, cognitive complexity ${hottestRegion.cognitiveComplexity}`
 					: 'No complex region to jump to'}
 			>
 				<span class="meter-label">Current File Complexity</span>
 				<CognitiveLoadMeter metrics={complexityMetrics} showDetails={true} />
 				<span class="meter-hotspot">
 					{#if hottestRegion}
-						hottest: {hottestRegion.name || hottestRegion.type} - {hottestRegion.score}
+						hottest: {hottestRegion.name || hottestRegion.type} — {hottestRegion.cognitiveComplexity}
+						cc
 					{:else}
 						hottest: none
 					{/if}
@@ -408,14 +411,14 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 						<span
 							class="metric-value metric-value--heat"
 							style="--metric-color: {complexityMetrics.level === 'critical'
-								? 'var(--ide-error)'
+								? 'var(--ide-complexity-critical)'
 								: complexityMetrics.level === 'high'
-									? 'var(--ide-warning)'
+									? 'var(--ide-complexity-high)'
 									: complexityMetrics.level === 'medium'
-										? 'var(--ide-info)'
-										: 'var(--ide-success)'}">{complexityMetrics.overall}</span
+										? 'var(--ide-complexity-medium)'
+										: 'var(--ide-text-muted)'}">{complexityMetrics.maxCognitiveComplexity}</span
 						>
-						<span class="metric-label">Overall Score</span>
+						<span class="metric-label">Hottest function (cc)</span>
 					</div>
 					<div class="metric">
 						<span class="metric-value">{complexityMetrics.regions.length}</span>
@@ -447,30 +450,17 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			></textarea>
 		</div>
 
-		<!-- Legend (ranges match the analyzer's complexity levels) -->
-		<div class="complexity-legend">
-			<div class="legend-item">
-				<span class="legend-color" style="background: var(--ide-success)"></span>
-				<span>Low (0-49)</span>
-			</div>
-			<div class="legend-item">
-				<span class="legend-color" style="background: var(--ide-info)"></span>
-				<span>Medium (50-69)</span>
-			</div>
-			<div class="legend-item">
-				<span class="legend-color" style="background: var(--ide-warning)"></span>
-				<span>High (70-84)</span>
-			</div>
-			<div class="legend-item">
-				<span class="legend-color" style="background: var(--ide-error)"></span>
-				<span>Critical (85+)</span>
-			</div>
-		</div>
+		<!-- One legend component, shared with the hero, driven by the analyzer's own
+		     exported band constants — so the key cannot drift from what is painted.
+		     The hand-authored swatches this replaces named 0-49/50-69/70-84/85+ on
+		     the deprecated score and coloured them with the four semantic tokens
+		     the overlay no longer uses. -->
+		<ComplexityLegend />
 	</section>
 
 	<!-- Ghost Pair Demo -->
 	<section class="component-section">
-		<h2>Ghost Pair - AI Presence</h2>
+		<h2>Ghost Pair — AI presence</h2>
 		<p class="section-desc">
 			Visualize AI agents working alongside you. A ghost cursor, a focus-region glow, and an
 			activity label show where an agent is looking and what it's focused on.
@@ -540,7 +530,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					language={selectedLanguage}
 					readonly={false}
 					complexityHighlighting={true}
-					complexityThreshold={30}
+					complexityThreshold={COGNITIVE_COMPLEXITY_BANDS.medium}
 					{aiAgents}
 					showAILabels={true}
 					showAIFocusRegions={true}
@@ -754,6 +744,11 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		font-variant-numeric: tabular-nums;
 	}
 
+	/* No glow. The previous rule carried an 18px box-shadow and a 12px text-shadow,
+	   which bled straight over the "Overall Score" caption below it — the number
+	   and its own label appeared to overlap. A metric should not need a halo to be
+	   read, and a halo in the error hue made a property of correct code look like
+	   a fault. */
 	.metric-value--heat {
 		display: inline-flex;
 		align-items: center;
@@ -761,17 +756,13 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		min-width: 44px;
 		height: 30px;
 		padding: 0 10px;
-		border: 1px solid color-mix(in srgb, var(--metric-color) 65%, transparent);
+		border: 1px solid color-mix(in srgb, var(--metric-color) 45%, transparent);
 		border-radius: 999px;
-		background: color-mix(in srgb, var(--metric-color) 18%, var(--ide-bg-primary));
-		box-shadow:
-			0 0 18px color-mix(in srgb, var(--metric-color) 32%, transparent),
-			inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+		background: color-mix(in srgb, var(--metric-color) 12%, var(--ide-bg-primary));
 		color: var(--metric-color);
-		font-size: 22px;
-		font-weight: 800;
+		font-size: 20px;
+		font-weight: 700;
 		line-height: 1;
-		text-shadow: 0 0 12px color-mix(in srgb, var(--metric-color) 48%, transparent);
 		box-sizing: border-box;
 	}
 
@@ -845,25 +836,6 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	/* Complexity Legend */
-	.complexity-legend {
-		display: flex;
-		gap: 1.5rem;
-		flex-wrap: wrap;
-	}
-
-	.legend-item {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.875rem;
-		color: var(--ide-text-secondary);
-	}
-
-	.legend-color {
-		width: 12px;
-		height: 12px;
-		border-radius: 3px;
-	}
 
 	/* Ghost Pair Controls */
 	.ghost-pair-controls {

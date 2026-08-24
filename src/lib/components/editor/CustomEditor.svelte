@@ -34,6 +34,7 @@
 	import CommandPalette from './CommandPalette.svelte';
 	import {
 		getComplexityAnalyzer,
+		COGNITIVE_COMPLEXITY_BANDS,
 		type ComplexityMetrics,
 		type ComplexityRegion
 	} from './core/complexity-analyzer';
@@ -68,6 +69,11 @@
 		/** Enable complexity highlighting (default: false) */
 		complexityHighlighting?: boolean;
 		/** Minimum complexity score to show highlighting (default: 50) */
+		/**
+		 * Lowest Cognitive Complexity that gets a visual mark. Raw Cognitive
+		 * Complexity, NOT the deprecated 0-100 score: 5 is the `medium` band, 15 is
+		 * SonarSource's refactor threshold. Defaults to the `medium` band.
+		 */
 		complexityThreshold?: number;
 		/** AI agents for Ghost Pair visualization */
 		aiAgents?: AIAwareness[];
@@ -98,7 +104,7 @@
 		multiCursor = true,
 		maxCursors = 100,
 		complexityHighlighting = false,
-		complexityThreshold = 50,
+		complexityThreshold = COGNITIVE_COMPLEXITY_BANDS.medium,
 		aiAgents = [],
 		showAILabels = true,
 		showAIFocusRegions = false,
@@ -1130,7 +1136,7 @@
 				{gutterWidth}
 				totalHeight={totalContentHeight}
 				contentWidth={estimatedContentWidth}
-				minScore={complexityThreshold}
+				minCognitiveComplexity={complexityThreshold}
 				enabled={complexityHighlighting}
 				flashRegionKey={complexityFlashRegionKey}
 				lineToVisualRow={(line) => lineToVisualRow(line)}
@@ -1141,7 +1147,9 @@
 				{gutterWidth}
 				totalHeight={totalContentHeight}
 				contentWidth={estimatedContentWidth}
-				minScore={complexityThreshold}
+				minCognitiveComplexity={complexityThreshold}
+				{viewportWidth}
+				{scrollLeft}
 				enabled={complexityHighlighting}
 				flashRegionKey={complexityFlashRegionKey}
 				lineToVisualRow={(line) => lineToVisualRow(line)}
