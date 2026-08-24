@@ -13,7 +13,7 @@
 	import type { Line } from './core/state';
 	import type { SemanticCategory } from './core/semantic-analyzer';
 	import { getSemanticAnalyzer } from './core/semantic-analyzer';
-	import type { ComplexityMetrics } from './core/complexity-analyzer';
+	import { COGNITIVE_COMPLEXITY_BANDS, type ComplexityMetrics } from './core/complexity-analyzer';
 	import { layoutStructureRows } from './core/structure-layout';
 
 	/** Minimum legible height of a single node row, in px (kept in sync with CSS). */
@@ -111,7 +111,7 @@
 				const regionMetric = complexityMetrics.regions.find(
 					(r) => r.startLine <= region.startLine && r.endLine >= region.endLine
 				);
-				complexity = regionMetric?.score ?? 0;
+				complexity = regionMetric?.cognitiveComplexity ?? 0;
 			}
 
 			nodes.push({
@@ -194,12 +194,19 @@
 	}
 
 	/**
-	 * Get complexity color
+	 * Band colour for a raw Cognitive Complexity value.
+	 *
+	 * Was banding the deprecated 0-100 `score` at 30/50/70 with hardcoded hex —
+	 * including #ef4444, the error red the rest of this feature no longer uses for
+	 * complexity. Now reads the shared bands and the shared ramp, so this panel
+	 * cannot drift from the editor overlay beside it.
 	 */
-	function getComplexityColor(score: number): string {
-		if (score >= 70) return '#ef4444';
-		if (score >= 50) return '#f59e0b';
-		if (score >= 30) return '#3b82f6';
+	function getComplexityColor(cognitiveComplexity: number): string {
+		if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.critical)
+			return 'var(--ide-complexity-critical)';
+		if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) return 'var(--ide-complexity-high)';
+		if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.medium)
+			return 'var(--ide-complexity-medium)';
 		return 'transparent';
 	}
 
@@ -260,7 +267,7 @@
 					class="structure-map__node"
 					class:structure-map__node--active={isCursorInNode(node)}
 					class:structure-map__node--complex={node.metrics.complexity &&
-						node.metrics.complexity >= 50}
+						node.metrics.complexity >= COGNITIVE_COMPLEXITY_BANDS.high}
 					style="
 						top: {nodeTops[i] ?? 0}px;
 						height: {ROW_HEIGHT}px;
@@ -272,7 +279,7 @@
 				>
 					<span class="structure-map__node-icon">{getNodeIcon(node.type)}</span>
 					<span class="structure-map__node-name">{node.name}</span>
-					{#if node.metrics.complexity && node.metrics.complexity >= 50}
+					{#if node.metrics.complexity && node.metrics.complexity >= COGNITIVE_COMPLEXITY_BANDS.high}
 						<span class="structure-map__node-complexity">{node.metrics.complexity}</span>
 					{/if}
 				</button>
@@ -288,7 +295,8 @@
 		<!-- Legend -->
 		<div class="structure-map__legend">
 			<div class="structure-map__legend-item">
-				<span class="structure-map__legend-color" style="background: #3b82f6"></span>
+				<span class="structure-map__legend-color" style="background: var(--ide-complexity-medium)"
+				></span>
 				<span>fn</span>
 			</div>
 			<div class="structure-map__legend-item">
@@ -300,7 +308,8 @@
 				<span>export</span>
 			</div>
 			<div class="structure-map__legend-item">
-				<span class="structure-map__legend-color" style="background: #f59e0b"></span>
+				<span class="structure-map__legend-color" style="background: var(--ide-complexity-high)"
+				></span>
 				<span>type</span>
 			</div>
 		</div>
