@@ -1978,6 +1978,23 @@ export class ComplexityAnalyzer {
 			expect(cc('function f(a: number) {\n  return a > 1 ? 1 : 2;\n}')).toBe(1);
 		});
 
+		// The numeric control above is the one literal type that survived the
+		// original string-filtering defect, so it passed while every string ternary
+		// silently scored zero. These are the shapes that actually caught it.
+		it('counts a ternary whose branches are string literals', () => {
+			expect(cc("function f(a: boolean) {\n  return a ? 'yes' : 'no';\n}")).toBe(1);
+		});
+
+		it('counts a ternary whose branches are template literals', () => {
+			expect(cc('function f(a: boolean) {\n  return a ? `yes` : `no`;\n}')).toBe(1);
+		});
+
+		it('counts a string ternary alongside optional chaining on one line', () => {
+			expect(
+				cc("function f(u?: { n?: string }) {\n  return u?.n ?? (u ? 'some' : 'none');\n}")
+			).toBe(1);
+		});
+
 		it('counts only the real branch when both forms appear together', () => {
 			expect(
 				cc(
@@ -2026,6 +2043,69 @@ export class ComplexityAnalyzer {
 			expect(withPadding.level).toBe('critical');
 			// The deprecated mean is what used to collapse to 'low' here.
 			expect(withPadding.overall).toBeLessThan(alone.overall);
+		});
+	});
+	describe('score is independent of formatting (regression)', () => {
+		// A boolean sequence does not end at a line break. Building the sequence
+		// state per line meant one increment when the condition fit on one line and
+		// one per operator once Prettier wrapped the identical expression — Simple
+		// to past the refactor threshold with no semantic change.
+		const cc = (code: string) =>
+			analyzer.analyze(makeLines(code), 'typescript').regions[0]?.cognitiveComplexity ?? 0;
+
+		it('scores a wrapped && chain the same as a one-line one', () => {
+			const oneLine =
+				'function f(u: any) {\n  if (u.a && u.b && u.c && u.d && u.e && u.f) return 1;\n  return 0;\n}';
+			const wrapped =
+				'function f(u: any) {\n  if (\n    u.a &&\n    u.b &&\n    u.c &&\n    u.d &&\n    u.e &&\n    u.f\n  )\n    return 1;\n  return 0;\n}';
+			expect(cc(wrapped)).toBe(cc(oneLine));
+		});
+
+		it('still charges a mixed &&/|| sequence per alternation', () => {
+			const mixed =
+				'function f(a: any) {\n  if (a.x && a.y || a.z && a.w) return 1;\n  return 0;\n}';
+			expect(cc(mixed)).toBeGreaterThan(1);
+		});
+	});
+
+	describe('declarations are not recursive calls (regression)', () => {
+		// Only `function`/`func`/`def` were excluded as the preceding token, but a
+		// class method, object-literal method, getter or setter has no such keyword,
+		// so its own declaration line matched the region name and took a phantom +1.
+		const cc = (code: string) =>
+			analyzer.analyze(makeLines(code), 'typescript').regions[0]?.cognitiveComplexity ?? 0;
+		const total = (code: string) =>
+			analyzer.analyze(makeLines(code), 'typescript').totalCognitiveComplexity;
+
+		it('scores a branchless class method as zero', () => {
+			expect(cc('class S {\n  work(x: number) {\n    return x;\n  }\n}')).toBe(0);
+		});
+
+		it('scores a branchless getter as zero', () => {
+			expect(cc('class S {\n  get work() {\n    return 1;\n  }\n}')).toBe(0);
+		});
+
+		it('scores a method the same as the identical free function', () => {
+			const free = 'function work(x: number) {\n  if (x > 1) return 1;\n  return 0;\n}';
+			const method =
+				'class S {\n  work(x: number) {\n    if (x > 1) return 1;\n    return 0;\n  }\n}';
+			expect(cc(method)).toBe(cc(free));
+		});
+
+		it('does not accumulate phantom increments across many methods', () => {
+			const many =
+				'class S {\n' +
+				Array.from({ length: 20 }, (_, i) => `  m${i}() {\n    return ${i};\n  }`).join('\n') +
+				'\n}';
+			expect(total(many)).toBe(0);
+		});
+
+		it('still counts genuine direct recursion', () => {
+			expect(
+				cc(
+					'function fact(n: number): number {\n  if (n <= 1) return 1;\n  return n * fact(n - 1);\n}'
+				)
+			).toBeGreaterThanOrEqual(2);
 		});
 	});
 });

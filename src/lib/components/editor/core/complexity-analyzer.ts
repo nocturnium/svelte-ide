@@ -769,15 +769,23 @@ export class ComplexityAnalyzer {
 		let braceDepth = 0;
 		let pendingB2: { kind: ComplexityContribution['kind']; line: number } | undefined;
 		let skipIfAfterElse = false;
+		// Region-scoped so a wrapped condition is scored the same as a one-liner.
+		const booleanState = { lastByParenDepth: new Map<number, string>(), parenDepth: 0 };
 		const doWhileDepths: number[] = [];
 		const isGo = language === 'go';
 
 		for (let lineIndex = region.startLine; lineIndex <= region.endLine; lineIndex++) {
-			const tokens = this.getCodeTokens(tokenized[lineIndex]?.tokens ?? []);
+			const rawTokens = tokenized[lineIndex]?.tokens ?? [];
+			const tokens = this.getCodeTokens(rawTokens);
+			// Ordinal of the `?` currently being examined, counted across the line.
+			// `isRealTernary` has to consult the UNFILTERED stream (see its doc), and
+			// `?` survives filtering, so the nth `?` here is the nth `?` there.
+			let questionOrdinal = 0;
 			const boolContributions = this.getBooleanSequenceContributions(
 				tokens,
 				lineIndex,
-				nestingStack.length
+				nestingStack.length,
+				booleanState
 			);
 			contributions.push(...boolContributions);
 
@@ -904,7 +912,10 @@ export class ComplexityAnalyzer {
 					continue;
 				}
 
-				if (!isGo && token.text === '?' && this.isRealTernary(tokens, i)) {
+				if (!isGo && token.text === '?') {
+					const isTernary = this.isRealTernary(rawTokens, questionOrdinal);
+					questionOrdinal++;
+					if (!isTernary) continue;
 					this.addContribution(
 						contributions,
 						lineIndex,
@@ -942,6 +953,8 @@ export class ComplexityAnalyzer {
 	): ComplexityContribution[] {
 		const contributions: ComplexityContribution[] = [];
 		const nestingStack: Array<{ indent: number; kind: string }> = [];
+		// Region-scoped so a wrapped condition is scored the same as a one-liner.
+		const booleanState = { lastByParenDepth: new Map<number, string>(), parenDepth: 0 };
 
 		for (let lineIndex = region.startLine; lineIndex <= region.endLine; lineIndex++) {
 			const line = tokenized[lineIndex];
@@ -954,7 +967,12 @@ export class ComplexityAnalyzer {
 			}
 
 			contributions.push(
-				...this.getBooleanSequenceContributions(tokens, lineIndex, nestingStack.length)
+				...this.getBooleanSequenceContributions(
+					tokens,
+					lineIndex,
+					nestingStack.length,
+					booleanState
+				)
 			);
 
 			for (let i = 0; i < tokens.length; i++) {
@@ -1089,14 +1107,26 @@ export class ComplexityAnalyzer {
 		}
 	}
 
+	/**
+	 * Boolean-operator sequence increments for one line.
+	 *
+	 * `state` is owned by the CALLER and threaded across every line of the region,
+	 * because a sequence does not end at a line break. Building it per line made the
+	 * score depend on formatting: one increment when a condition fits on one line,
+	 * one per operator once Prettier wrapped the identical expression. Measured, a
+	 * 16-term `&&` chain scored 2 on one line and 16 wrapped — Simple to past the
+	 * refactor threshold with no semantic change. SonarSource awards one increment
+	 * per sequence precisely so that layout is irrelevant.
+	 */
 	private getBooleanSequenceContributions(
 		tokens: Token[],
 		line: number,
-		nesting: number
+		nesting: number,
+		state: { lastByParenDepth: Map<number, string>; parenDepth: number }
 	): ComplexityContribution[] {
 		const contributions: ComplexityContribution[] = [];
-		const lastByParenDepth = new Map<number, string>();
-		let parenDepth = 0;
+		const lastByParenDepth = state.lastByParenDepth;
+		let parenDepth = state.parenDepth;
 
 		for (const token of tokens) {
 			if (token.text === '(') {
@@ -1129,6 +1159,7 @@ export class ComplexityAnalyzer {
 			lastByParenDepth.set(parenDepth, normalized);
 		}
 
+		state.parenDepth = parenDepth;
 		return contributions;
 	}
 
@@ -1154,28 +1185,46 @@ export class ComplexityAnalyzer {
 	}
 
 	/**
-	 * Is the `?` at `index` a real conditional (ternary) operator?
+	 * Is the `ordinal`-th `?` on this line a real conditional (ternary) operator?
 	 *
-	 * The tokenizer emits `?` as a standalone operator token, so three constructs
-	 * that introduce NO branch also produce a bare `?` and must not be counted:
+	 * Takes the UNFILTERED token stream on purpose. `getCodeTokens` drops string and
+	 * template tokens so that keywords inside literals are not counted as branches —
+	 * but that also removes a ternary's consequent, leaving `?` directly adjacent to
+	 * `:` and making `c ? 'a' : 'b'` indistinguishable from the TS optional member
+	 * `name?: T`. Filtering first silently dropped every string-branch ternary,
+	 * which is the most common shape in the language; the homepage hero read 15
+	 * when SonarSource says 16.
+	 *
+	 * Three constructs produce a bare `?` and introduce NO branch:
 	 *
 	 *   optional chaining        `a?.b`       -> `?` followed by `.`
 	 *   nullish coalescing       `a ?? b`     -> two adjacent `?` tokens
 	 *   TS optional param/prop   `name?: T`   -> `?` followed by `:`
 	 *
-	 * Counting them did not just add a point each — the phantom also armed the
-	 * `pendingB2` nesting latch, so the next `{` pushed a bogus frame and doubled
-	 * the penalty on every later increment in the region. A five-line function
-	 * with one `if` and two `??` defaults measured Cognitive Complexity 15, the
-	 * exact value at which SonarSource says a function is too complex to keep.
-	 * That is idiomatic modern TypeScript, and TypeScript is this editor's
-	 * default language.
+	 * SonarSource specifies this exclusion directly: Cognitive Complexity "ignores
+	 * null-coalescing operators", with `a?.myObj` as the worked example. Ternaries,
+	 * by contrast, take a structural increment WITH the nesting penalty.
+	 *
+	 * @see https://www.sonarsource.com/docs/CognitiveComplexity.pdf
 	 */
-	private isRealTernary(tokens: Token[], index: number): boolean {
-		// Second `?` of a `??` pair.
-		if (this.significantNeighbor(tokens, index, -1)?.text === '?') return false;
+	private isRealTernary(rawTokens: Token[], ordinal: number): boolean {
+		let seen = -1;
+		let index = -1;
+		for (let i = 0; i < rawTokens.length; i++) {
+			if (rawTokens[i].text === '?') {
+				seen++;
+				if (seen === ordinal) {
+					index = i;
+					break;
+				}
+			}
+		}
+		if (index === -1) return false;
 
-		const next = this.significantNeighbor(tokens, index, 1);
+		// Second `?` of a `??` pair.
+		if (this.significantNeighbor(rawTokens, index, -1)?.text === '?') return false;
+
+		const next = this.significantNeighbor(rawTokens, index, 1);
 		if (!next) return false;
 
 		// `?.` optional chaining, `??` nullish coalescing, `?:` optional member.
@@ -1243,6 +1292,52 @@ export class ComplexityAnalyzer {
 			return false;
 		}
 
+		// A declaration is not a call to itself. Only `function`/`func`/`def` were
+		// excluded, but a JS/TS class method, object-literal method, getter or setter
+		// has no such keyword — so `name(` on its own declaration line matched the
+		// region name and every method took a phantom +1 recursion increment. An
+		// identical body scored 13 as a free function and 14 as a method, and twenty
+		// trivial branchless methods reported a total of 20 against a truth of 0.
+		if (line === region.startLine && this.isDeclarationPosition(tokens, index)) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Is `tokens[index]` the NAME being declared, rather than a call to it?
+	 *
+	 * True when nothing before it on the line can begin a call expression: the name
+	 * is first, or is preceded only by declaration-position keywords/modifiers
+	 * (`get`, `set`, `async`, `static`, `public`, `*`, …) or by a member separator
+	 * in an object literal.
+	 */
+	private isDeclarationPosition(tokens: Token[], index: number): boolean {
+		const DECLARATION_MODIFIERS = new Set([
+			'get',
+			'set',
+			'async',
+			'static',
+			'public',
+			'private',
+			'protected',
+			'readonly',
+			'abstract',
+			'override',
+			'export',
+			'default',
+			'*'
+		]);
+
+		for (let i = index - 1; i >= 0; i--) {
+			const text = tokens[i].text;
+			if (text.trim() === '') continue;
+			// `{` / `,` / `;` open a member slot in a class body or object literal.
+			if (text === '{' || text === ',' || text === ';') return true;
+			if (DECLARATION_MODIFIERS.has(text)) continue;
+			return false;
+		}
 		return true;
 	}
 
