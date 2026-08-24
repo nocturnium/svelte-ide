@@ -2,13 +2,17 @@
 	/**
 	 * Complexity Layer
 	 *
-	 * Shows complexity indicators in the gutter area only.
-	 * No background highlighting - keeps editing area clean.
-	 * Hover over gutter indicators for details.
+	 * Gutter spine + score chip + explain-on-hover tooltip.
+	 *
+	 * The region plane itself is drawn by the sibling ComplexityHeatLayer; this
+	 * layer never paints over code. (This docblock previously claimed there was no
+	 * background highlighting at all, which contradicted the sibling component.)
 	 */
 
 	import {
 		COGNITIVE_COMPLEXITY_BANDS,
+		getComplexityRegionKey,
+		getComplexityBandLabel,
 		type ComplexityMetrics,
 		type ComplexityRegion
 	} from './core/complexity-analyzer';
@@ -38,6 +42,11 @@
 		viewportWidth?: number;
 		/** Current horizontal scroll offset, for anchoring the score chip. */
 		scrollLeft?: number;
+		/**
+		 * X coordinate, in content pixels, where a line's text ends. Used to place
+		 * the chip on a row it will not cover.
+		 */
+		lineEndX?: (line: number) => number;
 		/** Whether indicators are enabled */
 		enabled?: boolean;
 		/** Region key to briefly emphasize after jump-to-hottest */
@@ -55,6 +64,7 @@
 		minCognitiveComplexity = COGNITIVE_COMPLEXITY_BANDS.medium,
 		viewportWidth = 0,
 		scrollLeft = 0,
+		lineEndX,
 		enabled = true,
 		flashRegionKey = '',
 		lineToVisualRow = (line: number) => line
@@ -104,13 +114,35 @@
 	 * whatever is actually on screen.
 	 */
 	const CHIP_INSET = 18;
-	const CHIP_WIDTH = 54;
+	// Widest rendered chip ("Refactor 113"); used to keep the right edge inside the
+	// viewport rather than past the scrollable content width.
+	const CHIP_WIDTH = 96;
 	let badgeLeft = $derived(
 		Math.max(
 			gutterWidth + 8,
 			(viewportWidth > 0 ? scrollLeft + viewportWidth : contentWidth) - CHIP_INSET - CHIP_WIDTH
 		)
 	);
+
+	/**
+	 * Which row inside the region the chip sits on.
+	 *
+	 * The chip is pinned to the right of the viewport, so on a narrow screen the
+	 * region's first line — the signature — often runs straight underneath it: at
+	 * 390px the hero rendered `triageLoa[Refactor 16]`, the badge covering the very
+	 * function it measures. Rather than shrink or hide it, walk the region for the
+	 * first row whose text ends clear of the chip. A closing brace or a short body
+	 * line almost always qualifies, so the number stays full-size and legible and
+	 * the code stays readable. Falls back to the first row when every line is long.
+	 */
+	function getChipRow(region: ComplexityRegion): number {
+		if (!lineEndX) return region.startLine;
+		const limit = badgeLeft - 10;
+		for (let line = region.startLine; line <= region.endLine; line++) {
+			if (lineEndX(line) < limit) return line;
+		}
+		return region.startLine;
+	}
 
 	let hoveredRegion = $state<ComplexityRegion | null>(null);
 	let tooltipPosition = $state({ top: 0, left: 0, right: 0 });
@@ -125,14 +157,6 @@
 			? Math.max(0, hoveredRegion.contributions.length - visibleContributions.length)
 			: 0
 	);
-
-	function getRegionKey(region: ComplexityRegion): string {
-		return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.cognitiveComplexity}`;
-	}
-
-	function getLevelLabel(level: ComplexityRegion['level']): string {
-		return level.charAt(0).toUpperCase() + level.slice(1);
-	}
 
 	function getRegionTop(region: ComplexityRegion): number {
 		return lineToVisualRow(region.startLine) * lineHeight;
@@ -179,12 +203,12 @@
 			? ` height: ${totalHeight}px;`
 			: ''} --editor-gutter-width: {gutterWidth}px;"
 	>
-		{#each highlightedRegions as region (getRegionKey(region))}
+		{#each highlightedRegions as region (getComplexityRegionKey(region))}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="complexity-gutter__spine"
 				class:complexity-gutter__spine--critical={region.level === 'critical'}
-				class:complexity-gutter__spine--flash={flashRegionKey === getRegionKey(region)}
+				class:complexity-gutter__spine--flash={flashRegionKey === getComplexityRegionKey(region)}
 				style="
 					top: {getRegionTop(region)}px;
 					height: {getRegionHeight(region)}px;
@@ -198,17 +222,17 @@
 			<div
 				class="complexity-gutter__score"
 				class:complexity-gutter__score--critical={region.level === 'critical'}
-				class:complexity-gutter__score--flash={flashRegionKey === getRegionKey(region)}
+				class:complexity-gutter__score--flash={flashRegionKey === getComplexityRegionKey(region)}
 				style="
-					top: {getRegionTop(region) + 3}px;
+					top: {lineToVisualRow(getChipRow(region)) * lineHeight + 3}px;
 					left: {badgeLeft}px;
 					--indicator-color: {getColor(region.level)};
 				"
 				onmouseenter={(e) => handleMouseEnter(region, e, 'left')}
 				onmouseleave={handleMouseLeave}
 			>
+				<span class="complexity-gutter__score-band">{getComplexityBandLabel(region.level)}</span>
 				<span class="complexity-gutter__score-value">{region.cognitiveComplexity}</span>
-				<span class="complexity-gutter__score-unit">cc</span>
 			</div>
 		{/each}
 	</div>
@@ -227,7 +251,7 @@
 				</span>
 				<div class="complexity-tooltip__heading">
 					<span class="complexity-tooltip__title">
-						{getLevelLabel(hoveredRegion.level)} Cognitive Complexity
+						{getComplexityBandLabel(hoveredRegion.level)} Cognitive Complexity
 					</span>
 					<span class="complexity-tooltip__source">SonarSource Cognitive Complexity metric</span>
 				</div>
@@ -334,15 +358,14 @@
 		font-weight: 700;
 	}
 
-	/* The unit, always rendered. A bare number cannot say what scale it is on or
-	   which direction is worse; "cc" ties it to Cognitive Complexity, which the
-	   tooltip and the meter then name in full. */
-	.complexity-gutter__score-unit {
-		font-size: 9px;
+	/* The verdict, always rendered. A bare number cannot say which direction is
+	   worse, and "cc" alone reads as engine displacement to anyone who has not met
+	   the metric. The band name is self-describing, and it is the word the legend
+	   and the meter use for the same state. */
+	.complexity-gutter__score-band {
+		font-size: 10px;
 		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		opacity: 0.75;
+		letter-spacing: 0.02em;
 	}
 
 	.complexity-gutter__score {
@@ -356,9 +379,11 @@
 		padding: 0 8px;
 		border: 1px solid color-mix(in srgb, var(--indicator-color) 55%, transparent);
 		border-radius: 999px;
-		/* Opaque, not a translucent glow: the chip sits in front of code, so it has
-		   to occlude cleanly rather than blend into the tokens behind it. */
-		background: var(--ide-bg-elevated, #17203a);
+		/* Opaque, and deliberately DARKER than --ide-bg-elevated. That token resolves
+		   to rgb(49,61,87), not the #17203a this rule was originally reasoned
+		   against, which left the band text at 3.0-4.1:1 — under AA, and a
+		   regression from the old 22px chip that passed on the large-text bar. */
+		background: #0f1729;
 		color: var(--indicator-color);
 		font-size: 12px;
 		font-weight: 650;

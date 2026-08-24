@@ -35,6 +35,7 @@
 	import {
 		getComplexityAnalyzer,
 		COGNITIVE_COMPLEXITY_BANDS,
+		getComplexityRegionKey,
 		type ComplexityMetrics,
 		type ComplexityRegion
 	} from './core/complexity-analyzer';
@@ -570,10 +571,6 @@
 	export function unfoldAll() {
 		if (!folding || !editorState) return;
 		foldManager.expandAll();
-	}
-
-	function getComplexityRegionKey(region: ComplexityRegion): string {
-		return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.score}`;
 	}
 
 	export function flashComplexityRegion(region: ComplexityRegion) {
@@ -1150,6 +1147,8 @@
 				minCognitiveComplexity={complexityThreshold}
 				{viewportWidth}
 				{scrollLeft}
+				lineEndX={(line) =>
+					gutterWidth + CONTENT_PADDING + (lines[line]?.text.length ?? 0) * charWidth}
 				enabled={complexityHighlighting}
 				flashRegionKey={complexityFlashRegionKey}
 				lineToVisualRow={(line) => lineToVisualRow(line)}

@@ -375,10 +375,11 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 >
 	<!-- Cognitive Load Meter Demo -->
 	<section class="component-section">
-		<h2>Cognitive Load Meter</h2>
+		<h2>The meter</h2>
 		<p class="section-desc">
-			Real-time code complexity analysis with visual highlighting. Complex regions are highlighted
-			with color intensity.
+			Regions at or above the Moderate band get a coloured edge in the gutter and a slight lift of
+			the background. The code itself is never washed over, so nothing becomes harder to read —
+			measured, the busiest region still holds every syntax token above 4.5:1.
 		</p>
 
 		<!-- Standalone meter display -->
@@ -393,42 +394,36 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					? `Jump to hottest region ${hottestRegion.name || hottestRegion.type}, cognitive complexity ${hottestRegion.cognitiveComplexity}`
 					: 'No complex region to jump to'}
 			>
-				<span class="meter-label">Current File Complexity</span>
+				<span class="meter-label">Current file</span>
 				<CognitiveLoadMeter metrics={complexityMetrics} showDetails={true} />
 				<span class="meter-hotspot">
 					{#if hottestRegion}
-						hottest: {hottestRegion.name || hottestRegion.type} — {hottestRegion.cognitiveComplexity}
-						cc
+						in <strong>{hottestRegion.name || hottestRegion.type}</strong> · jump to it
 					{:else}
-						hottest: none
+						nothing above the Simple band
 					{/if}
 				</span>
 			</button>
 
 			{#if complexityMetrics}
-				<div class="metrics-summary">
+				<!-- Secondary counts only. The headline number lives in the meter to the
+				     left and is now stated exactly once: it previously appeared three
+				     times in this one strip, and these two supporting stats were
+				     rendered larger and brighter than the number they support. -->
+				<dl class="metrics-summary">
 					<div class="metric">
-						<span
-							class="metric-value metric-value--heat"
-							style="--metric-color: {complexityMetrics.level === 'critical'
-								? 'var(--ide-complexity-critical)'
-								: complexityMetrics.level === 'high'
-									? 'var(--ide-complexity-high)'
-									: complexityMetrics.level === 'medium'
-										? 'var(--ide-complexity-medium)'
-										: 'var(--ide-text-muted)'}">{complexityMetrics.maxCognitiveComplexity}</span
-						>
-						<span class="metric-label">Hottest function (cc)</span>
+						<dt class="metric-label">Regions</dt>
+						<dd class="metric-value">{complexityMetrics.regions.length}</dd>
 					</div>
 					<div class="metric">
-						<span class="metric-value">{complexityMetrics.regions.length}</span>
-						<span class="metric-label">Regions Analyzed</span>
+						<dt class="metric-label">Lines in flagged regions</dt>
+						<dd class="metric-value">
+							{complexityMetrics.hotspots.length}<span class="metric-of"
+								>of {content.split('\n').length}</span
+							>
+						</dd>
 					</div>
-					<div class="metric">
-						<span class="metric-value">{complexityMetrics.hotspots.length}</span>
-						<span class="metric-label">Hotspot Lines</span>
-					</div>
-				</div>
+				</dl>
 			{/if}
 		</div>
 
@@ -544,7 +539,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Feature Highlights</h2>
 		<div class="features-grid">
-			<div class="feature-card" style="--feature-accent: var(--ide-error)">
+			<div class="feature-card" style="--feature-accent: var(--ide-complexity-critical)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -590,7 +585,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<p>See where AI agents are looking with ghost cursors and focus region highlights.</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--ide-success)">
+			<div class="feature-card" style="--feature-accent: var(--ide-complexity-medium)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -613,7 +608,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--ide-warning)">
+			<div class="feature-card" style="--feature-accent: var(--ide-complexity-high)">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -739,31 +734,21 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	.metric-value {
-		font-size: 1.5rem;
-		font-weight: 700;
+		margin: 0;
+		font-size: 1.125rem;
+		font-weight: 600;
 		font-variant-numeric: tabular-nums;
+		color: var(--ide-text-secondary);
 	}
 
-	/* No glow. The previous rule carried an 18px box-shadow and a 12px text-shadow,
-	   which bled straight over the "Overall Score" caption below it — the number
-	   and its own label appeared to overlap. A metric should not need a halo to be
-	   read, and a halo in the error hue made a property of correct code look like
-	   a fault. */
-	.metric-value--heat {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 44px;
-		height: 30px;
-		padding: 0 10px;
-		border: 1px solid color-mix(in srgb, var(--metric-color) 45%, transparent);
-		border-radius: 999px;
-		background: color-mix(in srgb, var(--metric-color) 12%, var(--ide-bg-primary));
-		color: var(--metric-color);
-		font-size: 20px;
-		font-weight: 700;
-		line-height: 1;
-		box-sizing: border-box;
+	/* "Hotspot Lines" was a bare count with no denominator, and because regions
+	   overlap it could exceed the file's own length — measured 12 flagged lines in
+	   an 8-line file. Deduplicated in the analyzer; given a denominator here. */
+	.metric-of {
+		margin-left: 4px;
+		font-size: 0.8125rem;
+		font-weight: 400;
+		color: var(--ide-text-muted);
 	}
 
 	.metric-label {

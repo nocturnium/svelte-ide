@@ -6,7 +6,11 @@
 	 * Shows an animated gauge with color-coded levels and optional tooltip details.
 	 */
 
-	import { COGNITIVE_COMPLEXITY_BANDS, type ComplexityMetrics } from './core/complexity-analyzer';
+	import {
+		COGNITIVE_COMPLEXITY_BANDS,
+		getComplexityBandLabel,
+		type ComplexityMetrics
+	} from './core/complexity-analyzer';
 
 	interface Props {
 		/** Current complexity metrics */
@@ -40,30 +44,31 @@
 					: 'var(--ide-text-muted, #8b9bb4)'
 	);
 
-	// Band names, matching ComplexityLegend. "Refactor" rather than "Critical":
-	// the band starts at SonarSource's refactor threshold, which is a prompt to
-	// restructure, not an emergency.
-	let levelLabel = $derived(
-		level === 'critical'
-			? 'Refactor'
-			: level === 'high'
-				? 'Complex'
-				: level === 'medium'
-					? 'Moderate'
-					: 'Simple'
-	);
+	let levelLabel = $derived(getComplexityBandLabel(level));
 
 	/**
-	 * Gauge fill as progress toward the refactor threshold, clamped.
+	 * Gauge fill, on a scale that keeps moving past the refactor threshold.
 	 *
-	 * Cognitive Complexity is unbounded, so it cannot fill a percentage bar. The
-	 * meter previously bound `width: {score}%` to the deprecated 0-100 score and
-	 * declared aria-valuemax=100, announcing "out of 100" — a percentage the value
-	 * never was. Past the threshold the bar is simply full and the number carries
-	 * the rest of the story.
+	 * An unbounded metric cannot fill a percentage bar. Scaling to the threshold
+	 * pegged it at 100% in every state this library actually ships — the hero at 16
+	 * and the demo at 113 both rendered a full bar — which is the saturation bug the
+	 * number itself was just freed from, relocated into the graphic. The scale now
+	 * doubles once the threshold is passed, so the bar keeps saying something, and
+	 * a tick marks where the threshold sits.
 	 */
+	let gaugeMax = $derived(
+		cognitiveComplexity <= COGNITIVE_COMPLEXITY_BANDS.critical
+			? COGNITIVE_COMPLEXITY_BANDS.critical
+			: Math.pow(
+					2,
+					Math.ceil(Math.log2(cognitiveComplexity / COGNITIVE_COMPLEXITY_BANDS.critical))
+				) * COGNITIVE_COMPLEXITY_BANDS.critical
+	);
 	let thresholdProgress = $derived(
-		Math.min(100, Math.round((cognitiveComplexity / COGNITIVE_COMPLEXITY_BANDS.critical) * 100))
+		Math.min(100, Math.round((cognitiveComplexity / gaugeMax) * 100))
+	);
+	let thresholdMarkPercent = $derived(
+		Math.round((COGNITIVE_COMPLEXITY_BANDS.critical / gaugeMax) * 100)
 	);
 
 	let highComplexityRegions = $derived(
@@ -85,9 +90,9 @@
 <div
 	class="cognitive-meter"
 	role={onclick ? 'button' : 'meter'}
-	aria-valuenow={Math.min(cognitiveComplexity, COGNITIVE_COMPLEXITY_BANDS.critical)}
+	aria-valuenow={cognitiveComplexity}
 	aria-valuemin={0}
-	aria-valuemax={COGNITIVE_COMPLEXITY_BANDS.critical}
+	aria-valuemax={gaugeMax}
 	aria-label="Cognitive complexity {cognitiveComplexity}, {levelLabel}. Refactor threshold {COGNITIVE_COMPLEXITY_BANDS.critical}."
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
@@ -122,6 +127,12 @@
 			class="cognitive-meter__fill"
 			style="width: {thresholdProgress}%; background-color: {levelColor}"
 			class:cognitive-meter__fill--animated={level === 'critical'}
+		></div>
+		<!-- Where the refactor threshold falls on the current scale. -->
+		<div
+			class="cognitive-meter__threshold"
+			style="left: {thresholdMarkPercent}%"
+			aria-hidden="true"
 		></div>
 	</div>
 
@@ -187,16 +198,26 @@
      moves as you type: without it, editing announced only "Line 1, Column 1" from the
      cursor status while complexity went from Refactor to Simple in silence. Reports
      raw Cognitive Complexity, never the deprecated "out of 100" score, which saturated
-     and implied a percentage it never was. -->
-{#if metrics && highComplexityRegions.length > 0}
+     and implied a percentage it never was.
+
+     Rendered whenever `metrics` exists, NOT only while high-complexity regions
+     remain. Gating on that unmounted the region the moment the last one dropped
+     below Moderate, so the one announcement most worth hearing — you fixed it —
+     was the only one that never fired. -->
+{#if metrics}
 	<div class="cognitive-meter__sr-only" role="status" aria-live="polite">
 		Hottest function cognitive complexity {metrics.maxCognitiveComplexity}, {levelLabel}. Refactor
-		threshold is {COGNITIVE_COMPLEXITY_BANDS.critical}. {highComplexityRegions.length}
-		high-complexity {highComplexityRegions.length === 1 ? 'region' : 'regions'}:
-		{#each highComplexityRegions.slice(0, 8) as region (region.startLine)}
-			{region.name || `${region.type} at line ${region.startLine + 1}`}, cognitive complexity
-			{region.cognitiveComplexity}.
-		{/each}
+		threshold is {COGNITIVE_COMPLEXITY_BANDS.critical}.
+		{#if highComplexityRegions.length > 0}
+			{highComplexityRegions.length}
+			{highComplexityRegions.length === 1 ? 'region' : 'regions'} at or above Moderate:
+			{#each highComplexityRegions.slice(0, 8) as region (region.startLine)}
+				{region.name || `${region.type} at line ${region.startLine + 1}`}, cognitive complexity
+				{region.cognitiveComplexity}.
+			{/each}
+		{:else}
+			No regions above the Simple band.
+		{/if}
 	</div>
 {/if}
 
@@ -230,6 +251,7 @@
 	}
 
 	.cognitive-meter__gauge {
+		position: relative;
 		width: 40px;
 		height: 6px;
 		background-color: rgba(255, 255, 255, 0.1);
@@ -247,6 +269,15 @@
 
 	.cognitive-meter__fill--animated {
 		animation: pulse-critical 1.5s ease-in-out infinite;
+	}
+
+	/* The only complexity component that lacked this guard, while its seven
+	   siblings all had one — and it is the one that pulses INFINITELY, in the
+	   default state of the flagship demo. */
+	@media (prefers-reduced-motion: reduce) {
+		.cognitive-meter__fill--animated {
+			animation: none;
+		}
 	}
 
 	@keyframes pulse-critical {
@@ -306,6 +337,15 @@
 	.cognitive-meter__tooltip-title {
 		font-weight: 600;
 		color: var(--ide-text-primary, #f4f1e0);
+	}
+
+	.cognitive-meter__threshold {
+		position: absolute;
+		top: -1px;
+		bottom: -1px;
+		width: 1px;
+		background: var(--ide-text-secondary, #a8c5d9);
+		opacity: 0.55;
 	}
 
 	.cognitive-meter__unit {

@@ -547,7 +547,7 @@ describe('ComplexityAnalyzer', () => {
 	});
 
 	describe('getLineComplexity', () => {
-		it('reports the highest score among overlapping regions', () => {
+		it('reports the highest cognitive complexity among overlapping regions', () => {
 			const factors = {
 				nestingDepth: 0,
 				branchingFactor: 0,
@@ -566,28 +566,30 @@ describe('ComplexityAnalyzer', () => {
 						startLine: 0,
 						endLine: 20,
 						score: 90,
-						level: 'low' as const,
+						level: 'critical' as const,
 						type: 'function' as const,
 						factors,
-						cognitiveComplexity: 0,
+						cognitiveComplexity: 18,
 						contributions: []
 					},
 					{
 						startLine: 5,
 						endLine: 8,
 						score: 40,
-						level: 'low' as const,
+						level: 'medium' as const,
 						type: 'block' as const,
 						factors,
-						cognitiveComplexity: 0,
+						cognitiveComplexity: 6,
 						contributions: []
 					}
 				]
 			};
-			// Line 6 sits inside both the score-40 inner block and the score-90
-			// function; the function's score must win.
-			expect(analyzer.getLineComplexity(metrics, 6)).toBe(90);
-			expect(analyzer.getLineComplexity(metrics, 15)).toBe(90);
+			// Line 6 sits inside both the cc-6 inner block and the cc-18 function; the
+			// function must win. Reports raw Cognitive Complexity, never the
+			// deprecated score — this accessor was the last public path handing the
+			// saturating value out.
+			expect(analyzer.getLineComplexity(metrics, 6)).toBe(18);
+			expect(analyzer.getLineComplexity(metrics, 15)).toBe(18);
 			expect(analyzer.getLineComplexity(metrics, 50)).toBe(0);
 		});
 	});

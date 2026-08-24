@@ -103,10 +103,14 @@
 	--ide-complexity-medium: #4d9db0;
 	--ide-complexity-high: #c9944a;
 	--ide-complexity-critical: #d4664a;
-	/* Regions DEEPEN rather than glow: a near-black veil at low alpha. On a dark
-	   theme this raises token contrast instead of destroying it, which is the
-	   opposite of the previous `mix-blend-mode: screen` wash. */
-	--ide-complexity-veil: 6, 11, 20;
+	/* Region plane. A cool grey-blue LIFT, not a darkening: the editor background
+	   is already near-black (#0d1421), so a "deepening" veil is arithmetically
+	   invisible — measured at 1.008-1.018:1 against the backdrop across all three
+	   bands, below display banding. Lifting is the only direction with headroom.
+	   Alphas are capped so the worst-case token (comments) stays above 4.5:1: at
+	   the critical band the region reads 1.20:1 against unmarked code while
+	   comments hold 4.68:1. That is the budget — do not raise them. */
+	--ide-complexity-veil: 122, 152, 205;
 
 	/* AI Panel Colors */
 	--ide-ai-user: var(--color-nocturnium-ocean);

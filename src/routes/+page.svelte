@@ -723,10 +723,14 @@ export function triageLoad(
 		position: absolute;
 		inset: 8% 4% -12% 4%;
 		z-index: 0;
+		/* The brand ember, NOT --ide-error. The largest colour gesture in the hero
+		   sat directly behind the complexity demo in the exact token that means
+		   "this code does not parse" — the rule the overlay enforces was broken by
+		   the room lighting. */
 		background: radial-gradient(
 			ellipse at center,
-			color-mix(in srgb, var(--ide-error) 42%, transparent),
-			color-mix(in srgb, var(--color-nocturnium-flame) 24%, transparent) 46%,
+			color-mix(in srgb, var(--ide-primary) 38%, transparent),
+			color-mix(in srgb, var(--color-nocturnium-flame) 22%, transparent) 46%,
 			transparent 72%
 		);
 		filter: blur(56px);

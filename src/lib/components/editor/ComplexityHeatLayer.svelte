@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		COGNITIVE_COMPLEXITY_BANDS,
+		getComplexityRegionKey,
 		type ComplexityMetrics,
 		type ComplexityRegion
 	} from './core/complexity-analyzer';
@@ -47,21 +48,25 @@
 			: []
 	);
 
-	function getRegionKey(region: ComplexityRegion): string {
-		return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.cognitiveComplexity}`;
-	}
-
 	/**
-	 * Veil alpha by band. Capped at 0.22 and applied with NORMAL blending over a
-	 * near-black, so the region reads as depth and light-on-dark tokens gain
-	 * contrast. The previous implementation screen-blended a saturated hue at up
-	 * to 0.48, which could only lighten: it dragged the backdrop toward the exact
-	 * mid-luminance this syntax palette occupies and pushed comments to 1.7:1.
+	 * Region plane alpha by band — measured, not guessed.
+	 *
+	 * Against the editor background #0d1421 these render 1.067 / 1.129 / 1.200:1,
+	 * so the bands are distinguishable from each other and from unmarked code. The
+	 * ceiling is set by token legibility rather than taste: at 0.13 the worst-case
+	 * token (comments) still measures 4.68:1, and 0.16 would drop it to 4.44:1,
+	 * under AA. Do not raise these without re-measuring.
+	 *
+	 * Two earlier attempts failed here. A `mix-blend-mode: screen` wash at up to
+	 * 0.48 could only lighten, dragging the backdrop into the mid-luminance this
+	 * palette occupies and pushing comments to ~1.7:1. Replacing it with a
+	 * near-black "deepening" veil was arithmetically invisible — 1.008-1.018:1 —
+	 * because you cannot darken below a near-black.
 	 */
 	function getVeilAlpha(level: ComplexityRegion['level']): number {
-		if (level === 'critical') return 0.22;
-		if (level === 'high') return 0.16;
-		if (level === 'medium') return 0.1;
+		if (level === 'critical') return 0.13;
+		if (level === 'high') return 0.09;
+		if (level === 'medium') return 0.05;
 		return 0;
 	}
 
@@ -101,10 +106,10 @@
 			width: {contentWidth ? `${contentWidth}px` : '100%'};
 		"
 	>
-		{#each markedRegions as region (getRegionKey(region))}
+		{#each markedRegions as region (getComplexityRegionKey(region))}
 			<div
 				class="complexity-heat__region"
-				class:complexity-heat__region--flash={flashRegionKey === getRegionKey(region)}
+				class:complexity-heat__region--flash={flashRegionKey === getComplexityRegionKey(region)}
 				style="
 					top: {getRegionTop(region)}px;
 					left: {gutterWidth}px;
@@ -150,7 +155,7 @@
 
 	@keyframes complexity-heat-flash {
 		0% {
-			background: rgba(var(--ide-complexity-veil), calc(var(--veil-alpha) + 0.1));
+			background: rgba(var(--ide-complexity-veil), calc(var(--veil-alpha) + 0.06));
 			box-shadow: inset 0 0 0 1px var(--edge-color);
 		}
 		100% {

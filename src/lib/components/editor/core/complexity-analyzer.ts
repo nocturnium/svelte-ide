@@ -27,9 +27,31 @@ export interface ComplexityFactors {
 	callCount: number;
 }
 
+/**
+ * The Cognitive Complexity increment kinds this analyzer emits.
+ *
+ * A closed union rather than `string`: consumers rendering their own breakdown
+ * need an exhaustive switch, and an open string silently accepted
+ * `kind: 'totally-made-up-kind'` at compile time.
+ */
+export type ComplexityContributionKind =
+	| 'if'
+	| 'else'
+	| 'else if'
+	| 'for'
+	| 'while'
+	| 'switch'
+	| 'catch'
+	| 'ternary'
+	| 'boolean-sequence'
+	| 'labelled-jump'
+	| 'goto'
+	| 'recursion'
+	| 'nested-function';
+
 export interface ComplexityContribution {
 	line: number;
-	kind: string;
+	kind: ComplexityContributionKind;
 	reason: string;
 	increment: number;
 	nesting: number;
@@ -212,12 +234,14 @@ export class ComplexityAnalyzer {
 	 * Get complexity for a specific line
 	 */
 	getLineComplexity(metrics: ComplexityMetrics, line: number): number {
-		// A line can sit inside several nested regions; report the highest score
-		// so an inner low-complexity region never masks the hot function around it.
+		// Raw Cognitive Complexity, not the deprecated score — this accessor was the
+		// one public path still handing the saturating value out.
+		// A line can sit inside several nested regions; report the highest so an
+		// inner simple region never masks the hot function around it.
 		let best = 0;
 		for (const region of metrics.regions) {
-			if (line >= region.startLine && line <= region.endLine && region.score > best) {
-				best = region.score;
+			if (line >= region.startLine && line <= region.endLine && region.cognitiveComplexity > best) {
+				best = region.cognitiveComplexity;
 			}
 		}
 		return best;
@@ -773,6 +797,30 @@ export class ComplexityAnalyzer {
 		const booleanState = { lastByParenDepth: new Map<number, string>(), parenDepth: 0 };
 		const doWhileDepths: number[] = [];
 		const isGo = language === 'go';
+		/**
+		 * Ternaries chained in the alternate — `a ? x : b ? y : z` — are NESTED, and a
+		 * structural increment carries the nesting penalty, so the second is +2 and
+		 * the chain scores 3 rather than 2. The nesting stack only pushes on braces,
+		 * so a brace-less chain never registered. Region-scoped rather than per-line,
+		 * so a Prettier-wrapped chain scores the same as a one-line one.
+		 */
+		let ternaryDepth = 0;
+		// Tokens that can only sit between two INDEPENDENT ternaries, never between
+		// the two halves of a chain — so seeing one ends the chain.
+		const TERNARY_RESET = new Set([
+			';',
+			',',
+			'{',
+			'}',
+			'return',
+			'const',
+			'let',
+			'var',
+			'if',
+			'for',
+			'while',
+			'case'
+		]);
 
 		for (let lineIndex = region.startLine; lineIndex <= region.endLine; lineIndex++) {
 			const rawTokens = tokenized[lineIndex]?.tokens ?? [];
@@ -791,6 +839,8 @@ export class ComplexityAnalyzer {
 
 			for (let i = 0; i < tokens.length; i++) {
 				const token = tokens[i];
+
+				if (TERNARY_RESET.has(token.text)) ternaryDepth = 0;
 
 				if (token.type === 'punctuation.brace' && token.text === '}') {
 					while (
@@ -916,12 +966,14 @@ export class ComplexityAnalyzer {
 					const isTernary = this.isRealTernary(rawTokens, questionOrdinal);
 					questionOrdinal++;
 					if (!isTernary) continue;
+					const ternaryNesting = nestingStack.length + ternaryDepth;
+					ternaryDepth++;
 					this.addContribution(
 						contributions,
 						lineIndex,
 						'ternary',
-						1 + nestingStack.length,
-						nestingStack.length
+						1 + ternaryNesting,
+						ternaryNesting
 					);
 					pendingB2 = { kind: 'ternary', line: lineIndex };
 					continue;
@@ -1393,17 +1445,22 @@ export class ComplexityAnalyzer {
 	 * Find hotspot lines (lines in high-complexity regions)
 	 */
 	private findHotspots(regions: ComplexityRegion[]): number[] {
-		const hotspots: number[] = [];
+		// Deduplicated and sorted. Regions overlap — an inner block sits inside its
+		// enclosing function — and pushing every line of every qualifying region
+		// counted the shared lines once per region. Measured: 12 "hotspot lines" in
+		// an 8-line file, i.e. 150% of the document, on a stat the demo renders as a
+		// headline number.
+		const hotspots = new Set<number>();
 
 		for (const region of regions) {
 			if (region.cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) {
 				for (let i = region.startLine; i <= region.endLine; i++) {
-					hotspots.push(i);
+					hotspots.add(i);
 				}
 			}
 		}
 
-		return hotspots;
+		return [...hotspots].sort((a, b) => a - b);
 	}
 
 	/**
@@ -1460,6 +1517,36 @@ export class ComplexityAnalyzer {
  * open-ended by design, so callers should show the underlying number alongside
  * the band rather than treating the band as the whole story.
  */
+/**
+ * Stable identity for a region, shared by every component that renders or
+ * flashes one.
+ *
+ * It was previously re-declared in three places: CustomEditor keyed on the
+ * deprecated `score` while both overlays keyed on `cognitiveComplexity`. Since
+ * `score = min(100, cc * 7)`, the keys could never match for any region actually
+ * drawn, so jump-to-hottest silently never flashed. A retained deprecated field
+ * quietly rotted a feature; one exported function removes the class of bug.
+ */
+export function getComplexityRegionKey(region: ComplexityRegion): string {
+	return `${region.startLine}:${region.endLine}:${region.name ?? region.type}:${region.cognitiveComplexity}`;
+}
+
+/**
+ * Human label for a band — the single source of the vocabulary.
+ *
+ * The tooltip said "Medium/High/Critical" while the legend and meter said
+ * "Moderate/Complex/Refactor", for the same band, in the same viewport, with the
+ * legend nominally the key that decodes the chip. "Refactor" over "Critical"
+ * because the band starts at SonarSource's refactor threshold: a prompt to
+ * restructure, not an emergency.
+ */
+export function getComplexityBandLabel(level: ComplexityMetrics['level']): string {
+	if (level === 'critical') return 'Refactor';
+	if (level === 'high') return 'Complex';
+	if (level === 'medium') return 'Moderate';
+	return 'Simple';
+}
+
 export function getComplexityLevel(cognitiveComplexity: number): ComplexityMetrics['level'] {
 	if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.critical) return 'critical';
 	if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) return 'high';

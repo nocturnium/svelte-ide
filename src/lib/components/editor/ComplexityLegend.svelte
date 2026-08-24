@@ -18,25 +18,29 @@
 			label: 'Simple',
 			range: `0–${COGNITIVE_COMPLEXITY_BANDS.medium - 1}`,
 			color: 'transparent',
-			width: 0
+			width: 2,
+			hollow: true
 		},
 		{
 			label: 'Moderate',
 			range: `${COGNITIVE_COMPLEXITY_BANDS.medium}–${COGNITIVE_COMPLEXITY_BANDS.high - 1}`,
 			color: 'var(--ide-complexity-medium)',
-			width: 2
+			width: 2,
+			hollow: false
 		},
 		{
 			label: 'Complex',
 			range: `${COGNITIVE_COMPLEXITY_BANDS.high}–${COGNITIVE_COMPLEXITY_BANDS.critical - 1}`,
 			color: 'var(--ide-complexity-high)',
-			width: 3
+			width: 3,
+			hollow: false
 		},
 		{
 			label: 'Refactor',
 			range: `${COGNITIVE_COMPLEXITY_BANDS.critical}+`,
 			color: 'var(--ide-complexity-critical)',
-			width: 5
+			width: 5,
+			hollow: false
 		}
 	];
 </script>
@@ -48,13 +52,13 @@
 	<ul class="complexity-legend__bands">
 		{#each bands as band (band.label)}
 			<li class="complexity-legend__band">
-				<span
-					class="complexity-legend__mark"
-					style="background: {band.color}; width: {band.width || 2}px; opacity: {band.width
-						? 1
-						: 0.25};"
-					aria-hidden="true"
-				></span>
+				<span class="complexity-legend__slot" aria-hidden="true">
+					<span
+						class="complexity-legend__mark"
+						class:complexity-legend__mark--hollow={band.hollow}
+						style="background: {band.color}; width: {band.width}px;"
+					></span>
+				</span>
 				<span class="complexity-legend__label">{band.label}</span>
 				<span class="complexity-legend__range">{band.range}</span>
 			</li>
@@ -74,9 +78,13 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--ide-spacing-sm, 8px) var(--ide-spacing-md, 12px);
-		font-size: 11px;
-		color: var(--ide-text-muted, #8b9bb4);
+		gap: var(--ide-spacing-sm, 8px) var(--ide-spacing-lg, 20px);
+		font-size: 12px;
+		/* --ide-text-muted is a 60%-alpha colour; at 11px the labels measured ~4.1:1
+		   and the ranges, which stacked a further 0.72 opacity, ~2.8:1. The ranges
+		   are the only thing tying the chip's number to a band name, so they were
+		   the least legible pixels in the frame. Full-strength secondary, 12px. */
+		color: var(--ide-text-secondary, #a8c5d9);
 	}
 
 	.complexity-legend__unit {
@@ -97,7 +105,8 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--ide-spacing-md, 12px);
+		/* >= 20px so a 2px mark cannot read as a delimiter between two labels. */
+		gap: var(--ide-spacing-lg, 20px);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -106,17 +115,33 @@
 	.complexity-legend__band {
 		display: inline-flex;
 		align-items: center;
-		gap: 5px;
+		gap: 7px;
 		white-space: nowrap;
+	}
+
+	/* Fixed-width slot so all four labels start on the same x, regardless of how
+	   thick their mark is. */
+	.complexity-legend__slot {
+		display: inline-flex;
+		justify-content: center;
+		width: 5px;
+		flex: none;
 	}
 
 	/* The key IS the mark: same colour and same thickness the overlay draws, so
 	   band severity is legible from width alone if colour is unavailable. */
 	.complexity-legend__mark {
 		display: inline-block;
-		height: 13px;
+		height: 14px;
 		border-radius: 999px;
 		flex: none;
+	}
+
+	/* Simple has no painted mark in the editor, so the key shows the absence
+	   explicitly rather than rendering nothing and leaving one row unaligned. */
+	.complexity-legend__mark--hollow {
+		background: transparent !important;
+		border-left: 2px dashed color-mix(in srgb, var(--ide-text-secondary) 55%, transparent);
 	}
 
 	.complexity-legend__label {
@@ -125,11 +150,14 @@
 
 	.complexity-legend__range {
 		font-variant-numeric: tabular-nums;
-		opacity: 0.72;
+		color: var(--ide-text-secondary, #a8c5d9);
 	}
 
+	/* flex-shrink: 0 matters — without it the paragraph collapsed onto the bands'
+	   row instead of taking its own line, rendering as a cramped column jammed
+	   against the last chip. */
 	.complexity-legend__note {
-		flex-basis: 100%;
+		flex: 0 0 100%;
 		margin: 0;
 		max-width: 68ch;
 		line-height: 1.5;
