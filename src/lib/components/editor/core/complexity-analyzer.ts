@@ -43,8 +43,16 @@ export interface ComplexityRegion {
 	startLine: number;
 	/** End line (0-based) */
 	endLine: number;
-	/** Complexity score (0-100) */
+	/**
+	 * Legacy 0-100 display score.
+	 *
+	 * @deprecated Saturates at Cognitive Complexity 15, so everything from "worth
+	 * a look" to "unmaintainable" reports exactly 100, and only 16 values are
+	 * attainable. Read {@link ComplexityRegion.cognitiveComplexity}.
+	 */
 	score: number;
+	/** Band of {@link ComplexityRegion.cognitiveComplexity}. */
+	level: ComplexityMetrics['level'];
 	/** Individual factors */
 	factors: ComplexityFactors;
 	/** Suggested improvement if score is high */
@@ -63,9 +71,16 @@ export interface ComplexityRegion {
  * Overall complexity metrics for a document
  */
 export interface ComplexityMetrics {
-	/** Overall complexity score (0-100) */
+	/**
+	 * Legacy 0-100 file score.
+	 *
+	 * @deprecated Not comparable between files, and it moves the wrong way:
+	 * because it is a region-length-weighted mean, appending simple functions
+	 * lowers it while the complex code is untouched. Read
+	 * {@link ComplexityMetrics.maxCognitiveComplexity} instead.
+	 */
 	overall: number;
-	/** Complexity level for display */
+	/** Band of {@link ComplexityMetrics.maxCognitiveComplexity}. */
 	level: 'low' | 'medium' | 'high' | 'critical';
 	/** Per-region breakdown */
 	regions: ComplexityRegion[];
@@ -73,18 +88,47 @@ export interface ComplexityMetrics {
 	hotspots: number[];
 	/** Sum of exact Cognitive Complexity across all regions */
 	totalCognitiveComplexity: number;
+	/**
+	 * Cognitive Complexity of the hottest single region — the file's headline
+	 * number, and the one {@link ComplexityMetrics.level} is derived from.
+	 * Unbounded: a region at 113 reports 113.
+	 */
+	maxCognitiveComplexity: number;
 }
 
 /**
- * Thresholds for complexity levels
+ * Cognitive Complexity band boundaries, in raw Cognitive Complexity — NOT in the
+ * legacy 0-100 `score`.
+ *
+ * The anchor is real and citable: SonarSource's default "Cognitive Complexity of
+ * a function should not be too high" rule fires at **15**, so that is where
+ * `critical` starts. The lower cuts subdivide the run-up to it. Nothing here is
+ * a percentage, and the top band is deliberately open-ended: a function at 113
+ * is genuinely worse than one at 15, and the UI is expected to say so.
+ *
+ * Exported so consumers — and this library's own overlays — read the same
+ * numbers instead of re-declaring magic thresholds at each call site.
+ *
+ * @see https://www.sonarsource.com/resources/cognitive-complexity/
  */
-const THRESHOLDS = {
-	low: 30,
-	medium: 50,
-	high: 70,
-	critical: 85
-};
+export const COGNITIVE_COMPLEXITY_BANDS = {
+	/** 0-4: reads in one pass. */
+	medium: 5,
+	/** 5-9: a second read, still local. */
+	high: 10,
+	/** 10-14: approaching the refactor threshold. */
+	critical: 15
+} as const;
 
+/**
+ * Legacy 0-100 display score.
+ *
+ * @deprecated Saturates at Cognitive Complexity 15 — every region from "worth a
+ * look" to "unmaintainable" reports exactly 100, and only 16 values are
+ * attainable at all. Read {@link ComplexityRegion.cognitiveComplexity} instead,
+ * which is unbounded and defensible. Retained so existing consumers keep
+ * compiling; this library's own UI no longer displays it.
+ */
 const COGNITIVE_SCORE_MULTIPLIER = 7;
 
 type SupportedComplexityLanguage = 'javascript' | 'typescript' | 'python' | 'go';
@@ -147,12 +191,15 @@ export class ComplexityAnalyzer {
 			0
 		);
 
+		const maxCognitiveComplexity = this.calculateMaxCognitive(analyzedRegions);
+
 		const metrics: ComplexityMetrics = {
 			overall,
-			level: this.getLevel(overall),
+			level: getComplexityLevel(maxCognitiveComplexity),
 			regions: analyzedRegions,
 			hotspots,
-			totalCognitiveComplexity
+			totalCognitiveComplexity,
+			maxCognitiveComplexity
 		};
 
 		this.cacheKey = key;
@@ -597,11 +644,12 @@ export class ComplexityAnalyzer {
 			0
 		);
 		const score = this.calculateScore(cognitiveComplexity);
-		const suggestion = this.getSuggestion(factors, score);
+		const suggestion = this.getSuggestion(factors, cognitiveComplexity);
 
 		return {
 			...region,
 			score,
+			level: getComplexityLevel(cognitiveComplexity),
 			factors,
 			suggestion,
 			cognitiveComplexity,
@@ -856,7 +904,7 @@ export class ComplexityAnalyzer {
 					continue;
 				}
 
-				if (!isGo && token.text === '?') {
+				if (!isGo && token.text === '?' && this.isRealTernary(tokens, i)) {
 					this.addContribution(
 						contributions,
 						lineIndex,
@@ -1095,6 +1143,45 @@ export class ComplexityAnalyzer {
 		);
 	}
 
+	/**
+	 * Nearest token in `step` direction that is not pure whitespace.
+	 */
+	private significantNeighbor(tokens: Token[], index: number, step: 1 | -1): Token | undefined {
+		for (let i = index + step; i >= 0 && i < tokens.length; i += step) {
+			if (tokens[i].text.trim() !== '') return tokens[i];
+		}
+		return undefined;
+	}
+
+	/**
+	 * Is the `?` at `index` a real conditional (ternary) operator?
+	 *
+	 * The tokenizer emits `?` as a standalone operator token, so three constructs
+	 * that introduce NO branch also produce a bare `?` and must not be counted:
+	 *
+	 *   optional chaining        `a?.b`       -> `?` followed by `.`
+	 *   nullish coalescing       `a ?? b`     -> two adjacent `?` tokens
+	 *   TS optional param/prop   `name?: T`   -> `?` followed by `:`
+	 *
+	 * Counting them did not just add a point each — the phantom also armed the
+	 * `pendingB2` nesting latch, so the next `{` pushed a bogus frame and doubled
+	 * the penalty on every later increment in the region. A five-line function
+	 * with one `if` and two `??` defaults measured Cognitive Complexity 15, the
+	 * exact value at which SonarSource says a function is too complex to keep.
+	 * That is idiomatic modern TypeScript, and TypeScript is this editor's
+	 * default language.
+	 */
+	private isRealTernary(tokens: Token[], index: number): boolean {
+		// Second `?` of a `??` pair.
+		if (this.significantNeighbor(tokens, index, -1)?.text === '?') return false;
+
+		const next = this.significantNeighbor(tokens, index, 1);
+		if (!next) return false;
+
+		// `?.` optional chaining, `??` nullish coalescing, `?:` optional member.
+		return next.text !== '.' && next.text !== '?' && next.text !== ':';
+	}
+
 	private isLabelledJump(tokens: Token[], index: number, isGo: boolean): boolean {
 		const token = tokens[index];
 		if (token.text === 'goto') {
@@ -1176,8 +1263,11 @@ export class ComplexityAnalyzer {
 	/**
 	 * Get suggestion based on factors
 	 */
-	private getSuggestion(factors: ComplexityFactors, score: number): string | undefined {
-		if (score < THRESHOLDS.medium) {
+	private getSuggestion(
+		factors: ComplexityFactors,
+		cognitiveComplexity: number
+	): string | undefined {
+		if (cognitiveComplexity < COGNITIVE_COMPLEXITY_BANDS.medium) {
 			return undefined;
 		}
 
@@ -1197,7 +1287,7 @@ export class ComplexityAnalyzer {
 			return 'Many function calls. Consider if some operations can be combined or simplified.';
 		}
 
-		if (score >= THRESHOLDS.high) {
+		if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) {
 			return 'High cognitive complexity. This code may be difficult to understand and maintain.';
 		}
 
@@ -1211,7 +1301,7 @@ export class ComplexityAnalyzer {
 		const hotspots: number[] = [];
 
 		for (const region of regions) {
-			if (region.score >= THRESHOLDS.high) {
+			if (region.cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) {
 				for (let i = region.startLine; i <= region.endLine; i++) {
 					hotspots.push(i);
 				}
@@ -1241,21 +1331,45 @@ export class ComplexityAnalyzer {
 		const avgScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
 		// Boost score slightly for files with many high-complexity regions
-		const highComplexityCount = regions.filter((r) => r.score >= THRESHOLDS.high).length;
+		const highComplexityCount = regions.filter(
+			(r) => r.cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high
+		).length;
 		const boost = Math.min(10, highComplexityCount * 2);
 
 		return Math.min(100, Math.round(avgScore + boost));
 	}
 
 	/**
-	 * Get complexity level from score
+	 * The file's headline Cognitive Complexity: the hottest single region.
+	 *
+	 * Deliberately a MAX, not a mean. The legacy {@link ComplexityMetrics.overall}
+	 * averages region scores weighted by region length, which means appending
+	 * trivially simple functions drags the file's number down without touching a
+	 * line of the complex code — measured 100/"critical" -> 25/"low" from padding
+	 * alone, with the hot function and the total Cognitive Complexity unchanged.
+	 * A number you can improve by writing more code is not a number worth showing.
 	 */
-	private getLevel(score: number): ComplexityMetrics['level'] {
-		if (score >= THRESHOLDS.critical) return 'critical';
-		if (score >= THRESHOLDS.high) return 'high';
-		if (score >= THRESHOLDS.medium) return 'medium';
-		return 'low';
+	private calculateMaxCognitive(regions: ComplexityRegion[]): number {
+		let max = 0;
+		for (const region of regions) {
+			if (region.cognitiveComplexity > max) max = region.cognitiveComplexity;
+		}
+		return max;
 	}
+}
+
+/**
+ * Band for a raw Cognitive Complexity value.
+ *
+ * `critical` starts at SonarSource's published refactor threshold of 15; it is
+ * open-ended by design, so callers should show the underlying number alongside
+ * the band rather than treating the band as the whole story.
+ */
+export function getComplexityLevel(cognitiveComplexity: number): ComplexityMetrics['level'] {
+	if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.critical) return 'critical';
+	if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) return 'high';
+	if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.medium) return 'medium';
+	return 'low';
 }
 
 /**

@@ -560,11 +560,13 @@ describe('ComplexityAnalyzer', () => {
 				level: 'low' as const,
 				hotspots: [],
 				totalCognitiveComplexity: 0,
+				maxCognitiveComplexity: 0,
 				regions: [
 					{
 						startLine: 0,
 						endLine: 20,
 						score: 90,
+						level: 'low' as const,
 						type: 'function' as const,
 						factors,
 						cognitiveComplexity: 0,
@@ -574,6 +576,7 @@ describe('ComplexityAnalyzer', () => {
 						startLine: 5,
 						endLine: 8,
 						score: 40,
+						level: 'low' as const,
 						type: 'block' as const,
 						factors,
 						cognitiveComplexity: 0,
@@ -1944,6 +1947,85 @@ export class ComplexityAnalyzer {
 
 			// Should detect branching (if/else, if, for)
 			expect(funcRegions[0].factors.branchingFactor).toBeGreaterThanOrEqual(2);
+		});
+	});
+	describe('non-branching `?` tokens (regression)', () => {
+		// The tokenizer emits `?` as a standalone operator, so optional chaining,
+		// nullish coalescing and TS optional members each used to fire a ternary
+		// increment AND arm the nesting latch. A five-line function with one `if`
+		// and two `??` defaults measured Cognitive Complexity 15 — SonarSource's
+		// "too complex to keep" threshold — of which 14 points were noise.
+		const cc = (code: string) =>
+			analyzer.analyze(makeLines(code), 'typescript').regions[0]?.cognitiveComplexity ?? 0;
+
+		it('does not count optional chaining as a branch', () => {
+			expect(cc('function f(a: any) {\n  const v = a?.b;\n  return v;\n}')).toBe(0);
+		});
+
+		it('does not count nullish coalescing as a branch', () => {
+			expect(cc('function f(a: any) {\n  const v = a ?? 0;\n  return v;\n}')).toBe(0);
+		});
+
+		it('does not count TypeScript optional parameters as branches', () => {
+			expect(cc('function f(a?: string, b?: number) {\n  return a;\n}')).toBe(0);
+		});
+
+		it('does not count optional call or index access as branches', () => {
+			expect(cc('function f(a: any) {\n  return a?.[0] ?? a?.();\n}')).toBe(0);
+		});
+
+		it('still counts a real ternary', () => {
+			expect(cc('function f(a: number) {\n  return a > 1 ? 1 : 2;\n}')).toBe(1);
+		});
+
+		it('counts only the real branch when both forms appear together', () => {
+			expect(
+				cc(
+					'function f(cfg: any, user?: any) {\n' +
+						"  const name = user?.name ?? 'anon';\n" +
+						"  const tier = cfg?.tier ?? 'free';\n" +
+						"  if (tier === 'pro') return name;\n" +
+						"  return 'x';\n" +
+						'}'
+				)
+			).toBe(1);
+		});
+	});
+
+	describe('levels derive from raw Cognitive Complexity', () => {
+		const flat = (n: number) =>
+			`function f(x: number) {\n${Array.from({ length: n }, (_, i) => `  if (x === ${i}) return ${i};`).join('\n')}\n  return -1;\n}`;
+
+		it('bands at the published thresholds (5 / 10 / 15)', () => {
+			const level = (n: number) => analyzer.analyze(makeLines(flat(n)), 'typescript').level;
+			expect(level(1)).toBe('low');
+			expect(level(5)).toBe('medium');
+			expect(level(10)).toBe('high');
+			expect(level(15)).toBe('critical');
+		});
+
+		it('reports the hottest region unbounded, where the legacy score saturates', () => {
+			const m = analyzer.analyze(makeLines(flat(120)), 'typescript');
+			expect(m.maxCognitiveComplexity).toBe(120);
+			// The deprecated score cannot tell 15 from 120 — this is why it is not shown.
+			expect(m.regions[0].score).toBe(100);
+			expect(analyzer.analyze(makeLines(flat(15)), 'typescript').regions[0].score).toBe(100);
+		});
+
+		it('is not diluted by appending simple functions', () => {
+			const hot = flat(15);
+			const padded = [
+				hot,
+				...Array.from({ length: 20 }, (_, i) => `function n${i}() {\n  return ${i};\n}`)
+			].join('\n\n');
+
+			const alone = analyzer.analyze(makeLines(hot), 'typescript');
+			const withPadding = analyzer.analyze(makeLines(padded), 'typescript');
+
+			expect(withPadding.maxCognitiveComplexity).toBe(alone.maxCognitiveComplexity);
+			expect(withPadding.level).toBe('critical');
+			// The deprecated mean is what used to collapse to 'low' here.
+			expect(withPadding.overall).toBeLessThan(alone.overall);
 		});
 	});
 });
