@@ -2110,4 +2110,65 @@ export class ComplexityAnalyzer {
 			).toBeGreaterThanOrEqual(2);
 		});
 	});
+	describe('nesting and sequence bookkeeping (differential regressions)', () => {
+		// Found by an independent acorn-AST implementation of the SonarSource rules,
+		// run differentially over this repo's own source: 131 of 1742 functions
+		// disagreed before these fixes.
+		const cc = (code: string) =>
+			analyzer.analyze(makeLines(code), 'typescript').regions[0]?.cognitiveComplexity ?? 0;
+
+		it('counts nesting for BRACELESS bodies', () => {
+			// The central rule of the metric. The nesting stack only pushed on `{`, so
+			// every increment here reported nesting 0 and the total was 3, not 6.
+			expect(
+				cc('function f(a: any, b: any, c: any) {\n  if (a) if (b) if (c) return 1;\n  return 0;\n}')
+			).toBe(6);
+			expect(
+				cc('function f(xs: any[]) {\n  for (const x of xs) if (x > 0) return x;\n  return 0;\n}')
+			).toBe(3);
+		});
+
+		it('scores a braced body the same as the equivalent braceless one', () => {
+			const braceless =
+				'function f(xs: any[]) {\n  for (const x of xs) if (x > 0) return x;\n  return 0;\n}';
+			const braced =
+				'function f(xs: any[]) {\n  for (const x of xs) {\n    if (x > 0) {\n      return x;\n    }\n  }\n  return 0;\n}';
+			expect(cc(braced)).toBe(cc(braceless));
+		});
+
+		it('treats parenthesised ternaries as siblings, not a chain', () => {
+			expect(
+				cc(
+					'function f(a: any, b: any, c: any) {\n  return (a ? 1 : 2) && (b ? 3 : 4) && (c ? 5 : 6);\n}'
+				)
+			).toBe(4);
+			// while a genuine chain still nests
+			expect(cc("function f(n: number) {\n  return n > 90 ? 'A' : n > 80 ? 'B' : 'C';\n}")).toBe(3);
+		});
+
+		it('does not let a ternary colon split a boolean sequence', () => {
+			expect(cc('function f(a: any) {\n  if (a.x && a.y && a.z) return 1;\n  return 0;\n}')).toBe(
+				2
+			);
+		});
+
+		it('requires a self receiver for recursion', () => {
+			expect(cc('function save(x: any) {\n  return db.save(x);\n}')).toBe(0);
+			expect(
+				cc('class A {\n  clear() {\n    this.contexts.clear();\n    this.manager.clear();\n  }\n}')
+			).toBe(0);
+			expect(cc('class A {\n  save(x: any) {\n    return this.save(x);\n  }\n}')).toBe(1);
+			expect(
+				cc(
+					'function fact(n: number): number {\n  if (n <= 1) return 1;\n  return n * fact(n - 1);\n}'
+				)
+			).toBeGreaterThanOrEqual(2);
+		});
+
+		it('reproduces the shipped hero and demo samples exactly', () => {
+			const hero =
+				"export function triageLoad(s: any[], q: number): string {\n  let score = 0;\n  for (const signal of s) {\n    if (signal.kind === 'error') {\n      if (signal.count > 3 && q > 20) {\n        if (signal.owner) score += signal.count * 6;\n        else if (q > 80) score += 24;\n        else score += 12;\n      } else {\n        score += 3;\n      }\n    } else if (signal.count > 5) {\n      score += 10;\n    }\n  }\n  return score > 80 ? 'critical' : 'clear';\n}";
+			expect(cc(hero)).toBe(16);
+		});
+	});
 });

@@ -805,11 +805,31 @@ export class ComplexityAnalyzer {
 		 * so a Prettier-wrapped chain scores the same as a one-line one.
 		 */
 		let ternaryDepth = 0;
+		/**
+		 * Nesting contributed by BRACELESS bodies.
+		 *
+		 * `nestingStack` only pushes when a `{` consumes the pending latch, so
+		 * `if (a) if (b) if (c)` scored 3 where SonarSource says 6 — every
+		 * contribution reported `nesting 0`. Nesting is the central rule of the
+		 * metric, and a brace is not part of it. A construct that arms the latch
+		 * raises this depth immediately; a `{` that consumes the latch moves the
+		 * nesting onto `nestingStack` and resets this, and a statement end clears it.
+		 */
+		let bracelessDepth = 0;
+		/** Paren depth, so a `;` inside `for (;;)` is not a statement end. */
+		let parenDepth = 0;
+		const effectiveNesting = () => nestingStack.length + bracelessDepth;
 		// Tokens that can only sit between two INDEPENDENT ternaries, never between
 		// the two halves of a chain — so seeing one ends the chain.
 		const TERNARY_RESET = new Set([
 			';',
 			',',
+			// `)`, `&&` and `||` close off a ternary: `(a?1:2) && (b?3:4)` is two
+			// SIBLINGS, not a chain. Omitting them let ternaryDepth climb across
+			// independent ternaries and scored that expression 8 against a truth of 4.
+			')',
+			'&&',
+			'||',
 			'{',
 			'}',
 			'return',
@@ -832,13 +852,30 @@ export class ComplexityAnalyzer {
 			const boolContributions = this.getBooleanSequenceContributions(
 				tokens,
 				lineIndex,
-				nestingStack.length,
+				effectiveNesting(),
 				booleanState
 			);
 			contributions.push(...boolContributions);
 
 			for (let i = 0; i < tokens.length; i++) {
 				const token = tokens[i];
+
+				if (token.text === '(') parenDepth++;
+				else if (token.text === ')') parenDepth = Math.max(0, parenDepth - 1);
+
+				// Statement end: nothing braceless survives it. The parenDepth guard keeps
+				// `for (a; b; c)` intact in brace languages; the loop-kind guard does the
+				// same for Go, whose `for i := 0; i < n; i++` header has no parentheses at
+				// all, so its separators would otherwise disarm the loop before its brace.
+				if (
+					token.text === ';' &&
+					parenDepth === 0 &&
+					pendingB2?.kind !== 'for' &&
+					pendingB2?.kind !== 'while'
+				) {
+					bracelessDepth = 0;
+					pendingB2 = undefined;
+				}
 
 				if (TERNARY_RESET.has(token.text)) ternaryDepth = 0;
 
@@ -856,8 +893,12 @@ export class ComplexityAnalyzer {
 				if (token.type === 'punctuation.brace' && token.text === '{') {
 					braceDepth++;
 					if (pendingB2) {
+						// The brace takes ownership of the nesting the latch was holding,
+						// so it moves from bracelessDepth onto the stack rather than being
+						// counted twice.
 						nestingStack.push({ depth: braceDepth, kind: pendingB2.kind });
 						pendingB2 = undefined;
+						bracelessDepth = Math.max(0, bracelessDepth - 1);
 					}
 					continue;
 				}
@@ -865,12 +906,14 @@ export class ComplexityAnalyzer {
 				if (token.text === 'else') {
 					const next = this.nextNonTextToken(tokens, i + 1);
 					if (next?.text === 'if') {
-						this.addContribution(contributions, lineIndex, 'else if', 1, nestingStack.length);
+						this.addContribution(contributions, lineIndex, 'else if', 1, effectiveNesting());
 						pendingB2 = { kind: 'else if', line: lineIndex };
+						bracelessDepth++;
 						skipIfAfterElse = true;
 					} else {
-						this.addContribution(contributions, lineIndex, 'else', 1, nestingStack.length);
+						this.addContribution(contributions, lineIndex, 'else', 1, effectiveNesting());
 						pendingB2 = { kind: 'else', line: lineIndex };
+						bracelessDepth++;
 					}
 					continue;
 				}
@@ -884,10 +927,11 @@ export class ComplexityAnalyzer {
 						contributions,
 						lineIndex,
 						'if',
-						1 + nestingStack.length,
-						nestingStack.length
+						1 + effectiveNesting(),
+						effectiveNesting()
 					);
 					pendingB2 = { kind: 'if', line: lineIndex };
+					bracelessDepth++;
 					continue;
 				}
 
@@ -896,10 +940,11 @@ export class ComplexityAnalyzer {
 						contributions,
 						lineIndex,
 						'for',
-						1 + nestingStack.length,
-						nestingStack.length
+						1 + effectiveNesting(),
+						effectiveNesting()
 					);
 					pendingB2 = { kind: 'for', line: lineIndex };
+					bracelessDepth++;
 					continue;
 				}
 
@@ -908,10 +953,11 @@ export class ComplexityAnalyzer {
 						contributions,
 						lineIndex,
 						'while',
-						1 + nestingStack.length,
-						nestingStack.length
+						1 + effectiveNesting(),
+						effectiveNesting()
 					);
 					pendingB2 = { kind: 'while', line: lineIndex };
+					bracelessDepth++;
 					doWhileDepths.push(braceDepth);
 					continue;
 				}
@@ -928,10 +974,11 @@ export class ComplexityAnalyzer {
 						contributions,
 						lineIndex,
 						'while',
-						1 + nestingStack.length,
-						nestingStack.length
+						1 + effectiveNesting(),
+						effectiveNesting()
 					);
 					pendingB2 = { kind: 'while', line: lineIndex };
+					bracelessDepth++;
 					continue;
 				}
 
@@ -943,10 +990,11 @@ export class ComplexityAnalyzer {
 						contributions,
 						lineIndex,
 						'switch',
-						1 + nestingStack.length,
-						nestingStack.length
+						1 + effectiveNesting(),
+						effectiveNesting()
 					);
 					pendingB2 = { kind: 'switch', line: lineIndex };
+					bracelessDepth++;
 					continue;
 				}
 
@@ -955,10 +1003,11 @@ export class ComplexityAnalyzer {
 						contributions,
 						lineIndex,
 						'catch',
-						1 + nestingStack.length,
-						nestingStack.length
+						1 + effectiveNesting(),
+						effectiveNesting()
 					);
 					pendingB2 = { kind: 'catch', line: lineIndex };
+					bracelessDepth++;
 					continue;
 				}
 
@@ -966,7 +1015,7 @@ export class ComplexityAnalyzer {
 					const isTernary = this.isRealTernary(rawTokens, questionOrdinal);
 					questionOrdinal++;
 					if (!isTernary) continue;
-					const ternaryNesting = nestingStack.length + ternaryDepth;
+					const ternaryNesting = effectiveNesting() + ternaryDepth;
 					ternaryDepth++;
 					this.addContribution(
 						contributions,
@@ -975,23 +1024,27 @@ export class ComplexityAnalyzer {
 						1 + ternaryNesting,
 						ternaryNesting
 					);
+					// NOT bracelessDepth: a ternary's nesting is tracked by ternaryDepth,
+					// which distinguishes a chain (`a?x:b?y:z`, nested) from siblings
+					// (`(a?1:2) && (b?3:4)`, not). Incrementing both double-counted.
 					pendingB2 = { kind: 'ternary', line: lineIndex };
 					continue;
 				}
 
 				if (this.isLabelledJump(tokens, i, isGo)) {
-					this.addContribution(contributions, lineIndex, 'labelled-jump', 1, nestingStack.length);
+					this.addContribution(contributions, lineIndex, 'labelled-jump', 1, effectiveNesting());
 					continue;
 				}
 
 				if (this.isDirectRecursiveCall(tokens, i, lineIndex, region)) {
-					this.addContribution(contributions, lineIndex, 'recursion', 1, nestingStack.length);
+					this.addContribution(contributions, lineIndex, 'recursion', 1, effectiveNesting());
 					continue;
 				}
 
 				if (this.isNestedFunctionToken(tokens, i, lineIndex, region, language)) {
 					this.addContribution(contributions, lineIndex, 'nested-function', 0, nestingStack.length);
 					pendingB2 = { kind: 'nested-function', line: lineIndex };
+					bracelessDepth++;
 				}
 			}
 		}
@@ -1190,7 +1243,10 @@ export class ComplexityAnalyzer {
 				parenDepth = Math.max(0, parenDepth - 1);
 				continue;
 			}
-			if (token.text === ';' || token.text === '{' || token.text === '}' || token.text === ':') {
+			// `,` ends a sequence; `:` does NOT. A ternary's colon sits in the middle of
+			// an expression, and clearing on it split `(a?1:2) && (b?3:4)` into two runs
+			// so the single `&&` chain was charged twice.
+			if (token.text === ';' || token.text === ',' || token.text === '{' || token.text === '}') {
 				lastByParenDepth.clear();
 				continue;
 			}
@@ -1335,6 +1391,16 @@ export class ComplexityAnalyzer {
 		const previous = tokens[index - 1]?.text;
 		if (previous === 'function' || previous === 'func' || previous === 'def') {
 			return false;
+		}
+
+		// A member call is not recursion unless the receiver is the instance itself.
+		// `db.save(x)` inside `save()` — and `this.contexts.clear()` inside `clear()`
+		// — matched the region name and took a false +1 each, so every delegating
+		// wrapper in a service layer reported recursion. The tooltip printed the
+		// claim against a specific line, which is worse than a wrong total.
+		if (previous === '.') {
+			const receiver = tokens[index - 2]?.text;
+			if (receiver !== 'this' && receiver !== 'self') return false;
 		}
 		if (
 			line === region.startLine &&

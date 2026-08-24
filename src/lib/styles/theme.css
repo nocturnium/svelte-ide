@@ -109,7 +109,8 @@
 	   bands, below display banding. Lifting is the only direction with headroom.
 	   Alphas are capped so the worst-case token (comments) stays above 4.5:1: at
 	   the critical band the region reads 1.20:1 against unmarked code while
-	   comments hold 4.68:1. That is the budget — do not raise them. */
+	   comments hold 5.13:1. Composite alpha when re-measuring — treating a
+	   translucent token as solid overstates the headroom badly. */
 	--ide-complexity-veil: 122, 152, 205;
 
 	/* AI Panel Colors */
