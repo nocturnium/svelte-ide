@@ -631,6 +631,22 @@ export class ComplexityAnalyzer {
 					return undefined;
 				}
 			}
+			// The method-style branch (`name(params) {`) also matches a CALL whose
+			// argument happens to be a function — `xs.map(function (x) {` captured
+			// `map` and produced a phantom region named after the method, which then
+			// became regions[0] and shadowed the real enclosing function in every
+			// headline that reads the first region. Two signals rule it out: a name
+			// reached through `.` is a call, not a declaration; and a parameter list
+			// that itself contains `function` or `=>` is an argument list.
+			if (funcMatch[4] && !funcMatch[2] && !funcMatch[3] && !funcMatch[5]) {
+				const at = funcMatch.index ?? text.indexOf(funcMatch[4]);
+				const before = text.slice(0, at).trimEnd();
+				const params = text.slice(at + funcMatch[4].length);
+				if (before.endsWith('.') || /\bfunction\b|=>/.test(params)) {
+					return undefined;
+				}
+			}
+
 			return {
 				type: funcMatch[5] ? 'class' : 'function',
 				name: funcMatch[2] || funcMatch[3] || funcMatch[4] || funcMatch[5]
