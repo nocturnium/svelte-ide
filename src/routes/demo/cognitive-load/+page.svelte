@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
-	 * Cognitive Load & Ghost Pair Demo
+	 * Cognitive complexity & ghost pair demo
 	 *
 	 * Demonstrates cognitive load and AI presence features:
-	 * - Cognitive Load Meter: Real-time code complexity visualization
+	 * - Cognitive complexity meter: the metric, measured live
 	 * - Ghost Pair: AI cursor and focus visualization
 	 */
 
@@ -369,11 +369,11 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 <DemoPage
 	eyebrow="Intelligence"
-	title="Cognitive Load"
+	title="Cognitive complexity"
 	description="SonarSource Cognitive Complexity, measured live, plus AI presence."
-	docTitle="Cognitive Load & Ghost Pair"
+	docTitle="Cognitive complexity & ghost pair"
 >
-	<!-- Cognitive Load Meter Demo -->
+	<!-- Cognitive complexity meter -->
 	<section class="component-section">
 		<h2>The meter</h2>
 		<p class="section-desc">
@@ -396,7 +396,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					: 'No complex region to jump to'}
 			>
 				<span class="meter-label">Current file</span>
-				<CognitiveLoadMeter metrics={complexityMetrics} showDetails={true} />
+				<CognitiveLoadMeter metrics={complexityMetrics} showDetails={true} size="showcase" />
 				<span class="meter-hotspot">
 					{#if hottestRegion}
 						in <strong>{hottestRegion.name || hottestRegion.type}</strong> · jump to it
@@ -456,7 +456,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	<!-- Ghost Pair Demo -->
 	<section class="component-section">
-		<h2>Ghost Pair — AI presence</h2>
+		<h2>Ghost pair — AI presence</h2>
 		<p class="section-desc">
 			Visualize AI agents working alongside you. A ghost cursor, a focus-region glow, and an
 			activity label show where an agent is looking and what it's focused on.
@@ -489,7 +489,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	<!-- Combined Editor Demo -->
 	<section class="component-section">
-		<h2>Live Demo</h2>
+		<h2>Live demo</h2>
 		<p class="section-desc">
 			Edit the code below to see complexity analysis update in real-time. The AI cursor shows where
 			Claude is "looking".
@@ -538,9 +538,9 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	<!-- Feature Highlights -->
 	<section class="component-section">
-		<h2>Feature Highlights</h2>
+		<h2>What it does</h2>
 		<div class="features-grid">
-			<div class="feature-card" style="--feature-accent: var(--ide-complexity-critical)">
+			<div class="feature-card">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -558,13 +558,13 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 						/>
 					</svg>
 				</div>
-				<h3>Cognitive Complexity</h3>
+				<h3>Cognitive complexity</h3>
 				<p>
 					Real-time analysis of code complexity based on nesting, branching, and function calls.
 				</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--ide-ai-assistant)">
+			<div class="feature-card">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -586,7 +586,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				<p>See where AI agents are looking with ghost cursors and focus region highlights.</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--ide-complexity-medium)">
+			<div class="feature-card">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -609,7 +609,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				</p>
 			</div>
 
-			<div class="feature-card" style="--feature-accent: var(--ide-complexity-high)">
+			<div class="feature-card">
 				<div class="feature-icon">
 					<svg
 						width="24"
@@ -664,10 +664,15 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	/* Meter Showcase */
+	/* One plane, one hierarchy. The supporting counts used to sit in their own
+	   --ide-bg-tertiary card — a surface twice as bright as the strip around it —
+	   so a line count rendered larger and lighter than the headline it supports,
+	   and the eye landed on 117 before it found 113. */
 	.meter-showcase {
 		display: flex;
 		align-items: center;
-		gap: 2rem;
+		flex-wrap: wrap;
+		gap: 1.25rem 2.5rem;
 		padding: 1.5rem;
 		background: var(--ide-bg-secondary);
 		border-radius: 12px;
@@ -689,7 +694,9 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	.meter-label {
 		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		/* --ide-text-muted is a 60%-alpha token; on these surfaces it measured
+		   2.47:1 on the stat card and 3.93:1 here. Secondary is 10.2:1. */
+		color: var(--ide-text-secondary);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
@@ -713,30 +720,31 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	.meter-hotspot {
-		font-size: 0.75rem;
-		color: var(--ide-text-muted);
+		font-size: 0.8125rem;
+		color: var(--ide-text-secondary);
 		transition: color 0.15s ease;
 	}
 
+	/* Same plane as the meter, no card, no elevation — these are footnotes. */
 	.metrics-summary {
 		display: flex;
 		gap: 1.5rem;
-		padding: 0.875rem 1.25rem;
-		background: var(--ide-bg-tertiary);
-		border: 1px solid var(--ide-border);
-		border-radius: 8px;
+		margin: 0;
+		padding: 0;
+		border-left: 1px solid var(--ide-border);
+		padding-left: 1.5rem;
 	}
 
 	.metric {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 0.25rem;
+		align-items: flex-start;
+		gap: 0.125rem;
 	}
 
 	.metric-value {
 		margin: 0;
-		font-size: 1.125rem;
+		font-size: 0.9375rem;
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
 		color: var(--ide-text-secondary);
@@ -749,13 +757,14 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		margin-left: 4px;
 		font-size: 0.8125rem;
 		font-weight: 400;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
+		opacity: 0.8;
 	}
 
 	.metric-label {
-		font-size: 0.8125rem;
-		color: var(--ide-text-muted);
-		text-align: center;
+		font-size: 0.75rem;
+		color: var(--ide-text-secondary);
+		opacity: 0.85;
 	}
 
 	/* Paste Panel */
@@ -994,6 +1003,10 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	/* Feature cards are descriptive content, not links/buttons — keep the hover
 	   subtle (border tint only). The translateY lift + box-shadow read as a press
 	   affordance and promise an action these <div>s don't have. */
+	/* No per-card accent. The complexity ramp is ORDINAL — cyan to terracotta means
+	   increasing severity, which is the entire argument for it existing — and
+	   spending it as decorative variety across four cards with no severity
+	   relationship is the same category error as the --ide-error it replaced. */
 	.feature-card {
 		--feature-accent: var(--ide-interactive);
 		padding: 1.25rem;

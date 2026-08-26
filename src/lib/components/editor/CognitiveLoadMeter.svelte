@@ -17,11 +17,17 @@
 		metrics: ComplexityMetrics | null;
 		/** Whether to show detailed tooltip on hover */
 		showDetails?: boolean;
+		/**
+		 * `inline` (default) suits the status bar. `showcase` scales the readout up
+		 * for a page where this IS the headline — the demo previously rendered the
+		 * number smaller and dimmer than the line count beside it.
+		 */
+		size?: 'inline' | 'showcase';
 		/** Callback when clicked */
 		onclick?: () => void;
 	}
 
-	let { metrics, showDetails = true, onclick }: Props = $props();
+	let { metrics, showDetails = true, size = 'inline', onclick }: Props = $props();
 
 	let showTooltip = $state(false);
 
@@ -88,7 +94,7 @@
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
-	class="cognitive-meter"
+	class="cognitive-meter cognitive-meter--{size}"
 	role={onclick ? 'button' : 'meter'}
 	aria-valuenow={cognitiveComplexity}
 	aria-valuemin={0}
@@ -160,7 +166,14 @@
 								<span class="cognitive-meter__tooltip-region-name">
 									{region.name || `${region.type} at line ${region.startLine + 1}`}
 								</span>
-								<span class="cognitive-meter__tooltip-region-score">
+								<span
+									class="cognitive-meter__tooltip-region-score"
+									style="--region-color: {region.level === 'critical'
+										? 'var(--ide-complexity-critical)'
+										: region.level === 'high'
+											? 'var(--ide-complexity-high)'
+											: 'var(--ide-complexity-medium)'}"
+								>
 									{region.cognitiveComplexity}
 								</span>
 							</li>
@@ -297,6 +310,31 @@
 		text-align: right;
 	}
 
+	.cognitive-meter--showcase {
+		gap: 0.625rem;
+	}
+
+	.cognitive-meter--showcase .cognitive-meter__value {
+		font-size: 2.75rem;
+		font-weight: 700;
+		line-height: 1;
+		min-width: 0;
+	}
+
+	.cognitive-meter--showcase .cognitive-meter__unit {
+		font-size: 0.28em;
+	}
+
+	.cognitive-meter--showcase .cognitive-meter__gauge {
+		width: 88px;
+		height: 8px;
+	}
+
+	.cognitive-meter--showcase .cognitive-meter__icon svg {
+		width: 20px;
+		height: 20px;
+	}
+
 	/* Tooltip */
 	.cognitive-meter__tooltip {
 		position: absolute;
@@ -396,8 +434,12 @@
 		max-width: 200px;
 	}
 
+	/* Band-coloured per region, not a flat --ide-warning. Every region in the
+	   breakdown rendered the same amber regardless of band, in the most detailed
+	   readout this feature owns, contradicting the legend and chips beside it —
+	   and --ide-warning is also a syntax-token colour in the editor below. */
 	.cognitive-meter__tooltip-region-score {
-		color: var(--ide-warning, #facc15);
+		color: var(--region-color, var(--ide-complexity-medium));
 		font-weight: 600;
 		font-variant-numeric: tabular-nums;
 	}

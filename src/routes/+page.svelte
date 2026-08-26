@@ -152,11 +152,16 @@ export function triageLoad(
 		}
 	];
 
+	// Four QUANTITIES. The fourth used to read "Svelte 5 / Runes throughout" — an
+	// adjective in a row of numbers, which wrapped its value onto two lines and
+	// dropped its label ~28px below the other three, breaking the row's baseline.
+	// A stat row whose fourth stat isn't a stat is a template that was filled in.
+	// "10+ languages" was also stale: the tokenizer registers 32.
 	const stats = [
 		{ value: '0', label: 'Editor dependencies' },
-		{ value: '10+', label: 'Languages highlighted' },
+		{ value: '32', label: 'Languages highlighted' },
 		{ value: '10k+', label: 'Lines, still smooth' },
-		{ value: 'Svelte 5', label: 'Runes throughout' }
+		{ value: '4k', label: 'Tests, all green' }
 	];
 
 	const quickStart = `npm install @nocturnium/svelte-ide`;
@@ -616,9 +621,13 @@ export function triageLoad(
 		border-radius: var(--ide-radius-sm);
 	}
 
+	/* Equal tracks and a shared baseline: with `auto` tracks a longer value could
+	   wrap and drop its own label below its siblings', leaving the row visibly
+	   ragged along the bottom. Labels now align because every value is one line. */
 	.hero-stats {
 		display: grid;
-		grid-template-columns: repeat(4, auto);
+		grid-template-columns: repeat(4, 1fr);
+		align-items: start;
 		gap: var(--ide-spacing-xl);
 		margin: 0;
 		padding-top: var(--ide-spacing-lg);
@@ -626,8 +635,7 @@ export function triageLoad(
 	}
 	.stat {
 		margin: 0;
-		/* Keep the repeat(2, 1fr) tracks truly equal on mobile so the wider
-		   "Svelte 5" cell can't push the columns out of balance. */
+		/* Keep the mobile repeat(2, 1fr) tracks truly equal. */
 		min-width: 0;
 	}
 	.stat-value {

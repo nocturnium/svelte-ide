@@ -33,7 +33,7 @@
 			items: [
 				{ href: '/demo/editor-intelligence', label: 'Editor Intelligence', icon: '◈' },
 				{ href: '/demo/semantic-features', label: 'Semantic', icon: '◇' },
-				{ href: '/demo/cognitive-load', label: 'Cognitive Load', icon: '◐' },
+				{ href: '/demo/cognitive-load', label: 'Cognitive complexity', icon: '◐' },
 				{ href: '/demo/debugging', label: 'Debugging', icon: '◎' },
 				{ href: '/demo/devx-features', label: 'DevX', icon: '♦' }
 			]

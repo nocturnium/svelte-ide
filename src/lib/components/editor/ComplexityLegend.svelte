@@ -56,7 +56,7 @@
 					<span
 						class="complexity-legend__mark"
 						class:complexity-legend__mark--hollow={band.hollow}
-						style="background: {band.color}; width: {band.width}px;"
+						style="background: {band.color}; width: {6 + band.width * 2}px;"
 					></span>
 				</span>
 				<span class="complexity-legend__label">{band.label}</span>
@@ -119,29 +119,35 @@
 		white-space: nowrap;
 	}
 
-	/* Fixed-width slot so all four labels start on the same x, regardless of how
-	   thick their mark is. */
+	/* Fixed-width slot so all four labels start on the same x whatever their mark
+	   measures. */
 	.complexity-legend__slot {
 		display: inline-flex;
-		justify-content: center;
-		width: 5px;
+		align-items: center;
+		justify-content: flex-start;
+		width: 18px;
 		flex: none;
 	}
 
-	/* The key IS the mark: same colour and same thickness the overlay draws, so
-	   band severity is legible from width alone if colour is unavailable. */
+	/* The mark encodes the band by SIZE as well as colour (WCAG 1.4.1), but it is
+	   laid on its side. A 2px x 14px vertical bar is parsed as a delimiter at any
+	   gap — the earlier form rendered as `Simple 0-4 | Moderate 5-9 |` and read as
+	   pipe-separated text. Horizontal pills cannot be mistaken for punctuation,
+	   and width still carries the ordinal. */
 	.complexity-legend__mark {
 		display: inline-block;
-		height: 14px;
+		height: 4px;
 		border-radius: 999px;
 		flex: none;
 	}
 
-	/* Simple has no painted mark in the editor, so the key shows the absence
-	   explicitly rather than rendering nothing and leaving one row unaligned. */
+	/* Simple has no painted mark in the editor, so the key states the absence
+	   rather than rendering nothing and leaving one row unaligned. A dash pattern
+	   cannot resolve at this size, so it is an outline instead. */
 	.complexity-legend__mark--hollow {
 		background: transparent !important;
-		border-left: 2px dashed color-mix(in srgb, var(--ide-text-secondary) 55%, transparent);
+		height: 0;
+		border-top: 1px solid color-mix(in srgb, var(--ide-text-secondary) 45%, transparent);
 	}
 
 	.complexity-legend__label {
@@ -164,18 +170,19 @@
 	}
 
 	.complexity-legend--compact {
-		gap: 10px;
+		gap: 6px 16px;
+		font-size: 11.5px;
 	}
 
-	/* Ranges stay visible even when compact: they are what ties the "15 cc" chip on
-	   the code to the band names here. Without them the legend names four moods
-	   and explains nothing. */
-	.complexity-legend--compact .complexity-legend__bands {
-		gap: 10px;
-	}
-
+	/* The compact variant does NOT reopen the delimiter problem: it previously
+	   overrode the gap back to 10px, on the homepage, which is the surface the rule
+	   was written for. It trims the wrapper instead. */
 	.complexity-legend--compact .complexity-legend__band {
-		gap: 4px;
+		gap: 6px;
+	}
+
+	.complexity-legend--compact .complexity-legend__slot {
+		width: 16px;
 	}
 
 	@media (max-width: 560px) {

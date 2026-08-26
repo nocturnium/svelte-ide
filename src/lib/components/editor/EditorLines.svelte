@@ -28,6 +28,11 @@
 		totalHeight: number;
 		lineHeight: number;
 		activeLine: number;
+		/**
+		 * Suppressed in read-only editors by CustomEditor: with no caret to move,
+		 * "the cursor is on line 1" carries no information, and the band was a
+		 * stronger visual signal than the complexity overlay it sat beside.
+		 */
 		highlightActiveLine: boolean;
 		lineNumbers: string; // 'on' | 'off'
 		gutterWidth: number;

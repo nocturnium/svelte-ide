@@ -1224,7 +1224,7 @@
 			totalHeight={totalContentHeight}
 			{lineHeight}
 			activeLine={selection.head.line}
-			highlightActiveLine={mergedPrefs.highlightActiveLine}
+			highlightActiveLine={mergedPrefs.highlightActiveLine && !readonly}
 			lineNumbers={mergedPrefs.lineNumbers}
 			{gutterWidth}
 			tabSize={mergedPrefs.tabSize}
