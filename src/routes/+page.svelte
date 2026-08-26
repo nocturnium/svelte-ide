@@ -10,6 +10,11 @@
 	import BrandMark from '$lib/components/BrandMark.svelte';
 	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
 	import ComplexityLegend from '$lib/components/editor/ComplexityLegend.svelte';
+	import {
+		COGNITIVE_COMPLEXITY_BANDS,
+		getComplexityBandLabel,
+		type ComplexityMetrics
+	} from '$lib/components/editor/core/complexity-analyzer';
 
 	// Live editor showcased in the hero, lazy-mounted and read-only (edits are
 	// discarded so the sample always reads cleanly).
@@ -57,6 +62,12 @@ export function triageLoad(
 	// Lazy-mounted live editor: paint the static <pre> immediately, then swap in the
 	// real CustomEditor once it scrolls near the viewport and the main thread is idle.
 	let heroEditorHost = $state<HTMLDivElement | null>(null);
+	// The hero's overlays are aria-hidden (they are decoration over text that is
+	// already readable), and it mounts no meter — so without this the entire
+	// complexity story was invisible to assistive technology, under an h1 that
+	// promises "See your code's cognitive load".
+	let heroMetrics = $state<ComplexityMetrics | null>(null);
+
 	let HeroEditor = $state<
 		typeof import('$lib/components/editor/CustomEditor.svelte').default | null
 	>(null);
@@ -322,6 +333,7 @@ export function triageLoad(
 								folding
 								multiCursor
 								complexityHighlighting={true}
+								onComplexityChange={(m) => (heroMetrics = m)}
 							/>
 						{:else}
 							<!-- Lightweight syntax-highlighted paint shown until the live
@@ -333,6 +345,18 @@ export function triageLoad(
 					<div class="window-legend">
 						<ComplexityLegend compact />
 					</div>
+					{#if heroMetrics}
+						<!-- Screen-reader equivalent of the chip, spine and region plane, all of
+						     which are aria-hidden decoration over text that is already readable.
+						     Without it the hero's whole complexity story reached assistive tech as
+						     nothing at all. -->
+						<p class="sr-only">
+							This sample's hottest function has a cognitive complexity of
+							{heroMetrics.maxCognitiveComplexity}, in the
+							{getComplexityBandLabel(heroMetrics.level)} band. SonarSource's refactor threshold is
+							{COGNITIVE_COMPLEXITY_BANDS.critical}. Higher is harder to hold in your head.
+						</p>
+					{/if}
 				</div>
 				<div class="hero-editor-glow" aria-hidden="true"></div>
 			</div>
@@ -725,6 +749,19 @@ export function triageLoad(
 		padding: 10px 14px;
 		border-top: 1px solid var(--ide-border, rgba(168, 197, 217, 0.14));
 		background: color-mix(in srgb, var(--ide-bg-secondary, #141d33) 70%, transparent);
+	}
+
+	/* Visually hidden but announced. */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 
 	.hero-editor-glow {

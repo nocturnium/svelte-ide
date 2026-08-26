@@ -428,24 +428,6 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			{/if}
 		</div>
 
-		<div class="paste-panel">
-			<div class="paste-panel__header">
-				<label for="code-language">Language</label>
-				<select id="code-language" bind:value={selectedLanguage}>
-					{#each languageOptions as option (option)}
-						<option value={option}>{option}</option>
-					{/each}
-				</select>
-			</div>
-			<label class="paste-panel__label" for="visitor-code">Paste your code</label>
-			<textarea
-				id="visitor-code"
-				bind:value={content}
-				spellcheck={false}
-				placeholder="Paste JavaScript, TypeScript, Python, or Go here"
-			></textarea>
-		</div>
-
 		<!-- One legend component, shared with the hero, driven by the analyzer's own
 		     exported band constants — so the key cannot drift from what is painted.
 		     The hand-authored swatches this replaces named 0-49/50-69/70-84/85+ on
@@ -458,8 +440,10 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Ghost pair — AI presence</h2>
 		<p class="section-desc">
-			Visualize AI agents working alongside you. A ghost cursor, a focus-region glow, and an
-			activity label show where an agent is looking and what it's focused on.
+			Visualize AI agents working alongside you: a ghost cursor, a focus-region glow, and an
+			activity label showing where an agent is looking. <strong>The agent here is simulated</strong> —
+			a scripted cursor on a timer, not a model. It demonstrates the rendering layer your own agent would
+			drive.
 		</p>
 
 		<div class="ghost-pair-controls">
@@ -489,13 +473,22 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	<!-- Combined Editor Demo -->
 	<section class="component-section">
-		<h2>Live demo</h2>
+		<h2>Try it on your own code</h2>
 		<p class="section-desc">
-			Edit the code below to see complexity analysis update in real-time. The AI cursor shows where
-			Claude is "looking".
+			Edit or paste over the sample — every number above updates as you type. This is the library's
+			own editor, not a textarea: the page that argues for building an editor from scratch should
+			not ask you to type into the browser's default one.
 		</p>
 
 		<div class="extract-controls">
+			<label class="editor-language" for="code-language">
+				Language
+				<select id="code-language" bind:value={selectedLanguage}>
+					{#each languageOptions as option (option)}
+						<option value={option}>{option}</option>
+					{/each}
+				</select>
+			</label>
 			<button class="control-btn extract-btn" onclick={extractSelection}
 				>⟐ Extract to function</button
 			>
@@ -768,67 +761,6 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	/* Paste Panel */
-	.paste-panel {
-		display: grid;
-		gap: 0.75rem;
-		padding: 1rem;
-		margin-bottom: 1.5rem;
-		background: var(--ide-bg-secondary);
-		border: 1px solid var(--ide-border);
-		border-radius: 8px;
-	}
-
-	.paste-panel__header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-	}
-
-	.paste-panel__header label,
-	.paste-panel__label {
-		font-size: 0.75rem;
-		color: var(--ide-text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.paste-panel select,
-	.paste-panel textarea {
-		background: var(--ide-bg-primary);
-		border: 1px solid var(--ide-border);
-		border-radius: 6px;
-		color: var(--ide-text-primary);
-		font: inherit;
-	}
-
-	.paste-panel select {
-		padding: 0.45rem 2rem 0.45rem 0.65rem;
-		color: var(--ide-text-secondary);
-		/* Replace the native OS dropdown chrome with a themed chevron. */
-		appearance: none;
-		-webkit-appearance: none;
-		cursor: pointer;
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' stroke='%23a8c5d9' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-		background-repeat: no-repeat;
-		background-position: right 0.65rem center;
-	}
-
-	.paste-panel textarea {
-		width: 100%;
-		min-height: 150px;
-		padding: 0.75rem;
-		font-family: var(--ide-font-mono);
-		font-size: 0.8125rem;
-		line-height: 1.5;
-		resize: vertical;
-	}
-
-	.paste-panel select:focus-visible,
-	.paste-panel textarea:focus-visible {
-		outline: 2px solid var(--ide-interactive-focus, var(--ide-info));
-		outline-offset: 2px;
-	}
 
 	/* Complexity Legend */
 
@@ -946,6 +878,28 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
 		border: 0;
+	}
+
+	.editor-language {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--ide-text-secondary);
+	}
+
+	.editor-language select {
+		padding: 0.375rem 0.5rem;
+		font-family: inherit;
+		font-size: 0.8125rem;
+		text-transform: none;
+		letter-spacing: normal;
+		color: var(--ide-text-primary);
+		background: var(--ide-bg-secondary);
+		border: 1px solid var(--ide-border);
+		border-radius: 6px;
 	}
 
 	.extract-controls {
