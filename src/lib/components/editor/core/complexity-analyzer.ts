@@ -348,13 +348,35 @@ export class ComplexityAnalyzer {
 			}
 
 			// Process character by character to properly match braces
-			// Skip braces inside strings and comments
+			// Skip braces inside strings, comments and regex literals
 			let inString: string | null = null;
 			let inLineComment = false;
+			let inRegex = false;
+			let inRegexClass = false;
+			// Last non-space character, to tell a regex literal from division.
+			let prevSignificant = '';
 
 			for (let ch = 0; ch < text.length; ch++) {
 				const c = text[ch];
 				const next = text[ch + 1];
+
+				// Inside a regex literal: consume to the closing delimiter. A `{` here
+				// is a quantifier or a literal brace, never a block. Missing this made
+				// `/[{,]\\s*$/` inflate the brace depth so its enclosing function never
+				// closed — one 20-line method in this repo's own YAML tokenizer was
+				// reported as 379 lines at cognitive complexity 127.
+				if (inRegex) {
+					if (c === '\\') {
+						ch++;
+					} else if (inRegexClass) {
+						if (c === ']') inRegexClass = false;
+					} else if (c === '[') {
+						inRegexClass = true;
+					} else if (c === '/') {
+						inRegex = false;
+					}
+					continue;
+				}
 
 				// Handle line comments
 				if (!inString && c === '/' && next === '/') {
@@ -371,9 +393,21 @@ export class ComplexityAnalyzer {
 						continue;
 					} else if (c === '"' || c === "'" || c === '`') {
 						inString = c;
+						prevSignificant = c;
 						continue;
 					}
 				}
+
+				// A `/` starts a regex only where a value may begin; after an operand it
+				// is division. `a / b` must not swallow the rest of the line.
+				if (!inString && !inLineComment && c === '/' && next !== '/' && next !== '*') {
+					if (prevSignificant === '' || '(,=:[!&|?{};+-*%~^<>'.includes(prevSignificant)) {
+						inRegex = true;
+						continue;
+					}
+				}
+
+				if (c.trim() !== '') prevSignificant = c;
 
 				if (!inString && !inLineComment) {
 					if (c === '{') {
@@ -1584,7 +1618,20 @@ export class ComplexityAnalyzer {
 	 * A number you can improve by writing more code is not a number worth showing.
 	 */
 	private calculateMaxCognitive(regions: ComplexityRegion[]): number {
+		// FUNCTION regions only. Cognitive Complexity is defined per function; a
+		// class region aggregates every method it contains, so including it made the
+		// file's headline a class — one tokenizer here reported its class at 215
+		// while its hottest actual method was 46 — under a label reading "hottest
+		// function". Falls back to the widest available scope when a file has no
+		// function region at all, so the number never silently becomes zero.
 		let max = 0;
+		let sawFunction = false;
+		for (const region of regions) {
+			if (region.type !== 'function') continue;
+			sawFunction = true;
+			if (region.cognitiveComplexity > max) max = region.cognitiveComplexity;
+		}
+		if (sawFunction) return max;
 		for (const region of regions) {
 			if (region.cognitiveComplexity > max) max = region.cognitiveComplexity;
 		}

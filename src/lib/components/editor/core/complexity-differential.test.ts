@@ -280,6 +280,18 @@ const CORPUS: Array<{ name: string; code: string }> = [
 		code: 'function f(xs) {\n  for (const x of xs) {\n    switch (x) {\n      case 1:\n        return 1;\n      default:\n        break;\n    }\n  }\n  return 0;\n}'
 	},
 	{
+		name: 'regex literal containing braces',
+		code: 'function atKey(b) {\n  if (/[{,]\\s*$/.test(b)) {\n    if (/\\{\\s*$/.test(b)) {\n      return true;\n    }\n  }\n  return false;\n}'
+	},
+	{
+		name: 'regex with brace then unrelated branch',
+		code: 'function scan(s) {\n  const re = /^\\{\\s*/;\n  if (re.test(s)) {\n    return 1;\n  }\n  return 0;\n}'
+	},
+	{
+		name: 'division is not a regex',
+		code: 'function ratio(a, b) {\n  const r = a / b;\n  if (r > 1) {\n    return r;\n  }\n  return 0;\n}'
+	},
+	{
 		name: 'hero triageLoad',
 		code: "function triageLoad(signals, queueDepth) {\n  let score = 0;\n  for (const signal of signals) {\n    if (signal.kind === 'error') {\n      if (signal.count > 3 && queueDepth > 20) {\n        if (signal.owner) score += signal.count * 6;\n        else if (queueDepth > 80) score += 24;\n        else score += 12;\n      } else {\n        score += 3;\n      }\n    } else if (signal.count > 5) {\n      score += 10;\n    }\n  }\n  return score > 80 ? 'critical' : 'clear';\n}"
 	},

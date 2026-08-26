@@ -2171,4 +2171,71 @@ export class ComplexityAnalyzer {
 			expect(cc(hero)).toBe(16);
 		});
 	});
+	describe('region detection survives regex literals (regression)', () => {
+		const analyze = (code: string) => analyzer.analyze(makeLines(code), 'typescript');
+
+		it('does not let a brace inside a regex literal extend a function', () => {
+			// The char scanner skipped strings and `//` comments but not regex
+			// literals, so `/[{,]\\s*$/` inflated the brace depth and the enclosing
+			// function never closed. In this repo's own YAML tokenizer a 20-line
+			// method was reported as 379 lines at cognitive complexity 127.
+			const code = [
+				'function atKey(before) {',
+				'  if (/[{,]\\s*$/.test(before)) {',
+				'    if (/\\{\\s*$/.test(before)) return true;',
+				'  }',
+				'  return false;',
+				'}',
+				'function other(a) {',
+				'  if (a) return 1;',
+				'  return 0;',
+				'}'
+			].join('\n');
+
+			const regions = analyze(code).regions.filter((r) => r.type === 'function');
+			const atKey = regions.find((r) => r.name === 'atKey');
+			const other = regions.find((r) => r.name === 'other');
+
+			expect(atKey).toBeDefined();
+			expect(other, 'the function after the regex must still be found').toBeDefined();
+			expect(atKey!.endLine).toBeLessThan(other!.startLine);
+		});
+
+		it('still treats division as division', () => {
+			const code =
+				'function ratio(a: number, b: number) {\n  const r = a / b;\n  if (r > 1) return r;\n  return 0;\n}';
+			expect(analyze(code).regions[0]?.cognitiveComplexity).toBe(1);
+		});
+	});
+
+	describe('the file headline is a function, not a class', () => {
+		it('reports the hottest FUNCTION, not the class that contains it', () => {
+			// Cognitive Complexity is defined per function. A class region aggregates
+			// every method it holds, so including it made the headline a class under a
+			// label reading "hottest function".
+			const code = [
+				'class Service {',
+				'  simple() {',
+				'    return 1;',
+				'  }',
+				'  hot(x: number) {',
+				'    if (x > 1) {',
+				'      if (x > 2) {',
+				'        return 2;',
+				'      }',
+				'    }',
+				'    return 0;',
+				'  }',
+				'}'
+			].join('\n');
+
+			const metrics = analyzer.analyze(makeLines(code), 'typescript');
+			const hottestFn = metrics.regions
+				.filter((r) => r.type === 'function')
+				.reduce((a, b) => (b.cognitiveComplexity > a.cognitiveComplexity ? b : a));
+
+			expect(metrics.maxCognitiveComplexity).toBe(hottestFn.cognitiveComplexity);
+			expect(hottestFn.name).toBe('hot');
+		});
+	});
 });
