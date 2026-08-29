@@ -632,3 +632,35 @@ id; both tooltips display it, so a number is always attributable.
 
 `buildComplexityPrompt` is exported if you want to inspect or replace the
 instruction sent to a model.
+
+### Measured: do not use an LLM for this particular metric
+
+The seam was validated against a local llama.cpp OpenAI-compatible proxy across
+77 models. The honest result is that a language model is the **wrong tool for
+Cognitive Complexity**, and the numbers are worth stating plainly:
+
+|                      | exact       | declined | latency |
+| -------------------- | ----------- | -------- | ------- |
+| Built-in scanner     | **12 / 12** | 0        | < 1 ms  |
+| Devstral-Small-2-24B | 4 / 12      | 0        | ~5 s    |
+| Qwen3-Coder-30B-A3B  | 4 / 12      | 8        | ~45 s   |
+
+Ground truth came from an independent AST implementation of the SonarSource
+rules, not from the scanner, so this is not the scanner grading itself.
+
+Worse than the accuracy is the stability. Asked the same function three times at
+`temperature: 0`, Devstral answered **7, then 10, then 12**. The true value is 16.
+A metric that changes when nothing changed is not a metric.
+
+This is not really a surprise in hindsight. Cognitive Complexity is mechanical
+counting over a syntax tree — precisely what a parser is good at and a language
+model is bad at. The failure mode is also the dangerous one: the faster model
+never declined, so it produced confidently wrong numbers rather than admitting
+it did not know.
+
+**So use this seam to plug in a parser**, not a model: tree-sitter, a language
+server, or your own AST pass. That is where the accuracy the built-in scanner
+cannot reach on its 30 unverified languages actually lives. The chat transports
+remain because the seam is generic and the plumbing is useful — but if you wire
+one up for complexity scoring, measure it against a reference before you trust
+a number it produces.

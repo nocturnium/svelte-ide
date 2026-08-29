@@ -113,8 +113,11 @@ Rules:
 - Ignore null-coalescing and optional chaining entirely. They introduce no branch.
 - Score every named function separately. Do not score classes.
 
-Return STRICT JSON, no prose, no code fences:
-{"regions":[{"startLine":0,"endLine":9,"name":"fn","cognitiveComplexity":7}]}
+Answer with JSON only. No explanation, no reasoning, no code fences. Begin your
+reply with { and end it with }.
+
+Schema — <...> are placeholders, NOT values to copy:
+{"regions":[{"startLine":<int>,"endLine":<int>,"name":"<string>","cognitiveComplexity":<int>}]}
 
 startLine and endLine are 0-based and inclusive, referring to the numbered lines below.
 
@@ -124,6 +127,57 @@ ${numbered}`;
 
 /** Thrown shapes are caught by the editor; this is for tests and diagnostics. */
 export class ComplexityProviderError extends Error {}
+
+/**
+ * Find the LAST balanced `{...}` in `text` that parses and carries a `regions`
+ * array.
+ *
+ * Spanning the first `{` to the last `}` seemed sufficient until a reasoning
+ * model was pointed at it: those emit paragraphs of prose that quote the code —
+ * braces and all — before answering, so the naive span swallowed the reasoning
+ * and parsed nothing. Scanning balanced candidates and taking the last valid one
+ * finds the answer whether or not the model was asked to think out loud.
+ */
+function findRegionsObject(text: string): { regions?: unknown } | null {
+	let best: { regions?: unknown } | null = null;
+
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] !== '{') continue;
+		let depth = 0;
+		let inString = false;
+		let quote = '';
+		for (let j = i; j < text.length; j++) {
+			const c = text[j];
+			if (inString) {
+				if (c === '\\') j++;
+				else if (c === quote) inString = false;
+				continue;
+			}
+			if (c === '"' || c === "'") {
+				inString = true;
+				quote = c;
+				continue;
+			}
+			if (c === '{') depth++;
+			else if (c === '}') {
+				depth--;
+				if (depth === 0) {
+					try {
+						const candidate = JSON.parse(text.slice(i, j + 1)) as { regions?: unknown };
+						if (candidate && typeof candidate === 'object' && Array.isArray(candidate.regions)) {
+							best = candidate;
+						}
+					} catch {
+						/* not JSON — keep scanning */
+					}
+					i = j; // resume after this candidate
+					break;
+				}
+			}
+		}
+	}
+	return best;
+}
 
 /**
  * Parse and VALIDATE a model reply. Never trusts the text: anything malformed,
@@ -138,19 +192,10 @@ export function parseComplexityResponse(
 	// Models wrap JSON in fences even when told not to.
 	const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
 	const raw = (fenced ? fenced[1] : text).trim();
-	const start = raw.indexOf('{');
-	const end = raw.lastIndexOf('}');
-	if (start === -1 || end <= start) return null;
 
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(raw.slice(start, end + 1));
-	} catch {
-		return null;
-	}
-
-	if (typeof parsed !== 'object' || parsed === null) return null;
-	const regionsRaw = (parsed as { regions?: unknown }).regions;
+	const parsed = findRegionsObject(raw);
+	if (!parsed) return null;
+	const regionsRaw = parsed.regions;
 	if (!Array.isArray(regionsRaw)) return null;
 
 	const regions: ProvidedComplexityRegion[] = [];
@@ -206,6 +251,17 @@ export function createChatComplexityProvider(
 		return { ...result, source: options.source };
 	};
 }
+
+/**
+ * Output cap for the bundled transports.
+ *
+ * Without one, a reasoning model spends its entire budget thinking and never
+ * reaches the JSON — measured against a local llama.cpp proxy, two Qwen3 builds
+ * produced ~4000 characters of prose and no answer, so the provider declined
+ * every time. The reply this asks for is a few hundred characters; the cap is
+ * generous for that and hostile to rambling.
+ */
+export const DEFAULT_MAX_TOKENS = 1200;
 
 async function postJson(
 	url: string,
