@@ -67,18 +67,19 @@ There are no Svelte `createEventDispatcher` events on these components — all i
 
 `CustomEditor` is a superset of `Editor`. It accepts everything `Editor` does **plus** the following feature flags and extra callbacks (defaults shown are the component's own defaults):
 
-| Prop                     | Type                                           | Default | Description                                                                                                        |
-| ------------------------ | ---------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
-| `folding`                | `boolean`                                      | `true`  | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md). |
-| `multiCursor`            | `boolean`                                      | `true`  | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md).                                               |
-| `maxCursors`             | `number`                                       | `100`   | Upper bound on simultaneous cursors.                                                                               |
-| `complexityHighlighting` | `boolean`                                      | `false` | Highlights high-complexity regions inline.                                                                         |
-| `complexityThreshold`    | `number`                                       | `50`    | Minimum complexity score before highlighting is drawn.                                                             |
-| `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize (Ghost Pair cursors / focus regions). See [AI and agents](./ai-and-agents.md).              |
-| `showAILabels`           | `boolean`                                      | `true`  | Show name labels next to AI cursors.                                                                               |
-| `showAIFocusRegions`     | `boolean`                                      | `false` | Shade the region an AI agent is focused on.                                                                        |
-| `onCursorsChange`        | `(cursors: readonly Cursor[]) => void`         | —       | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`.  |
-| `onComplexityChange`     | `(metrics: ComplexityMetrics \| null) => void` | —       | Fired when computed complexity metrics change.                                                                     |
+| Prop                     | Type                                           | Default | Description                                                                                                         |
+| ------------------------ | ---------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| `folding`                | `boolean`                                      | `true`  | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md).  |
+| `multiCursor`            | `boolean`                                      | `true`  | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md).                                                |
+| `maxCursors`             | `number`                                       | `100`   | Upper bound on simultaneous cursors.                                                                                |
+| `complexityHighlighting` | `boolean`                                      | `false` | Highlights high-complexity regions inline.                                                                          |
+| `complexityThreshold`    | `number`                                       | `5`     | Lowest raw Cognitive Complexity that gets a mark. Not the deprecated 0-100 score — 5/10/15 are the band boundaries. |
+| `complexityProvider`     | `ComplexityProvider`                           | —       | Optional pluggable analysis; refines the built-in reading. See below.                                               |
+| `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize (Ghost Pair cursors / focus regions). See [AI and agents](./ai-and-agents.md).               |
+| `showAILabels`           | `boolean`                                      | `true`  | Show name labels next to AI cursors.                                                                                |
+| `showAIFocusRegions`     | `boolean`                                      | `false` | Shade the region an AI agent is focused on.                                                                         |
+| `onCursorsChange`        | `(cursors: readonly Cursor[]) => void`         | —       | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`.   |
+| `onComplexityChange`     | `(metrics: ComplexityMetrics \| null) => void` | —       | Fired when computed complexity metrics change.                                                                      |
 
 > The `AIAwareness` and `ComplexityMetrics` types named in the table above are not re-exported from the package root; if you need to import them, pull them from the editor subpath: `import type { AIAwareness, ComplexityMetrics } from "@nocturnium/svelte-ide/components/editor"`.
 
@@ -543,3 +544,91 @@ Beyond these four, the `core` barrel also exports utilities for folding (`create
 - [Collaboration](./collaboration.md) — CRDT / Yjs realtime editing with `CollaborativeEditor`.
 - [AI and agents](./ai-and-agents.md) — AI presence layers and the AI panel.
 - API reference: [Components](../api/components.md) · [Stores](../api/stores.md) · [Types and utils](../api/types-and-utils.md).
+
+## Cognitive complexity
+
+The editor measures [SonarSource Cognitive
+Complexity](https://www.sonarsource.com/docs/CognitiveComplexity.pdf) — how hard
+code is to hold in your head, not how many paths it has. Higher is worse, the
+number is unbounded, and `15` is SonarSource's published threshold for a function
+that has grown too complex to keep.
+
+```svelte
+<CustomEditor
+	{content}
+	language="typescript"
+	complexityHighlighting
+	complexityThreshold={COGNITIVE_COMPLEXITY_BANDS.medium}
+	onComplexityChange={(m) => (metrics = m)}
+/>
+```
+
+Read `metrics.maxCognitiveComplexity` (the hottest function) and
+`region.cognitiveComplexity`. `score` and `overall` still exist but are
+deprecated: `score` saturates at 15, and `overall` is a length-weighted mean that
+_falls_ when you append simple functions.
+
+### Plugging in better analysis
+
+The built-in analyzer is a token scanner: instant, offline, no configuration, and
+it works on every language the tokenizer knows. It is also an approximation of a
+parser. A differential harness pins it against an AST reference on every build,
+but that reference only speaks JavaScript and TypeScript — so on the other 30
+languages the scanner is unverified, and it will occasionally be wrong.
+
+When you need more than an approximation, supply a provider. It runs _after_ the
+built-in result is already on screen, so typing is never blocked and a slow or
+failing provider simply leaves the built-in reading in place.
+
+```ts
+import { createOllamaComplexityProvider } from '@nocturnium/svelte-ide';
+
+const provider = createOllamaComplexityProvider({ model: 'qwen2.5-coder:1.5b' });
+```
+
+```ts
+import { createOpenAICompatibleComplexityProvider } from '@nocturnium/svelte-ide';
+
+const provider = createOpenAICompatibleComplexityProvider({
+	endpoint: 'https://your-gateway.example.com/v1/chat/completions',
+	model: 'your-small-fast-model',
+	apiKey: import.meta.env.VITE_YOUR_KEY
+});
+```
+
+Anything that turns a string into a string works — a language server, your own
+AST pass, a queue:
+
+```ts
+import { createChatComplexityProvider } from '@nocturnium/svelte-ide';
+
+const provider = createChatComplexityProvider(
+	async (prompt, signal) => myBackend.complete(prompt, { signal }),
+	{ source: 'my-analyzer' }
+);
+```
+
+Or implement the interface directly, if you are not using a model at all:
+
+```ts
+import type { ComplexityProvider } from '@nocturnium/svelte-ide';
+
+const provider: ComplexityProvider = async ({ code, language, signal }) => ({
+	regions: await myParser.analyze(code, language, signal),
+	source: 'my-parser'
+});
+```
+
+**This library never calls a model.** It defines the contract and ships transports
+built on `fetch` alone; there is no default endpoint and no default key, and no
+code leaves the machine unless you wire it to. The package keeps zero runtime
+dependencies either way.
+
+Replies are validated, never trusted — malformed JSON, negative or fractional
+scores, and out-of-range line spans are refused, and the provider declines rather
+than render them. `metrics.source` tells you which reading you are looking at
+(`'builtin'` or `'provider'`) and `metrics.sourceName` carries the model or tool
+id; both tooltips display it, so a number is always attributable.
+
+`buildComplexityPrompt` is exported if you want to inspect or replace the
+instruction sent to a model.
