@@ -387,7 +387,20 @@ export class ComplexityAnalyzer {
 				// Handle strings
 				if (!inLineComment) {
 					if (inString) {
-						if (c === inString && text[ch - 1] !== '\\') {
+						// Consume the escape and its target together. Looking BACK at
+						// `text[ch - 1] !== '\\'` mis-reads a literal ending in an escaped
+						// backslash — in `"\\"` the character before the closing quote IS a
+						// backslash, so the string never closed, the rest of the line
+						// (including its `{`) was swallowed, brace depth desynchronised and
+						// the enclosing region truncated. Measured across this repo: 58
+						// truncated regions, the worst reporting cognitive complexity 2 for a
+						// function whose true value is 39 — an under-report, which is the
+						// dangerous direction: it calls the hottest function in a file fine.
+						if (c === '\\') {
+							ch++;
+							continue;
+						}
+						if (c === inString) {
 							inString = null;
 						}
 						continue;
@@ -410,6 +423,17 @@ export class ComplexityAnalyzer {
 				if (c.trim() !== '') prevSignificant = c;
 
 				if (!inString && !inLineComment) {
+					// A statement end retires an unconsumed definition candidate. A
+					// concise arrow whose body sits on the NEXT line —
+					// `const isImportLine = (t) =>` / `  /^\s*import\b/.test(t);` —
+					// left the candidate pending, and it then attached to the next
+					// unrelated `{` (the following `for` loop), producing a region that
+					// swallowed its enclosing function: 21 lines at cognitive complexity
+					// 13 against a truth of 0.
+					if (c === ';' && pendingDef && braceDepth === pendingDef.depth) {
+						pendingDef = undefined;
+					}
+
 					if (c === '{') {
 						braceDepth++;
 						// If this is the opening brace of a function/class def, push it
@@ -631,15 +655,50 @@ export class ComplexityAnalyzer {
 	/**
 	 * Check if a `{` at position `ch` is the opening brace of a function/class definition
 	 */
+	/**
+	 * Is the `{` at `ch` the opening brace of a function/class BODY?
+	 *
+	 * Two shapes previously fooled this and both truncated the region to a few
+	 * lines, silently under-reporting:
+	 *
+	 *   `): Promise<{ content: string }> {`  — the object type inside the generic
+	 *       matched first, so the region opened and closed on the return type.
+	 *   `func Handle(v interface{}) int {`   — Go's brace-less return type meant
+	 *       the real body brace matched nothing, so the region closed on the
+	 *       signature and reported cognitive complexity 0 for arbitrary Go.
+	 */
 	private isDefOpeningBrace(text: string, ch: number, type: 'function' | 'class'): boolean {
 		// For class: `class Foo {` — the `{` follows the class name
 		if (type === 'class') {
 			return true; // First `{` on a class line is the class body
 		}
-		// For functions: the `{` should follow the parameter list closing `)`
-		// with an optional TypeScript return type, or follow `=>` for arrow functions.
+
 		const before = text.slice(0, ch).trimEnd();
-		return /\)\s*(:\s*[^{};]+)?\s*$/.test(before) || before.endsWith('=>');
+		if (before.endsWith('=>')) return true;
+
+		const lastParen = before.lastIndexOf(')');
+		if (lastParen === -1) return false;
+		const after = before.slice(lastParen + 1);
+
+		// An unclosed `<` between the parameter list and this brace means the brace
+		// belongs to a generic argument, not the body.
+		const opens = (after.match(/</g) || []).length;
+		const closes = (after.match(/>/g) || []).length;
+		if (opens > closes) return false;
+
+		// An `=` means a default value, not a return type.
+		if (after.includes('=')) return false;
+
+		// Exactly three shapes may sit between the parameter list and a body brace:
+		//   nothing            `function f() {`
+		//   `: T`, T non-empty `function f(): string {`   (an empty `: ` means the
+		//                       brace IS the return type, as in `): { a: string } {`)
+		//   a bare type        `func Handle() int {`      (Go has no colon)
+		return (
+			/^\s*$/.test(after) ||
+			/^\s*:\s*[^{};=]+$/.test(after) ||
+			/^\s*[\w[\]*.]+[\w[\]*.\s]*$/.test(after)
+		);
 	}
 
 	/**
@@ -663,6 +722,23 @@ export class ComplexityAnalyzer {
 				const closes = (text.match(/\)/g) || []).length;
 				if (!text.includes('=>') && opens <= closes) {
 					return undefined;
+				}
+
+				// A CONCISE arrow — `const depth = () => xs.length + n;` — has no block,
+				// so there is no body brace for its region to close on. The candidate
+				// stayed pending and attached to the next unrelated `{`, producing a
+				// region that swallowed the enclosing function: `effectiveNesting` in
+				// this very file measured cc 107 against a truth of 0, and because the
+				// phantom sorts first it took regions[0] AND set maxCognitiveComplexity.
+				// Block-bodied arrows are unaffected — they open a real region.
+				const arrowAt = text.indexOf('=>');
+				if (arrowAt !== -1) {
+					const afterArrow = text.slice(arrowAt + 2).trim();
+					// `=> {` opens a block; `=> (` may open a multi-line parenthesised
+					// body; anything else on the line is a concise expression body.
+					if (afterArrow !== '' && !afterArrow.startsWith('{')) {
+						return undefined;
+					}
 				}
 			}
 			// The method-style branch (`name(params) {`) also matches a CALL whose
