@@ -10,15 +10,22 @@ export { default as EditorPane } from './EditorPane.svelte';
 export { default as FileIcon } from './FileIcon.svelte';
 export { default as FileExplorer } from './FileExplorer.svelte';
 
-// Cognitive-complexity surface. The 1278-line analyzer was already public via
+// Cognitive-complexity surface. The analyzer was already public via
 // `export * from './core/complexity-analyzer'`, while every component that draws
 // its output was exported from nowhere — the engine was importable but the
 // picture was not, so a consumer had to reimplement both overlays.
+//
+// The parser-backed half is exported here too. It was reachable only from the
+// package root, so `@nocturnium/svelte-ide/editor` could hand you a provider
+// type it had no way to let you satisfy.
 export { default as ComplexityLayer } from './ComplexityLayer.svelte';
 export { default as ComplexityHeatLayer } from './ComplexityHeatLayer.svelte';
 export { default as ComplexityLegend } from './ComplexityLegend.svelte';
 export { default as CognitiveLoadMeter } from './CognitiveLoadMeter.svelte';
 export * from './core/complexity-provider';
+export * from './core/complexity-ast';
+export * from './core/complexity-estree';
+export * from './core/complexity-compose';
 
 // Core utilities (explicitly excluding CRDT binding; use @nocturnium/svelte-ide/crdt)
 export * from './core/state';

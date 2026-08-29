@@ -4,7 +4,8 @@ import {
 	analyzeAstComplexity,
 	astComplexityMetrics,
 	createAstComplexityProvider,
-	type ComplexityAstAdapter
+	type ComplexityAstAdapter,
+	type ComplexityNodeKind
 } from './complexity-ast';
 import { createEstreeAdapter, type EstreeNode } from './complexity-estree';
 import { ComplexityAnalyzer } from './complexity-analyzer';
@@ -275,23 +276,26 @@ describe('AST walker: adapter contract', () => {
 	interface Toy {
 		k: string;
 		kids?: Toy[];
+		/** The child that is this node's body, by position in `kids`. */
+		body?: number;
 		line?: number;
 	}
 
+	const KINDS: Record<string, ComplexityNodeKind> = {
+		fn: 'function',
+		if: 'if',
+		elseif: 'else-if',
+		else: 'else',
+		loop: 'loop',
+		and: 'boolean-sequence'
+	};
+
 	const toyAdapter: ComplexityAstAdapter<Toy> = {
-		kindOf: (n) =>
-			n.k === 'fn'
-				? 'function'
-				: n.k === 'if'
-					? 'if'
-					: n.k === 'loop'
-						? 'loop'
-						: n.k === 'and'
-							? 'boolean-sequence'
-							: null,
+		kindOf: (n) => KINDS[n.k] ?? null,
 		childrenOf: (n) => n.kids ?? [],
 		lineRangeOf: (n) => ({ startLine: n.line ?? 0, endLine: n.line ?? 0 }),
-		nameOf: () => 'toy'
+		nameOf: () => 'toy',
+		bodyOf: (n) => (n.body === undefined ? null : (n.kids?.[n.body] ?? null))
 	};
 
 	it('applies the rules to a tree that is not ESTree at all', () => {
@@ -303,6 +307,64 @@ describe('AST walker: adapter contract', () => {
 		const regions = analyzeAstComplexity(tree, toyAdapter);
 		expect(regions).toHaveLength(1);
 		expect(regions[0].cognitiveComplexity).toBe(4);
+	});
+
+	it('applies the else and else-if rules on a non-ESTree tree', () => {
+		// These two kinds exist for parsers that DO have a real else node, which
+		// ESTree does not — so the ESTree adapter never exercises `else`, and this
+		// is the only place the rule is checked at all.
+		//
+		// if(+1) + else-if(+1 flat) + else(+1 flat) = 3
+		const chain: Toy = {
+			k: 'fn',
+			body: 0,
+			kids: [{ k: 'if', kids: [{ k: 'elseif' }, { k: 'else' }] }]
+		};
+		expect(analyzeAstComplexity(chain, toyAdapter)[0].cognitiveComplexity).toBe(3);
+	});
+
+	it('nests the body of an else but not of an else-if', () => {
+		// else raises nesting for its body, else-if does not add a level of its own
+		// beyond the chain it continues.
+		// if(+1) + else(+1) + if inside the else at depth 1(+2) = 4
+		// The else is a SIBLING of the consequent, not inside it — mirroring a real
+		// tree, where the alternate sits beside the body rather than within it.
+		// Nesting the else under the consequent double-counts, which is what an
+		// earlier version of this fixture did (it read 5).
+		const withElse: Toy = {
+			k: 'fn',
+			body: 0,
+			kids: [
+				{
+					k: 'if',
+					body: 0,
+					kids: [{ k: 'block' }, { k: 'else', body: 0, kids: [{ k: 'if' }] }]
+				}
+			]
+		};
+		expect(analyzeAstComplexity(withElse, toyAdapter)[0].cognitiveComplexity).toBe(4);
+	});
+
+	it('does not nest a non-body child', () => {
+		// The whole reason bodyOf is required: a construct in a condition or a loop
+		// header must not be charged for depth it does not create.
+		// loop(+1) + if as the BODY at depth 1(+2) = 3
+		const body: Toy = {
+			k: 'fn',
+			body: 0,
+			kids: [{ k: 'loop', body: 1, kids: [{ k: 'and' }, { k: 'if' }] }]
+		};
+		// and(+1 flat) + loop(+1) + if(+2) = 4
+		expect(analyzeAstComplexity(body, toyAdapter)[0].cognitiveComplexity).toBe(4);
+
+		// Same tree, but the `if` is the HEADER and the `and` is the body: the if
+		// stays at depth 0, so it costs 1 rather than 2.
+		const header: Toy = {
+			k: 'fn',
+			body: 0,
+			kids: [{ k: 'loop', body: 0, kids: [{ k: 'and' }, { k: 'if' }] }]
+		};
+		expect(analyzeAstComplexity(header, toyAdapter)[0].cognitiveComplexity).toBe(3);
 	});
 
 	it('nests every child when the adapter declines to name a body', () => {

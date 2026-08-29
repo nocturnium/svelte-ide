@@ -103,9 +103,19 @@ export interface ComplexityAstAdapter<TNode> {
 	/**
 	 * Which child is the node's BODY, for kinds that raise nesting. Children that
 	 * are not the body — a loop's init/test/update, an `if`'s condition — stay at
-	 * the current depth. Return null to nest every child.
+	 * the current depth.
+	 *
+	 * REQUIRED, deliberately. It was optional, and an adapter that omitted it (or
+	 * returned null) got every child nested, which over-counts: a ternary in a
+	 * loop header or an `if` condition was charged for depth it does not create.
+	 * A required method makes the author decide rather than inherit a wrong
+	 * default silently — and the contract freezes at 2.0.0, so "optional and
+	 * quietly wrong" would have been permanent.
+	 *
+	 * Return null only when the node genuinely has no distinguished body; every
+	 * child then nests, which is the honest reading for a node that is all body.
 	 */
-	bodyOf?(node: TNode): TNode | TNode[] | null;
+	bodyOf(node: TNode): TNode | TNode[] | null;
 	/**
 	 * Increments from a construct this node MERGES with — one that wraps it but
 	 * has no node of its own in the tree.
@@ -150,7 +160,7 @@ export function analyzeAstComplexity<TNode>(
 			context: ComplexityWalkContext<TNode>
 		): void => {
 			const kind = adapter.kindOf(node, parent, context);
-			const body = adapter.bodyOf?.(node) ?? null;
+			const body = adapter.bodyOf(node);
 			const bodySet = body === null ? null : new Set(Array.isArray(body) ? body : [body]);
 
 			// A merged construct (an `else` with no node of its own) both scores and

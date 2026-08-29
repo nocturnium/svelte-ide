@@ -12,18 +12,46 @@ import { resolveLanguage, tokenize } from '../tokenizer';
 import type { Token, TokenizedLine } from '../tokenizer';
 
 /**
- * Complexity factors for a code region
+ * Coarse counts for a code region.
+ *
+ * These predate the Cognitive Complexity implementation and are NOT part of it.
+ * They are raw-text tallies — cyclomatic-flavoured at best — and they do not
+ * obey the metric's rules: no nesting penalty, no distinction between an `if`
+ * and the `else` that costs the reader less, no boolean-run collapsing.
+ *
+ * Read `cognitiveComplexity` and `contributions` instead. Both carry the real
+ * number and the per-line breakdown behind it.
+ *
+ * Kept rather than removed: they are public API and removing them is a second
+ * breaking change in a release that already has one. `lineCount` is the only
+ * member that is simply true, so it is not deprecated.
  */
 export interface ComplexityFactors {
-	/** Maximum nesting depth (if/for/while/try) */
+	/**
+	 * Maximum nesting depth (if/for/while/try).
+	 * @deprecated Not the metric's nesting. Use the `nesting` field on
+	 * `contributions`, which follows the whitepaper's rules.
+	 */
 	nestingDepth: number;
-	/** Number of branching statements (if/else/switch/case/ternary) */
+	/**
+	 * Number of branching statements (if/else/switch/case/ternary).
+	 * @deprecated A cyclomatic-style count. Cognitive Complexity deliberately
+	 * charges these differently — an `else` is +1 flat, a nested `if` is +1 plus
+	 * its depth — so this number will disagree with the score and is not a
+	 * component of it. Count `contributions` instead.
+	 */
 	branchingFactor: number;
-	/** Total line count */
+	/** Total line count. */
 	lineCount: number;
-	/** Number of unique identifiers */
+	/**
+	 * Number of unique identifiers.
+	 * @deprecated Raw-text tally, no part of the metric.
+	 */
 	identifierCount: number;
-	/** Number of function calls */
+	/**
+	 * Number of function calls.
+	 * @deprecated Raw-text tally, no part of the metric.
+	 */
 	callCount: number;
 }
 
