@@ -122,6 +122,10 @@ Open the same `serverUrl` + `roomId` in two browser tabs and edits merge live.
 | Prop             | Type                                     | Default       | Description                                                                                                                       |
 | ---------------- | ---------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `doc`            | `Y.Doc`                                  | _(internal)_  | The shared Yjs document. If omitted, the component creates an internal, **un-synced** doc — pass your own `doc` to collaborate.   |
+| `provider`       | `CollaborativeProvider`                  | —             | An existing provider; its awareness is used for transmitted presence.                                                             |
+| `awareness`      | `Awareness`                              | —             | An existing provider-attached awareness instance.                                                                                 |
+| `serverUrl`      | `string`                                 | —             | WebSocket URL, when the component should create the provider itself.                                                              |
+| `roomId`         | `string`                                 | —             | WebSocket room id, paired with `serverUrl`.                                                                                       |
 | `documentId`     | `string`                                 | —             | Optional identifier for standalone mode.                                                                                          |
 | `initialContent` | `string`                                 | `''`          | Seed content used when the component creates its own internal doc.                                                                |
 | `textName`       | `string`                                 | `'content'`   | The key of the `Y.Text` inside the doc to bind to. Must match what your other peers and `CollaborativeDocument.getText(key)` use. |
@@ -130,11 +134,55 @@ Open the same `serverUrl` + `roomId` in two browser tabs and edits merge live.
 | `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Editor preferences (tab size, insert-spaces, etc.).                                                                               |
 | `class`          | `string`                                 | `''`          | Extra CSS class on the wrapper.                                                                                                   |
 | `currentUser`    | `CollaborationUser`                      | —             | Local user info used for cursor display.                                                                                          |
+| `viewingFile`    | `string`                                 | —             | Path broadcast as the file this user is viewing.                                                                                  |
+| `editingFile`    | `string`                                 | —             | Path broadcast as the file this user is editing.                                                                                  |
+| `remoteCursors`  | `RemoteCursor[]`                         | `[]`          | Other people's carets, name flags and selections, drawn inside the document. See below.                                           |
 | `onChange`       | `(content: string) => void`              | —             | Fires when the document content changes.                                                                                          |
 | `onCursorChange` | `(line: number, column: number) => void` | —             | Fires when the local cursor moves.                                                                                                |
 | `onSave`         | `() => void`                             | —             | Fires on the save shortcut (`Ctrl`/`Cmd`+`S`).                                                                                    |
 
 > Pass the **same `doc` instance** to `<CollaborativeEditor>` that you attach to your provider. If you let the component create its own internal doc, edits are local-only — the component never connects to a server on its own.
+
+### Drawing other people's carets
+
+`remoteCursors` renders peers **inside** the document — a coloured caret, a name
+flag above it, and any selection they hold — so they scroll with the text and
+survive folding. It is available on `<CollaborativeEditor>` and on
+`<CustomEditor>` directly, alongside `showRemoteCursorLabels` (default `true`) to
+hide the flags.
+
+The prop is deliberately **not** wired to awareness for you. Awareness carries
+whatever your application chose to put in it, so you decide how a peer's state
+becomes a caret:
+
+```svelte
+<script lang="ts">
+	import { CollaborativeEditor } from '@nocturnium/svelte-ide';
+	import type { RemoteCursor } from '@nocturnium/svelte-ide/components/editor';
+
+	// Whatever your awareness states look like, mapped to carets.
+	let remoteCursors = $derived<RemoteCursor[]>(
+		peers.map((p) => ({
+			id: p.userId,
+			name: p.user.name,
+			color: p.user.color,
+			// 1-based, matching what `onCursorChange` reports back to you.
+			line: p.position.line,
+			column: p.position.column,
+			selection: p.selection
+		}))
+	);
+</script>
+
+<CollaborativeEditor {doc} {provider} language="typescript" {remoteCursors} />
+```
+
+Note the line basis: `RemoteCursor.line` and `.column` are **1-based**, which
+matches `onCursorChange` — unlike the editor's internal `Position` and the AI
+awareness API, which are 0-based. Off-by-one here puts every peer one row high.
+
+`RemoteCursor` is not re-exported from the package root; import it from the editor
+subpath as shown above.
 
 The `CollaborationUser` type (and the other collaboration types) are exported from the package root and from `@nocturnium/svelte-ide/types`:
 

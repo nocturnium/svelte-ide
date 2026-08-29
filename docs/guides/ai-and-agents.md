@@ -428,6 +428,88 @@ Props: `agent` (required), `position` (required `CursorPosition` — `{ line, co
 
 ---
 
+## Ghost Pair: agents in the editor
+
+`<AgentCursor>` above is an overlay you position yourself. **Ghost Pair** is the
+built-in alternative: hand the editor a list of agents and it draws them inside
+the document — a ghost caret with a glow, a name-and-activity label, and an
+optional shaded region showing what the agent is reading.
+
+It is three props on `CustomEditor`, `Editor` and `EditorPane`, and all three
+matter:
+
+| Prop                 | Type            | Default | What it does                                        |
+| -------------------- | --------------- | ------- | --------------------------------------------------- |
+| `aiAgents`           | `AIAwareness[]` | `[]`    | The agents to draw. An empty list draws nothing.    |
+| `showAILabels`       | `boolean`       | `true`  | The name-and-activity label beside each caret.      |
+| `showAIFocusRegions` | `boolean`       | `false` | The shaded focus region. **Off unless you say so.** |
+
+`showAIFocusRegions` defaulting to `false` is the one that catches people: pass
+`aiAgents` alone and you get a caret and a label but no region glow, which reads
+as "the focus feature is broken" rather than "the focus feature is off".
+
+```svelte
+<script lang="ts">
+	import { CustomEditor } from '@nocturnium/svelte-ide';
+	import { createAIAwareness } from '@nocturnium/svelte-ide/components/editor';
+
+	let content = $state(source);
+
+	const claude = createAIAwareness('claude-1', 'Claude', {
+		attentionType: 'reading',
+		activity: 'Reading processUser',
+		cursor: {
+			// 0-based, like every other line number in the editor API.
+			position: { line: 13, column: 8 },
+			color: '#a78bfa',
+			visible: true,
+			animation: 'thinking'
+		},
+		focusRegions: [
+			{ startLine: 13, endLine: 24, intensity: 0.6, type: 'reading', label: 'Analyzing' }
+		],
+		isActive: true
+	});
+</script>
+
+<CustomEditor
+	bind:content
+	language="typescript"
+	aiAgents={[claude]}
+	showAILabels
+	showAIFocusRegions
+/>
+```
+
+`createAIAwareness(agentId, agentName, options)` fills in sensible defaults —
+a colour derived from the name, `attentionType: 'reading'`, `confidence: 0.5`,
+`isActive: true` — so you only pass what you are actually driving. `attentionType`
+(`reading` | `thinking` | `writing` | `reviewing` | `waiting`) picks both the
+label's indicator glyph and the region's colour and animation.
+
+Two things to know before wiring one up:
+
+- **An agent is only drawn while `isActive` is true and it has either a visible
+  cursor or at least one focus region.** An agent with neither is not an error and
+  produces no output.
+- **Line numbers are raw document lines, 0-based.** The editor maps them to
+  rendered rows for you, so a focus region stays on its code when the user folds
+  something above it.
+
+`AIAwareness` is not re-exported from the package root. Import it, and
+`createAIAwareness`, from the editor subpath:
+
+```ts
+import { createAIAwareness, type AIAwareness } from '@nocturnium/svelte-ide/components/editor';
+```
+
+There is a live version of all of this on the
+[cognitive complexity demo](https://ide.nocturnium.ai/demo/cognitive-load) — the
+agent there is a scripted cursor on a timer, not a model, which is exactly what
+this API is: a rendering layer for presence you supply.
+
+---
+
 ## Theming
 
 Every component here is unstyled until the theme tokens are present. Import `@nocturnium/svelte-ide/theme.css` once, then override the `--ide-*` and `--color-nocturnium-*` custom properties to retheme. AI and agent components lean on tokens such as `--ide-agent-online`, `--ide-agent-busy`, `--ide-agent-stalled`, `--ide-agent-error`, `--ide-agent-ai-primary`, `--ide-agent-ai-secondary`, and the syntax token colors used in code blocks. See [Theming](../theming.md) for the full token list.

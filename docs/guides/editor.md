@@ -48,16 +48,22 @@ Both are exported from the package root and from the `./components/editor` subpa
 
 These are the exact props from the `Editor` component's `Props` interface:
 
-| Prop             | Type                                     | Default       | Description                                                                                                                                                           |
-| ---------------- | ---------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`        | `string`                                 | — (required)  | Document text to display.                                                                                                                                             |
-| `language`       | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"svelte"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set. |
-| `readonly`       | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                        |
-| `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                   |
-| `class`          | `string`                                 | `""`          | Extra CSS class applied to the editor container.                                                                                                                      |
-| `onChange`       | `(content: string) => void`              | —             | Fired (debounced) whenever the document text changes.                                                                                                                 |
-| `onCursorChange` | `(line: number, column: number) => void` | —             | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                         |
-| `onSave`         | `() => void`                             | —             | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs.  |
+| Prop                 | Type                                     | Default       | Description                                                                                                                                                           |
+| -------------------- | ---------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`            | `string`                                 | — (required)  | Document text to display.                                                                                                                                             |
+| `language`           | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"svelte"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set. |
+| `readonly`           | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                        |
+| `preferences`        | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                   |
+| `class`              | `string`                                 | `""`          | Extra CSS class applied to the editor container.                                                                                                                      |
+| `folding`            | `boolean`                                | `true`        | Enables code folding. See [Code folding](./code-folding.md).                                                                                                          |
+| `multiCursor`        | `boolean`                                | `true`        | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md).                                                                                                  |
+| `maxCursors`         | `number`                                 | `100`         | Upper bound on simultaneous cursors.                                                                                                                                  |
+| `aiAgents`           | `AIAwareness[]`                          | `[]`          | AI agents to visualize. See [Ghost Pair](./ai-and-agents.md#ghost-pair-agents-in-the-editor).                                                                         |
+| `showAILabels`       | `boolean`                                | `true`        | Show the name label beside each AI cursor.                                                                                                                            |
+| `showAIFocusRegions` | `boolean`                                | `false`       | Shade the region an agent is focused on. Off by default — you must opt in.                                                                                            |
+| `onChange`           | `(content: string) => void`              | —             | Fired (debounced) whenever the document text changes.                                                                                                                 |
+| `onCursorChange`     | `(line: number, column: number) => void` | —             | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                         |
+| `onSave`             | `() => void`                             | —             | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs.  |
 
 There are no Svelte `createEventDispatcher` events on these components — all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
 
@@ -75,13 +81,18 @@ There are no Svelte `createEventDispatcher` events on these components — all i
 | `complexityHighlighting` | `boolean`                                      | `false` | Highlights high-complexity regions inline.                                                                          |
 | `complexityThreshold`    | `number`                                       | `5`     | Lowest raw Cognitive Complexity that gets a mark. Not the deprecated 0-100 score — 5/10/15 are the band boundaries. |
 | `complexityProvider`     | `ComplexityProvider`                           | —       | Optional pluggable analysis; refines the built-in reading. See below.                                               |
-| `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize (Ghost Pair cursors / focus regions). See [AI and agents](./ai-and-agents.md).               |
+| `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize. See [Ghost Pair](./ai-and-agents.md#ghost-pair-agents-in-the-editor).                       |
 | `showAILabels`           | `boolean`                                      | `true`  | Show name labels next to AI cursors.                                                                                |
-| `showAIFocusRegions`     | `boolean`                                      | `false` | Shade the region an AI agent is focused on.                                                                         |
+| `showAIFocusRegions`     | `boolean`                                      | `false` | Shade the region an AI agent is focused on. Off by default — you must opt in.                                       |
+| `remoteCursors`          | `RemoteCursor[]`                               | `[]`    | Other collaborators' carets, name flags and selections. See [Collaboration](./collaboration.md).                    |
+| `showRemoteCursorLabels` | `boolean`                                      | `true`  | Show the name flag above each remote caret.                                                                         |
 | `onCursorsChange`        | `(cursors: readonly Cursor[]) => void`         | —       | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`.   |
 | `onComplexityChange`     | `(metrics: ComplexityMetrics \| null) => void` | —       | Fired when computed complexity metrics change.                                                                      |
 
-> The `AIAwareness` and `ComplexityMetrics` types named in the table above are not re-exported from the package root; if you need to import them, pull them from the editor subpath: `import type { AIAwareness, ComplexityMetrics } from "@nocturnium/svelte-ide/components/editor"`.
+> `ComplexityMetrics` **is** re-exported from the package root, along with
+> `ComplexityRegion`, `ComplexityContribution` and the rest of the complexity
+> surface. `AIAwareness` and `RemoteCursor` are not — pull those from the editor
+> subpath: `import type { AIAwareness, RemoteCursor } from "@nocturnium/svelte-ide/components/editor"`.
 
 Reach for `CustomEditor` directly when you want, for example, to cap cursors, disable folding, or wire up AI presence:
 
@@ -261,11 +272,17 @@ For a multi-file experience, the library ships a tab-aware pair backed by the ed
 
 `EditorPane` is **store-driven**: it reads open tabs, the active tab, and the active buffer straight from the editor store, so you manage files by calling store actions (`openFile`, `setActiveTab`, `closeTab`, …) rather than passing tab arrays in as props. Its props are small:
 
-| Prop          | Type                                               | Default | Description                                                                                                                    |
-| ------------- | -------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `preferences` | `Partial<EditorPreferences>`                       | `{}`    | Forwarded to the underlying editor.                                                                                            |
-| `onSave`      | `(path: string, content: string) => Promise<void>` | —       | Called with the active tab's path and content when Ctrl/Cmd+S fires. The pane marks the tab clean after your promise resolves. |
-| `class`       | `string`                                           | `""`    | Extra CSS class on the pane container.                                                                                         |
+| Prop                 | Type                                               | Default | Description                                                                                                                    |
+| -------------------- | -------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `preferences`        | `Partial<EditorPreferences>`                       | `{}`    | Forwarded to the underlying editor.                                                                                            |
+| `folding`            | `boolean`                                          | `true`  | Forwarded. See [Code folding](./code-folding.md).                                                                              |
+| `multiCursor`        | `boolean`                                          | `true`  | Forwarded. See [Multi-cursor](./multi-cursor.md).                                                                              |
+| `maxCursors`         | `number`                                           | `100`   | Forwarded.                                                                                                                     |
+| `aiAgents`           | `AIAwareness[]`                                    | `[]`    | Forwarded. See [Ghost Pair](./ai-and-agents.md#ghost-pair-agents-in-the-editor).                                               |
+| `showAILabels`       | `boolean`                                          | `true`  | Forwarded.                                                                                                                     |
+| `showAIFocusRegions` | `boolean`                                          | `false` | Forwarded. Off by default — you must opt in.                                                                                   |
+| `onSave`             | `(path: string, content: string) => Promise<void>` | —       | Called with the active tab's path and content when Ctrl/Cmd+S fires. The pane marks the tab clean after your promise resolves. |
+| `class`              | `string`                                           | `""`    | Extra CSS class on the pane container.                                                                                         |
 
 `EditorPane` already wires content edits and cursor moves back into the store and shows a "No files open" empty state when there are no tabs. A tab whose `aiEditing` flag is set is rendered read-only.
 
@@ -571,10 +588,21 @@ _falls_ when you append simple functions.
 ### Plugging in better analysis
 
 The built-in analyzer is a token scanner: instant, offline, no configuration, and
-it works on every language the tokenizer knows. It is also an approximation of a
-parser. A differential harness pins it against an AST reference on every build,
-but that reference only speaks JavaScript and TypeScript — so on the other 30
-languages the scanner is unverified, and it will occasionally be wrong.
+it runs on every language the tokenizer knows. It is also an approximation of a
+parser, and it is worth being precise about how far the verification reaches,
+because a single number would flatter it:
+
+- The tokenizer knows **32** languages. Cognitive Complexity has dedicated rules
+  for **four** of them — JavaScript, TypeScript, Python and Go. Every other
+  language is scored with the **JavaScript** rules.
+- Only **JavaScript and TypeScript** are pinned exactly. A differential harness
+  runs an independent AST oracle over a shared corpus on every build, and the
+  walker and the scanner must agree on every function.
+- **Python and Go** are covered by targeted cases for shapes that were found
+  wrong and fixed — Go region detection around `interface{}` / `struct{}` and
+  generics, Python `match` and `lambda` — not exhaustively.
+- The remaining **28** are unverified. On a language whose syntax diverges from
+  C-family braces, expect the reading to be occasionally wrong.
 
 When you need more than an approximation, supply a provider. It runs _after_ the
 built-in result is already on screen, so typing is never blocked and a slow or
@@ -660,7 +688,7 @@ it did not know.
 
 **So use this seam to plug in a parser**, not a model: tree-sitter, a language
 server, or your own AST pass. That is where the accuracy the built-in scanner
-cannot reach on its 30 unverified languages actually lives. The chat transports
+cannot reach on its 28 unverified languages actually lives. The chat transports
 remain because the seam is generic and the plumbing is useful — but if you wire
 one up for complexity scoring, measure it against a reference before you trust
 a number it produces.
@@ -684,6 +712,10 @@ const provider = createAstComplexityProvider({
 	// `sourceType: 'module'` is not optional in practice: without it acorn throws
 	// on the first `import` or `export`, the provider declines, and you silently
 	// get the built-in reading while believing you are getting the parser's.
+	//
+	// `locations: true` is load-bearing in the same silent way. Drop it and acorn
+	// omits `loc`, the adapter falls back to line 0, and every region you report
+	// claims the first line of the file. Nothing throws there either.
 	parse: (code) =>
 		acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module', locations: true }),
 	adapter: createEstreeAdapter(),
@@ -755,10 +787,60 @@ bugs caught by the sweep below rather than by reasoning:
 You can also use the rules outside an editor entirely — a CI gate, a report, a
 pre-commit hook — with `astComplexityMetrics(tree, adapter)`.
 
+#### The breakdown comes with it
+
+`analyzeAstComplexity` returns a `contributions` array beside each score: one
+entry per increment, with its line, kind, increment and nesting depth. The hover
+tooltip renders it, so a parser-backed reading explains itself exactly as fully as
+the built-in one — you get the number **and** the per-line arithmetic that
+produced it.
+
+If you write a provider by hand rather than from a tree, fill
+`ProvidedComplexityRegion.contributions` to get the same treatment. Leave it off
+and the tooltip falls back to the score and the line range alone; nothing breaks,
+but the reader loses the ability to check your number against its parts.
+
+```ts
+import { summarizeContributions, getComplexityContributionLabel } from '@nocturnium/svelte-ide';
+
+// Rendering your own breakdown? These are the same helpers the tooltip uses, so
+// your vocabulary and totals cannot drift from the library's.
+const { maxNesting, incrementCount, total } = summarizeContributions(region.contributions);
+```
+
+`summarizeContributions` counts only increments that actually scored. A nested
+function contributes `0` — it exists in the list to explain why the lines under it
+cost more — so counting it would report more increments than the score has.
+
+#### Decisions this library made
+
+Cognitive Complexity is published as a rule set, not a specification, and a few
+constructs have no citable rule. Where that happens this library made a call, and
+these are the calls — recorded here rather than only at the code site, so you can
+disagree with a specific decision instead of a number.
+
+| Construct                              | Decision                                                                                                      | Basis                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `\|\|=` / `&&=` / `??=`                | Score **0**, and cannot start or extend a boolean run.                                                        | Convention. Encoded in the shared corpus, so acorn independently agrees. |
+| A construct in a **parameter default** | **Is** scored, at the function's **own** nesting level — a default sits at the boundary, not inside the body. | Convention. All three implementations agree; four corpus cases pin it.   |
+| An **arrow in a parameter default**    | Still a nested function: raises nesting for its own body.                                                     | Follows from the whitepaper's treatment of nested functions.             |
+| Go `type X struct {` / `interface {`   | The keyword before the brace decides whether it opens a body, not the last `)`.                               | Convention, from fixing regions that reported `cc=0`.                    |
+| Go `select`, Python `for...else`,      | **Not scored.**                                                                                               | No citable SonarSource rule for any of them.                             |
+| comprehension `if`, `case` guards      |                                                                                                               |                                                                          |
+
+If SonarSource's own plugin scores `||=`, then this library has moved away from
+Sonar and toward its own oracle on that construct. That is a decision, not an
+accident, and it is why it is written down.
+
+The **advice thresholds** behind `region.suggestion` are conventions too — deep
+nesting at 3 levels (SonarSource's S134 defaults to a maximum of 3), more than 10
+increments, 3 or more multi-operator conditions, more than 50 lines. They select
+which sentence to show and **change no score**.
+
 #### How this is verified
 
 The walker is checked against an independent AST implementation of the
-SonarSource rules on a 30-case curated corpus **and on every function in this
+SonarSource rules on a 36-case curated corpus **and on every function in this
 repository** — over 300 comparisons, asserting exact score agreement, on every
 build. Both sides consume the same transpiled JavaScript through the same parser,
 so there is no approximation to forgive and any disagreement is a real
