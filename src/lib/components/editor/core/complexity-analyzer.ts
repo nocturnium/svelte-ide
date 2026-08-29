@@ -1233,7 +1233,7 @@ export class ComplexityAnalyzer {
 					continue;
 				}
 
-				if (this.isNestedFunctionToken(tokens, i, lineIndex, region, language)) {
+				if (this.isNestedFunctionToken(tokens, i, lineIndex, region, language, parenDepth)) {
 					this.addContribution(contributions, lineIndex, 'nested-function', 0, nestingStack.length);
 					pendingB2 = { kind: 'nested-function', line: lineIndex };
 					bracelessDepth++;
@@ -1622,11 +1622,21 @@ export class ComplexityAnalyzer {
 		index: number,
 		line: number,
 		region: RawRegion,
-		language: SupportedComplexityLanguage
+		language: SupportedComplexityLanguage,
+		parenDepth: number
 	): boolean {
 		const token = tokens[index];
 		if (token.text === '=>') {
-			return line !== region.startLine;
+			// An arrow on the region's own declaration line is normally the region
+			// itself — but not when it sits INSIDE the parameter list, where it is a
+			// default value and a genuinely nested function:
+			//
+			//   function f(cb = (v) => { if (v) return 1; }) {
+			//
+			// Unparenthesised depth tells the two apart: the region's own arrow is at
+			// depth 0 by the time `=>` is reached, a parameter default is still inside
+			// the signature's parentheses.
+			return line !== region.startLine || parenDepth > 0;
 		}
 		if (token.text !== 'function' && token.text !== 'func') {
 			return false;

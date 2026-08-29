@@ -126,5 +126,25 @@ export const CORPUS: Array<{ name: string; code: string }> = [
 	{
 		name: 'logical assignment beside a real chain',
 		code: 'function f(a, b, c, d) {\n  a.x ||= 1;\n  return b && c || d;\n}'
+	},
+	// The parameter-scoring rule, pinned. Three implementations gave three answers
+	// here (2 / 0 / 1) until it was decided: a construct in a default IS scored,
+	// at the function's own nesting level, and an arrow in a default is still a
+	// nested function that raises nesting for its own body.
+	{
+		name: 'ternary in a parameter default',
+		code: 'function f(a, b = a ? 1 : 2) {\n  return b;\n}'
+	},
+	{
+		name: 'boolean run in a parameter default',
+		code: 'function f(a, b = a || 2) {\n  return b;\n}'
+	},
+	{
+		name: 'arrow in a parameter default raises nesting',
+		code: 'function f(cb = (v) => { if (v) return 1; }) {\n  return cb;\n}'
+	},
+	{
+		name: 'nested if inside a parameter default arrow',
+		code: 'function f(cb = (v) => { if (v) { if (v) return 1; } }) {\n  return cb;\n}'
 	}
 ];

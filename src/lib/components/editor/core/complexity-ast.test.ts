@@ -27,6 +27,18 @@ function astScore(code: string): number {
 const makeLines = (code: string): Line[] =>
 	code.split('\n').map((text, number) => ({ number, text }));
 
+/**
+ * Score of the OUTERMOST region, which is the function every corpus entry
+ * declares. NOT `regions[0]`: a nested arrow gets a region of its own and can
+ * sort ahead of the function enclosing it, so index 0 silently compares the
+ * wrong function against the reference.
+ */
+function scannerScore(analyzer: ComplexityAnalyzer, code: string): number {
+	const regions = analyzer.analyze(makeLines(code), 'typescript').regions;
+	if (regions.length === 0) return 0;
+	return regions.reduce((best, r) => (r.startLine < best.startLine ? r : best)).cognitiveComplexity;
+}
+
 describe('AST walker: the published examples', () => {
 	// Pin the walker to the whitepaper directly, not only to the oracle. Two
 	// implementations agreeing proves consistency; this proves correctness.
@@ -76,8 +88,7 @@ describe('AST walker: agrees with the independent reference', () => {
 			name: entry.name,
 			reference: oracle(entry.code),
 			walker: astScore(entry.code),
-			scanner:
-				scanner.analyze(makeLines(entry.code), 'typescript').regions[0]?.cognitiveComplexity ?? 0
+			scanner: scannerScore(scanner, entry.code)
 		})).filter((r) => r.reference !== r.walker || r.reference !== r.scanner);
 
 		expect(mismatches, `three-way mismatches:\n${JSON.stringify(mismatches, null, 2)}`).toEqual([]);
@@ -124,16 +135,24 @@ describe('AST walker: nesting rules', () => {
 		expect(astScore('function f(a) {\n  for (let i = a ? 0 : 1; i < 9; i++) {}\n}')).toBe(2);
 	});
 
-	it('scores a parameter default, without charging it for nesting', () => {
-		// A KNOWN, DELIBERATE divergence from the reference, recorded rather than
-		// left for someone to trip over. The reference starts walking at the
-		// function's `.body` and so never sees a parameter default at all, scoring
-		// this 0; the walker scores it 1. A ternary in a default is real branching
-		// the reader has to follow, so counting it is right — but it sits at the
-		// function's boundary, not inside its body, so it takes no nesting penalty.
+	it('scores a parameter default at the function\u2019s own nesting level', () => {
+		// The parameter rule, decided during the 2.0.0 cut. It had three answers
+		// across three implementations \u2014 the walker said 1, the token scanner said 1,
+		// and the reference said 0 because it began walking at `.body` and never saw
+		// a default at all. A construct in a default is real branching the reader has
+		// to follow, so it counts; it sits at the function's boundary rather than
+		// inside its body, so it takes no nesting penalty of its own.
 		const code = 'function f(a, b = a ? 1 : 2) {\n  return b;\n}';
 		expect(astScore(code)).toBe(1);
-		expect(oracle(code)).toBe(0);
+		expect(oracle(code)).toBe(1);
+	});
+
+	it('still raises nesting for an arrow in a parameter default', () => {
+		// The other half of the rule: a default that CONTAINS a function is still a
+		// nested function, so its own body nests.
+		const code = 'function f(cb = (v) => { if (v) return 1; }) {\n  return cb;\n}';
+		expect(astScore(code)).toBe(2);
+		expect(oracle(code)).toBe(2);
 	});
 
 	it('counts direct recursion but not a same-named method call', () => {

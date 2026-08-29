@@ -136,6 +136,14 @@ function oracleComplexity(fnNode: AnyNode, fnName: string | undefined): number {
 		for (const child of childNodes(node)) visit(child, nesting, node);
 	}
 
+	// Parameters are scored, at the function's OWN nesting level. Skipping them
+	// made the reference blind to every default value: `function f(a, b = a ? 1 : 2)`
+	// read 0. A construct in a default is real branching the reader must follow, but
+	// it sits at the function's boundary rather than inside its body, so it takes no
+	// nesting penalty of its own — while an arrow in a default is still a nested
+	// function and does raise nesting for what IT contains.
+	for (const param of (fnNode.params as AnyNode[]) ?? []) visit(param, 0, null);
+
 	const body = (fnNode.body as AnyNode) ?? fnNode;
 	if (body.type === 'BlockStatement') {
 		for (const child of childNodes(body)) visit(child, 0, null);
