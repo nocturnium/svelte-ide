@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ComplexityAnalyzer, createComplexityAnalyzer } from './complexity-analyzer';
+import {
+	ComplexityAnalyzer,
+	createComplexityAnalyzer,
+	COGNITIVE_COMPLEXITY_BANDS
+} from './complexity-analyzer';
 import type { Line } from './state';
 
 /** Helper to create Line[] from a string */
@@ -2236,6 +2240,75 @@ export class ComplexityAnalyzer {
 
 			expect(metrics.maxCognitiveComplexity).toBe(hottestFn.cognitiveComplexity);
 			expect(hottestFn.name).toBe('hot');
+		});
+	});
+	describe('statement boundaries are structural, not punctuation-shaped', () => {
+		// A sequence ends at a real statement end. An earlier fix used `;`, which is
+		// the one terminator Python and Go do not have — two separate `and`-chains
+		// collapsed into a single increment in both languages, and in JS written
+		// without semicolons.
+		const cc = (code: string, language = 'typescript') =>
+			analyzer.analyze(makeLines(code), language).regions[0]?.cognitiveComplexity ?? 0;
+
+		it('separates boolean sequences in Python', () => {
+			expect(
+				cc('def f(a, b, c, d):\n    x = a and b\n    y = c and d\n    return x and y', 'python')
+			).toBe(3);
+		});
+
+		it('separates boolean sequences in Go', () => {
+			expect(
+				cc('func f(a, b, c, d bool) bool {\n\tx := a && b\n\ty := c && d\n\treturn x && y\n}', 'go')
+			).toBe(3);
+		});
+
+		it('separates boolean sequences in JS written without semicolons', () => {
+			const asi =
+				'function f(a: any, b: any, c: any, d: any) {\n  const x = a && b\n  const y = c && d\n  return x && y\n}';
+			const semis =
+				'function f(a: any, b: any, c: any, d: any) {\n  const x = a && b;\n  const y = c && d;\n  return x && y;\n}';
+			expect(cc(asi)).toBe(3);
+			expect(cc(asi)).toBe(cc(semis));
+		});
+
+		it('still scores a wrapped condition as one sequence', () => {
+			const wrapped =
+				'function f(u: any) {\n  if (\n    u.a &&\n    u.b &&\n    u.c\n  ) return 1;\n  return 0;\n}';
+			const oneLine = 'function f(u: any) {\n  if (u.a && u.b && u.c) return 1;\n  return 0;\n}';
+			expect(cc(wrapped)).toBe(cc(oneLine));
+		});
+	});
+
+	describe('the gauge scale is monotonic', () => {
+		// Mirrors CognitiveLoadMeter's fill. Two earlier scales failed: one pegged at
+		// 100% in every shipped state, the next made cc 15 fill the bar and cc 16
+		// drop it to 53% — crossing the refactor threshold made the graphic say
+		// "better". A metric graphic must never shrink as the metric grows.
+		const THRESHOLD = COGNITIVE_COMPLEXITY_BANDS.critical;
+		const MARK = 70;
+		const fill = (cc: number) => {
+			if (cc <= 0) return 0;
+			if (cc <= THRESHOLD) return Math.round((cc / THRESHOLD) * MARK);
+			const over = Math.log2(cc / THRESHOLD);
+			return Math.round(MARK + (100 - MARK) * (1 - 1 / (1 + over)));
+		};
+
+		it('never decreases as complexity rises', () => {
+			let previous = -1;
+			for (let cc = 0; cc <= 300; cc++) {
+				const value = fill(cc);
+				expect(
+					value,
+					`fill(${cc}) = ${value} < fill(${cc - 1}) = ${previous}`
+				).toBeGreaterThanOrEqual(previous);
+				previous = value;
+			}
+		});
+
+		it('puts the refactor threshold at a fixed mark and never saturates below it', () => {
+			expect(fill(THRESHOLD)).toBe(MARK);
+			expect(fill(THRESHOLD + 1)).toBeGreaterThan(MARK);
+			expect(fill(300)).toBeLessThanOrEqual(100);
 		});
 	});
 });

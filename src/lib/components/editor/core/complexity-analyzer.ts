@@ -1394,6 +1394,31 @@ export class ComplexityAnalyzer {
 		}
 
 		state.parenDepth = parenDepth;
+
+		// End of line ends the SEQUENCE unless the line is obviously continued.
+		// Removing the `:` reset fixed a JS ternary splitting a single `&&` chain in
+		// two, but `:` and the newline are the only statement terminators Python and
+		// Go have, so two separate `and`-chains collapsed into one increment in both
+		// — and in JS written without semicolons. A line is continued when it ends on
+		// an operator or comma, or when a bracket is still open; otherwise the
+		// statement is over. This keeps the wrapped-condition invariant (a `&&` chain
+		// broken across lines still scores once) without merging separate statements.
+		const tail = tokens[tokens.length - 1]?.text ?? '';
+		const continues =
+			parenDepth > 0 ||
+			tail === '&&' ||
+			tail === '||' ||
+			tail === 'and' ||
+			tail === 'or' ||
+			tail === ',' ||
+			tail === '(' ||
+			tail === '=' ||
+			tail === '+';
+		if (!continues) {
+			lastByParenDepth.clear();
+			state.parenDepth = 0;
+		}
+
 		return contributions;
 	}
 

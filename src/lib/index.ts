@@ -154,6 +154,8 @@ export { default as CognitiveLoadMeter } from './components/editor/CognitiveLoad
 export {
 	COGNITIVE_COMPLEXITY_BANDS,
 	getComplexityLevel,
+	getComplexityBandLabel,
+	getComplexityRegionKey,
 	getComplexityAnalyzer,
 	createComplexityAnalyzer
 } from './components/editor/core/complexity-analyzer';
@@ -161,7 +163,8 @@ export type {
 	ComplexityMetrics,
 	ComplexityRegion,
 	ComplexityFactors,
-	ComplexityContribution
+	ComplexityContribution,
+	ComplexityContributionKind
 } from './components/editor/core/complexity-analyzer';
 
 /**

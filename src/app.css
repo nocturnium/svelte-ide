@@ -7,9 +7,16 @@
 	   a 60%-alpha token meant for de-emphasized UI chrome. At 60% a comment
 	   measured 4.39:1 on the editor background — under WCAG AA before any overlay
 	   was involved — and 4.02:1 inside a critical complexity region. A comment is
-	   code you are meant to read, not chrome. At 72% it measures 5.81:1 plain and
-	   5.13:1 under the heaviest complexity veil, so it clears AA in every state the
-	   editor can render. */
+	   code you are meant to read, not chrome. At 72% it measures 5.81:1 on the
+	   editor background and 5.13:1 under the heaviest complexity veil — both
+	   verified in a real browser.
+
+	   Scoping that claim precisely, because a loose one has now been wrong twice:
+	   those are the two states THIS feature introduces. A comment on the ACTIVE
+	   LINE measures 3.96:1, and 3.42:1 when that line also sits under the heaviest
+	   veil. The active-line band predates this work — it is in the first commit —
+	   and is a separate, pre-existing AA gap that this token does not claim to
+	   fix. */
 	--editor-token-comment: color-mix(in srgb, var(--ide-text-secondary) 72%, transparent);
 	--editor-token-string: var(--color-nocturnium-aurora-green);
 	--editor-token-string-template: var(--color-nocturnium-aurora-green);

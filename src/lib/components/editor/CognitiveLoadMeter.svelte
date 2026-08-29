@@ -53,29 +53,31 @@
 	let levelLabel = $derived(getComplexityBandLabel(level));
 
 	/**
-	 * Gauge fill, on a scale that keeps moving past the refactor threshold.
+	 * Gauge fill — monotonic by construction.
 	 *
-	 * An unbounded metric cannot fill a percentage bar. Scaling to the threshold
-	 * pegged it at 100% in every state this library actually ships — the hero at 16
-	 * and the demo at 113 both rendered a full bar — which is the saturation bug the
-	 * number itself was just freed from, relocated into the graphic. The scale now
-	 * doubles once the threshold is passed, so the bar keeps saying something, and
-	 * a tick marks where the threshold sits.
+	 * Two earlier attempts both failed the same way. Scaling to the threshold
+	 * pegged the bar at 100% in every state this library ships. Doubling the scale
+	 * past the threshold made it NON-MONOTONIC: cognitive complexity 15 filled the
+	 * bar completely and 16 dropped it to 53%, so crossing the exact line the whole
+	 * design is anchored on made the graphic say "better". A function at 29 drew a
+	 * longer bar than one at 113.
+	 *
+	 * This maps 0..threshold linearly onto the first 70% and everything beyond it
+	 * logarithmically onto the remaining 30%, so the fill never decreases as the
+	 * number grows, never saturates, and the threshold always sits at the same
+	 * labelled place on the track.
 	 */
-	let gaugeMax = $derived(
-		cognitiveComplexity <= COGNITIVE_COMPLEXITY_BANDS.critical
-			? COGNITIVE_COMPLEXITY_BANDS.critical
-			: Math.pow(
-					2,
-					Math.ceil(Math.log2(cognitiveComplexity / COGNITIVE_COMPLEXITY_BANDS.critical))
-				) * COGNITIVE_COMPLEXITY_BANDS.critical
-	);
-	let thresholdProgress = $derived(
-		Math.min(100, Math.round((cognitiveComplexity / gaugeMax) * 100))
-	);
-	let thresholdMarkPercent = $derived(
-		Math.round((COGNITIVE_COMPLEXITY_BANDS.critical / gaugeMax) * 100)
-	);
+	const THRESHOLD_MARK = 70;
+	let thresholdProgress = $derived.by(() => {
+		const t = COGNITIVE_COMPLEXITY_BANDS.critical;
+		if (cognitiveComplexity <= 0) return 0;
+		if (cognitiveComplexity <= t) {
+			return Math.round((cognitiveComplexity / t) * THRESHOLD_MARK);
+		}
+		const over = Math.log2(cognitiveComplexity / t);
+		return Math.round(THRESHOLD_MARK + (100 - THRESHOLD_MARK) * (1 - 1 / (1 + over)));
+	});
+	let thresholdMarkPercent = $derived(THRESHOLD_MARK);
 
 	let highComplexityRegions = $derived(
 		metrics?.regions.filter((r) => r.cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.medium) ?? []
@@ -96,9 +98,21 @@
 <div
 	class="cognitive-meter cognitive-meter--{size}"
 	role={onclick ? 'button' : 'meter'}
-	aria-valuenow={cognitiveComplexity}
-	aria-valuemin={0}
-	aria-valuemax={gaugeMax}
+	{...onclick
+		? {}
+		: {
+				// Meter attributes describe the BAR, which is a real 0-100 track.
+				// The unbounded reading goes in aria-valuetext, which is precisely
+				// what it exists for — clamping aria-valuenow to the threshold
+				// announced "15 of 15" at 113, i.e. the saturation bug relocated
+				// into the accessibility layer. These are omitted entirely when a
+				// consumer passes onclick, because meter attributes are invalid on
+				// role="button".
+				'aria-valuenow': thresholdProgress,
+				'aria-valuemin': 0,
+				'aria-valuemax': 100,
+				'aria-valuetext': `${cognitiveComplexity}, ${levelLabel}. Refactor threshold ${COGNITIVE_COMPLEXITY_BANDS.critical}.`
+			}}
 	aria-label="Cognitive complexity {cognitiveComplexity}, {levelLabel}. Refactor threshold {COGNITIVE_COMPLEXITY_BANDS.critical}."
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
