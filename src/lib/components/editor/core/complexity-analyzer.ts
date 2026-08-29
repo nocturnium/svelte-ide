@@ -116,6 +116,17 @@ export interface ComplexityMetrics {
 	 * Unbounded: a region at 113 reports 113.
 	 */
 	maxCognitiveComplexity: number;
+	/**
+	 * What produced this reading. `builtin` is the token scanner — instant and
+	 * offline, but an approximation of a parser. `provider` means a consumer's
+	 * analysis (an AST pass, a language server, a model) refined it.
+	 *
+	 * Surfaced so the UI can say where a number came from. A reading that cannot
+	 * be attributed is one a reader cannot weigh.
+	 */
+	source?: import('./complexity-provider').ComplexitySource;
+	/** Provenance label for a provider reading — a model or tool id. */
+	sourceName?: string;
 }
 
 /**

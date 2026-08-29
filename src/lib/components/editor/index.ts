@@ -18,6 +18,7 @@ export { default as ComplexityLayer } from './ComplexityLayer.svelte';
 export { default as ComplexityHeatLayer } from './ComplexityHeatLayer.svelte';
 export { default as ComplexityLegend } from './ComplexityLegend.svelte';
 export { default as CognitiveLoadMeter } from './CognitiveLoadMeter.svelte';
+export * from './core/complexity-provider';
 
 // Core utilities (explicitly excluding CRDT binding; use @nocturnium/svelte-ide/crdt)
 export * from './core/state';

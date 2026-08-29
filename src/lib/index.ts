@@ -168,6 +168,34 @@ export type {
 } from './components/editor/core/complexity-analyzer';
 
 /**
+ * Pluggable complexity analysis. The built-in scanner is instant and offline but
+ * approximates a parser; these let a consumer supply something that actually
+ * parses — an AST pass, a language server, or a small model on a local Ollama or
+ * any OpenAI-compatible endpoint. The library never calls a model itself, so the
+ * package keeps zero runtime dependencies and no code leaves a machine unless
+ * the consumer wires it to.
+ *
+ * @public - Stable API
+ */
+export {
+	buildComplexityPrompt,
+	parseComplexityResponse,
+	createChatComplexityProvider,
+	createOllamaComplexityProvider,
+	createOpenAICompatibleComplexityProvider,
+	mergeProvidedComplexity,
+	ComplexityProviderError
+} from './components/editor/core/complexity-provider';
+export type {
+	ComplexityProvider,
+	ComplexityProviderRequest,
+	ComplexityProviderResult,
+	ProvidedComplexityRegion,
+	ComplexitySource,
+	ChatCompletion
+} from './components/editor/core/complexity-provider';
+
+/**
  * Editor tab bar component
  * @public - Stable API
  */

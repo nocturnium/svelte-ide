@@ -36,9 +36,11 @@
 		getComplexityAnalyzer,
 		COGNITIVE_COMPLEXITY_BANDS,
 		getComplexityRegionKey,
+		getComplexityLevel,
 		type ComplexityMetrics,
 		type ComplexityRegion
 	} from './core/complexity-analyzer';
+	import { mergeProvidedComplexity, type ComplexityProvider } from './core/complexity-provider';
 	import { registerSemanticFoldCommands } from './core/commands';
 	import { getSemanticAnalyzer, type FoldPreset } from './core/semantic-analyzer';
 	import type { AIAwareness } from './core/ai-awareness';
@@ -76,6 +78,16 @@
 		 * SonarSource's refactor threshold. Defaults to the `medium` band.
 		 */
 		complexityThreshold?: number;
+		/**
+		 * Optional pluggable analysis. The built-in token scanner always runs first
+		 * and renders immediately; a provider refines that result asynchronously.
+		 *
+		 * Supply one when you need accuracy the scanner cannot give — an AST pass,
+		 * a language server, or a small model via
+		 * `createOllamaComplexityProvider` / `createOpenAICompatibleComplexityProvider`.
+		 * Nothing leaves the machine unless you wire it to.
+		 */
+		complexityProvider?: ComplexityProvider;
 		/** AI agents for Ghost Pair visualization */
 		aiAgents?: AIAwareness[];
 		/** Show AI cursor labels (default: true) */
@@ -106,6 +118,7 @@
 		maxCursors = 100,
 		complexityHighlighting = false,
 		complexityThreshold = COGNITIVE_COMPLEXITY_BANDS.medium,
+		complexityProvider,
 		aiAgents = [],
 		showAILabels = true,
 		showAIFocusRegions = false,
@@ -154,6 +167,7 @@
 	let complexityUpdateTimeout: ReturnType<typeof setTimeout> | null = null;
 	let complexityFlashTimeout: ReturnType<typeof setTimeout> | null = null;
 	let complexityFlashRegionKey = $state('');
+	let complexityProviderAbort: AbortController | null = null;
 
 	// DOM refs
 	let container: HTMLDivElement;
@@ -490,9 +504,50 @@
 			complexityMetrics = null;
 			return;
 		}
-		const metrics = complexityAnalyzer.analyze(editorState.lines, language);
+		const metrics: ComplexityMetrics = {
+			...complexityAnalyzer.analyze(editorState.lines, language),
+			source: 'builtin'
+		};
 		complexityMetrics = metrics;
 		onComplexityChange?.(metrics);
+
+		// The built-in reading is already rendered above. A provider only ever
+		// refines it, asynchronously — typing is never blocked, and a slow, failing
+		// or absent provider degrades to exactly the built-in behaviour.
+		if (complexityProvider) refineComplexityWithProvider(metrics);
+	}
+
+	/**
+	 * Ask the configured provider to refine the built-in reading.
+	 *
+	 * Any failure — network, abort, malformed reply, a provider that throws — is
+	 * swallowed deliberately: the built-in result stays on screen. The alternative
+	 * is showing an error where a usable number already is, or worse, rendering an
+	 * unvalidated one.
+	 */
+	async function refineComplexityWithProvider(baseline: ComplexityMetrics) {
+		const provider = complexityProvider;
+		if (!provider || !editorState) return;
+
+		complexityProviderAbort?.abort();
+		const controller = new AbortController();
+		complexityProviderAbort = controller;
+
+		const code = editorState.lines.map((line) => line.text).join('\n');
+		try {
+			const result = await provider({ code, language, baseline, signal: controller.signal });
+			// A newer request superseded this one, or the document moved on.
+			if (controller.signal.aborted || complexityProviderAbort !== controller) return;
+			if (!result || result.regions.length === 0) return;
+
+			const merged = mergeProvidedComplexity(baseline, result, getComplexityLevel);
+			complexityMetrics = { ...merged, source: 'provider', sourceName: result.source };
+			onComplexityChange?.(complexityMetrics);
+		} catch {
+			/* keep the built-in reading */
+		} finally {
+			if (complexityProviderAbort === controller) complexityProviderAbort = null;
+		}
 	}
 
 	// Debounced complexity update for performance

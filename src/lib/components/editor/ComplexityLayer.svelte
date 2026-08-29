@@ -253,7 +253,11 @@
 					<span class="complexity-tooltip__title">
 						{getComplexityBandLabel(hoveredRegion.level)} Cognitive Complexity
 					</span>
-					<span class="complexity-tooltip__source">SonarSource Cognitive Complexity metric</span>
+					<span class="complexity-tooltip__source">
+						{metrics?.source === 'provider'
+							? `Cognitive Complexity — measured by ${metrics.sourceName ?? 'a configured provider'}`
+							: 'Cognitive Complexity — built-in scanner'}
+					</span>
 				</div>
 			</div>
 			<div class="complexity-tooltip__lines">
