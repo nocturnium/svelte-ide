@@ -589,10 +589,29 @@ export class ComplexityAnalyzer {
 				pending = { line: i, type: declaration.type, name: declaration.name, depth: braceDepth };
 			}
 
-			for (const token of tokens) {
+			for (let t = 0; t < tokens.length; t++) {
+				const token = tokens[t];
 				if (token.type === 'punctuation.brace' && token.text === '{') {
 					braceDepth++;
-					if (pending && braceDepth === pending.depth + 1) {
+					// `interface{}` and `struct{}` are TYPE LITERALS, not bodies. They
+					// appear in parameter lists, return types, map values, channels and
+					// variadics, and their brace would otherwise open the region on the
+					// signature and close it on the very next token — which reported
+					// cognitive complexity 0 for any Go function whose signature
+					// mentions one. That is most non-trivial Go.
+					//
+					// The keyword before the brace is what settles it, and it has to be:
+					// a return-position `func F() interface{} {` puts the literal AFTER
+					// the parameter list, where a rule based on the last `)` accepts the
+					// literal's brace and rejects the real body.
+					//
+					// `type X struct {` is the one shape where this brace IS the body.
+					// That arrives as a 'class' pending, so it is excluded below.
+					const previous = tokens[t - 1]?.text;
+					const isTypeLiteral =
+						pending?.type === 'function' && (previous === 'interface' || previous === 'struct');
+
+					if (pending && !isTypeLiteral && braceDepth === pending.depth + 1) {
 						stack.push({
 							startLine: pending.line,
 							depth: braceDepth,
@@ -646,7 +665,12 @@ export class ComplexityAnalyzer {
 				}
 			}
 			const name = tokens[nameIndex]?.text;
-			if (name && /^[A-Za-z_]\w*$/.test(name) && tokens[nameIndex + 1]?.text === '(') {
+			// `(` for an ordinary function, `[` for a generic one: `func Map[T any](…)`.
+			// Requiring `(` dropped every generic function on the floor — no region at
+			// all, so the file-level fallback claimed the whole file and the function
+			// lost its name.
+			const follower = tokens[nameIndex + 1]?.text;
+			if (name && /^[A-Za-z_]\w*$/.test(name) && (follower === '(' || follower === '[')) {
 				return { type: 'function', name };
 			}
 		}
@@ -654,7 +678,22 @@ export class ComplexityAnalyzer {
 		const typeIndex = tokens.findIndex((token) => token.text === 'type');
 		if (typeIndex !== -1) {
 			const name = tokens[typeIndex + 1]?.text;
-			const kind = tokens[typeIndex + 2]?.text;
+			let kindIndex = typeIndex + 2;
+			// Step over generic parameters the same way: `type Stack[T any] struct {`.
+			if (tokens[kindIndex]?.text === '[') {
+				let depth = 0;
+				for (let i = kindIndex; i < tokens.length; i++) {
+					if (tokens[i].text === '[') depth++;
+					else if (tokens[i].text === ']') {
+						depth--;
+						if (depth === 0) {
+							kindIndex = i + 1;
+							break;
+						}
+					}
+				}
+			}
+			const kind = tokens[kindIndex]?.text;
 			if (name && (kind === 'struct' || kind === 'interface')) {
 				return { type: 'class', name };
 			}
@@ -664,19 +703,18 @@ export class ComplexityAnalyzer {
 	}
 
 	/**
-	 * Check if a `{` at position `ch` is the opening brace of a function/class definition
-	 */
-	/**
 	 * Is the `{` at `ch` the opening brace of a function/class BODY?
 	 *
-	 * Two shapes previously fooled this and both truncated the region to a few
-	 * lines, silently under-reporting:
+	 * Used by the brace-language scanner only. Go does NOT come through here — it
+	 * has its own region pass, and this rule is actively wrong for it: the last-`)`
+	 * anchor accepts the literal's brace in `func F() interface{} {` and rejects the
+	 * real body. See the type-literal guard in `identifyGoRegions`.
+	 *
+	 * The shape that previously fooled this truncated the region and silently
+	 * under-reported:
 	 *
 	 *   `): Promise<{ content: string }> {`  — the object type inside the generic
 	 *       matched first, so the region opened and closed on the return type.
-	 *   `func Handle(v interface{}) int {`   — Go's brace-less return type meant
-	 *       the real body brace matched nothing, so the region closed on the
-	 *       signature and reported cognitive complexity 0 for arbitrary Go.
 	 */
 	private isDefOpeningBrace(text: string, ch: number, type: 'function' | 'class'): boolean {
 		// For class: `class Foo {` — the `{` follows the class name
