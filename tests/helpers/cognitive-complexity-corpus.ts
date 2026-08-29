@@ -118,5 +118,13 @@ export const CORPUS: Array<{ name: string; code: string }> = [
 	{
 		name: 'demo processUser',
 		code: "function processUser(user, request) {\n  if (!user) {\n    return 'No user';\n  }\n\n  if (user.role === 'admin') {\n    if (user.permissions.includes('write')) {\n      return request.channel === 'api' ? 'Admin API write access' : 'Admin with write access';\n    } else {\n      return 'Admin readonly';\n    }\n  }\n\n  return 'Regular user';\n}"
+	},
+	{
+		name: 'logical assignment is not a sequence',
+		code: 'function f(a, b, c) {\n  a.x ||= 1;\n  a.y &&= 2;\n  return b || c;\n}'
+	},
+	{
+		name: 'logical assignment beside a real chain',
+		code: 'function f(a, b, c, d) {\n  a.x ||= 1;\n  return b && c || d;\n}'
 	}
 ];

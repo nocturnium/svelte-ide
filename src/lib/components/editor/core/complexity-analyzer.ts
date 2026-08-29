@@ -1042,9 +1042,17 @@ export class ComplexityAnalyzer {
 				// `for (a; b; c)` intact in brace languages; the loop-kind guard does the
 				// same for Go, whose `for i := 0; i < n; i++` header has no parentheses at
 				// all, so its separators would otherwise disarm the loop before its brace.
+				//
+				// Go puts an unparenthesised `;` in `if` and `switch` headers too —
+				// `if x := f(); x > 0 {` — so those kinds are exempt as well, but only in
+				// Go. A bare `;` terminator is vanishingly rare there (gofmt removes it),
+				// whereas in a brace language it genuinely ends the statement.
+				const goHeaderSeparator =
+					language === 'go' && (pendingB2?.kind === 'if' || pendingB2?.kind === 'switch');
 				if (
 					token.text === ';' &&
 					parenDepth === 0 &&
+					!goHeaderSeparator &&
 					pendingB2?.kind !== 'for' &&
 					pendingB2?.kind !== 'while'
 				) {
@@ -1067,7 +1075,16 @@ export class ComplexityAnalyzer {
 
 				if (token.type === 'punctuation.brace' && token.text === '{') {
 					braceDepth++;
-					if (pendingB2) {
+					// A composite literal in a Go control header is not the block body.
+					// `if x := (Point{1, 2}); x.X > 0 {` gave the latch to the LITERAL's
+					// brace, which closed on the same line and popped the nesting again,
+					// so the body ran at depth 0 and everything inside was undercounted.
+					//
+					// Go requires such a literal to be parenthesised precisely because it
+					// is otherwise ambiguous with the block brace, so paren depth is the
+					// language's own disambiguator rather than a guess.
+					const goCompositeLiteral = language === 'go' && parenDepth > 0;
+					if (pendingB2 && !goCompositeLiteral) {
 						// The brace takes ownership of the nesting the latch was holding,
 						// so it moves from bracelessDepth onto the stack rather than being
 						// counted twice.
@@ -1273,6 +1290,24 @@ export class ComplexityAnalyzer {
 				continue;
 			}
 
+			// A `lambda` is a nested function: no increment of its own, but it raises
+			// nesting for whatever it contains — exactly as a JS arrow does. Without
+			// this, `g = lambda v: 1 if v else 0` scored 1 while the arrow it
+			// translates to scored 2, and the arrow's 2 is the oracle-verified value.
+			//
+			// It does not push onto nestingStack: a lambda is a single expression, so
+			// its scope ends with the line rather than with the indent block.
+			const lambdaCount = tokens.filter((token) => token.text === 'lambda').length;
+			for (let depth = 0; depth < lambdaCount; depth++) {
+				this.addContribution(
+					contributions,
+					lineIndex,
+					'nested-function',
+					0,
+					nestingStack.length + depth
+				);
+			}
+
 			if (first === 'if') {
 				this.addContribution(
 					contributions,
@@ -1315,14 +1350,28 @@ export class ComplexityAnalyzer {
 					nestingStack.length
 				);
 				nestingStack.push({ indent, kind: 'catch' });
-			} else if (this.isPythonTernary(tokens)) {
+			} else if (first === 'match' && tokens[tokens.length - 1]?.text === ':') {
+				// `match` is a SOFT keyword — still a perfectly ordinary identifier, and
+				// `match = re.match(...)` is one of the most common lines in Python.
+				// Requiring the statement to end in a colon separates the two, and is
+				// the same shape the language itself uses to disambiguate.
 				this.addContribution(
 					contributions,
 					lineIndex,
-					'ternary',
+					'switch',
 					1 + nestingStack.length,
 					nestingStack.length
 				);
+				nestingStack.push({ indent, kind: 'switch' });
+			} else if (this.isPythonTernary(tokens)) {
+				// A ternary inside a lambda sits one level deeper per enclosing lambda,
+				// counting only those that open before the `if`.
+				const ifIndex = tokens.findIndex((token) => token.text === 'if');
+				const enclosingLambdas = tokens
+					.slice(0, ifIndex)
+					.filter((token) => token.text === 'lambda').length;
+				const nesting = nestingStack.length + enclosingLambdas;
+				this.addContribution(contributions, lineIndex, 'ternary', 1 + nesting, nesting);
 			}
 		}
 
@@ -1408,7 +1457,8 @@ export class ComplexityAnalyzer {
 		const lastByParenDepth = state.lastByParenDepth;
 		let parenDepth = state.parenDepth;
 
-		for (const token of tokens) {
+		for (let i = 0; i < tokens.length; i++) {
+			const token = tokens[i];
 			if (token.text === '(') {
 				parenDepth++;
 				continue;
@@ -1433,6 +1483,18 @@ export class ComplexityAnalyzer {
 			) {
 				continue;
 			}
+
+			// `||=` and `&&=` are ASSIGNMENTS, not boolean sequences. The tokenizer
+			// emits them as the operator followed by `=`, so `a.x ||= 1` was
+			// indistinguishable from a real `a || b` chain and took a +1 the reader
+			// never pays — there is no second branch to hold in your head. `??=` was
+			// already correct only because `??` is not in the operator list at all.
+			//
+			// This returns BEFORE recording the run, so a logical assignment also
+			// cannot start or extend a sequence.
+			let next = i + 1;
+			while (next < tokens.length && tokens[next].text.trim() === '') next++;
+			if (tokens[next]?.text === '=') continue;
 
 			const normalized = token.text === 'and' ? '&&' : token.text === 'or' ? '||' : token.text;
 			const previous = lastByParenDepth.get(parenDepth);
@@ -1654,9 +1716,81 @@ export class ComplexityAnalyzer {
 			// `{` / `,` / `;` open a member slot in a class body or object literal.
 			if (text === '{' || text === ',' || text === ';') return true;
 			if (DECLARATION_MODIFIERS.has(text)) continue;
+			// A decorator sits between the member slot and the name and is not a call
+			// expression. `@Input() compute()` otherwise read the DECORATOR's closing
+			// paren as evidence that `compute` was being called, so every decorated
+			// method took a phantom +1 recursion increment against its own name.
+			const decorator = this.decoratorStart(tokens, i);
+			if (decorator !== -1) {
+				i = decorator; // the loop's own i-- steps past the `@`
+				continue;
+			}
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * If the tokens ending at `index` form a decorator, return the index of its
+	 * `@`; otherwise -1.
+	 *
+	 * Handles all four shapes, because the narrow ones are not enough: a check for
+	 * `@Name` alone misses `@Foo.Bar()`, and one that only skips a paren group
+	 * misses `@ns.Dec`. Both appear in ordinary Angular and NestJS code.
+	 *
+	 *   `@Input`  `@Input()`  `@Input({ alias: 'x' })`  `@Foo.Bar()`  `@ns.Dec`
+	 */
+	private decoratorStart(tokens: Token[], index: number): number {
+		let i = index;
+		const skipBlank = () => {
+			while (i >= 0 && tokens[i].text.trim() === '') i--;
+		};
+
+		skipBlank();
+		if (i < 0) return -1;
+
+		// An optional balanced argument list. Only parens are counted, so an object
+		// literal argument passes through without confusing the depth.
+		if (tokens[i].text === ')') {
+			let depth = 0;
+			while (i >= 0) {
+				const text = tokens[i].text;
+				if (text === ')') depth++;
+				else if (text === '(') {
+					depth--;
+					if (depth === 0) {
+						i--;
+						break;
+					}
+				}
+				i--;
+			}
+			if (depth !== 0) return -1;
+		}
+
+		// A dotted identifier chain: `Dec`, `ns.Dec`, `Foo.Bar`.
+		skipBlank();
+		let sawName = false;
+		while (i >= 0) {
+			const text = tokens[i].text;
+			if (text.trim() === '') {
+				i--;
+				continue;
+			}
+			if (!/^[A-Za-z_$][\w$]*$/.test(text)) break;
+			sawName = true;
+			i--;
+			skipBlank();
+			if (i >= 0 && tokens[i].text === '.') {
+				i--;
+				continue;
+			}
+			break;
+		}
+		if (!sawName) return -1;
+
+		skipBlank();
+		return i >= 0 && tokens[i].text === '@' ? i : -1;
 	}
 
 	private isPythonTernary(tokens: Token[]): boolean {
