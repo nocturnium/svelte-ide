@@ -148,3 +148,210 @@ export const CORPUS: Array<{ name: string; code: string }> = [
 		code: 'function f(cb = (v) => { if (v) { if (v) return 1; } }) {\n  return cb;\n}'
 	}
 ];
+
+/**
+ * Go and Python translations of the JavaScript cases above.
+ *
+ * The problem this solves: the oracle is an acorn ESTree walk, so it speaks
+ * JavaScript and nothing else, while the token scanner claims four languages.
+ * Go and Python were therefore asserted only against the scanner's own output —
+ * which is not evidence, it is a restatement.
+ *
+ * So each entry here is a TRANSLATION of a named JS case and inherits that
+ * case's oracle value. The expected number is produced by running acorn over the
+ * JavaScript original; the Go or Python source is never parsed by anything but
+ * the scanner under test. A translation that scores differently is either a
+ * scanner defect or an unfaithful translation, and both are worth knowing.
+ *
+ * Deliberately NOT translated:
+ *
+ *  - Anything parameter-shaped. The four parameter cases encode a convention
+ *    about JavaScript defaults; Go has no defaults at all and Python's differ.
+ *  - Go `select`, Python `for...else`, comprehension `if`, and `case` guards.
+ *    There is no citable SonarSource rule for any of them, so a corpus entry
+ *    would be inventing an answer and then agreeing with itself.
+ *  - Constructs the target language does not have: ternaries and `try`/`catch`
+ *    for Go, `switch` and labelled `continue` for Python.
+ */
+export const PARITY_CORPUS: Array<{
+	name: string;
+	language: 'go' | 'python';
+	/** `name` of the CORPUS entry whose oracle value this inherits. */
+	inherits: string;
+	code: string;
+}> = [
+	// ---- Go ------------------------------------------------------------------
+	{
+		name: 'go: empty function',
+		language: 'go',
+		inherits: 'empty function',
+		code: 'func f() int {\n\treturn 1\n}'
+	},
+	{
+		name: 'go: single if',
+		language: 'go',
+		inherits: 'single if',
+		code: 'func f(a bool) int {\n\tif a {\n\t\treturn 1\n\t}\n\treturn 0\n}'
+	},
+	{
+		name: 'go: if/else',
+		language: 'go',
+		inherits: 'if/else',
+		code: 'func f(a bool) int {\n\tif a {\n\t\treturn 1\n\t} else {\n\t\treturn 0\n\t}\n}'
+	},
+	{
+		name: 'go: if/else-if/else',
+		language: 'go',
+		inherits: 'if/else-if/else',
+		code: 'func f(a int) int {\n\tif a > 2 {\n\t\treturn 2\n\t} else if a > 1 {\n\t\treturn 1\n\t} else {\n\t\treturn 0\n\t}\n}'
+	},
+	{
+		name: 'go: for + if',
+		language: 'go',
+		inherits: 'braced for + if',
+		code: 'func f(xs []int) int {\n\tfor _, x := range xs {\n\t\tif x > 0 {\n\t\t\treturn x\n\t\t}\n\t}\n\treturn 0\n}'
+	},
+	{
+		name: 'go: nested loops with if',
+		language: 'go',
+		inherits: 'nested loops with if',
+		code: 'func f(rows [][]int) int {\n\tfor i := 0; i < len(rows); i++ {\n\t\tfor j := 0; j < len(rows[i]); j++ {\n\t\t\tif rows[i][j] != 0 {\n\t\t\t\treturn 1\n\t\t\t}\n\t\t}\n\t}\n\treturn 0\n}'
+	},
+	{
+		// The whitepaper's own example, in Go. `continue OUT` is the labelled jump
+		// that makes this a 7 rather than a 6.
+		name: 'go: whitepaper sumOfPrimes',
+		language: 'go',
+		inherits: 'whitepaper sumOfPrimes',
+		code: 'func sumOfPrimes(max int) int {\n\ttotal := 0\nOUT:\n\tfor i := 1; i <= max; i++ {\n\t\tfor j := 2; j < i; j++ {\n\t\t\tif i%j == 0 {\n\t\t\t\tcontinue OUT\n\t\t\t}\n\t\t}\n\t\ttotal += i\n\t}\n\treturn total\n}'
+	},
+	{
+		name: 'go: boolean run &&',
+		language: 'go',
+		inherits: 'boolean run &&',
+		code: 'func f(a Point) int {\n\tif a.x && a.y && a.z {\n\t\treturn 1\n\t}\n\treturn 0\n}'
+	},
+	{
+		name: 'go: boolean runs mixed',
+		language: 'go',
+		inherits: 'boolean runs mixed',
+		code: 'func f(a Point) int {\n\tif a.w && a.x || a.y && a.z {\n\t\treturn 1\n\t}\n\treturn 0\n}'
+	},
+	{
+		// Go has one loop keyword; `for cond {}` is its while.
+		name: 'go: for-as-while with break',
+		language: 'go',
+		inherits: 'while with break',
+		code: 'func f(n int) int {\n\ti := 0\n\tfor i < n {\n\t\tif i == 3 {\n\t\t\tbreak\n\t\t}\n\t\ti++\n\t}\n\treturn i\n}'
+	},
+	{
+		name: 'go: recursion',
+		language: 'go',
+		inherits: 'recursion',
+		code: 'func fact(n int) int {\n\tif n <= 1 {\n\t\treturn 1\n\t}\n\treturn n * fact(n-1)\n}'
+	},
+	{
+		name: 'go: func literal raises nesting',
+		language: 'go',
+		inherits: 'nested function raises nesting',
+		code: 'func outer(xs []int) []int {\n\treturn mapInts(xs, func(x int) int {\n\t\tif x > 0 {\n\t\t\treturn 1\n\t\t}\n\t\treturn 0\n\t})\n}'
+	},
+	{
+		name: 'go: deeply nested conditionals',
+		language: 'go',
+		inherits: 'deeply nested conditionals',
+		code: 'func f(a, b, c, d bool) int {\n\tif a {\n\t\tif b {\n\t\t\tif c {\n\t\t\t\tif d {\n\t\t\t\t\treturn 1\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\treturn 0\n}'
+	},
+	{
+		name: 'go: switch inside loop',
+		language: 'go',
+		inherits: 'switch inside loop',
+		code: 'func f(xs []int) int {\n\tfor _, x := range xs {\n\t\tswitch x {\n\t\tcase 1:\n\t\t\treturn 1\n\t\tdefault:\n\t\t\tbreak\n\t\t}\n\t}\n\treturn 0\n}'
+	},
+
+	// ---- Python --------------------------------------------------------------
+	{
+		name: 'py: empty function',
+		language: 'python',
+		inherits: 'empty function',
+		code: 'def f():\n    return 1'
+	},
+	{
+		name: 'py: single if',
+		language: 'python',
+		inherits: 'single if',
+		code: 'def f(a):\n    if a:\n        return 1\n    return 0'
+	},
+	{
+		name: 'py: if/else',
+		language: 'python',
+		inherits: 'if/else',
+		code: 'def f(a):\n    if a:\n        return 1\n    else:\n        return 0'
+	},
+	{
+		name: 'py: if/elif/else',
+		language: 'python',
+		inherits: 'if/else-if/else',
+		code: 'def f(a):\n    if a > 2:\n        return 2\n    elif a > 1:\n        return 1\n    else:\n        return 0'
+	},
+	{
+		name: 'py: for + if',
+		language: 'python',
+		inherits: 'braced for + if',
+		code: 'def f(xs):\n    for x in xs:\n        if x > 0:\n            return x\n    return 0'
+	},
+	{
+		name: 'py: nested loops with if',
+		language: 'python',
+		inherits: 'nested loops with if',
+		code: 'def f(rows):\n    for row in rows:\n        for cell in row:\n            if cell:\n                return 1\n    return 0'
+	},
+	{
+		name: 'py: single ternary',
+		language: 'python',
+		inherits: 'single ternary',
+		code: 'def f(a):\n    return 1 if a else 2'
+	},
+	{
+		name: 'py: boolean run and',
+		language: 'python',
+		inherits: 'boolean run &&',
+		code: 'def f(a):\n    if a.x and a.y and a.z:\n        return 1\n    return 0'
+	},
+	{
+		name: 'py: boolean runs mixed',
+		language: 'python',
+		inherits: 'boolean runs mixed',
+		code: 'def f(a):\n    if a.w and a.x or a.y and a.z:\n        return 1\n    return 0'
+	},
+	{
+		name: 'py: try/except',
+		language: 'python',
+		inherits: 'try/catch',
+		code: 'def f(a):\n    try:\n        if a:\n            return 1\n    except ValueError:\n        return 0\n    return 2'
+	},
+	{
+		name: 'py: while with break',
+		language: 'python',
+		inherits: 'while with break',
+		code: 'def f(n):\n    i = 0\n    while i < n:\n        if i == 3:\n            break\n        i += 1\n    return i'
+	},
+	{
+		name: 'py: recursion',
+		language: 'python',
+		inherits: 'recursion',
+		code: 'def fact(n):\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)'
+	},
+	{
+		name: 'py: nested def raises nesting',
+		language: 'python',
+		inherits: 'nested function raises nesting',
+		code: 'def outer(xs):\n    def inner(x):\n        if x > 0:\n            return 1\n        return 0\n    return list(map(inner, xs))'
+	},
+	{
+		name: 'py: deeply nested conditionals',
+		language: 'python',
+		inherits: 'deeply nested conditionals',
+		code: 'def f(a, b, c, d):\n    if a:\n        if b:\n            if c:\n                if d:\n                    return 1\n    return 0'
+	}
+];

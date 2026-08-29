@@ -4,7 +4,7 @@ import * as acorn from 'acorn';
 import { createAstComplexityProvider } from './complexity-ast';
 import { createEstreeAdapter } from './complexity-estree';
 import { ComplexityAnalyzer } from './complexity-analyzer';
-import { CORPUS } from '../../../../../tests/helpers/cognitive-complexity-corpus';
+import { CORPUS, PARITY_CORPUS } from '../../../../../tests/helpers/cognitive-complexity-corpus';
 import type { Line } from './state';
 
 /**
@@ -66,15 +66,55 @@ const makeLines = (code: string): Line[] =>
 
 describe('numbers the guide quotes about its own verification', () => {
 	it('states the real corpus size', () => {
-		// It said "30-case" while the corpus held 37. A number a reader is invited
+		// It said "30-case" while the corpus held 36. A number a reader is invited
 		// to weigh the metric by has to be the number, and this one only moves when
 		// someone adds a case — exactly the moment they will not think to grep the
-		// docs. The other quoted figure, "over 300 comparisons", is already pinned
-		// by complexity-sweep.test.ts asserting the same bound.
+		// docs. It earned itself on the first run by catching 37, a miscount from a
+		// `grep -c` that also matched the type annotation. The other quoted figure,
+		// "over 300 comparisons", is already pinned by complexity-sweep.test.ts
+		// asserting the same bound.
 		const markdown = readFileSync(GUIDE, 'utf8');
 		const stated = markdown.match(/(\d+)-case curated corpus/);
 		expect(stated, 'guide must quote the corpus size').not.toBeNull();
 		expect(Number(stated![1])).toBe(CORPUS.length);
+	});
+
+	it('states the real parity-corpus size, in both places it quotes it', () => {
+		const markdown = readFileSync(GUIDE, 'utf8');
+		const quoted = [...markdown.matchAll(/(\d+)-case parity corpus/g)].map((m) => Number(m[1]));
+		expect(quoted.length, 'guide must quote the parity corpus size').toBeGreaterThan(0);
+		for (const n of quoted) expect(n).toBe(PARITY_CORPUS.length);
+	});
+
+	it('states how many parity cases actually discriminate their language', () => {
+		// The guide's "seven of the 28 score differently if told the wrong language"
+		// is the load-bearing claim — it separates a corpus that exercises the Go and
+		// Python rules from one that merely coincides with the shared core, and it is
+		// the number most likely to drift as those rules change. It caught its own
+		// author: the guide first said "nine", counted by eye off a probe table.
+		const analyzer = new ComplexityAnalyzer();
+		const score = (code: string, language: string): number => {
+			const regions = analyzer.analyze(makeLines(code), language).regions;
+			if (regions.length === 0) return 0;
+			return regions.reduce((b, r) => (r.startLine < b.startLine ? r : b)).cognitiveComplexity;
+		};
+		const discriminating = PARITY_CORPUS.filter(
+			(p) => score(p.code, p.language) !== score(p.code, 'javascript')
+		).length;
+
+		const markdown = readFileSync(GUIDE, 'utf8');
+		const stated = markdown.match(/(\w+) of the \d+ score differently/);
+		expect(stated, 'guide must state the discriminating count').not.toBeNull();
+		const words: Record<string, number> = {
+			six: 6,
+			seven: 7,
+			eight: 8,
+			nine: 9,
+			ten: 10,
+			eleven: 11,
+			twelve: 12
+		};
+		expect(words[stated![1].toLowerCase()] ?? Number(stated![1])).toBe(discriminating);
 	});
 });
 

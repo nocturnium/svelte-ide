@@ -598,9 +598,14 @@ because a single number would flatter it:
 - Only **JavaScript and TypeScript** are pinned exactly. A differential harness
   runs an independent AST oracle over a shared corpus on every build, and the
   walker and the scanner must agree on every function.
-- **Python and Go** are covered by targeted cases for shapes that were found
-  wrong and fixed — Go region detection around `interface{}` / `struct{}` and
-  generics, Python `match` and `lambda` — not exhaustively.
+- **Python and Go** are pinned by a 28-case parity corpus: each case is a
+  translation of a JavaScript case and must reach the score the AST oracle gives
+  the original. The oracle never sees the Go or Python source, so these are
+  measured against the same independent reference as JavaScript rather than
+  against the scanner's own output. They also carry targeted cases for shapes
+  that were found wrong and fixed — Go region detection around `interface{}` /
+  `struct{}` and generics, Python `match` and `lambda`. Broad, not exhaustive:
+  constructs with no JavaScript equivalent are not covered this way.
 - The remaining **28** are unverified. On a language whose syntax diverges from
   C-family braces, expect the reading to be occasionally wrong.
 
@@ -852,6 +857,29 @@ callback calling its enclosing `connect()` is still recursion), an `else` that
 changed score depending on braces, and — in the reference implementation that had
 been gating this feature all along — a blind spot for expression-bodied arrow
 functions, which scored `(a, b) => a && b` as 0.
+
+#### Go and Python, against the same reference
+
+An acorn walk cannot read Go or Python, so those two languages were originally
+asserted only against the scanner's own output — a restatement, not evidence, and
+on the two languages with the fewest eyes on them.
+
+A **28-case parity corpus** closes that. Each case is a Go or Python translation
+of a named JavaScript case and inherits that case's oracle value: acorn scores the
+JavaScript original, and the scanner must reach the same number from source acorn
+never parses.
+
+Seven of the 28 score differently if the scanner is told the wrong language, which
+is asserted — so the corpus is known to exercise the language-specific rules
+(`elif`, Python's `x if c else y`, `try`/`except`, recursion detection,
+nested-function nesting) rather than to coincide with the shared core. The other
+twenty-one still pin the score; they just do not discriminate, because brace- and
+keyword-shaped constructs fall out of the scanner's shared core either way.
+
+Not translated, deliberately: parameter-shaped cases (Go has no defaults and
+Python's differ), and Go `select`, Python `for...else`, comprehension `if` and
+`case` guards — there is no citable SonarSource rule for any of those, so a corpus
+entry would invent an answer and then agree with itself.
 
 ### Building a provider chain
 
