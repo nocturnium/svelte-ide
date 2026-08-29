@@ -22,8 +22,19 @@
  * @see https://www.sonarsource.com/docs/CognitiveComplexity.pdf
  */
 
-import type { ComplexityMetrics, ComplexityRegion } from './complexity-analyzer';
-import { getComplexityLevel } from './complexity-analyzer';
+import type {
+	ComplexityContribution,
+	ComplexityContributionKind,
+	ComplexityMetrics,
+	ComplexityRegion
+} from './complexity-analyzer';
+import {
+	COGNITIVE_COMPLEXITY_BANDS,
+	getComplexityContributionLabel,
+	getComplexityLevel,
+	getComplexitySuggestion,
+	getLegacyComplexityScore
+} from './complexity-analyzer';
 import type { ComplexityProvider, ProvidedComplexityRegion } from './complexity-provider';
 
 /**
@@ -135,7 +146,36 @@ export interface ComplexityAstAdapter<TNode> {
 
 export interface AstComplexityRegion extends ProvidedComplexityRegion {
 	name?: string;
+	/**
+	 * Per-increment breakdown, in source order — the same shape the built-in
+	 * scanner produces, so the hover tooltip explains a parser-backed reading as
+	 * fully as a built-in one.
+	 */
+	contributions: ComplexityContribution[];
 }
+
+/**
+ * Increment kind for the breakdown, from the kind the adapter reported.
+ *
+ * `loop` stays `loop`: {@link ComplexityNodeKind} deliberately does not
+ * distinguish `for` from `while` — one kind is all an adapter has to classify —
+ * so naming it either would be a detail the walker does not actually have.
+ * `function` becomes `nested-function`, which scores nothing and appears in the
+ * list only to explain why the lines under it cost more.
+ */
+const CONTRIBUTION_KIND: Record<ComplexityNodeKind, ComplexityContributionKind> = {
+	function: 'nested-function',
+	if: 'if',
+	'else-if': 'else if',
+	else: 'else',
+	ternary: 'ternary',
+	switch: 'switch',
+	loop: 'loop',
+	catch: 'catch',
+	'boolean-sequence': 'boolean-sequence',
+	'labelled-jump': 'labelled-jump',
+	recursion: 'recursion'
+};
 
 /**
  * Cognitive Complexity of every function in `root`.
@@ -150,8 +190,27 @@ export function analyzeAstComplexity<TNode>(
 ): AstComplexityRegion[] {
 	const regions: AstComplexityRegion[] = [];
 
-	const scoreFunction = (fnNode: TNode, fnName: string | undefined): number => {
+	const scoreFunction = (
+		fnNode: TNode,
+		fnName: string | undefined
+	): { total: number; contributions: ComplexityContribution[] } => {
 		let total = 0;
+		const contributions: ComplexityContribution[] = [];
+
+		const record = (
+			node: TNode,
+			kind: ComplexityContributionKind,
+			increment: number,
+			nesting: number
+		): void => {
+			contributions.push({
+				line: adapter.lineRangeOf(node).startLine,
+				kind,
+				increment,
+				nesting,
+				reason: `${getComplexityContributionLabel(kind)} (+${increment}, nesting ${nesting})`
+			});
+		};
 
 		const visit = (
 			node: TNode,
@@ -167,6 +226,10 @@ export function analyzeAstComplexity<TNode>(
 			// opens a scope, so it shifts the depth this node is measured at.
 			const merged = adapter.mergedIncrementOf?.(node, parent) ?? 0;
 			total += merged;
+			// Reported as the `else` it stands for, at the depth it was charged at.
+			// It has no node of its own, so it borrows this node's start line —
+			// which is where a reader sees it in the source anyway.
+			if (merged > 0) record(node, 'else', merged, rawNesting);
 			const nesting = rawNesting + merged;
 
 			// The context is NOT re-bound on entering a nested function: recursion is
@@ -183,6 +246,7 @@ export function analyzeAstComplexity<TNode>(
 				case 'loop':
 				case 'catch':
 					total += 1 + nesting;
+					record(node, CONTRIBUTION_KIND[kind], 1 + nesting, nesting);
 					for (const child of adapter.childrenOf(node)) {
 						descend(child, bodySet === null || bodySet.has(child));
 					}
@@ -192,6 +256,7 @@ export function analyzeAstComplexity<TNode>(
 					// Flat +1: the reader has already paid for this chain. Its own body
 					// still nests, and an `else if` sits at the SAME depth as its `if`.
 					total += 1;
+					record(node, 'else if', 1, nesting);
 					for (const child of adapter.childrenOf(node)) {
 						descend(child, bodySet !== null && bodySet.has(child));
 					}
@@ -199,19 +264,24 @@ export function analyzeAstComplexity<TNode>(
 
 				case 'else':
 					total += 1;
+					record(node, 'else', 1, nesting);
 					for (const child of adapter.childrenOf(node)) {
 						descend(child, bodySet === null || bodySet.has(child));
 					}
 					return;
 
-				case 'boolean-sequence':
-					total += Math.max(1, adapter.booleanRunsOf?.(node) ?? 1);
+				case 'boolean-sequence': {
+					const runs = Math.max(1, adapter.booleanRunsOf?.(node) ?? 1);
+					total += runs;
+					record(node, 'boolean-sequence', runs, nesting);
 					for (const child of adapter.childrenOf(node)) descend(child, false);
 					return;
+				}
 
 				case 'labelled-jump':
 				case 'recursion':
 					total += 1;
+					record(node, CONTRIBUTION_KIND[kind], 1, nesting);
 					for (const child of adapter.childrenOf(node)) descend(child, false);
 					return;
 
@@ -220,6 +290,7 @@ export function analyzeAstComplexity<TNode>(
 					// Parameters are not the body and stay at the current depth, so a
 					// default value containing a ternary is not charged for nesting it
 					// does not create.
+					record(node, 'nested-function', 0, nesting);
 					for (const child of adapter.childrenOf(node)) {
 						descend(child, bodySet === null || bodySet.has(child));
 					}
@@ -235,7 +306,17 @@ export function analyzeAstComplexity<TNode>(
 			scoredName: fnName
 		};
 		for (const child of adapter.childrenOf(fnNode)) visit(child, 0, fnNode, scoped);
-		return total;
+		// A breakdown read beside the code has to run down the page.
+		//
+		// For an adapter that honours `childrenOf`'s "in source order" this is a
+		// no-op — pre-order descent over source-ordered children already yields
+		// source order. It is here for the ones that do not: `childrenOf` is a
+		// consumer-supplied function, several parsers expose children in an order
+		// that is convenient rather than positional, and the cost of being wrong is
+		// a tooltip listing line 9 above line 1. Cheap insurance on an extension
+		// point this library does not control.
+		contributions.sort((a, b) => a.line - b.line);
+		return { total, contributions };
 	};
 
 	const empty: ComplexityWalkContext<TNode> = { scoredFunction: null };
@@ -244,11 +325,13 @@ export function analyzeAstComplexity<TNode>(
 		if (adapter.kindOf(node, parent, empty) === 'function') {
 			const name = adapter.nameOf?.(node, parent);
 			const { startLine, endLine } = adapter.lineRangeOf(node);
+			const { total, contributions } = scoreFunction(node, name);
 			regions.push({
 				name,
 				startLine,
 				endLine,
-				cognitiveComplexity: scoreFunction(node, name)
+				cognitiveComplexity: total,
+				contributions
 			});
 		}
 		for (const child of adapter.childrenOf(node)) collect(child, node);
@@ -308,36 +391,60 @@ export function createAstComplexityProvider<TNode>(options: {
 /**
  * Build {@link ComplexityMetrics} directly from a tree, for callers using the
  * rules outside an editor — a CI check, a report, a pre-commit hook.
+ *
+ * The deprecated {@link ComplexityFactors} tallies other than `lineCount` are
+ * zero here and honestly so: they are raw-text counts of source characters, and
+ * this path never sees the source — only a tree. Everything that is part of the
+ * metric (`cognitiveComplexity`, `contributions`, `level`, `suggestion`) is
+ * fully populated.
  */
 export function astComplexityMetrics<TNode>(
 	root: TNode,
 	adapter: ComplexityAstAdapter<TNode>
 ): ComplexityMetrics {
 	const found = analyzeAstComplexity(root, adapter);
-	const regions: ComplexityRegion[] = found.map((r) => ({
-		startLine: r.startLine,
-		endLine: r.endLine,
-		name: r.name,
-		type: 'function',
-		cognitiveComplexity: r.cognitiveComplexity,
-		level: getComplexityLevel(r.cognitiveComplexity),
-		score: 0,
-		factors: {
-			nestingDepth: 0,
-			branchingFactor: 0,
-			lineCount: r.endLine - r.startLine + 1,
-			identifierCount: 0,
-			callCount: 0
-		},
-		contributions: []
-	}));
+	const regions: ComplexityRegion[] = found.map((r) => {
+		const lineCount = r.endLine - r.startLine + 1;
+		return {
+			startLine: r.startLine,
+			endLine: r.endLine,
+			name: r.name,
+			type: 'function',
+			cognitiveComplexity: r.cognitiveComplexity,
+			level: getComplexityLevel(r.cognitiveComplexity),
+			score: getLegacyComplexityScore(r.cognitiveComplexity),
+			factors: {
+				nestingDepth: 0,
+				branchingFactor: 0,
+				lineCount,
+				identifierCount: 0,
+				callCount: 0
+			},
+			suggestion: getComplexitySuggestion({
+				cognitiveComplexity: r.cognitiveComplexity,
+				contributions: r.contributions,
+				lineCount
+			}),
+			contributions: r.contributions
+		};
+	});
 
 	const max = regions.reduce((m, r) => Math.max(m, r.cognitiveComplexity), 0);
+
+	// Deduplicated across overlapping regions — a nested function's lines belong to
+	// its enclosing function too, and pushing each region's span separately counted
+	// the shared lines once per region.
+	const hotspots = new Set<number>();
+	for (const region of regions) {
+		if (region.cognitiveComplexity < COGNITIVE_COMPLEXITY_BANDS.high) continue;
+		for (let line = region.startLine; line <= region.endLine; line++) hotspots.add(line);
+	}
+
 	return {
 		overall: 0,
 		level: getComplexityLevel(max),
 		regions,
-		hotspots: [],
+		hotspots: [...hotspots].sort((a, b) => a - b),
 		totalCognitiveComplexity: regions.reduce((t, r) => t + r.cognitiveComplexity, 0),
 		maxCognitiveComplexity: max,
 		source: 'provider'

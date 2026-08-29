@@ -157,14 +157,22 @@ export {
 	getComplexityBandLabel,
 	getComplexityRegionKey,
 	getComplexityAnalyzer,
-	createComplexityAnalyzer
+	createComplexityAnalyzer,
+	// The pieces a consumer needs to render its own breakdown without re-deriving
+	// this library's vocabulary or thresholds — and the reason the tooltip, the
+	// meter and a merged provider reading can no longer disagree with each other.
+	getComplexityContributionLabel,
+	getComplexitySuggestion,
+	getLegacyComplexityScore,
+	summarizeContributions
 } from './components/editor/core/complexity-analyzer';
 export type {
 	ComplexityMetrics,
 	ComplexityRegion,
 	ComplexityFactors,
 	ComplexityContribution,
-	ComplexityContributionKind
+	ComplexityContributionKind,
+	ComplexityContributionSummary
 } from './components/editor/core/complexity-analyzer';
 
 /**

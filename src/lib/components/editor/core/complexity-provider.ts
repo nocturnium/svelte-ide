@@ -27,6 +27,7 @@ import type {
 	ComplexityMetrics,
 	ComplexityRegion
 } from './complexity-analyzer';
+import { getComplexitySuggestion, getLegacyComplexityScore } from './complexity-analyzer';
 
 /** Where a displayed complexity reading came from. */
 export type ComplexitySource = 'builtin' | 'provider';
@@ -356,6 +357,11 @@ export function createOpenAICompatibleComplexityProvider(options: {
  * Provider regions REPLACE built-in ones they overlap, and unmatched built-in
  * regions survive — so a provider that reports only what it is confident about
  * improves those readings without erasing the rest of the file.
+ *
+ * A replaced region is rebuilt entirely from the provider's own reading. Every
+ * displayed number is derived from `cognitiveComplexity` and `contributions` as
+ * the provider reported them, so nothing the UI shows beneath a "measured by X"
+ * heading came from anyone but X.
  */
 export function mergeProvidedComplexity(
 	baseline: ComplexityMetrics,
@@ -371,6 +377,8 @@ export function mergeProvidedComplexity(
 		...kept,
 		...provided.regions.map((p) => {
 			const nearest = baseline.regions.find((r) => overlaps(p, r));
+			const contributions = p.contributions ?? [];
+			const lineCount = p.endLine - p.startLine + 1;
 			return {
 				startLine: p.startLine,
 				endLine: p.endLine,
@@ -378,16 +386,30 @@ export function mergeProvidedComplexity(
 				type: nearest?.type ?? ('function' as const),
 				cognitiveComplexity: p.cognitiveComplexity,
 				level: getLevel(p.cognitiveComplexity),
-				score: nearest?.score ?? 0,
-				factors: nearest?.factors ?? {
+				score: getLegacyComplexityScore(p.cognitiveComplexity),
+				// Nothing numeric is inherited from `nearest`. It is only the region
+				// this one OVERLAPS — often the same function, but never guaranteed to
+				// be, and a provider is free to report a span the scanner never found.
+				// The previous version took the built-in region's factors, score and
+				// suggestion wholesale and attached them to the provider's score, so a
+				// tooltip headed "measured by <model>" showed one function's numbers
+				// under another function's complexity. Only `name` and `type` — labels,
+				// not measurements — still fall back.
+				factors: {
+					// Zero for the same reason the AST path zeroes them: these are
+					// raw-text tallies over source this reading never scanned.
 					nestingDepth: 0,
 					branchingFactor: 0,
-					lineCount: p.endLine - p.startLine + 1,
+					lineCount,
 					identifierCount: 0,
 					callCount: 0
 				},
-				suggestion: nearest?.suggestion,
-				contributions: p.contributions ?? []
+				suggestion: getComplexitySuggestion({
+					cognitiveComplexity: p.cognitiveComplexity,
+					contributions,
+					lineCount
+				}),
+				contributions
 			};
 		})
 	].sort((a, b) => a.startLine - b.startLine);

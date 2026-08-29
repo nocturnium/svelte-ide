@@ -68,6 +68,7 @@ export type ComplexityContributionKind =
 	| 'else if'
 	| 'for'
 	| 'while'
+	| 'loop'
 	| 'switch'
 	| 'catch'
 	| 'ternary'
@@ -82,7 +83,30 @@ export interface ComplexityContribution {
 	kind: ComplexityContributionKind;
 	reason: string;
 	increment: number;
+	/**
+	 * How many scoring structures enclose this one — the metric's own nesting, and
+	 * the number the increment already includes for the kinds that pay a penalty.
+	 */
 	nesting: number;
+}
+
+/**
+ * What a region's {@link ComplexityContribution} list says about it, reduced to
+ * the three numbers a summary line can honestly show.
+ *
+ * Derived ONLY from contributions that actually scored. A `nested-function`
+ * contribution carries `increment: 0` — it exists to explain why the lines below
+ * it cost more, not because it cost anything itself — so counting it would
+ * inflate `incrementCount`, and reading its depth would report a nesting level
+ * that never reached the score.
+ */
+export interface ComplexityContributionSummary {
+	/** Deepest nesting level at which an increment was charged. 0 when none was. */
+	maxNesting: number;
+	/** How many increments were charged. */
+	incrementCount: number;
+	/** Their sum — equal to the region's `cognitiveComplexity`. */
+	total: number;
 }
 
 /**
@@ -105,7 +129,11 @@ export interface ComplexityRegion {
 	level: ComplexityMetrics['level'];
 	/** Individual factors */
 	factors: ComplexityFactors;
-	/** Suggested improvement if score is high */
+	/**
+	 * Advice for this region, present from the Moderate band up. Derived from
+	 * `contributions` and the line count — see {@link getComplexitySuggestion} —
+	 * never from the deprecated {@link ComplexityFactors} tallies.
+	 */
 	suggestion?: string;
 	/** Region type */
 	type: 'function' | 'class' | 'block' | 'file';
@@ -871,7 +899,11 @@ export class ComplexityAnalyzer {
 			0
 		);
 		const score = this.calculateScore(cognitiveComplexity);
-		const suggestion = this.getSuggestion(factors, cognitiveComplexity);
+		const suggestion = getComplexitySuggestion({
+			cognitiveComplexity,
+			contributions,
+			lineCount: factors.lineCount
+		});
 
 		return {
 			...region,
@@ -1435,33 +1467,8 @@ export class ComplexityAnalyzer {
 		});
 	}
 
-	private describeContributionKind(kind: string): string {
-		switch (kind) {
-			case 'else if':
-				return 'else if branch';
-			case 'else':
-				return 'else branch';
-			case 'for':
-				return 'for loop';
-			case 'while':
-				return 'while loop';
-			case 'switch':
-				return 'switch';
-			case 'catch':
-				return 'catch clause';
-			case 'ternary':
-				return 'ternary expression';
-			case 'boolean-sequence':
-				return 'boolean operator sequence';
-			case 'labelled-jump':
-				return 'labelled jump';
-			case 'recursion':
-				return 'recursive call';
-			case 'nested-function':
-				return 'nested function';
-			default:
-				return 'if branch';
-		}
+	private describeContributionKind(kind: ComplexityContributionKind): string {
+		return getComplexityContributionLabel(kind);
 	}
 
 	/**
@@ -1839,44 +1846,10 @@ export class ComplexityAnalyzer {
 	}
 
 	/**
-	 * Calculate complexity score from factors
+	 * Calculate the deprecated 0-100 display score.
 	 */
 	private calculateScore(cognitiveComplexity: number): number {
-		return Math.min(100, Math.round(cognitiveComplexity * COGNITIVE_SCORE_MULTIPLIER));
-	}
-
-	/**
-	 * Get suggestion based on factors
-	 */
-	private getSuggestion(
-		factors: ComplexityFactors,
-		cognitiveComplexity: number
-	): string | undefined {
-		if (cognitiveComplexity < COGNITIVE_COMPLEXITY_BANDS.medium) {
-			return undefined;
-		}
-
-		if (factors.nestingDepth > 4) {
-			return 'Deep nesting detected. Consider extracting nested logic into separate functions.';
-		}
-
-		if (factors.lineCount > 50) {
-			return 'Long function detected. Consider breaking it into smaller, focused functions.';
-		}
-
-		if (factors.branchingFactor > 10) {
-			return 'High branching complexity. Consider using a lookup table, strategy pattern, or polymorphism.';
-		}
-
-		if (factors.callCount > 20) {
-			return 'Many function calls. Consider if some operations can be combined or simplified.';
-		}
-
-		if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) {
-			return 'High cognitive complexity. This code may be difficult to understand and maintain.';
-		}
-
-		return undefined;
+		return getLegacyComplexityScore(cognitiveComplexity);
 	}
 
 	/**
@@ -1962,13 +1935,6 @@ export class ComplexityAnalyzer {
 }
 
 /**
- * Band for a raw Cognitive Complexity value.
- *
- * `critical` starts at SonarSource's published refactor threshold of 15; it is
- * open-ended by design, so callers should show the underlying number alongside
- * the band rather than treating the band as the whole story.
- */
-/**
  * Stable identity for a region, shared by every component that renders or
  * flashes one.
  *
@@ -1998,11 +1964,177 @@ export function getComplexityBandLabel(level: ComplexityMetrics['level']): strin
 	return 'Simple';
 }
 
+/**
+ * Band for a raw Cognitive Complexity value.
+ *
+ * `critical` starts at SonarSource's published refactor threshold of 15; it is
+ * open-ended by design, so callers should show the underlying number alongside
+ * the band rather than treating the band as the whole story.
+ */
 export function getComplexityLevel(cognitiveComplexity: number): ComplexityMetrics['level'] {
 	if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.critical) return 'critical';
 	if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) return 'high';
 	if (cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.medium) return 'medium';
 	return 'low';
+}
+
+/**
+ * The deprecated 0-100 {@link ComplexityRegion.score}, from a raw Cognitive
+ * Complexity.
+ *
+ * Exported only so that every path producing a `ComplexityRegion` — the built-in
+ * scanner, a merged provider reading, a parse tree — fills the field the same
+ * way. Two of them used to fabricate it: the AST path hard-coded `0`, and a
+ * merged provider region inherited the score of whichever built-in region it
+ * happened to overlap, i.e. a number computed from a different function's
+ * complexity.
+ *
+ * @deprecated Only for populating the deprecated field. Read
+ * {@link ComplexityRegion.cognitiveComplexity}, which does not saturate.
+ */
+export function getLegacyComplexityScore(cognitiveComplexity: number): number {
+	return Math.min(100, Math.round(cognitiveComplexity * COGNITIVE_SCORE_MULTIPLIER));
+}
+
+/**
+ * Human label for one increment kind — the single source of this vocabulary, so
+ * a consumer rendering its own breakdown does not have to invent one and the
+ * tooltip does not have to show a raw enum member.
+ */
+export function getComplexityContributionLabel(kind: ComplexityContributionKind): string {
+	switch (kind) {
+		case 'if':
+			return 'if branch';
+		case 'else if':
+			return 'else if branch';
+		case 'else':
+			return 'else branch';
+		case 'for':
+			return 'for loop';
+		case 'while':
+			return 'while loop';
+		case 'loop':
+			return 'loop';
+		case 'switch':
+			return 'switch';
+		case 'catch':
+			return 'catch clause';
+		case 'ternary':
+			return 'ternary expression';
+		case 'boolean-sequence':
+			return 'boolean operator sequence';
+		case 'labelled-jump':
+			return 'labelled jump';
+		case 'goto':
+			return 'goto';
+		case 'recursion':
+			return 'recursive call';
+		case 'nested-function':
+			return 'nested function';
+	}
+}
+
+/**
+ * Reduce a contribution list to the numbers a summary line can show.
+ *
+ * See {@link ComplexityContributionSummary} for why zero-increment entries are
+ * excluded from both the count and the depth.
+ */
+export function summarizeContributions(
+	contributions: readonly ComplexityContribution[]
+): ComplexityContributionSummary {
+	let maxNesting = 0;
+	let incrementCount = 0;
+	let total = 0;
+
+	for (const contribution of contributions) {
+		total += contribution.increment;
+		if (contribution.increment <= 0) continue;
+		incrementCount++;
+		maxNesting = Math.max(maxNesting, contribution.nesting);
+	}
+
+	return { maxNesting, incrementCount, total };
+}
+
+/**
+ * Nesting depth at which the advice starts telling you to extract.
+ *
+ * SonarSource's own "Control flow statements should not be nested too deeply"
+ * (S134) defaults to a maximum of 3, which is the nearest published anchor. This
+ * fires AT 3 rather than past it because by then the metric is already charging
+ * +4 for a single `if` — more than most whole functions score — so the advice is
+ * useful one level earlier than the separate nesting rule's own report.
+ *
+ * A convention, and recorded as one. It changes no score: this threshold is read
+ * only to pick advice text.
+ */
+const DEEP_NESTING_ADVICE_THRESHOLD = 3;
+
+/** Line count past which the advice calls a function long. */
+const LONG_FUNCTION_ADVICE_THRESHOLD = 50;
+
+/** How many separate increments count as "spread across many constructs". */
+const MANY_INCREMENTS_ADVICE_THRESHOLD = 10;
+
+/** How many multi-operator conditions count as "several". */
+const MANY_BOOLEAN_SEQUENCES_ADVICE_THRESHOLD = 3;
+
+/**
+ * Advice for a region, derived from the metric that is on the label.
+ *
+ * Every trigger reads either `contributions` — the actual per-increment
+ * breakdown behind `cognitiveComplexity` — or `lineCount`, which is simply true.
+ * None reads {@link ComplexityFactors}: those are raw-text tallies, deprecated
+ * precisely because they are not components of this score, and advice generated
+ * from them was advice about a different number than the one displayed above it.
+ * The replaced triggers were `nestingDepth > 4` (a cumulative brace counter that
+ * never fully unwound, so it climbed with file length), `branchingFactor > 10`
+ * (a cyclomatic-flavoured regex tally) and `callCount > 20` — the last with no
+ * Cognitive Complexity analogue at all, since the metric deliberately charges
+ * nothing for a function call.
+ *
+ * Returns undefined below the Moderate band: a region nobody needs to act on
+ * should not be handed a refactor instruction.
+ */
+export function getComplexitySuggestion(region: {
+	cognitiveComplexity: number;
+	contributions: readonly ComplexityContribution[];
+	lineCount: number;
+}): string | undefined {
+	if (region.cognitiveComplexity < COGNITIVE_COMPLEXITY_BANDS.medium) {
+		return undefined;
+	}
+
+	const { maxNesting, incrementCount } = summarizeContributions(region.contributions);
+
+	// The advice strings are deliberately short: they render inside a 360px
+	// tooltip that already carries a header, a line range and up to eight
+	// increments, so a paragraph here pushes the breakdown off the screen.
+	if (maxNesting >= DEEP_NESTING_ADVICE_THRESHOLD) {
+		return `Nested ${maxNesting} levels deep, where every increment also pays for its depth. Extracting the inner block removes that penalty.`;
+	}
+
+	if (region.lineCount > LONG_FUNCTION_ADVICE_THRESHOLD) {
+		return 'Long function. Consider breaking it into smaller, focused functions.';
+	}
+
+	if (incrementCount > MANY_INCREMENTS_ADVICE_THRESHOLD) {
+		return 'Complexity is spread across many separate constructs. Consider a lookup table, a strategy pattern, or polymorphism.';
+	}
+
+	const booleanSequences = region.contributions.filter(
+		(contribution) => contribution.kind === 'boolean-sequence' && contribution.increment > 0
+	).length;
+	if (booleanSequences >= MANY_BOOLEAN_SEQUENCES_ADVICE_THRESHOLD) {
+		return 'Several multi-operator conditions. Naming the intermediate conditions makes each one readable on its own.';
+	}
+
+	if (region.cognitiveComplexity >= COGNITIVE_COMPLEXITY_BANDS.high) {
+		return 'High cognitive complexity. This code may be difficult to understand and maintain.';
+	}
+
+	return undefined;
 }
 
 /**

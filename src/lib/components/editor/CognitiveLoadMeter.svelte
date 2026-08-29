@@ -9,6 +9,7 @@
 	import {
 		COGNITIVE_COMPLEXITY_BANDS,
 		getComplexityBandLabel,
+		getComplexityRegionKey,
 		type ComplexityMetrics
 	} from './core/complexity-analyzer';
 
@@ -175,7 +176,12 @@
 				<div class="cognitive-meter__tooltip-section">
 					<span class="cognitive-meter__tooltip-label">High complexity regions:</span>
 					<ul class="cognitive-meter__tooltip-list">
-						{#each highComplexityRegions.slice(0, 5) as region (region.startLine)}
+						<!-- Keyed by the shared region identity, NOT by startLine. Two regions
+						     can genuinely begin on the same line — `run(function p(){…},
+						     function q(){…})` is one line and two functions, and the parser-backed
+						     path reports both — which made startLine a duplicate key and crashed
+						     the each block outright. -->
+						{#each highComplexityRegions.slice(0, 5) as region (getComplexityRegionKey(region))}
 							<li>
 								<span class="cognitive-meter__tooltip-region-name">
 									{region.name || `${region.type} at line ${region.startLine + 1}`}
@@ -206,7 +212,7 @@
 					<span class="cognitive-meter__tooltip-label">Suggestions:</span>
 					{#each metrics.regions
 						.filter((r) => r.suggestion)
-						.slice(0, 2) as region (region.startLine)}
+						.slice(0, 2) as region (getComplexityRegionKey(region))}
 						<p class="cognitive-meter__tooltip-suggestion">
 							{region.suggestion}
 						</p>

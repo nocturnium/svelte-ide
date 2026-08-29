@@ -13,6 +13,8 @@
 		COGNITIVE_COMPLEXITY_BANDS,
 		getComplexityRegionKey,
 		getComplexityBandLabel,
+		getComplexityContributionLabel,
+		summarizeContributions,
 		type ComplexityMetrics,
 		type ComplexityRegion
 	} from './core/complexity-analyzer';
@@ -157,6 +159,27 @@
 			? Math.max(0, hoveredRegion.contributions.length - visibleContributions.length)
 			: 0
 	);
+	/**
+	 * The footer's numbers, derived from the breakdown directly above them.
+	 *
+	 * This line used to read `factors.nestingDepth` and `factors.branchingFactor`
+	 * under a heading that says "Cognitive Complexity". Neither is part of that
+	 * metric: `branchingFactor` is a cyclomatic-flavoured regex tally that
+	 * disagrees with the score by construction, and `nestingDepth` counted brace
+	 * openers cumulatively without ever fully unwinding them, so it grew with the
+	 * length of the region rather than its depth. A reader who added the tooltip's
+	 * own increments and compared them to "Branches" got two different numbers for
+	 * the same function with nothing to say which was the metric.
+	 */
+	let contributionSummary = $derived(summarizeContributions(hoveredRegion?.contributions ?? []));
+	/**
+	 * From the region's own span, not `factors.lineCount`. For a provider reading
+	 * those are the same number; deriving it here means the footer cannot drift
+	 * from the line range printed two rows above it.
+	 */
+	let hoveredLineCount = $derived(
+		hoveredRegion ? hoveredRegion.endLine - hoveredRegion.startLine + 1 : 0
+	);
 
 	function getRegionTop(region: ComplexityRegion): number {
 		return lineToVisualRow(region.startLine) * lineHeight;
@@ -169,7 +192,7 @@
 	}
 
 	function getContributionLabel(contribution: ComplexityRegion['contributions'][number]): string {
-		return contribution.kind || contribution.reason;
+		return getComplexityContributionLabel(contribution.kind);
 	}
 
 	function handleMouseEnter(
@@ -285,9 +308,11 @@
 				</div>
 			{/if}
 			<div class="complexity-tooltip__factors">
-				<span>Nesting: {hoveredRegion.factors.nestingDepth}</span>
-				<span>Branches: {hoveredRegion.factors.branchingFactor}</span>
-				<span>Lines: {hoveredRegion.factors.lineCount}</span>
+				{#if contributionSummary.incrementCount > 0}
+					<span>Deepest nesting: {contributionSummary.maxNesting}</span>
+					<span>Increments: {contributionSummary.incrementCount}</span>
+				{/if}
+				<span>Lines: {hoveredLineCount}</span>
 			</div>
 		</div>
 	{/if}
