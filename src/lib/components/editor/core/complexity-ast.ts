@@ -15,9 +15,9 @@
  * token scanner there, and every defect found was in the rules, not the parsing.
  * A consumer plugging in tree-sitter should not have to rediscover that.
  *
- * Bring any tree. Describe it with a {@link ComplexityAstAdapter} — roughly
- * twenty lines for ESTree, similar for tree-sitter — and the rules below are
- * applied for you, identically across every language your parser supports.
+ * Bring any tree. Describe it with a {@link ComplexityAstAdapter} and the rules
+ * below are applied for you, identically across every language your parser
+ * supports.
  *
  * @see https://www.sonarsource.com/docs/CognitiveComplexity.pdf
  */

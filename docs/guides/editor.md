@@ -681,7 +681,11 @@ import { createAstComplexityProvider, createEstreeAdapter } from '@nocturnium/sv
 import * as acorn from 'acorn';
 
 const provider = createAstComplexityProvider({
-	parse: (code) => acorn.parse(code, { ecmaVersion: 'latest', locations: true }),
+	// `sourceType: 'module'` is not optional in practice: without it acorn throws
+	// on the first `import` or `export`, the provider declines, and you silently
+	// get the built-in reading while believing you are getting the parser's.
+	parse: (code) =>
+		acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module', locations: true }),
 	adapter: createEstreeAdapter(),
 	source: 'acorn'
 });
@@ -689,7 +693,9 @@ const provider = createAstComplexityProvider({
 
 `createEstreeAdapter` covers anything emitting ESTree — acorn, espree, meriyah,
 `@typescript-eslint/parser` — so JS, JSX, TS and TSX. For a parser with its own
-node shapes, an adapter is about twenty lines:
+node shapes, write your own. The one below is a working sketch rather than a
+tested adapter — the node type names are grammar-specific, and you should check
+each against the grammar you install:
 
 ```ts
 import { createAstComplexityProvider, type ComplexityAstAdapter } from '@nocturnium/svelte-ide';
@@ -713,8 +719,11 @@ const treeSitter: ComplexityAstAdapter<SyntaxNode> = {
 				return 'catch';
 			case 'ternary_expression':
 				return 'ternary';
-			case 'binary_expression':
-				return ['&&', '||'].includes(node.operatorNode?.text) ? 'boolean-sequence' : null;
+			case 'binary_expression': {
+				// `childForFieldName` is the accessor both bindings agree on.
+				const operator = node.childForFieldName('operator')?.text;
+				return operator === '&&' || operator === '||' ? 'boolean-sequence' : null;
+			}
 			default:
 				return null;
 		}
@@ -736,7 +745,8 @@ bugs caught by the sweep below rather than by reasoning:
 
 - `bodyOf` names which child raises nesting. A loop's init clause and an `if`'s
   condition are not the body, so a ternary in either is not charged for depth it
-  does not create.
+  does not create. It is required rather than optional precisely because the
+  default — nesting everything — is wrong in a way nothing would tell you.
 - `mergedIncrementOf` covers a node that is two things at once. ESTree has no
   `else` node, so `else while (x) {}` is a loop sitting in the `alternate` slot —
   it must score as both, and at the same depth as `else { while (x) {} }`, because
