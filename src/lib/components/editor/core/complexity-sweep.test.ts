@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import * as acorn from 'acorn';
+import ts from 'typescript';
 import { ComplexityAnalyzer } from './complexity-analyzer';
+import { analyzeAstComplexity } from './complexity-ast';
+import { createEstreeAdapter, type EstreeNode } from './complexity-estree';
 import { referenceRegions } from '../../../../../tests/helpers/cognitive-complexity-oracle';
 import type { Line } from './state';
 
@@ -133,5 +137,88 @@ describe('cognitive complexity: repo-wide differential sweep', () => {
 
 	it('reports no phantom region (one that swallowed its enclosing function)', () => {
 		expect(phantom, `${phantom.length} phantom:\n${fmt(phantom)}`).toEqual([]);
+	});
+});
+
+/**
+ * Repo-wide sweep for the AST WALKER — the rules consumers plug a parser into.
+ *
+ * This one asserts EXACT score agreement on every function in the repository,
+ * which the token-scanner sweep above deliberately does not. It can, because
+ * both sides here consume the same transpiled JavaScript through the same
+ * parser: there is no tokenizer approximation and no span drift to forgive, so
+ * any disagreement is a real disagreement about the rules.
+ *
+ * That makes this the strongest falsifier in the repo. If the walker and the
+ * independent reference both claim to implement Campbell's rules and they differ
+ * on any one of ~1700 real functions, one of them is wrong.
+ */
+describe('cognitive complexity: repo-wide sweep of the AST walker', () => {
+	const adapter = createEstreeAdapter();
+	const files = listSourceFiles(SRC);
+
+	interface Divergence {
+		file: string;
+		name: string;
+		reference: number;
+		walker: number;
+	}
+
+	const divergences: Divergence[] = [];
+	let compared = 0;
+
+	for (const file of files) {
+		const source = readFileSync(file, 'utf8');
+		const reference = referenceRegions(source);
+		if (!reference) continue;
+
+		const js = ts.transpileModule(source, {
+			compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext }
+		}).outputText;
+
+		let root: EstreeNode;
+		try {
+			root = acorn.parse(js, {
+				ecmaVersion: 'latest',
+				sourceType: 'module',
+				locations: true
+			}) as unknown as EstreeNode;
+		} catch {
+			continue;
+		}
+
+		const walked = analyzeAstComplexity(root, adapter);
+		const short = file.slice(SRC.length + 1);
+
+		for (const ref of reference) {
+			// Match by name AND start line: both sides read the same transpiled text,
+			// so counterparts line up exactly and a near-miss would be a real defect
+			// rather than harness noise.
+			const got = walked.find((r) => r.name === ref.name && r.startLine === ref.startLine);
+			if (!got) continue;
+			compared++;
+
+			if (got.cognitiveComplexity !== ref.cc) {
+				divergences.push({
+					file: short,
+					name: ref.name,
+					reference: ref.cc,
+					walker: got.cognitiveComplexity
+				});
+			}
+		}
+	}
+
+	it('compares a meaningful number of real functions', () => {
+		// Guards the guard: a broken walk would otherwise pass vacuously.
+		expect(compared).toBeGreaterThan(300);
+	});
+
+	it('scores every function in the repository exactly as the reference does', () => {
+		const detail = divergences
+			.slice(0, 20)
+			.map((d) => `  ${d.file} :: ${d.name} — reference ${d.reference}, walker ${d.walker}`)
+			.join('\n');
+		expect(divergences, `${divergences.length} divergences:\n${detail}`).toEqual([]);
 	});
 });

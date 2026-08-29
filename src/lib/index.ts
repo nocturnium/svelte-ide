@@ -196,6 +196,54 @@ export type {
 } from './components/editor/core/complexity-provider';
 
 /**
+ * Cognitive Complexity over a parse tree — the rules, for any parser.
+ *
+ * Bring tree-sitter, acorn, SWC, a language server, or your own AST pass;
+ * describe its node shapes with a `ComplexityAstAdapter` and the whitepaper's
+ * rules are applied for you. This is the accurate, deterministic way to fill the
+ * seam, and unlike a model it is fast enough to run on every keystroke.
+ *
+ * The parser is always the consumer's dependency, so the package still installs
+ * nothing.
+ *
+ * @public - Stable API
+ */
+export {
+	analyzeAstComplexity,
+	astComplexityMetrics,
+	createAstComplexityProvider
+} from './components/editor/core/complexity-ast';
+export type {
+	ComplexityAstAdapter,
+	ComplexityNodeKind,
+	ComplexityWalkContext,
+	AstComplexityRegion
+} from './components/editor/core/complexity-ast';
+
+/**
+ * A ready-made adapter for ESTree-shaped trees — acorn, espree, meriyah,
+ * @typescript-eslint/parser — covering JS, JSX, TS and TSX.
+ *
+ * @public - Stable API
+ */
+export { createEstreeAdapter } from './components/editor/core/complexity-estree';
+export type { EstreeNode } from './components/editor/core/complexity-estree';
+
+/**
+ * Combinators for building a provider chain: a parser first, something slower
+ * behind it, a bound on how long any of it may take, and a content-keyed cache
+ * so nothing is asked twice.
+ *
+ * @public - Stable API
+ */
+export {
+	composeComplexityProviders,
+	withComplexityCache,
+	withComplexityTimeout
+} from './components/editor/core/complexity-compose';
+export type { ComplexityCacheOptions } from './components/editor/core/complexity-compose';
+
+/**
  * Editor tab bar component
  * @public - Stable API
  */

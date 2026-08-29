@@ -136,7 +136,16 @@ function oracleComplexity(fnNode: AnyNode, fnName: string | undefined): number {
 		for (const child of childNodes(node)) visit(child, nesting, node);
 	}
 
-	for (const child of childNodes((fnNode.body as AnyNode) ?? fnNode)) visit(child, 0, null);
+	const body = (fnNode.body as AnyNode) ?? fnNode;
+	if (body.type === 'BlockStatement') {
+		for (const child of childNodes(body)) visit(child, 0, null);
+	} else {
+		// An expression-bodied arrow: the body IS the expression, and it can score.
+		// Walking its children instead skips it — `(a, b) => a && b` then reads 0.
+		// Found by the repo-wide AST-walker sweep, which disagreed on exactly the
+		// two functions in this repo shaped that way.
+		visit(body, 0, null);
+	}
 	return total;
 }
 

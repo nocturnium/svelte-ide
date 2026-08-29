@@ -664,3 +664,130 @@ cannot reach on its 30 unverified languages actually lives. The chat transports
 remain because the seam is generic and the plumbing is useful — but if you wire
 one up for complexity scoring, measure it against a reference before you trust
 a number it produces.
+
+### The rules, for any parser
+
+Parsing is a solved problem with a dozen good libraries. Implementing Campbell's
+rules correctly is not — it took this repository four review rounds and a
+differential harness to get the token scanner there, and every defect found was
+in the rules, not the parsing. So the rules ship here, and you bring the tree.
+
+Describe your parser's node shapes with a `ComplexityAstAdapter` and
+`analyzeAstComplexity` applies the whitepaper's rules for you, identically across
+every language your parser supports.
+
+```ts
+import { createAstComplexityProvider, createEstreeAdapter } from '@nocturnium/svelte-ide';
+import * as acorn from 'acorn';
+
+const provider = createAstComplexityProvider({
+	parse: (code) => acorn.parse(code, { ecmaVersion: 'latest', locations: true }),
+	adapter: createEstreeAdapter(),
+	source: 'acorn'
+});
+```
+
+`createEstreeAdapter` covers anything emitting ESTree — acorn, espree, meriyah,
+`@typescript-eslint/parser` — so JS, JSX, TS and TSX. For a parser with its own
+node shapes, an adapter is about twenty lines:
+
+```ts
+import { createAstComplexityProvider, type ComplexityAstAdapter } from '@nocturnium/svelte-ide';
+
+const treeSitter: ComplexityAstAdapter<SyntaxNode> = {
+	kindOf: (node, parent) => {
+		switch (node.type) {
+			case 'function_declaration':
+			case 'method_definition':
+				return 'function';
+			case 'if_statement':
+				return parent?.type === 'else_clause' ? 'else-if' : 'if';
+			case 'else_clause':
+				return 'else';
+			case 'for_statement':
+			case 'while_statement':
+				return 'loop';
+			case 'switch_statement':
+				return 'switch';
+			case 'catch_clause':
+				return 'catch';
+			case 'ternary_expression':
+				return 'ternary';
+			case 'binary_expression':
+				return ['&&', '||'].includes(node.operatorNode?.text) ? 'boolean-sequence' : null;
+			default:
+				return null;
+		}
+	},
+	childrenOf: (node) => node.namedChildren,
+	lineRangeOf: (node) => ({
+		startLine: node.startPosition.row,
+		endLine: node.endPosition.row
+	}),
+	nameOf: (node) => node.childForFieldName('name')?.text,
+	bodyOf: (node) => node.childForFieldName('body') ?? null
+};
+```
+
+The parser is always **your** dependency. This package still installs nothing.
+
+Two subtleties the adapter interface exists to get right, both of which were real
+bugs caught by the sweep below rather than by reasoning:
+
+- `bodyOf` names which child raises nesting. A loop's init clause and an `if`'s
+  condition are not the body, so a ternary in either is not charged for depth it
+  does not create.
+- `mergedIncrementOf` covers a node that is two things at once. ESTree has no
+  `else` node, so `else while (x) {}` is a loop sitting in the `alternate` slot —
+  it must score as both, and at the same depth as `else { while (x) {} }`, because
+  adding braces must never change the number.
+
+You can also use the rules outside an editor entirely — a CI gate, a report, a
+pre-commit hook — with `astComplexityMetrics(tree, adapter)`.
+
+#### How this is verified
+
+The walker is checked against an independent AST implementation of the
+SonarSource rules on a 30-case curated corpus **and on every function in this
+repository** — over 300 comparisons, asserting exact score agreement, on every
+build. Both sides consume the same transpiled JavaScript through the same parser,
+so there is no approximation to forgive and any disagreement is a real
+disagreement about the rules.
+
+That sweep is not decorative. Writing it turned up four genuine defects that
+review had not: recursion judged against the wrong function (a `setTimeout`
+callback calling its enclosing `connect()` is still recursion), an `else` that
+changed score depending on braces, and — in the reference implementation that had
+been gating this feature all along — a blind spot for expression-bodied arrow
+functions, which scored `(a, b) => a && b` as 0.
+
+### Building a provider chain
+
+A real deployment usually wants more than one provider: a parser where a parser
+exists, something slower behind it, and a bound on how long any of it may take.
+
+```ts
+import {
+	composeComplexityProviders,
+	withComplexityCache,
+	withComplexityTimeout
+} from '@nocturnium/svelte-ide';
+
+const provider = withComplexityCache(
+	composeComplexityProviders(
+		createAstComplexityProvider({ parse, adapter: createEstreeAdapter() }),
+		withComplexityTimeout(createOllamaComplexityProvider({ model: 'qwen2.5-coder' }), 3000)
+	)
+);
+```
+
+`composeComplexityProviders` takes the first provider that answers; one that
+declines or throws is skipped, so a failing network provider cannot mask a
+working local one. `withComplexityCache` keys on content and language, so it is
+always coherent — there is no invalidation to get wrong. `withComplexityTimeout`
+aborts the inner provider rather than merely ignoring it.
+
+There is deliberately **no retry combinator**. One model averaged 44.7 seconds
+per request in the measurements above; retrying that turns a slow refinement into
+a stuck one, and the editor already re-asks on the next keystroke with a fresh
+abort. Timeouts, not retries, are the right bound here.
