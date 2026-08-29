@@ -31,11 +31,22 @@ test.describe('cognitive-load complexity highlighting', () => {
 	});
 
 	test('legend ranges match the analyzer levels', async ({ page }) => {
+		// Ranges are raw Cognitive Complexity, in the vocabulary the tooltip and the
+		// meter also use. This test asserted `Medium (50-69)` / `Critical (85+)` —
+		// bands of the deprecated 0-100 score, on a legend that stopped rendering
+		// that scale — so it had been failing on a stale constant rather than on
+		// anything the legend was doing wrong.
 		await page.goto('/demo/cognitive-load');
 		await page.waitForLoadState('networkidle');
 		const legend = page.locator('.complexity-legend');
-		await expect(legend).toContainText('Medium (50-69)');
-		await expect(legend).toContainText('Critical (85+)');
+		await expect(legend).toContainText('Simple');
+		await expect(legend).toContainText('0–4');
+		await expect(legend).toContainText('Moderate');
+		await expect(legend).toContainText('5–9');
+		await expect(legend).toContainText('Complex');
+		await expect(legend).toContainText('10–14');
+		await expect(legend).toContainText('Refactor');
+		await expect(legend).toContainText('15+');
 	});
 
 	test('high-complexity indicators render past the first viewport (not clipped)', async ({
@@ -46,7 +57,6 @@ test.describe('cognitive-load complexity highlighting', () => {
 		await page.waitForTimeout(1000);
 
 		const result = await page.evaluate(() => {
-			const RED = 'rgb(248, 113, 113)'; // --ide-error / critical (#f87171, AA-safe)
 			const content = document.querySelector(
 				'.editor-container .custom-editor__content'
 			) as HTMLElement | null;
@@ -54,22 +64,25 @@ test.describe('cognitive-load complexity highlighting', () => {
 			const spines = Array.from(
 				document.querySelectorAll('.complexity-gutter__spine')
 			) as HTMLElement[];
-			// A critical (red) spine whose top sits below the first screenful proves
-			// the gutter layer spans the full document height rather than one viewport.
-			const redPastFold = spines.filter(
+			// Identified by its band class, not by a hard-coded colour. This read
+			// `backgroundColor === 'rgb(248, 113, 113)'` — the old --ide-error red —
+			// and kept matching nothing after the overlay moved to its own complexity
+			// ramp, so the test failed on a stale swatch while the behaviour it names
+			// was fine. A class survives a repaint; a hex does not.
+			const criticalPastFold = spines.filter(
 				(el) =>
-					getComputedStyle(el).backgroundColor === RED &&
+					el.classList.contains('complexity-gutter__spine--critical') &&
 					(parseFloat(el.style.top) || 0) > viewportH
 			);
-			return { redPastFold: redPastFold.length, totalSpines: spines.length, viewportH };
+			return { criticalPastFold: criticalPastFold.length, totalSpines: spines.length, viewportH };
 		});
 
 		// Regression: the gutter layer was sized to a single viewport, so the
 		// critical region (which starts below the first screenful) was clipped and
-		// never rendered. The full-height layer must paint the critical (red) spine
-		// past the fold.
+		// never rendered. The full-height layer must paint the critical spine past
+		// the fold.
 		expect(result.viewportH).toBeGreaterThan(0);
-		expect(result.redPastFold).toBeGreaterThanOrEqual(1);
+		expect(result.criticalPastFold).toBeGreaterThanOrEqual(1);
 	});
 });
 

@@ -51,6 +51,18 @@
 			position: { line: 8, column: 16 },
 			selection: { anchor: { line: 8, column: 3 }, head: { line: 8, column: 16 } },
 			lastActivity: new Date()
+		},
+		// Deliberately past the fold. The editor window is 350px — roughly 17 rows —
+		// and `getAwareness` is on line 28, so this caret only renders if the remote
+		// cursor layer spans the whole document instead of one viewport. Both other
+		// samples sit in the first screenful, which is why the clipping bug survived
+		// this page looking correct.
+		{
+			userId: '3',
+			user: collaborators[2],
+			position: { line: 28, column: 3 },
+			selection: undefined,
+			lastActivity: new Date()
 		}
 	];
 

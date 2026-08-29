@@ -20,6 +20,17 @@
 		multiCursor?: boolean;
 		maxCursors?: number;
 		aiAgents?: AIAwareness[];
+		/**
+		 * Show the name label beside each AI cursor.
+		 *
+		 * Forwarded because `aiAgents` on its own is one third of a documented
+		 * three-prop feature. `showAIFocusRegions` defaults to false downstream, so
+		 * until both were forwarded the focus-region half of Ghost Pair could not be
+		 * switched on through this component at all.
+		 */
+		showAILabels?: boolean;
+		/** Shade the region an AI agent is focused on. Off by default. */
+		showAIFocusRegions?: boolean;
 		onSave?: (path: string, content: string) => Promise<void>;
 		class?: string;
 	}
@@ -30,6 +41,8 @@
 		multiCursor = true,
 		maxCursors = 100,
 		aiAgents = [],
+		showAILabels = true,
+		showAIFocusRegions = false,
 		onSave,
 		class: className = ''
 	}: Props = $props();
@@ -87,6 +100,8 @@
 					{multiCursor}
 					{maxCursors}
 					{aiAgents}
+					{showAILabels}
+					{showAIFocusRegions}
 					onChange={handleChange}
 					onCursorChange={handleCursorChange}
 					onSave={handleSave}

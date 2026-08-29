@@ -245,12 +245,27 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	let showGhostPair = $state(true);
 	let aiAgents = $state<AIAwareness[]>([]);
 
+	/**
+	 * Rows the agent may occupy.
+	 *
+	 * `processUser` spans lines 13-27 of the sample and is the first region the
+	 * gutter marks, so it is both on screen at the initial scroll position and
+	 * something the rest of the page is already talking about.
+	 *
+	 * It used to roam lines 45-90 with a focus region over 40-95. The editor window
+	 * is 500px — about 25 rows — so every one of those rows was below the fold, and
+	 * the layer's own clipping bug meant they would not have painted even if you
+	 * scrolled. Two independent reasons the feature looked dead.
+	 */
+	const AGENT_FIRST_ROW = 13;
+	const AGENT_LAST_ROW = 24;
+
 	// Simulated AI agent
 	let claudeAgent = $state(
 		createAIAwareness('claude-1', 'Claude', {
 			attentionType: 'reading',
 			cursor: {
-				position: { line: 45, column: 8 },
+				position: { line: AGENT_FIRST_ROW + 1, column: 8 },
 				// Brand AI-assistant purple (--ide-ai-assistant / aurora-purple). The
 				// editor paints the cursor in-canvas from this hex, so it can't read the
 				// CSS token directly; keep it in sync with --color-nocturnium-aurora-purple.
@@ -260,14 +275,14 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			},
 			focusRegions: [
 				{
-					startLine: 40,
-					endLine: 95,
+					startLine: AGENT_FIRST_ROW,
+					endLine: AGENT_LAST_ROW,
 					intensity: 0.6,
 					type: 'reading',
 					label: 'Analyzing complexity'
 				}
 			],
-			activity: 'Analyzing high complexity region',
+			activity: 'Reading processUser',
 			confidence: 0.8,
 			isActive: true
 		})
@@ -284,7 +299,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	// Animate AI cursor position
 	let animationInterval: ReturnType<typeof setInterval> | null = null;
-	let cursorLine = $state(45);
+	let cursorLine = $state(AGENT_FIRST_ROW + 1);
 	let cursorDirection = $state(1);
 
 	function startAnimation() {
@@ -293,8 +308,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		animationInterval = setInterval(() => {
 			cursorLine += cursorDirection;
 
-			if (cursorLine >= 90) cursorDirection = -1;
-			if (cursorLine <= 45) cursorDirection = 1;
+			if (cursorLine >= AGENT_LAST_ROW) cursorDirection = -1;
+			if (cursorLine <= AGENT_FIRST_ROW + 1) cursorDirection = 1;
 
 			claudeAgent = {
 				...claudeAgent,
@@ -356,7 +371,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	function getActivityDescription(type: (typeof attentionStates)[number]): string {
 		switch (type) {
 			case 'reading':
-				return 'Analyzing high complexity region';
+				return 'Reading processUser';
 			case 'thinking':
 				return 'Planning refactoring approach';
 			case 'writing':
@@ -446,29 +461,11 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			drive.
 		</p>
 
-		<div class="ghost-pair-controls">
-			<label class="toggle-control">
-				<input type="checkbox" bind:checked={showGhostPair} />
-				<span class="toggle-label">Show AI Cursor</span>
-			</label>
-
-			<button class="control-btn" onclick={cycleAttentionState} disabled={!showGhostPair}>
-				Cycle Attention State
-			</button>
-
-			{#if showGhostPair && claudeAgent}
-				<div class="ai-status">
-					<span class="ai-dot" style="background: {claudeAgent.color}"></span>
-					<span class="ai-name">{claudeAgent.agentName}</span>
-					<span class="ai-activity">
-						<span class="sr-only">{claudeAgent.attentionType}:</span>
-						{claudeAgent.activity}
-					</span>
-				</div>
-			{:else}
-				<span class="ai-status-hidden">AI cursor hidden — enable to see Claude's focus</span>
-			{/if}
-		</div>
+		<p class="section-desc section-desc--pointer">
+			The controls sit beside the editor below, next to the canvas they drive. They used to live
+			here, two sections above the only surface that renders an agent — so toggling one appeared to
+			do nothing at all.
+		</p>
 	</section>
 
 	<!-- Combined Editor Demo -->
@@ -505,28 +502,62 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 			{/if}
 		</div>
 
-		<DemoExhibit
-			code={liveDemoCode}
-			language="svelte"
-			filename="CognitiveLoad.svelte"
-			padded={false}
-		>
-			<div class="editor-container">
-				<CustomEditor
-					bind:this={editorRef}
-					{content}
-					onChange={(value) => (content = value)}
-					language={selectedLanguage}
-					readonly={false}
-					complexityHighlighting={true}
-					complexityThreshold={COGNITIVE_COMPLEXITY_BANDS.medium}
-					{aiAgents}
-					showAILabels={true}
-					showAIFocusRegions={true}
-					onComplexityChange={handleComplexityChange}
-				/>
-			</div>
-		</DemoExhibit>
+		<!-- Canvas and its controls side by side. The ghost-pair controls were two
+		     sections up, nowhere near the only canvas that draws an agent. -->
+		<div class="canvas-with-rail">
+			<DemoExhibit
+				code={liveDemoCode}
+				language="svelte"
+				filename="CognitiveLoad.svelte"
+				padded={false}
+			>
+				<div class="editor-container">
+					<CustomEditor
+						bind:this={editorRef}
+						{content}
+						onChange={(value) => (content = value)}
+						language={selectedLanguage}
+						readonly={false}
+						complexityHighlighting={true}
+						complexityThreshold={COGNITIVE_COMPLEXITY_BANDS.medium}
+						{aiAgents}
+						showAILabels={true}
+						showAIFocusRegions={true}
+						onComplexityChange={handleComplexityChange}
+					/>
+				</div>
+			</DemoExhibit>
+
+			<aside class="ghost-rail" aria-label="Ghost pair controls">
+				<h3 class="ghost-rail__title">Ghost pair</h3>
+				<label class="toggle-control">
+					<input type="checkbox" bind:checked={showGhostPair} />
+					<span class="toggle-label">Show AI Cursor</span>
+				</label>
+
+				<button class="control-btn" onclick={cycleAttentionState} disabled={!showGhostPair}>
+					Cycle Attention State
+				</button>
+
+				{#if showGhostPair && claudeAgent}
+					<div class="ai-status">
+						<span class="ai-dot" style="background: {claudeAgent.color}"></span>
+						<span class="ai-name">{claudeAgent.agentName}</span>
+						<span class="ai-activity">
+							<span class="sr-only">{claudeAgent.attentionType}:</span>
+							{claudeAgent.activity}
+						</span>
+					</div>
+				{:else}
+					<span class="ai-status-hidden">AI cursor hidden — enable to see Claude's focus</span>
+				{/if}
+
+				<p class="ghost-rail__note">
+					Claude reads <code>processUser</code> — a region the gutter also marks — so the ghost cursor
+					lands on rows that are on screen.
+				</p>
+			</aside>
+		</div>
 	</section>
 
 	<!-- Feature Highlights -->
@@ -765,15 +796,67 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	/* Complexity Legend */
 
 	/* Ghost Pair Controls */
-	.ghost-pair-controls {
+	/* Canvas on the left, the controls that drive it on the right. Collapses to a
+	   single column before the editor gets too narrow to read. */
+	.canvas-with-rail {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 260px;
+		gap: 1.25rem;
+		align-items: start;
+	}
+
+	.ghost-rail {
 		display: flex;
-		align-items: center;
-		gap: 1.5rem;
-		padding: 1rem 1.5rem;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.875rem;
+		padding: 1rem 1.25rem;
 		background: var(--ide-bg-secondary);
+		border: 1px solid var(--ide-border);
 		border-radius: 8px;
-		margin-bottom: 1.5rem;
-		flex-wrap: wrap;
+	}
+
+	.ghost-rail__title {
+		margin: 0;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--ide-text-muted);
+	}
+
+	.ghost-rail__note {
+		margin: 0;
+		font-size: 0.75rem;
+		line-height: 1.5;
+		color: var(--ide-text-muted);
+	}
+
+	.ghost-rail__note code {
+		font-family: var(--ide-font-mono);
+		font-size: 0.7rem;
+	}
+
+	.section-desc--pointer {
+		font-size: 0.875rem;
+		color: var(--ide-text-muted);
+	}
+
+	@media (max-width: 900px) {
+		.canvas-with-rail {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.ghost-rail {
+			flex-direction: row;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 0.875rem 1.25rem;
+		}
+
+		.ghost-rail__title {
+			width: 100%;
+		}
 	}
 
 	.toggle-control {
@@ -1039,11 +1122,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	@media (max-width: 640px) {
-		/* Allow controls to wrap and give the checkbox a 48px touch target */
-		.ghost-pair-controls {
-			gap: 0.875rem 1rem;
-		}
-
+		/* Give the checkbox and buttons a 48px touch target */
 		.toggle-control {
 			min-height: 48px;
 		}

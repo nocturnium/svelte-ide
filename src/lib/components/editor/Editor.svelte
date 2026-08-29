@@ -29,6 +29,17 @@
 		maxCursors?: number;
 		/** AI agents for Ghost Pair visualization */
 		aiAgents?: AIAwareness[];
+		/**
+		 * Show the name label beside each AI cursor.
+		 *
+		 * Forwarded because `aiAgents` alone is only one third of a documented
+		 * three-prop feature. Without these two, the focus-region half of Ghost Pair
+		 * was unreachable through this component at all: `showAIFocusRegions`
+		 * defaults to false downstream, and nothing here could turn it on.
+		 */
+		showAILabels?: boolean;
+		/** Shade the region an AI agent is focused on. Off by default. */
+		showAIFocusRegions?: boolean;
 		/** Called when content changes */
 		onChange?: (content: string) => void;
 		/** Called when cursor position changes */
@@ -47,6 +58,8 @@
 		multiCursor = true,
 		maxCursors = 100,
 		aiAgents = [],
+		showAILabels = true,
+		showAIFocusRegions = false,
 		onChange,
 		onCursorChange,
 		onSave
@@ -63,6 +76,8 @@
 		{multiCursor}
 		{maxCursors}
 		{aiAgents}
+		{showAILabels}
+		{showAIFocusRegions}
 		{onChange}
 		{onCursorChange}
 		{onSave}

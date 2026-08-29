@@ -740,6 +740,30 @@
 	// Total scrollable content height (in px) for the full document, accounting
 	// for folded/hidden lines. Drives the spacer so the scrollbar stays correct.
 	let totalContentHeight = $derived(Math.max(visibleLines.length, 1) * lineHeight);
+
+	/**
+	 * The line -> visual row mapping handed to every overlay, as a value whose
+	 * IDENTITY changes whenever folding changes the row layout.
+	 *
+	 * Overlays used to receive an arrow written inline at each call site, forwarding
+	 * straight to the `lineToVisualRow` function below. That arrow closes over a plain function
+	 * declaration and reads no signal, so its identity never changed — and an
+	 * overlay's `top: {someRowLookup(line)}px` is its own fine-grained effect with
+	 * no other reactive input. Collapsing a fold therefore moved the text and
+	 * resized the layer (both read `visibleLines`) while leaving every overlay mark
+	 * at its pre-fold row. Measured on the collaboration demo: after collapsing a
+	 * 5-line block, the remote carets stayed exactly 100px — five rows — below the
+	 * text they belong to.
+	 *
+	 * Reading `visibleLines` here is what makes a fold produce a new function, so
+	 * every consumer's position expression re-runs. Do not "simplify" this back to
+	 * an inline arrow: nothing would fail to compile, and the marks would silently
+	 * desync from the code again.
+	 */
+	let rowMapper = $derived.by(() => {
+		void visibleLines.length;
+		return (line: number) => lineToVisualRow(line);
+	});
 	let estimatedContentWidth = $derived.by(() => {
 		let maxLineLength = 0;
 		for (const line of lines) {
@@ -1191,7 +1215,7 @@
 				minCognitiveComplexity={complexityThreshold}
 				enabled={complexityHighlighting}
 				flashRegionKey={complexityFlashRegionKey}
-				lineToVisualRow={(line) => lineToVisualRow(line)}
+				lineToVisualRow={rowMapper}
 			/>
 			<ComplexityLayer
 				metrics={complexityMetrics}
@@ -1206,11 +1230,17 @@
 					gutterWidth + CONTENT_PADDING + (lines[line]?.text.length ?? 0) * charWidth}
 				enabled={complexityHighlighting}
 				flashRegionKey={complexityFlashRegionKey}
-				lineToVisualRow={(line) => lineToVisualRow(line)}
+				lineToVisualRow={rowMapper}
 			/>
 		{/if}
 
-		<!-- AI Focus Layer (Ghost Pair visualization) -->
+		<!-- AI Focus Layer (Ghost Pair visualization).
+
+		     `totalHeight`/`contentWidth`/`lineToVisualRow` are passed together, and
+		     have to be: the extent is measured in visual rows while both layers
+		     position by raw document line, so supplying the size without the mapping
+		     would trade a clipped agent for a misplaced one. Same trio as the
+		     complexity overlays above. -->
 		{#if aiAgents.length > 0}
 			<AIFocusLayer
 				agents={aiAgents}
@@ -1221,6 +1251,9 @@
 				showLabels={showAILabels}
 				showFocusRegions={showAIFocusRegions}
 				enabled={true}
+				totalHeight={totalContentHeight}
+				contentWidth={estimatedContentWidth}
+				lineToVisualRow={rowMapper}
 			/>
 		{/if}
 
@@ -1233,6 +1266,9 @@
 				{gutterWidth}
 				contentPadding={CONTENT_PADDING}
 				showLabels={showRemoteCursorLabels}
+				totalHeight={totalContentHeight}
+				contentWidth={estimatedContentWidth}
+				lineToVisualRow={rowMapper}
 			/>
 		{/if}
 
@@ -1270,7 +1306,7 @@
 			{viewportHeight}
 			getLine={(n) => editorState.getLine(n)}
 			lineCount={editorState?.lineCount ?? 0}
-			lineToVisualRow={(line) => lineToVisualRow(line)}
+			lineToVisualRow={rowMapper}
 		/>
 
 		<!-- Lines (virtualized: only the windowed slice is rendered) -->

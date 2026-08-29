@@ -29,6 +29,32 @@
 		showFocusRegions?: boolean;
 		/** Whether the layer is enabled */
 		enabled?: boolean;
+		/**
+		 * Full height of the scrollable content in pixels.
+		 *
+		 * The layer must span the whole document. It used to be stretched with
+		 * `bottom: 0`, which resolves against the containing block — the editor's
+		 * padding box, i.e. ONE VIEWPORT — so with `overflow: hidden` a ghost cursor
+		 * or focus region below the first screenful was clipped away entirely. The
+		 * feature looked broken exactly when the agent moved somewhere interesting.
+		 *
+		 * The identical bug and fix are documented on the sibling overlay in
+		 * `ComplexityLayer.svelte` ('Height is set inline to the full content
+		 * height so indicators below the first viewport are not clipped').
+		 */
+		totalHeight?: number;
+		/** Estimated full scrollable content width in pixels. */
+		contentWidth?: number;
+		/**
+		 * Maps a raw document line to its rendered visual row.
+		 *
+		 * Required alongside `totalHeight`, not optional polish. `totalHeight` is
+		 * measured in VISUAL ROWS (folded ranges collapse to one), while an agent
+		 * reports a raw document line. Sizing the layer by one and positioning
+		 * within it by the other puts the ghost cursor on the wrong row for every
+		 * line after a collapsed fold.
+		 */
+		lineToVisualRow?: (line: number) => number;
 	}
 
 	let {
@@ -39,8 +65,14 @@
 		contentPadding = 8,
 		showLabels = true,
 		showFocusRegions = true,
-		enabled = true
+		enabled = true,
+		totalHeight = 0,
+		contentWidth = 0,
+		lineToVisualRow = (line: number) => line
 	}: Props = $props();
+
+	/** Top edge of a raw document line, in the layer's coordinates. */
+	const rowTop = (line: number) => lineToVisualRow(Math.max(0, line)) * lineHeight;
 
 	// Filter to active agents with cursors
 	let visibleAgents = $derived(
@@ -54,7 +86,7 @@
 	 */
 	function getCursorStyle(cursor: AICursor, color: string): string {
 		const left = gutterWidth + contentPadding + cursor.position.column * charWidth;
-		const top = cursor.position.line * lineHeight;
+		const top = rowTop(cursor.position.line);
 
 		return `
 			left: ${left}px;
@@ -68,8 +100,12 @@
 	 * Get focus region style
 	 */
 	function getRegionStyle(region: AIFocusRegion, color: string): string {
-		const top = region.startLine * lineHeight;
-		const height = (region.endLine - region.startLine + 1) * lineHeight;
+		// Measured in visual rows at both ends, so a fold inside the region shrinks
+		// the glow with the code rather than leaving it spanning empty space.
+		const startRow = lineToVisualRow(Math.max(0, region.startLine));
+		const endRow = Math.max(startRow, lineToVisualRow(Math.max(0, region.endLine)));
+		const top = startRow * lineHeight;
+		const height = (endRow - startRow + 1) * lineHeight;
 
 		// Calculate left/width if column info provided
 		let left = gutterWidth + contentPadding;
@@ -96,7 +132,9 @@
 	 */
 	function getLabelStyle(cursor: AICursor): string {
 		const left = gutterWidth + contentPadding + cursor.position.column * charWidth + 4;
-		const top = cursor.position.line * lineHeight - 20;
+		// Sits one label-height ABOVE the caret, so on the first row it lands at a
+		// negative offset. That is why the layer must not clip its own overflow.
+		const top = rowTop(cursor.position.line) - 20;
 
 		return `left: ${left}px; top: ${top}px;`;
 	}
@@ -139,7 +177,14 @@
 </script>
 
 {#if enabled && visibleAgents.length > 0}
-	<div class="ai-focus-layer" aria-hidden="true">
+	<div
+		class="ai-focus-layer"
+		aria-hidden="true"
+		style="
+			height: {totalHeight ? `${totalHeight}px` : '100%'};
+			width: {contentWidth ? `${contentWidth}px` : '100%'};
+		"
+	>
 		{#each visibleAgents as agent (agent.agentId)}
 			<!-- Focus regions (background glow) -->
 			{#if showFocusRegions && agent.focusRegions.length > 0}
@@ -195,10 +240,20 @@
 		position: absolute;
 		top: 0;
 		left: 0;
-		right: 0;
-		bottom: 0;
+		/* Size comes from the inline height/width above, which carry the full
+		   scrollable content extent. `min-*` keeps the layer covering the viewport
+		   when a caller has not measured it yet; `right`/`bottom: 0` used to size
+		   the layer to one viewport and hide the agent below the fold. */
+		min-width: 100%;
+		min-height: 100%;
 		pointer-events: none;
 		z-index: 5;
+		/* Still hidden, and deliberately. Once the layer spans the whole document
+		   there is nothing real left for it to clip: the only child that lands
+		   outside is the agent label on row 0, drawn a label-height above its
+		   cursor, and that sits above the editor's own scrollport, which no setting
+		   here can reveal. Keeping it hidden is a guarantee that no overlay can ever
+		   widen the editor's scrollable area. */
 		overflow: hidden;
 	}
 
