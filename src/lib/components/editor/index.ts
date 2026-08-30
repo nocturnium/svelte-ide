@@ -22,10 +22,59 @@ export { default as ComplexityLayer } from './ComplexityLayer.svelte';
 export { default as ComplexityHeatLayer } from './ComplexityHeatLayer.svelte';
 export { default as ComplexityLegend } from './ComplexityLegend.svelte';
 export { default as CognitiveLoadMeter } from './CognitiveLoadMeter.svelte';
-export * from './core/complexity-provider';
-export * from './core/complexity-ast';
-export * from './core/complexity-estree';
-export * from './core/complexity-compose';
+// Named, not `export *`, for the complexity surface specifically.
+//
+// `export *` means every symbol a module gains later becomes public API the
+// moment it is written, with no decision and no review. That is a poor posture
+// generally and an actively bad one the day a major version freezes the surface:
+// the whole point of 2.0.0 here is that these shapes stop moving, and a wildcard
+// re-export is a standing promise to publish whatever shows up next.
+//
+// Listing them costs one line per symbol and makes adding to the public API a
+// deliberate edit. The remaining `export *` lines below cover older modules whose
+// surface this release is not freezing; converting those is worth doing, but it
+// is a separate change with a separate blast radius.
+export {
+	buildComplexityPrompt,
+	ComplexityProviderError,
+	createChatComplexityProvider,
+	createOllamaComplexityProvider,
+	createOpenAICompatibleComplexityProvider,
+	DEFAULT_MAX_TOKENS,
+	mergeProvidedComplexity,
+	parseComplexityResponse
+} from './core/complexity-provider';
+export type {
+	ChatCompletion,
+	ComplexityProvider,
+	ComplexityProviderRequest,
+	ComplexityProviderResult,
+	ComplexitySource,
+	ProvidedComplexityRegion
+} from './core/complexity-provider';
+
+export {
+	analyzeAstComplexity,
+	astComplexityMetrics,
+	ComplexityAdapterError,
+	createAstComplexityProvider
+} from './core/complexity-ast';
+export type {
+	AstComplexityRegion,
+	ComplexityAstAdapter,
+	ComplexityNodeKind,
+	ComplexityWalkContext
+} from './core/complexity-ast';
+
+export { createEstreeAdapter } from './core/complexity-estree';
+export type { EstreeNode } from './core/complexity-estree';
+
+export {
+	composeComplexityProviders,
+	withComplexityCache,
+	withComplexityTimeout
+} from './core/complexity-compose';
+export type { ComplexityCacheOptions } from './core/complexity-compose';
 
 // Core utilities (explicitly excluding CRDT binding; use @nocturnium/svelte-ide/crdt)
 export * from './core/state';
@@ -34,7 +83,27 @@ export * from './core/keybindings';
 export * from './core/search';
 export * from './core/folding';
 export * from './core/multi-cursor';
-export * from './core/complexity-analyzer';
+export {
+	COGNITIVE_COMPLEXITY_BANDS,
+	ComplexityAnalyzer,
+	createComplexityAnalyzer,
+	getComplexityAnalyzer,
+	getComplexityBandLabel,
+	getComplexityContributionLabel,
+	getComplexityLevel,
+	getComplexityRegionKey,
+	getComplexitySuggestion,
+	getLegacyComplexityScore,
+	summarizeContributions
+} from './core/complexity-analyzer';
+export type {
+	ComplexityContribution,
+	ComplexityContributionKind,
+	ComplexityContributionSummary,
+	ComplexityFactors,
+	ComplexityMetrics,
+	ComplexityRegion
+} from './core/complexity-analyzer';
 export * from './core/ai-awareness';
 export * from './core/semantic-analyzer';
 export * from './core/commands';
