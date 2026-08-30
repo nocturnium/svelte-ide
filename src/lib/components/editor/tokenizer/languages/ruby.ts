@@ -223,6 +223,19 @@ interface OpenLiteral {
 	depth?: number;
 }
 
+/**
+ * "This literal has no closing delimiter — run to the end of the line", for a
+ * heredoc body and anything else whose end is not a character.
+ *
+ * The empty string, rather than the NUL escape it replaces. It is self-guarding —
+ * `closer` is compared against a single character, which can never equal an empty
+ * string — and it cannot be rendered into a literal NUL byte by the build. That
+ * was not hypothetical: the published `dist/` carried real NUL bytes in this file,
+ * which made it `data` to file(1), unreadable to grep and binary in a diff, while
+ * `src/` stayed clean and the hygiene test guarding `src/` saw nothing.
+ */
+const NO_CLOSER = '';
+
 export class RubyTokenizer {
 	language = 'ruby';
 
@@ -264,7 +277,7 @@ export class RubyTokenizer {
 				if (line.length > 0) tokens.push(createToken('string', line, 0));
 				else tokens.push(createToken('text', '', 0));
 			} else if (state.heredocInterpolates) {
-				this.scanLiteralRun(line, 0, '\x00', 'string', true, tokens, state);
+				this.scanLiteralRun(line, 0, NO_CLOSER, 'string', true, tokens, state);
 			} else {
 				if (line.length > 0) tokens.push(createToken('string', line, 0));
 				else tokens.push(createToken('text', '', 0));
@@ -764,9 +777,10 @@ export class RubyTokenizer {
 	/**
 	 * Scan a literal body starting at index `start` in `text`, pushing tokens for
 	 * literal runs (`baseType`), `\` escapes (`string.escape`), and `#{}`/`#@`/`#$`
-	 * interpolation. `closer` is the single closing delimiter char (use `\x00` for
-	 * "no closer — whole line", e.g. a heredoc body). Returns true if the closer was
-	 * consumed on this line. `basePos` is the absolute column of index 0 of `text`.
+	 * interpolation. `closer` is the single closing delimiter char; pass
+	 * {@link NO_CLOSER} for "no closer — whole line", e.g. a heredoc body. Returns
+	 * true if the closer was consumed on this line. `basePos` is the absolute
+	 * column of index 0 of `text`.
 	 */
 	private scanLiteralRun(
 		text: string,
@@ -816,7 +830,7 @@ export class RubyTokenizer {
 				}
 			}
 			// Closer.
-			if (closer !== '\x00' && c === closer) {
+			if (closer !== NO_CLOSER && c === closer) {
 				flushRun(i);
 				tokens.push(createToken(baseType, c, basePos + i));
 				return true;

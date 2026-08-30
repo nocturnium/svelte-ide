@@ -145,6 +145,113 @@ describe('withComplexityCache', () => {
 		expect(inner).toHaveBeenCalledTimes(2);
 	});
 
+	// Every other test in this block awaits one call before making the next, so
+	// the cache is always already written by the time the second asks. That is
+	// precisely the shape that cannot see a missing in-flight dedup: an entry is
+	// only written once a result exists, so concurrent callers all miss and all
+	// pay. These fire the second request while the first is still pending.
+	describe('concurrent identical requests', () => {
+		/** A provider whose answer is released by the test, not by a timer. */
+		const deferred = () => {
+			let release!: (value: ComplexityProviderResult | null) => void;
+			const gate = new Promise<ComplexityProviderResult | null>((r) => (release = r));
+			const provider = vi.fn(async () => gate);
+			return { provider, release };
+		};
+
+		it('asks once when two callers overlap on the same document', async () => {
+			const { provider: inner, release } = deferred();
+			const provider = withComplexityCache(inner);
+
+			const a = provider(request());
+			const b = provider(request());
+			release(result('m'));
+
+			expect((await a)?.source).toBe('m');
+			expect((await b)?.source).toBe('m');
+			expect(inner).toHaveBeenCalledTimes(1);
+		});
+
+		it('still asks separately for different documents', async () => {
+			const { provider: inner, release } = deferred();
+			const provider = withComplexityCache(inner);
+
+			const a = provider(request('function a() {}'));
+			const b = provider(request('function b() {}'));
+			release(result('m'));
+
+			await Promise.all([a, b]);
+			expect(inner).toHaveBeenCalledTimes(2);
+		});
+
+		it('stops sharing once the answer has landed, so the cache takes over', async () => {
+			const { provider: inner, release } = deferred();
+			const provider = withComplexityCache(inner);
+
+			const a = provider(request());
+			release(result('m'));
+			await a;
+
+			// A later ask is a cache hit, not a join — and the in-flight entry must
+			// have been cleared, or the key would be pinned to a settled promise.
+			expect((await provider(request()))?.source).toBe('m');
+			expect(inner).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not join an attempt whose originator has already given up', async () => {
+			// The joiner would inherit a decline it had no part in. The editor
+			// aborts on every keystroke, so an abandoned attempt is the common case,
+			// not the exotic one.
+			const controller = new AbortController();
+			const { provider: inner, release } = deferred();
+			const provider = withComplexityCache(inner);
+
+			const abandoned = provider(request(CODE, controller.signal));
+			controller.abort();
+
+			const fresh = provider(request());
+			release(result('m'));
+
+			await Promise.all([abandoned, fresh]);
+			expect(inner).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not pin a key to a rejected attempt', async () => {
+			// A provider that throws once must not poison the key: without clearing
+			// the in-flight entry on rejection, every later caller would await the
+			// same settled rejection forever.
+			const inner = vi.fn(throwing);
+			const provider = withComplexityCache(inner);
+
+			await expect(provider(request())).rejects.toThrow('network');
+
+			const second = vi.fn(answering('recovered'));
+			const recovered = withComplexityCache(second);
+			expect((await recovered(request()))?.source).toBe('recovered');
+
+			// And the original wrapper retries rather than replaying the rejection.
+			await expect(provider(request())).rejects.toThrow('network');
+			expect(inner).toHaveBeenCalledTimes(2);
+		});
+
+		it('lets each caller decide on its own signal, not the originator s', async () => {
+			const joinerAbort = new AbortController();
+			const { provider: inner, release } = deferred();
+			const provider = withComplexityCache(inner);
+
+			const originator = provider(request());
+			const joiner = provider(request(CODE, joinerAbort.signal));
+			joinerAbort.abort();
+			release(result('m'));
+			await Promise.all([originator, joiner]);
+
+			// The joiner abandoned its request, but the originator did not, so the
+			// result is cached and a third ask is free.
+			expect((await provider(request()))?.source).toBe('m');
+			expect(inner).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	it('evicts least-recently-used past the bound', async () => {
 		const inner = vi.fn(answering('m'));
 		const provider = withComplexityCache(inner, { max: 2 });

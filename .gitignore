@@ -56,3 +56,8 @@ backend/dist/
 
 # Codex dispatch run artifacts (local tooling output)
 .codex-dispatch/
+
+# Release working notes. A scratch plan, never package documentation — and the
+# only file `prettier --check .` reports, which made every "formatting is clean"
+# claim carry an asterisk.
+resume.md

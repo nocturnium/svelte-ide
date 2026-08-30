@@ -76,6 +76,13 @@ export interface ComplexityCacheOptions {
  *
  * The cache is keyed on content, so it is always coherent — there is no
  * invalidation to get wrong.
+ *
+ * Identical requests that arrive while one is still running are joined to it
+ * rather than started again. The cache alone cannot do this: an entry is only
+ * written once a result exists, so two callers asking about the same document
+ * before the first answer lands both miss, and both pay. For a parser that is a
+ * duplicated CPU burn; for a network provider it is a duplicated round trip and
+ * a duplicated bill, and it happens exactly when the answer is slowest.
  */
 export function withComplexityCache(
 	provider: ComplexityProvider,
@@ -87,7 +94,47 @@ export function withComplexityCache(
 	// hit re-inserts.
 	const cache = new Map<string, Awaited<ReturnType<ComplexityProvider>>>();
 
-	const keyOf = (request: ComplexityProviderRequest) => `${request.language}\x00${request.code}`;
+	/**
+	 * Requests currently in flight, by the same key as the cache.
+	 *
+	 * The originator's signal is kept alongside the promise because joining is
+	 * only safe while that caller still wants the answer. A joiner that attaches
+	 * to an attempt already abandoned would inherit a decline it had no part in.
+	 */
+	const inFlight = new Map<
+		string,
+		{ promise: Promise<Awaited<ReturnType<ComplexityProvider>>>; signal: AbortSignal }
+	>();
+
+	/**
+	 * Cache key for a request, unambiguous across the language/code boundary.
+	 *
+	 * Length-prefixed rather than separated by a NUL escape. Both are
+	 * collision-free — the point is that `("ab", "c")` and `("a", "bc")` must not
+	 * share a key — but the escape did not survive packaging: the build rendered
+	 * it into a literal NUL byte, so the published `dist/` shipped a file that
+	 * file(1) called `data`, grep could not read and git diffed as binary, while
+	 * `src/` stayed clean and the hygiene test guarding `src/` saw nothing. A
+	 * length prefix cannot be rendered into anything.
+	 */
+	const keyOf = (request: ComplexityProviderRequest) =>
+		`${request.language.length}:${request.language}${request.code}`;
+
+	const start = (key: string, request: ComplexityProviderRequest) => {
+		const promise = provider(request);
+		const entry = { promise, signal: request.signal };
+		inFlight.set(key, entry);
+		// Cleared on settle, rejection included: a provider that throws once must
+		// not pin the key to a promise that rejects for every caller afterwards.
+		// The `catch` also keeps a rejection nobody joined from surfacing as an
+		// unhandled rejection.
+		void promise
+			.catch(() => undefined)
+			.finally(() => {
+				if (inFlight.get(key) === entry) inFlight.delete(key);
+			});
+		return promise;
+	};
 
 	return async (request) => {
 		const key = keyOf(request);
@@ -99,8 +146,13 @@ export function withComplexityCache(
 			return hit;
 		}
 
-		const result = await provider(request);
+		const shared = inFlight.get(key);
+		const result = await (shared && !shared.signal.aborted ? shared.promise : start(key, request));
 
+		// Each caller decides for itself, on its OWN signal — a joiner that has
+		// since been abandoned must not write a cache entry on the originator's
+		// behalf, and vice versa.
+		//
 		// Never cache a result the caller abandoned: it may be partial, and the
 		// next asker deserves a real attempt.
 		if (request.signal.aborted) return result;
