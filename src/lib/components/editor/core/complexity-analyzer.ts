@@ -245,9 +245,19 @@ const PATTERNS = {
 	nestingStart: /\b(if|for|while|switch|try|catch|with)\s*\(|=>\s*\{|\bdo\s*\{/,
 	// Branching statements
 	branching: /\b(if|else\s+if|else|case|default|\?.*:)/g,
-	// Function definitions — exclude control flow keywords from method-style match
+	// Function definitions — exclude control flow keywords from method-style match.
+	//
+	// `function` itself is in that exclusion list, and its absence was a live
+	// defect: `save: function (a, b) {` matched the method-style branch and named
+	// the region **"function"**. Recursion detection then matched every inner
+	// `function (` in the body as a self-call, so an object-literal method
+	// containing three function expressions scored 4 with four phantom `recursion`
+	// increments where the true answer is 0, and the tooltip labelled it
+	// "function". The whitepaper's own YUI example read 18 against a published 20
+	// for the same reason. `func` and `def` are excluded for the Go and Python
+	// paths, which share this pattern.
 	functionDef:
-		/\b(function\s+(\w+)|(\w+)\s*=\s*(?:async\s*)?\(|(?!(?:if|else|for|while|do|switch|try|catch|finally|with|return|throw|new|typeof|void|delete|await|yield)\b)(\w+)\s*\([^)]*\)\s*\{|class\s+(\w+))/,
+		/\b(function\s+(\w+)|(\w+)\s*=\s*(?:async\s*)?\(|(?!(?:if|else|for|while|do|switch|try|catch|finally|with|return|throw|new|typeof|void|delete|await|yield|function|func|def)\b)(\w+)\s*\([^)]*\)\s*\{|class\s+(\w+))/,
 	// Function calls
 	functionCall: /\b\w+\s*\(/g,
 	// Identifiers (simplified)
@@ -1032,6 +1042,18 @@ export class ComplexityAnalyzer {
 		tokenized: TokenizedLine[]
 	): ComplexityContribution[] {
 		const contributions: ComplexityContribution[] = [];
+		/**
+		 * Recursion is charged ONCE per method, however many self-calls it makes.
+		 *
+		 * The whitepaper says so twice: the Recursion section reads "a fundamental
+		 * increment for each method in a recursion cycle", and Appendix B.1 lists
+		 * "each method in a recursion cycle" among the fundamental increments.
+		 * Charging per call site scored `fib` (two self-calls) as 3 against a
+		 * published 2, and a five-way tree walker as 6 against 2 — and the
+		 * differential oracle had the identical defect, so 300+ exact-agreement
+		 * comparisons certified the wrong rule.
+		 */
+		let countedRecursion = false;
 		const nestingStack: Array<{ depth: number; kind: string }> = [];
 		let braceDepth = 0;
 		let pendingB2: { kind: ComplexityContribution['kind']; line: number } | undefined;
@@ -1297,7 +1319,11 @@ export class ComplexityAnalyzer {
 				}
 
 				if (this.isDirectRecursiveCall(tokens, i, lineIndex, region)) {
-					this.addContribution(contributions, lineIndex, 'recursion', 1, effectiveNesting());
+					// Once per method, not once per call site. See `countedRecursion`.
+					if (!countedRecursion) {
+						countedRecursion = true;
+						this.addContribution(contributions, lineIndex, 'recursion', 1, effectiveNesting());
+					}
 					continue;
 				}
 
@@ -1317,6 +1343,8 @@ export class ComplexityAnalyzer {
 		tokenized: TokenizedLine[]
 	): ComplexityContribution[] {
 		const contributions: ComplexityContribution[] = [];
+		/** Recursion is charged once per method, not once per call site. */
+		let countedRecursion = false;
 		const nestingStack: Array<{ indent: number; kind: string }> = [];
 		// Region-scoped so a wrapped condition is scored the same as a one-liner.
 		const booleanState = { lastByParenDepth: new Map<number, string>(), parenDepth: 0 };
@@ -1341,7 +1369,9 @@ export class ComplexityAnalyzer {
 			);
 
 			for (let i = 0; i < tokens.length; i++) {
-				if (this.isDirectRecursiveCall(tokens, i, lineIndex, region)) {
+				if (this.isDirectRecursiveCall(tokens, i, lineIndex, region) && !countedRecursion) {
+					// Once per method, not once per call site. See `countedRecursion`.
+					countedRecursion = true;
 					this.addContribution(contributions, lineIndex, 'recursion', 1, nestingStack.length);
 				}
 			}

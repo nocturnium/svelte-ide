@@ -80,6 +80,14 @@ export const CORPUS: Array<{ name: string; code: string }> = [
 		code: 'function fact(n) {\n  if (n <= 1) return 1;\n  return n * fact(n - 1);\n}'
 	},
 	{
+		// Two call sites, ONE method. The corpus previously held only `fact`, whose
+		// single self-call scores the same whether recursion is charged per method
+		// or per call site — so every implementation and the oracle itself could
+		// charge per site and agree with each other forever.
+		name: 'recursion with two call sites',
+		code: 'function fib(n) {\n  if (n <= 1) return n;\n  return fib(n - 1) + fib(n - 2);\n}'
+	},
+	{
 		name: 'nested function raises nesting',
 		code: 'function outer(xs) {\n  return xs.map(function (x) {\n    if (x > 0) {\n      return 1;\n    }\n    return 0;\n  });\n}'
 	},
@@ -243,6 +251,18 @@ export const PARITY_CORPUS: Array<{
 		language: 'go',
 		inherits: 'while with break',
 		code: 'func f(n int) int {\n\ti := 0\n\tfor i < n {\n\t\tif i == 3 {\n\t\t\tbreak\n\t\t}\n\t\ti++\n\t}\n\treturn i\n}'
+	},
+	{
+		name: 'go: recursion with two call sites',
+		language: 'go',
+		inherits: 'recursion with two call sites',
+		code: 'func fib(n int) int {\n\tif n <= 1 {\n\t\treturn n\n\t}\n\treturn fib(n-1) + fib(n-2)\n}'
+	},
+	{
+		name: 'py: recursion with two call sites',
+		language: 'python',
+		inherits: 'recursion with two call sites',
+		code: 'def fib(n):\n    if n <= 1:\n        return n\n    return fib(n - 1) + fib(n - 2)'
 	},
 	{
 		name: 'go: recursion',

@@ -64,6 +64,8 @@ function logicalRuns(node: AnyNode): number {
 /** Reference Cognitive Complexity for one function node. */
 function oracleComplexity(fnNode: AnyNode, fnName: string | undefined): number {
 	let total = 0;
+	/** Recursion is charged once per method, however many self-calls it makes. */
+	let countedRecursion = false;
 
 	function visit(node: AnyNode | null | undefined, nesting: number, parent: AnyNode | null): void {
 		if (!node) return;
@@ -128,9 +130,23 @@ function oracleComplexity(fnNode: AnyNode, fnName: string | undefined): number {
 		if (
 			t === 'CallExpression' &&
 			fnName &&
+			!countedRecursion &&
 			(node.callee as AnyNode)?.type === 'Identifier' &&
 			(node.callee as AnyNode).name === fnName
 		) {
+			// ONE increment per method in a recursion cycle, not one per call site.
+			// The whitepaper is explicit twice over — the Recursion section reads
+			// "a fundamental increment for each method in a recursion cycle", and
+			// Appendix B.1 lists "each method in a recursion cycle" among the
+			// fundamental increments. Counting call sites scored `fib` (two
+			// self-calls) as 3 against a published 2, and a five-way tree walker as
+			// 6 against 2.
+			//
+			// This reference had the same defect as the implementations it certifies,
+			// so 300+ exact-agreement comparisons agreed on a wrong rule. The corpus
+			// could not see it either: its only recursion case has a single call
+			// site, where both readings coincide.
+			countedRecursion = true;
 			total += 1;
 		}
 		for (const child of childNodes(node)) visit(child, nesting, node);

@@ -225,6 +225,16 @@ export function analyzeAstComplexity<TNode>(
 	): { total: number; contributions: ComplexityContribution[] } => {
 		let total = 0;
 		const contributions: ComplexityContribution[] = [];
+		/**
+		 * Recursion is charged ONCE per method, however many self-calls it makes.
+		 *
+		 * The whitepaper says so twice: the Recursion section reads "a fundamental
+		 * increment for each method in a recursion cycle", and Appendix B.1 lists
+		 * "each method in a recursion cycle" among the fundamental increments.
+		 * Charging per call site scored `fib` (two self-calls) as 3 against a
+		 * published 2, and a five-way tree walker as 6 against 2.
+		 */
+		let countedRecursion = false;
 
 		/** The adapter's identity for a node, defaulting to the node itself. */
 		const identityOf = (node: TNode): unknown => adapter.identityOf?.(node) ?? node;
@@ -322,8 +332,18 @@ export function analyzeAstComplexity<TNode>(
 					return;
 				}
 
+				case 'recursion': {
+					// Only the first self-call in a method scores; the rest are the same
+					// recursion cycle and the reader has already paid for it.
+					const increment = countedRecursion ? 0 : 1;
+					countedRecursion = true;
+					total += increment;
+					if (increment > 0) record(node, 'recursion', increment, nesting);
+					for (const child of adapter.childrenOf(node)) descend(child, false);
+					return;
+				}
+
 				case 'labelled-jump':
-				case 'recursion':
 					total += 1;
 					record(node, CONTRIBUTION_KIND[kind], 1, nesting);
 					for (const child of adapter.childrenOf(node)) descend(child, false);

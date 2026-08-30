@@ -598,7 +598,7 @@ because a single number would flatter it:
 - Only **JavaScript and TypeScript** are pinned exactly. A differential harness
   runs an independent AST oracle over a shared corpus on every build, and the
   walker and the scanner must agree on every function.
-- **Python and Go** are pinned by a 28-case parity corpus: each case is a
+- **Python and Go** are pinned by a 30-case parity corpus: each case is a
   translation of a JavaScript case and must reach the score the AST oracle gives
   the original. The oracle never sees the Go or Python source, so these are
   measured against the same independent reference as JavaScript rather than
@@ -858,7 +858,7 @@ which sentence to show and **change no score**.
 #### How this is verified
 
 The walker is checked against an independent AST implementation of the
-SonarSource rules on a 36-case curated corpus **and on every function in this
+SonarSource rules on a 37-case curated corpus **and on every function in this
 repository** — over 300 comparisons, asserting exact score agreement, on every
 build. Both sides consume the same transpiled JavaScript through the same parser,
 so there is no approximation to forgive and any disagreement is a real
@@ -877,12 +877,12 @@ An acorn walk cannot read Go or Python, so those two languages were originally
 asserted only against the scanner's own output — a restatement, not evidence, and
 on the two languages with the fewest eyes on them.
 
-A **28-case parity corpus** closes that. Each case is a Go or Python translation
+A **30-case parity corpus** closes that. Each case is a Go or Python translation
 of a named JavaScript case and inherits that case's oracle value: acorn scores the
 JavaScript original, and the scanner must reach the same number from source acorn
 never parses.
 
-Seven of the 28 score differently if the scanner is told the wrong language, which
+Nine of the 30 score differently if the scanner is told the wrong language, which
 is asserted — so the corpus is known to exercise the language-specific rules
 (`elif`, Python's `x if c else y`, `try`/`except`, recursion detection,
 nested-function nesting) rather than to coincide with the shared core. The other
