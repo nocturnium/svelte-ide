@@ -228,9 +228,9 @@ describe('advice is derived from the metric on the label', () => {
 		const calls = Array.from({ length: 25 }, (_, i) => `  h${i}();`).join('\n');
 		const region = outermost(analyze(`function f(a) {\n${ifs}\n${calls}\n}`));
 
-		expect(region.factors.callCount).toBeGreaterThan(20);
+		expect(region.factors!.callCount).toBeGreaterThan(20);
 		expect(region.cognitiveComplexity).toBeGreaterThanOrEqual(COGNITIVE_COMPLEXITY_BANDS.high);
-		expect(region.factors.lineCount).toBeLessThanOrEqual(50);
+		expect(region.factors!.lineCount).toBeLessThanOrEqual(50);
 		expect(summarizeContributions(region.contributions)).toMatchObject({
 			maxNesting: 0,
 			incrementCount: 10
@@ -408,7 +408,7 @@ describe('a merged provider region shows nobody else s numbers', () => {
 			getComplexityLevel
 		);
 		const region = merged.regions.find((r) => r.startLine === 1)!;
-		expect(region.factors.lineCount).toBe(3);
+		expect(region.factors!.lineCount).toBe(3);
 	});
 
 	it('derives the deprecated score from the provider s complexity', () => {

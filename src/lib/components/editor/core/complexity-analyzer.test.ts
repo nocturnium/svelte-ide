@@ -42,7 +42,7 @@ describe('ComplexityAnalyzer', () => {
 
 			// Should reflect the complex version, not return cached simple version
 			expect(result.regions.length).toBeGreaterThan(0);
-			expect(result.regions[0].factors.branchingFactor).toBeGreaterThan(0);
+			expect(result.regions[0].factors!.branchingFactor).toBeGreaterThan(0);
 		});
 	});
 
@@ -187,7 +187,7 @@ describe('ComplexityAnalyzer', () => {
 			expect(processUser.endLine).toBe(12);
 			expect(capitalize.startLine).toBe(14);
 			expect(capitalize.endLine).toBe(16);
-			expect(add.score).toBeLessThan(processUser.score);
+			expect(add.score!).toBeLessThan(processUser.score!);
 		});
 
 		it('should detect a multi-line TypeScript signature instead of falling back to file', () => {
@@ -242,7 +242,7 @@ describe('ComplexityAnalyzer', () => {
 			// This nested loop/branch function is firmly "high" complexity; the
 			// deeper demo sample reaches critical (100). See COGNITIVE_SCORE_MULTIPLIER calibration.
 			expect(analyzeDataMatrix.score).toBeGreaterThanOrEqual(80);
-			expect(analyzeDataMatrix.score).toBeGreaterThan(add.score);
+			expect(analyzeDataMatrix.score!).toBeGreaterThan(add.score!);
 		});
 
 		it('does not treat a parenthesised expression assignment as a function', () => {
@@ -614,7 +614,7 @@ describe('ComplexityAnalyzer', () => {
 			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// Should detect nesting depth of 3 (three nested ifs)
-			expect(funcRegion!.factors.nestingDepth).toBeGreaterThanOrEqual(3);
+			expect(funcRegion!.factors!.nestingDepth).toBeGreaterThanOrEqual(3);
 		});
 
 		it('should track nesting across for/while/if', () => {
@@ -635,7 +635,7 @@ describe('ComplexityAnalyzer', () => {
 			const result = analyzer.analyze(lines);
 			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
-			expect(funcRegion!.factors.nestingDepth).toBeGreaterThanOrEqual(3);
+			expect(funcRegion!.factors!.nestingDepth).toBeGreaterThanOrEqual(3);
 		});
 	});
 
@@ -662,7 +662,7 @@ describe('ComplexityAnalyzer', () => {
 			expect(funcRegion).toBeDefined();
 			// if, for, while, switch should NOT count as function calls
 			// Only actual calls should count
-			expect(funcRegion!.factors.callCount).toBe(0);
+			expect(funcRegion!.factors!.callCount).toBe(0);
 		});
 
 		it('should count actual function calls', () => {
@@ -674,7 +674,7 @@ describe('ComplexityAnalyzer', () => {
 			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// foo(), bar(), baz(), qux() = 4 calls
-			expect(funcRegion!.factors.callCount).toBe(4);
+			expect(funcRegion!.factors!.callCount).toBe(4);
 		});
 	});
 
@@ -811,7 +811,7 @@ describe('ComplexityAnalyzer', () => {
 			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// "new" is excluded, "MyClass(" is a call = 1
-			expect(funcRegion!.factors.callCount).toBe(1);
+			expect(funcRegion!.factors!.callCount).toBe(1);
 		});
 
 		it('should count chained calls correctly', () => {
@@ -825,7 +825,7 @@ describe('ComplexityAnalyzer', () => {
 			const funcRegion = result.regions.find((r) => r.type === 'function');
 			expect(funcRegion).toBeDefined();
 			// getData(), filter(), map() = 3 calls
-			expect(funcRegion!.factors.callCount).toBe(3);
+			expect(funcRegion!.factors!.callCount).toBe(3);
 		});
 	});
 
@@ -1237,7 +1237,7 @@ export class ComplexityAnalyzer {
 			const getTotal = funcRegions.find((r) => r.name === 'getTotalPages');
 			expect(getVisible).toBeDefined();
 			expect(getTotal).toBeDefined();
-			expect(getVisible!.score).toBeGreaterThan(getTotal!.score);
+			expect(getVisible!.score!).toBeGreaterThan(getTotal!.score!);
 		});
 
 		it('should correctly analyze a state machine / reducer pattern', () => {
@@ -1294,7 +1294,7 @@ export class ComplexityAnalyzer {
 
 			// Heavy spread operators + object literals should not corrupt regions
 			// High branching (6 cases + if/else) should be detected
-			expect(funcRegions[0].factors.branchingFactor).toBeGreaterThanOrEqual(6);
+			expect(funcRegions[0].factors!.branchingFactor).toBeGreaterThanOrEqual(6);
 		});
 
 		it('should correctly analyze async/await with Promise combinators', () => {
@@ -1341,7 +1341,7 @@ export class ComplexityAnalyzer {
 
 			// The return { ... } with nested spread should NOT break the region
 			// Multiple awaits, catch callbacks, filter callback — should count calls
-			expect(funcRegions[0].factors.callCount).toBeGreaterThanOrEqual(5);
+			expect(funcRegions[0].factors!.callCount).toBeGreaterThanOrEqual(5);
 		});
 
 		it('should correctly analyze deeply nested callback-heavy code', () => {
@@ -1403,10 +1403,10 @@ export class ComplexityAnalyzer {
 			expect(funcRegions[0].endLine).toBe(lines.length - 1);
 
 			// Deep nesting: for > for > try > if > if = 5 levels
-			expect(funcRegions[0].factors.nestingDepth).toBeGreaterThanOrEqual(4);
+			expect(funcRegions[0].factors!.nestingDepth).toBeGreaterThanOrEqual(4);
 
 			// Heavy branching: multiple if/else if/else chains
-			expect(funcRegions[0].factors.branchingFactor).toBeGreaterThanOrEqual(6);
+			expect(funcRegions[0].factors!.branchingFactor).toBeGreaterThanOrEqual(6);
 
 			// Should rate this as medium-to-high complexity
 			expect(funcRegions[0].score).toBeGreaterThanOrEqual(50);
@@ -1470,8 +1470,8 @@ export class ComplexityAnalyzer {
 			const sanitizeFn = funcRegions.find((r) => r.name === 'sanitize')!;
 			const formatFn = funcRegions.find((r) => r.name === 'formatErrors')!;
 
-			expect(validateFn.score).toBeGreaterThan(sanitizeFn.score);
-			expect(sanitizeFn.score).toBeGreaterThan(formatFn.score);
+			expect(validateFn.score!).toBeGreaterThan(sanitizeFn.score!);
+			expect(sanitizeFn.score!).toBeGreaterThan(formatFn.score!);
 		});
 
 		it('should handle a realistic config-heavy module with many object literals', () => {
@@ -1591,7 +1591,7 @@ export class ComplexityAnalyzer {
 			// emit has the deepest nesting (if > for > try/catch)
 			const emitFn = funcRegions.find((r) => r.name === 'emit');
 			expect(emitFn).toBeDefined();
-			expect(emitFn!.factors.nestingDepth).toBeGreaterThanOrEqual(2);
+			expect(emitFn!.factors!.nestingDepth).toBeGreaterThanOrEqual(2);
 		});
 
 		it('should handle TypeScript-style code with generics and type annotations', () => {
@@ -1628,10 +1628,10 @@ export class ComplexityAnalyzer {
 			expect(funcRegions[0].endLine).toBe(lines.length - 1);
 
 			// Nested for > for > if/else if/else — should get meaningful nesting
-			expect(funcRegions[0].factors.nestingDepth).toBeGreaterThanOrEqual(3);
+			expect(funcRegions[0].factors!.nestingDepth).toBeGreaterThanOrEqual(3);
 
 			// Spread operators { ...targetVal } should not corrupt regions
-			expect(funcRegions[0].factors.branchingFactor).toBeGreaterThanOrEqual(4);
+			expect(funcRegions[0].factors!.branchingFactor).toBeGreaterThanOrEqual(4);
 		});
 
 		it('should handle a YAML-style config file with no functions (pure data)', () => {
@@ -1797,8 +1797,8 @@ export class ComplexityAnalyzer {
 			expect(result.regions[0].endLine).toBe(lines.length - 1);
 
 			// No nesting or real function calls in YAML
-			expect(result.regions[0].factors.nestingDepth).toBe(0);
-			expect(result.regions[0].factors.callCount).toBe(0);
+			expect(result.regions[0].factors!.nestingDepth).toBe(0);
+			expect(result.regions[0].factors!.callCount).toBe(0);
 
 			// Note: overall score may be elevated for large non-code files because
 			// lineCount and identifierCount still contribute to the weighted formula.
@@ -1860,8 +1860,8 @@ export class ComplexityAnalyzer {
 			// Template literal with JSON.stringify must not corrupt
 
 			// Should have meaningful nesting (if > for > if)
-			expect(funcRegions[0].factors.nestingDepth).toBeGreaterThanOrEqual(2);
-			expect(funcRegions[0].factors.branchingFactor).toBeGreaterThanOrEqual(3);
+			expect(funcRegions[0].factors!.nestingDepth).toBeGreaterThanOrEqual(2);
+			expect(funcRegions[0].factors!.branchingFactor).toBeGreaterThanOrEqual(3);
 		});
 
 		it('should handle a file mixing code and large config objects', () => {
@@ -1952,7 +1952,7 @@ export class ComplexityAnalyzer {
 			// inside Object.assign() must not fragment the function
 
 			// Should detect branching (if/else, if, for)
-			expect(funcRegions[0].factors.branchingFactor).toBeGreaterThanOrEqual(2);
+			expect(funcRegions[0].factors!.branchingFactor).toBeGreaterThanOrEqual(2);
 		});
 	});
 	describe('non-branching `?` tokens (regression)', () => {
@@ -2048,7 +2048,7 @@ export class ComplexityAnalyzer {
 			expect(withPadding.maxCognitiveComplexity).toBe(alone.maxCognitiveComplexity);
 			expect(withPadding.level).toBe('critical');
 			// The deprecated mean is what used to collapse to 'low' here.
-			expect(withPadding.overall).toBeLessThan(alone.overall);
+			expect(withPadding.overall!).toBeLessThan(alone.overall!);
 		});
 	});
 	describe('score is independent of formatting (regression)', () => {

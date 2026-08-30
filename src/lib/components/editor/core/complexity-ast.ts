@@ -100,6 +100,28 @@ export interface ComplexityAstAdapter<TNode> {
 	): ComplexityNodeKind | null;
 	/** Every child node, in source order. */
 	childrenOf(node: TNode): TNode[];
+	/**
+	 * A stable value identifying this node, when `===` on the node itself is not
+	 * reliable. Default: the node.
+	 *
+	 * READ THIS IF YOU ARE WRITING A TREE-SITTER ADAPTER. The walker learns which
+	 * child is the body by matching what {@link ComplexityAstAdapter.bodyOf}
+	 * returns against the entries of `childrenOf`, and it matched them by
+	 * reference. Both tree-sitter bindings allocate a FRESH JavaScript wrapper on
+	 * every accessor call, so `childForFieldName('body')` and the corresponding
+	 * entry of `namedChildren` are two different objects wrapping the same node.
+	 * The match therefore always failed, nothing ever nested, and the nesting
+	 * penalty — the whole difference between this metric and cyclomatic — silently
+	 * vanished.
+	 *
+	 * Measured on one tree, changing nothing but object identity: **10 with stable
+	 * nodes, 4 with fresh wrappers.** No error, no warning, and 4 is a perfectly
+	 * believable score.
+	 *
+	 * For tree-sitter, `identityOf: (node) => node.id` is enough. Any adapter whose
+	 * nodes are stable objects can leave this out.
+	 */
+	identityOf?(node: TNode): unknown;
 	/** 0-based inclusive line span. */
 	lineRangeOf(node: TNode): { startLine: number; endLine: number };
 	/** Declared name, when the node is a function. */
@@ -109,6 +131,13 @@ export interface ComplexityAstAdapter<TNode> {
 	 * RUNS of like operators. `a && b && c` is one run; `a && b || c` is two.
 	 * This is the rule that makes the score independent of how the expression is
 	 * wrapped. Defaults to 1 when not supplied.
+	 *
+	 * Pairs with a rule `kindOf` must follow: **report `boolean-sequence` only at
+	 * the TOP of a chain.** Boolean operators parse left-nested, so `a && b && c
+	 * && d` is three nested nodes; returning `boolean-sequence` for each scores 3
+	 * where the metric says 1, and the error grows with the length of the chain.
+	 * Check the parent — if it is another logical node of the same shape, return
+	 * null and let the top of the chain account for the whole thing.
 	 */
 	booleanRunsOf?(node: TNode): number;
 	/**
@@ -197,6 +226,9 @@ export function analyzeAstComplexity<TNode>(
 		let total = 0;
 		const contributions: ComplexityContribution[] = [];
 
+		/** The adapter's identity for a node, defaulting to the node itself. */
+		const identityOf = (node: TNode): unknown => adapter.identityOf?.(node) ?? node;
+
 		const record = (
 			node: TNode,
 			kind: ComplexityContributionKind,
@@ -220,7 +252,12 @@ export function analyzeAstComplexity<TNode>(
 		): void => {
 			const kind = adapter.kindOf(node, parent, context);
 			const body = adapter.bodyOf(node);
-			const bodySet = body === null ? null : new Set(Array.isArray(body) ? body : [body]);
+			// Keyed on identity, not on the node object, so an adapter whose accessors
+			// return fresh wrappers per call still matches its own body. See
+			// `identityOf` on the adapter contract for what this costs when it is
+			// wrong: the nesting penalty disappears in silence.
+			const bodySet =
+				body === null ? null : new Set((Array.isArray(body) ? body : [body]).map(identityOf));
 
 			// A merged construct (an `else` with no node of its own) both scores and
 			// opens a scope, so it shifts the depth this node is measured at.
@@ -248,7 +285,7 @@ export function analyzeAstComplexity<TNode>(
 					total += 1 + nesting;
 					record(node, CONTRIBUTION_KIND[kind], 1 + nesting, nesting);
 					for (const child of adapter.childrenOf(node)) {
-						descend(child, bodySet === null || bodySet.has(child));
+						descend(child, bodySet === null || bodySet.has(identityOf(child)));
 					}
 					return;
 
@@ -258,7 +295,14 @@ export function analyzeAstComplexity<TNode>(
 					total += 1;
 					record(node, 'else if', 1, nesting);
 					for (const child of adapter.childrenOf(node)) {
-						descend(child, bodySet !== null && bodySet.has(child));
+						// Same polarity as every other kind. This branch read
+						// `bodySet !== null && ...`, so a null body meant NO child nested
+						// here while it meant EVERY child nests everywhere else — the
+						// opposite of what the `bodyOf` contract promises. ESTree always
+						// supplies a body for an `if`, so the shipped adapter never reached
+						// the divergence; a tree-sitter `if -> else_clause -> if_statement`
+						// shape does.
+						descend(child, bodySet === null || bodySet.has(identityOf(child)));
 					}
 					return;
 
@@ -266,7 +310,7 @@ export function analyzeAstComplexity<TNode>(
 					total += 1;
 					record(node, 'else', 1, nesting);
 					for (const child of adapter.childrenOf(node)) {
-						descend(child, bodySet === null || bodySet.has(child));
+						descend(child, bodySet === null || bodySet.has(identityOf(child)));
 					}
 					return;
 
@@ -292,7 +336,7 @@ export function analyzeAstComplexity<TNode>(
 					// does not create.
 					record(node, 'nested-function', 0, nesting);
 					for (const child of adapter.childrenOf(node)) {
-						descend(child, bodySet === null || bodySet.has(child));
+						descend(child, bodySet === null || bodySet.has(identityOf(child)));
 					}
 					return;
 

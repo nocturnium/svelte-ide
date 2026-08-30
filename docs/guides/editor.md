@@ -759,13 +759,26 @@ const treeSitter: ComplexityAstAdapter<SyntaxNode> = {
 			case 'binary_expression': {
 				// `childForFieldName` is the accessor both bindings agree on.
 				const operator = node.childForFieldName('operator')?.text;
-				return operator === '&&' || operator === '||' ? 'boolean-sequence' : null;
+				if (operator !== '&&' && operator !== '||') return null;
+				// Report a chain ONCE, at its top. `a && b && c && d` parses as three
+				// nested binary nodes, so tagging each scores 3 where the rule says 1,
+				// and the error grows with the length of the chain. The metric counts
+				// RUNS of like operators, not operators.
+				return parent?.type === 'binary_expression' ? null : 'boolean-sequence';
 			}
 			default:
 				return null;
 		}
 	},
 	childrenOf: (node) => node.namedChildren,
+	// REQUIRED for tree-sitter, and the reason is not obvious. Both bindings
+	// allocate a fresh JavaScript wrapper on every accessor call, so the node
+	// `bodyOf` returns is never `===` the matching entry of `childrenOf`. Without
+	// this the walker cannot tell which child is the body, nothing nests, and the
+	// nesting penalty — the whole difference between this metric and a cyclomatic
+	// count — silently disappears. Measured on one tree: 10 with stable nodes, 4
+	// without. No error; 4 just looks like a plausible answer.
+	identityOf: (node) => node.id,
 	lineRangeOf: (node) => ({
 		startLine: node.startPosition.row,
 		endLine: node.endPosition.row

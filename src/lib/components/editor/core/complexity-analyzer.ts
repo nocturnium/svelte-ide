@@ -120,15 +120,22 @@ export interface ComplexityRegion {
 	/**
 	 * Legacy 0-100 display score.
 	 *
+	 * Optional: producers that never computed it should omit it rather than invent
+	 * one. {@link getLegacyComplexityScore} derives it when a consumer genuinely
+	 * needs the old scale.
+	 *
 	 * @deprecated Saturates at Cognitive Complexity 15, so everything from "worth
 	 * a look" to "unmaintainable" reports exactly 100, and only 16 values are
 	 * attainable. Read {@link ComplexityRegion.cognitiveComplexity}.
 	 */
-	score: number;
+	score?: number;
 	/** Band of {@link ComplexityRegion.cognitiveComplexity}. */
 	level: ComplexityMetrics['level'];
-	/** Individual factors */
-	factors: ComplexityFactors;
+	/**
+	 * Raw-text tallies, when the reading came from scanning source. Absent for a
+	 * reading derived from a parse tree, which never sees the characters.
+	 */
+	factors?: ComplexityFactors;
 	/**
 	 * Advice for this region, present from the Moderate band up. Derived from
 	 * `contributions` and the line count — see {@link getComplexitySuggestion} —
@@ -150,14 +157,15 @@ export interface ComplexityRegion {
  */
 export interface ComplexityMetrics {
 	/**
-	 * Legacy 0-100 file score.
+	 * Legacy 0-100 file score. Optional, for the same reason as
+	 * {@link ComplexityRegion.score}.
 	 *
 	 * @deprecated Not comparable between files, and it moves the wrong way:
 	 * because it is a region-length-weighted mean, appending simple functions
 	 * lowers it while the complex code is untouched. Read
 	 * {@link ComplexityMetrics.maxCognitiveComplexity} instead.
 	 */
-	overall: number;
+	overall?: number;
 	/** Band of {@link ComplexityMetrics.maxCognitiveComplexity}. */
 	level: 'low' | 'medium' | 'high' | 'critical';
 	/** Per-region breakdown */
@@ -1886,7 +1894,9 @@ export class ComplexityAnalyzer {
 
 		for (const region of regions) {
 			const weight = region.endLine - region.startLine + 1;
-			weightedSum += region.score * weight;
+			// `score` is optional now; a region that never carried one contributes
+			// nothing to a mean that is itself deprecated.
+			weightedSum += (region.score ?? 0) * weight;
 			totalWeight += weight;
 		}
 
