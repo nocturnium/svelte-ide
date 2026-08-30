@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { analyzeAstComplexity, type ComplexityAstAdapter } from './complexity-ast';
+import {
+	analyzeAstComplexity,
+	createAstComplexityProvider,
+	ComplexityAdapterError,
+	type ComplexityAstAdapter
+} from './complexity-ast';
 
 /**
  * `bodyOf` matching, for adapters whose nodes are not reference-stable.
@@ -94,11 +99,52 @@ describe('bodyOf matching across node-identity models', () => {
 		expect(outermost(analyzeAstComplexity({ raw: tree }, freshWrapperAdapter(true)))).toBe(10);
 	});
 
-	it('documents what a tree-sitter adapter loses without identityOf', () => {
-		// Not an endorsement — a pin on the failure mode, so that if the walker ever
-		// starts matching some other way this test says the hazard has moved.
-		// 4 is the flat count: every nesting penalty gone, and entirely believable.
-		expect(outermost(analyzeAstComplexity({ raw: tree }, freshWrapperAdapter(false)))).toBe(4);
+	it('refuses to score at all when identityOf is missing and needed', () => {
+		// This used to return 4 — the flat count, every nesting penalty gone, and
+		// entirely believable. A wrong number nobody can detect is the worst outcome
+		// this library can produce, so the walker now raises instead.
+		expect(() => analyzeAstComplexity({ raw: tree }, freshWrapperAdapter(false))).toThrow(
+			ComplexityAdapterError
+		);
+	});
+
+	it('names identityOf in the error, since that is the fix', () => {
+		// The message is the entire remediation path for someone whose tree-sitter
+		// adapter looks correct and scores low.
+		let caught: unknown;
+		try {
+			analyzeAstComplexity({ raw: tree }, freshWrapperAdapter(false));
+		} catch (error) {
+			caught = error;
+		}
+		expect((caught as Error).message).toMatch(/identityOf/);
+		expect((caught as Error).message).toMatch(/childrenOf/);
+	});
+
+	it('surfaces through a provider as a rejection, which the editor treats as declining', async () => {
+		// Precisely: the provider REJECTS — it does not return null. What makes that
+		// safe is the call site. `CustomEditor` wraps the whole provider call in
+		// try/catch and keeps its built-in reading, so a broken adapter costs a
+		// refinement rather than crashing an editor or rendering a wrong number.
+		// Called directly instead, this is a loud failure a CI check will see.
+		const provider = createAstComplexityProvider({
+			parse: () => ({ raw: tree }),
+			adapter: freshWrapperAdapter(false)
+		});
+		await expect(
+			provider({
+				code: 'irrelevant',
+				language: 'typescript',
+				baseline: {
+					level: 'low',
+					regions: [],
+					hotspots: [],
+					totalCognitiveComplexity: 0,
+					maxCognitiveComplexity: 0
+				},
+				signal: new AbortController().signal
+			})
+		).rejects.toThrow(ComplexityAdapterError);
 	});
 
 	it('leaves adapters that never set identityOf working exactly as before', () => {

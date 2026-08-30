@@ -790,6 +790,18 @@ const treeSitter: ComplexityAstAdapter<SyntaxNode> = {
 
 The parser is always **your** dependency. This package still installs nothing.
 
+If `bodyOf` names a node that is not among that node's own `childrenOf`, the
+walker raises `ComplexityAdapterError` rather than continuing. It has to match the
+two to decide what raises nesting, and continuing means silently dropping the
+nesting penalty — the difference between this metric and a cyclomatic count —
+and reporting a smaller, entirely believable number. Measured on one tree with
+nothing but object identity changed: **10 with stable nodes, 4 without**. Through
+a provider the throw is harmless (the editor keeps its built-in reading); called
+directly it fails where a CI check will see it.
+
+If your parser allocates a fresh wrapper object per accessor call, which both
+tree-sitter bindings do, that is what `identityOf` is for.
+
 Two subtleties the adapter interface exists to get right, both of which were real
 bugs caught by the sweep below rather than by reasoning:
 

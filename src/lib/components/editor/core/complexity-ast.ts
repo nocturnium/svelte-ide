@@ -154,6 +154,14 @@ export interface ComplexityAstAdapter<TNode> {
 	 *
 	 * Return null only when the node genuinely has no distinguished body; every
 	 * child then nests, which is the honest reading for a node that is all body.
+	 *
+	 * Whatever you return must be among this node's own `childrenOf`. If it is not,
+	 * the walker raises {@link ComplexityAdapterError} rather than carry on: it
+	 * matches the body against the children to decide what raises nesting, and
+	 * carrying on means silently dropping the nesting penalty and reporting a
+	 * plausible smaller number. If your parser allocates a fresh wrapper per
+	 * accessor call, that check is what {@link ComplexityAstAdapter.identityOf} is
+	 * for.
 	 */
 	bodyOf(node: TNode): TNode | TNode[] | null;
 	/**
@@ -171,6 +179,31 @@ export interface ComplexityAstAdapter<TNode> {
 	 * adding braces must never change the number.
 	 */
 	mergedIncrementOf?(node: TNode, parent: TNode | null): number;
+}
+
+/**
+ * An adapter broke the {@link ComplexityAstAdapter} contract in a way the walker
+ * can detect.
+ *
+ * There is exactly one such way, and it is the footgun this contract's own
+ * documentation warns about at length: `bodyOf` naming a node that is not among
+ * the node's own `childrenOf`. When that happens nothing nests, the nesting
+ * penalty disappears, and the score silently collapses toward a cyclomatic count
+ * — 10 reported as 4, with no error and a believable number.
+ *
+ * Detecting it is cheap and the failure is unambiguous, so it is raised rather
+ * than absorbed. Throwing is the SAFE outcome here, not the dangerous one: the
+ * editor wraps every provider call and keeps its built-in reading when one
+ * throws, so a broken adapter degrades to "no refinement" instead of to a
+ * confident wrong number — which is the whole premise of the provider seam.
+ * Called directly, through {@link analyzeAstComplexity} or
+ * {@link astComplexityMetrics}, it fails loudly where a CI check will see it.
+ */
+export class ComplexityAdapterError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'ComplexityAdapterError';
+	}
 }
 
 export interface AstComplexityRegion extends ProvidedComplexityRegion {
@@ -269,6 +302,32 @@ export function analyzeAstComplexity<TNode>(
 			const bodySet =
 				body === null ? null : new Set((Array.isArray(body) ? body : [body]).map(identityOf));
 
+			// Asked once and reused. Calling `childrenOf` per branch allocated a fresh
+			// array each time, and for a parser that wraps nodes per accessor call it
+			// also handed out fresh objects each time.
+			const children = adapter.childrenOf(node);
+
+			// The contract violation the walker CAN see: a body was named, the node has
+			// children, and not one of them is it. Silence here is what turns a broken
+			// adapter into a plausible wrong number instead of an error, so it is
+			// raised. See `identityOf` — this is almost always a parser whose accessors
+			// return a fresh wrapper per call, where `===` can never match.
+			if (bodySet !== null && bodySet.size > 0 && children.length > 0) {
+				let matched = 0;
+				for (const child of children) if (bodySet.has(identityOf(child))) matched++;
+				if (matched === 0) {
+					throw new ComplexityAdapterError(
+						`bodyOf() named a node that is not among childrenOf() for a node of kind ` +
+							`"${kind ?? 'none'}" at line ${adapter.lineRangeOf(node).startLine + 1}. ` +
+							`The walker matches the body against the children to decide what raises ` +
+							`nesting, so it cannot proceed without silently dropping the nesting ` +
+							`penalty. If your parser allocates a new wrapper object on every accessor ` +
+							`call — both tree-sitter bindings do — implement identityOf(node) to ` +
+							`return something stable, such as node.id.`
+					);
+				}
+			}
+
 			// A merged construct (an `else` with no node of its own) both scores and
 			// opens a scope, so it shifts the depth this node is measured at.
 			const merged = adapter.mergedIncrementOf?.(node, parent) ?? 0;
@@ -294,7 +353,7 @@ export function analyzeAstComplexity<TNode>(
 				case 'catch':
 					total += 1 + nesting;
 					record(node, CONTRIBUTION_KIND[kind], 1 + nesting, nesting);
-					for (const child of adapter.childrenOf(node)) {
+					for (const child of children) {
 						descend(child, bodySet === null || bodySet.has(identityOf(child)));
 					}
 					return;
@@ -304,7 +363,7 @@ export function analyzeAstComplexity<TNode>(
 					// still nests, and an `else if` sits at the SAME depth as its `if`.
 					total += 1;
 					record(node, 'else if', 1, nesting);
-					for (const child of adapter.childrenOf(node)) {
+					for (const child of children) {
 						// Same polarity as every other kind. This branch read
 						// `bodySet !== null && ...`, so a null body meant NO child nested
 						// here while it meant EVERY child nests everywhere else — the
@@ -319,7 +378,7 @@ export function analyzeAstComplexity<TNode>(
 				case 'else':
 					total += 1;
 					record(node, 'else', 1, nesting);
-					for (const child of adapter.childrenOf(node)) {
+					for (const child of children) {
 						descend(child, bodySet === null || bodySet.has(identityOf(child)));
 					}
 					return;
@@ -328,7 +387,7 @@ export function analyzeAstComplexity<TNode>(
 					const runs = Math.max(1, adapter.booleanRunsOf?.(node) ?? 1);
 					total += runs;
 					record(node, 'boolean-sequence', runs, nesting);
-					for (const child of adapter.childrenOf(node)) descend(child, false);
+					for (const child of children) descend(child, false);
 					return;
 				}
 
@@ -339,14 +398,14 @@ export function analyzeAstComplexity<TNode>(
 					countedRecursion = true;
 					total += increment;
 					if (increment > 0) record(node, 'recursion', increment, nesting);
-					for (const child of adapter.childrenOf(node)) descend(child, false);
+					for (const child of children) descend(child, false);
 					return;
 				}
 
 				case 'labelled-jump':
 					total += 1;
 					record(node, CONTRIBUTION_KIND[kind], 1, nesting);
-					for (const child of adapter.childrenOf(node)) descend(child, false);
+					for (const child of children) descend(child, false);
 					return;
 
 				case 'function':
@@ -355,13 +414,13 @@ export function analyzeAstComplexity<TNode>(
 					// default value containing a ternary is not charged for nesting it
 					// does not create.
 					record(node, 'nested-function', 0, nesting);
-					for (const child of adapter.childrenOf(node)) {
+					for (const child of children) {
 						descend(child, bodySet === null || bodySet.has(identityOf(child)));
 					}
 					return;
 
 				default:
-					for (const child of adapter.childrenOf(node)) descend(child, false);
+					for (const child of children) descend(child, false);
 			}
 		};
 

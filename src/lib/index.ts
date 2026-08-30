@@ -219,7 +219,11 @@ export type {
 export {
 	analyzeAstComplexity,
 	astComplexityMetrics,
-	createAstComplexityProvider
+	createAstComplexityProvider,
+	// Raised when an adapter names a body that is not among the node's children —
+	// the one contract violation the walker can detect, and the one that would
+	// otherwise return a believable wrong number.
+	ComplexityAdapterError
 } from './components/editor/core/complexity-ast';
 export type {
 	ComplexityAstAdapter,
