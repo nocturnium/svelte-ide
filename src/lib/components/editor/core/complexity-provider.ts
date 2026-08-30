@@ -139,15 +139,39 @@ export class ComplexityProviderError extends Error {}
  * and parsed nothing. Scanning balanced candidates and taking the last valid one
  * finds the answer whether or not the model was asked to think out loud.
  */
+/**
+ * Work budget for the scan below, in characters examined.
+ *
+ * The scan is quadratic in the worst case and unavoidably so: the outer loop can
+ * only skip ahead when a candidate CLOSES, and a candidate that never balances
+ * teaches it nothing about where to restart. It is tempting to assume that if a
+ * scan from `i` never balances then no later start can either — that is false.
+ * In `{ { }` the scan from index 0 never balances while the one from index 2
+ * does, so an early exit there would drop a real answer.
+ *
+ * Measured on unbalanced opening braces: 2k chars 9ms, 10k 131ms, 20k 531ms,
+ * 40k 2.1s. The bundled transports cap replies at DEFAULT_MAX_TOKENS, roughly 5k
+ * characters, which lands at ~21ms — but `parseComplexityResponse` is public API
+ * and a consumer's own transport has no such cap, while this runs on the same
+ * thread as typing.
+ *
+ * So the scan stops after this many steps and returns the best candidate found
+ * so far. Declining is already the documented safe outcome, and every realistic
+ * reply finishes far inside the budget.
+ */
+const SCAN_BUDGET = 2_000_000;
+
 function findRegionsObject(text: string): { regions?: unknown } | null {
 	let best: { regions?: unknown } | null = null;
+	let budget = SCAN_BUDGET;
 
-	for (let i = 0; i < text.length; i++) {
+	for (let i = 0; i < text.length && budget > 0; i++) {
 		if (text[i] !== '{') continue;
 		let depth = 0;
 		let inString = false;
 		let quote = '';
-		for (let j = i; j < text.length; j++) {
+		for (let j = i; j < text.length && budget > 0; j++) {
+			budget--;
 			const c = text[j];
 			if (inString) {
 				if (c === '\\') j++;
