@@ -161,18 +161,34 @@ export class ComplexityProviderError extends Error {}
  * regardless: `parseComplexityResponse` is public API, a consumer's own transport
  * has no such cap, and this runs on the same thread as typing.
  *
- * So the scan stops after this many steps and returns the best candidate found
- * so far. Declining is already the documented safe outcome, and every realistic
- * reply finishes far inside the budget.
+ * So the scan is bounded, and it runs BACKWARDS. Both matter, and the second one
+ * matters more than it looks: scanning forwards and keeping the last winner meant
+ * that exhausting the budget silently returned an EARLIER candidate — measured, a
+ * 26KB transcript of ordinary model prose returned the draft the model had
+ * already revised, `cc=3`, in place of its final `cc=14`. Preferring the last
+ * candidate is the whole reason this function exists, and budget exhaustion
+ * quietly inverted it.
+ *
+ * Going backwards, the first candidate that parses IS the last one, so the answer
+ * is found in a few hundred characters on a well-formed reply and exhaustion can
+ * only ever cost a decline — never a superseded number rendered as current.
  */
 const SCAN_BUDGET = 2_000_000;
 
 function findRegionsObject(text: string): { regions?: unknown } | null {
-	let best: { regions?: unknown } | null = null;
+	// Every candidate start, so they can be tried newest-first — and every one is
+	// tried. The previous version advanced the outer cursor past each candidate
+	// that balanced, so a `regions` object nested inside any balanced wrapper was
+	// never examined at all: `{"result": {"regions": [...]}}`, the shape a
+	// structured-output API returns, declined outright while the bare form parsed.
+	// Nothing is skipped now, so an enveloped answer is found as its own candidate.
+	const starts: number[] = [];
+	for (let i = 0; i < text.length; i++) if (text[i] === '{') starts.push(i);
+
 	let budget = SCAN_BUDGET;
 
-	for (let i = 0; i < text.length && budget > 0; i++) {
-		if (text[i] !== '{') continue;
+	for (let s = starts.length - 1; s >= 0 && budget > 0; s--) {
+		const i = starts[s];
 		let depth = 0;
 		let inString = false;
 		let quote = '';
@@ -195,19 +211,19 @@ function findRegionsObject(text: string): { regions?: unknown } | null {
 				if (depth === 0) {
 					try {
 						const candidate = JSON.parse(text.slice(i, j + 1)) as { regions?: unknown };
+						// First success going backwards is the LAST valid candidate.
 						if (candidate && typeof candidate === 'object' && Array.isArray(candidate.regions)) {
-							best = candidate;
+							return candidate;
 						}
 					} catch {
-						/* not JSON — keep scanning */
+						/* not JSON — try an earlier start */
 					}
-					i = j; // resume after this candidate
 					break;
 				}
 			}
 		}
 	}
-	return best;
+	return null;
 }
 
 /**
@@ -220,11 +236,15 @@ export function parseComplexityResponse(
 	text: string,
 	lineCount: number
 ): ComplexityProviderResult | null {
-	// Models wrap JSON in fences even when told not to.
-	const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-	const raw = (fenced ? fenced[1] : text).trim();
-
-	const parsed = findRegionsObject(raw);
+	// Models wrap JSON in fences even when told not to — but a reply often opens
+	// by restating the code in a ```js fence and answers in a ```json one further
+	// down. This used to take the FIRST fence and search only inside it, so that
+	// shape declined outright: verified, two fences returned null.
+	//
+	// The scanner already finds the last valid candidate anywhere in a string, and
+	// fence markers are not JSON, so the whole reply is simply handed to it. Fenced
+	// answers still work because the JSON inside a fence is still JSON in the text.
+	const parsed = findRegionsObject(text.trim());
 	if (!parsed) return null;
 	const regionsRaw = parsed.regions;
 	if (!Array.isArray(regionsRaw)) return null;

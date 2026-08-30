@@ -138,7 +138,48 @@ describe('findRegionsObject: malformed input declines instead of throwing', () =
 	});
 });
 
+describe('findRegionsObject: shapes real APIs and models actually emit', () => {
+	it('reads an answer wrapped in an envelope', () => {
+		// Structured-output APIs return `{"result": …}`, and models asked for an
+		// envelope oblige. A top-level-only check declined this outright while the
+		// bare form parsed fine.
+		expect(
+			parseComplexityResponse(`{"result":${answer(7)}}`, LINES)?.regions[0].cognitiveComplexity
+		).toBe(7);
+	});
+
+	it('reads an answer nested two levels down', () => {
+		expect(
+			parseComplexityResponse(`{"data":{"analysis":${answer(5)}}}`, LINES)?.regions[0]
+				.cognitiveComplexity
+		).toBe(5);
+	});
+
+	it('prefers the final answer over a superseded draft across a long transcript', () => {
+		// The regression the work budget introduced. Scanning forwards and keeping
+		// the last winner meant exhausting the budget silently returned an EARLIER
+		// candidate: at 26KB of ordinary prose this produced the draft the model had
+		// already revised, cc=3, in place of its final cc=14. Preferring the last
+		// candidate is the entire reason this function exists.
+		const noise = Array.from(
+			{ length: 800 },
+			(_, i) => `Looking at line ${i}: the guard \`if (cfg.enabled) {\` opens a branch`
+		).join('\n');
+		const reply = `${answer(3)}\n${noise}\n${answer(14)}`;
+		expect(reply.length).toBeGreaterThan(40_000);
+		expect(parseComplexityResponse(reply, LINES)?.regions[0].cognitiveComplexity).toBe(14);
+	});
+});
+
 describe('findRegionsObject: fenced replies', () => {
+	it('answers from the LAST fence, not the first', () => {
+		// A reply that restates the code in a ```js fence and answers in a ```json
+		// one below it. Taking the first fence and searching only inside it declined
+		// this shape entirely.
+		const reply = ['```js', 'if (x) { y(); }', '```', '', '```json', answer(9), '```'].join('\n');
+		expect(parseComplexityResponse(reply, LINES)?.regions[0].cognitiveComplexity).toBe(9);
+	});
+
 	it('reads the answer out of a fence whose code contains braces', () => {
 		const reply = ['Here you go:', '```json', answer(12), '```'].join('\n');
 		expect(parseComplexityResponse(reply, LINES)?.regions[0].cognitiveComplexity).toBe(12);
