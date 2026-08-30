@@ -320,7 +320,14 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 							animation: Math.random() > 0.7 ? 'thinking' : 'moving'
 						}
 					: null,
-				attentionType: Math.random() > 0.8 ? 'thinking' : 'reading',
+				// `attentionType` is NOT touched here. It used to be reassigned at
+				// random every tick, which silently overwrote whatever "Cycle
+				// Attention State" had just set — while leaving `activity` and the
+				// focus region's type at the cycled value. The rail then read
+				// "Verifying changes" beside a canvas drawing the reading glyph, and
+				// the screen-reader prefix announced the wrong state. A control whose
+				// stated effect is undone half a second later is the exact defect
+				// moving these controls next to the canvas was meant to expose.
 				lastUpdate: Date.now()
 			};
 
@@ -796,11 +803,17 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	/* Complexity Legend */
 
 	/* Ghost Pair Controls */
-	/* Canvas on the left, the controls that drive it on the right. Collapses to a
-	   single column before the editor gets too narrow to read. */
+	/* Canvas on the left, the controls that drive it on the right.
+
+	   The editor column carries a min-width and the breakpoint sits at 1140px, not
+	   900px. At 900 the two-column grid still applied while the rail — a checkbox
+	   and one button — held a fixed 260px and refused to yield any of it, so the
+	   editor kept shrinking: at 920px it was cutting `function processUser(user:
+	   Us` mid-token with no fade and no scroll cue, and the score chip had marched
+	   left into the code. The rail was starving the thing it exists to control. */
 	.canvas-with-rail {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) 260px;
+		grid-template-columns: minmax(30rem, 1fr) 260px;
 		gap: 1.25rem;
 		align-items: start;
 	}
@@ -822,14 +835,18 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		font-weight: 600;
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
-		color: var(--ide-text-muted);
+		/* Secondary, not muted, for the reason already recorded on `.meter-label`
+		   in this same file: --ide-text-muted is a 60%-alpha token and measures
+		   3.93:1 on --ide-bg-secondary, under the 4.5:1 floor. Secondary is 10.2:1.
+		   The rail's own title was the least legible thing in the rail. */
+		color: var(--ide-text-secondary);
 	}
 
 	.ghost-rail__note {
 		margin: 0;
 		font-size: 0.75rem;
 		line-height: 1.5;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 	}
 
 	.ghost-rail__note code {
@@ -842,16 +859,23 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		color: var(--ide-text-muted);
 	}
 
-	@media (max-width: 900px) {
+	@media (max-width: 1140px) {
 		.canvas-with-rail {
 			grid-template-columns: minmax(0, 1fr);
 		}
 
 		.ghost-rail {
+			/* A horizontal bar once it is full width — it reads as a toolbar for the
+			   canvas rather than a card stranded beneath it. */
 			flex-direction: row;
 			flex-wrap: wrap;
 			align-items: center;
 			gap: 0.875rem 1.25rem;
+			/* Above the canvas, not below it. Stacked under a 500px editor the rail
+			   lands off-screen while the canvas is in view, which is the same
+			   controls-nowhere-near-their-effect problem this layout was built to
+			   fix, rotated ninety degrees. */
+			order: -1;
 		}
 
 		.ghost-rail__title {
@@ -920,7 +944,9 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	.ai-status-hidden {
 		font-size: 0.8125rem;
 		font-style: italic;
-		color: var(--ide-text-muted);
+		/* The one string whose job is to say nothing is broken; it has to be
+		   readable. Muted measures 3.93:1 here. */
+		color: var(--ide-text-secondary);
 	}
 
 	.ai-dot {
@@ -1122,9 +1148,17 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	@media (max-width: 640px) {
-		/* Give the checkbox and buttons a 48px touch target */
+		/* Give the checkbox and buttons a 48px touch target. The checkbox is the
+		   master switch for the whole section and was the only control here without
+		   one — a ~20px hit area directly above a comfortable 48px button. */
 		.toggle-control {
 			min-height: 48px;
+			padding: 0 0.25rem;
+		}
+
+		.toggle-control input {
+			width: 20px;
+			height: 20px;
 		}
 
 		.control-btn {

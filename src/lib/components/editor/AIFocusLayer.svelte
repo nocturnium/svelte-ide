@@ -74,6 +74,41 @@
 	/** Top edge of a raw document line, in the layer's coordinates. */
 	const rowTop = (line: number) => lineToVisualRow(Math.max(0, line)) * lineHeight;
 
+	/**
+	 * `#a78bfa` -> `167, 139, 250`, for the `rgba(var(--ai-color-rgb), …)` reads
+	 * in the styles below.
+	 *
+	 * That custom property is read nine times here and was defined nowhere, so
+	 * every read silently fell back to a hard-coded literal: an agent's colour
+	 * reached its caret, which uses `--ai-color`, and never reached the glow or
+	 * the focus region, which use this. A purple agent drew a blue glow, so the
+	 * control surface naming the agent and the canvas drawing it disagreed about
+	 * what colour it was.
+	 *
+	 * Returns null for anything that is not a hex literal — a CSS variable or a
+	 * named colour cannot be decomposed here — in which case the property stays
+	 * unset and the existing fallback applies, which is the old behaviour.
+	 */
+	function toRgbTriple(color: string): string | null {
+		const hex = color.trim().replace(/^#/, '');
+		const full =
+			hex.length === 3
+				? hex
+						.split('')
+						.map((c) => c + c)
+						.join('')
+				: hex;
+		if (!/^[0-9a-fA-F]{6}$/.test(full)) return null;
+		const value = parseInt(full, 16);
+		return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
+	}
+
+	/** `--ai-color-rgb: r, g, b;`, or nothing when the colour is not hex. */
+	function rgbVar(color: string): string {
+		const triple = toRgbTriple(color);
+		return triple ? `--ai-color-rgb: ${triple};` : '';
+	}
+
 	// Filter to active agents with cursors
 	let visibleAgents = $derived(
 		enabled
@@ -93,6 +128,7 @@
 			top: ${top}px;
 			height: ${lineHeight}px;
 			--ai-color: ${color};
+			${rgbVar(color)}
 		`;
 	}
 
@@ -122,6 +158,7 @@
 			height: ${height}px;
 			width: ${width};
 			--ai-color: ${color};
+			${rgbVar(color)}
 			--ai-intensity: ${region.intensity};
 			--region-left: ${left}px;
 		`;
