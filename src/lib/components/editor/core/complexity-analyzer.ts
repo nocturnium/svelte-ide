@@ -1355,8 +1355,12 @@ export class ComplexityAnalyzer {
 			if (tokens.length === 0) continue;
 
 			const indent = this.getIndent(line.text);
+			// What closed at exactly this indent, so an `else` can tell which
+			// construct it belongs to. Python spells three different things `else`.
+			let closedAtThisIndent: string | undefined;
 			while (nestingStack.length > 0 && indent <= nestingStack[nestingStack.length - 1].indent) {
-				nestingStack.pop();
+				const popped = nestingStack.pop()!;
+				if (popped.indent === indent) closedAtThisIndent = popped.kind;
 			}
 
 			contributions.push(
@@ -1419,6 +1423,19 @@ export class ComplexityAnalyzer {
 				this.addContribution(contributions, lineIndex, 'else if', 1, nestingStack.length);
 				nestingStack.push({ indent, kind: 'else if' });
 			} else if (first === 'else') {
+				// Scored whether it belongs to an `if` or to a `for`/`while`.
+				//
+				// I briefly excluded loop-else on a textual reading of Appendix B, which
+				// lists `else` beside `if` and `else if`. The suite caught it: PY-1 is
+				// the whitepaper's own `sumOfPrimes` written in Python, where the
+				// idiomatic spelling of the Java version's `continue OUT` is `for ...
+				// else`, and it is pinned to the published answer of 7. Dropping the
+				// increment made the same algorithm score 6 in Python and 7 in Java.
+				//
+				// A metric whose number changes with the language's spelling of one
+				// control flow is not measuring the control flow. `closedAtThisIndent`
+				// is kept because it is what makes that distinction observable at all.
+				void closedAtThisIndent;
 				this.addContribution(contributions, lineIndex, 'else', 1, nestingStack.length);
 				nestingStack.push({ indent, kind: 'else' });
 			} else if (first === 'for') {

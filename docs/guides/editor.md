@@ -849,14 +849,15 @@ constructs have no citable rule. Where that happens this library made a call, an
 these are the calls — recorded here rather than only at the code site, so you can
 disagree with a specific decision instead of a number.
 
-| Construct                              | Decision                                                                                                      | Basis                                                                    |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `\|\|=` / `&&=` / `??=`                | Score **0**, and cannot start or extend a boolean run.                                                        | Convention. Encoded in the shared corpus, so acorn independently agrees. |
-| A construct in a **parameter default** | **Is** scored, at the function's **own** nesting level — a default sits at the boundary, not inside the body. | Convention. All three implementations agree; four corpus cases pin it.   |
-| An **arrow in a parameter default**    | Still a nested function: raises nesting for its own body.                                                     | Follows from the whitepaper's treatment of nested functions.             |
-| Go `type X struct {` / `interface {`   | The keyword before the brace decides whether it opens a body, not the last `)`.                               | Convention, from fixing regions that reported `cc=0`.                    |
-| Go `select`, Python `for...else`,      | **Not scored.**                                                                                               | No citable SonarSource rule for any of them.                             |
-| comprehension `if`, `case` guards      |                                                                                                               |                                                                          |
+| Construct                                | Decision                                                                                                      | Basis                                                                                                                                                                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `\|\|=` / `&&=` / `??=`                  | Score **0**, and cannot start or extend a boolean run.                                                        | Convention. Encoded in the shared corpus, so acorn independently agrees.                                                                                                                                  |
+| A construct in a **parameter default**   | **Is** scored, at the function's **own** nesting level — a default sits at the boundary, not inside the body. | Convention. All three implementations agree; four corpus cases pin it.                                                                                                                                    |
+| An **arrow in a parameter default**      | Still a nested function: raises nesting for its own body.                                                     | Follows from the whitepaper's treatment of nested functions.                                                                                                                                              |
+| Go `type X struct {` / `interface {`     | The keyword before the brace decides whether it opens a body, not the last `)`.                               | Convention, from fixing regions that reported `cc=0`.                                                                                                                                                     |
+| Go `select`                              | **Scored as a `switch`** — one increment plus nesting.                                                        | Convention. It is a multi-way branch a reader must consider case by case.                                                                                                                                 |
+| Python `for...else` / `while...else`     | **Scored**, as an `else`.                                                                                     | Convention. It is the idiomatic Python spelling of the labelled `continue` in the whitepaper's own `sumOfPrimes`; excluding it makes that same algorithm score 6 in Python against a published 7 in Java. |
+| Python comprehension `if`, `case` guards | **Not scored.**                                                                                               | No citable SonarSource rule for either.                                                                                                                                                                   |
 
 If SonarSource's own plugin scores `||=`, then this library has moved away from
 Sonar and toward its own oracle on that construct. That is a decision, not an
@@ -902,9 +903,13 @@ twenty-one still pin the score; they just do not discriminate, because brace- an
 keyword-shaped constructs fall out of the scanner's shared core either way.
 
 Not translated, deliberately: parameter-shaped cases (Go has no defaults and
-Python's differ), and Go `select`, Python `for...else`, comprehension `if` and
-`case` guards — there is no citable SonarSource rule for any of those, so a corpus
-entry would invent an answer and then agree with itself.
+Python's differ), and comprehension `if` and `case` guards — there is no citable
+SonarSource rule for either, so a corpus entry would invent an answer and then
+agree with itself.
+
+Go `select` and Python `for...else` ARE both scored. They were listed here as
+excluded while the code scored them, which is a documentation defect rather than a
+metric one; the decisions table above now records what actually happens and why.
 
 ### Building a provider chain
 
