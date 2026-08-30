@@ -234,6 +234,35 @@ describe('withComplexityCache', () => {
 			expect(inner).toHaveBeenCalledTimes(2);
 		});
 
+		it('does not let a joiner inherit an abort the originator caused', async () => {
+			// The dangerous direction, and the one the first version of this dedup got
+			// wrong. The joiner attaches while the originator is still live, then the
+			// originator aborts mid-flight — a keystroke, in the editor. Without a
+			// re-check the joiner receives a decline it had no part in, and with
+			// `cacheDeclines` on it becomes the cached answer for everyone.
+			const originatorAbort = new AbortController();
+			let release!: (v: ComplexityProviderResult | null) => void;
+			const gate = new Promise<ComplexityProviderResult | null>((r) => (release = r));
+			let call = 0;
+			const inner = vi.fn(async () => {
+				call++;
+				// First attempt is the abandoned one; a retry must get a real answer.
+				return call === 1 ? gate : result('retried');
+			});
+			const provider = withComplexityCache(inner, { cacheDeclines: true });
+
+			const originator = provider(request(CODE, originatorAbort.signal));
+			const joiner = provider(request());
+			originatorAbort.abort();
+			release(null); // the provider declines because it was aborted
+
+			expect((await joiner)?.source).toBe('retried');
+			await originator;
+
+			// And the decline was never cached on everyone else's behalf.
+			expect((await provider(request()))?.source).toBe('retried');
+		});
+
 		it('lets each caller decide on its own signal, not the originator s', async () => {
 			const joinerAbort = new AbortController();
 			const { provider: inner, release } = deferred();

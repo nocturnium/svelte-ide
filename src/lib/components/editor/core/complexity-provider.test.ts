@@ -2,8 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import {
 	buildComplexityPrompt,
 	createChatComplexityProvider,
+	createOllamaComplexityProvider,
+	createOpenAICompatibleComplexityProvider,
 	mergeProvidedComplexity,
-	parseComplexityResponse
+	parseComplexityResponse,
+	DEFAULT_MAX_TOKENS
 } from './complexity-provider';
 import {
 	ComplexityAnalyzer,
@@ -99,6 +102,73 @@ describe('complexity provider: response validation', () => {
 	});
 });
 
+describe('complexity provider: transports send the output cap', () => {
+	// DEFAULT_MAX_TOKENS was exported, documented as fixing a measured failure —
+	// reasoning models spending their whole budget on prose and never reaching the
+	// JSON — and sent by neither transport. The bug it describes was never fixed
+	// in shipped code, and a comment elsewhere justified the response scanner's
+	// work budget by citing this cap as an existing bound.
+	const captureBody = async (run: (fetchMock: typeof fetch) => Promise<unknown>) => {
+		let body: Record<string, unknown> | undefined;
+		const original = globalThis.fetch;
+		globalThis.fetch = (async (_url: string, init: RequestInit) => {
+			body = JSON.parse(String(init.body));
+			return {
+				ok: true,
+				json: async () => ({ response: '{"regions":[]}', choices: [] })
+			} as unknown as Response;
+		}) as unknown as typeof fetch;
+		try {
+			await run(globalThis.fetch);
+		} finally {
+			globalThis.fetch = original;
+		}
+		return body!;
+	};
+
+	it('Ollama sends num_predict', async () => {
+		const body = await captureBody(async () => {
+			const provider = createOllamaComplexityProvider({ model: 'm' });
+			await provider({
+				code: SAMPLE,
+				language: 'typescript',
+				baseline: baselineFor(SAMPLE),
+				signal: new AbortController().signal
+			});
+		});
+		expect((body.options as Record<string, unknown>).num_predict).toBe(DEFAULT_MAX_TOKENS);
+	});
+
+	it('the OpenAI-compatible transport sends max_tokens', async () => {
+		const body = await captureBody(async () => {
+			const provider = createOpenAICompatibleComplexityProvider({
+				model: 'm',
+				endpoint: 'https://example.test/v1/chat/completions'
+			});
+			await provider({
+				code: SAMPLE,
+				language: 'typescript',
+				baseline: baselineFor(SAMPLE),
+				signal: new AbortController().signal
+			});
+		});
+		expect(body.max_tokens).toBe(DEFAULT_MAX_TOKENS);
+	});
+
+	it('lets a consumer override the cap', async () => {
+		const body = await captureBody(async () => {
+			const provider = createOllamaComplexityProvider({ model: 'm', maxTokens: 64 });
+			await provider({
+				code: SAMPLE,
+				language: 'typescript',
+				baseline: baselineFor(SAMPLE),
+				signal: new AbortController().signal
+			});
+		});
+		expect((body.options as Record<string, unknown>).num_predict).toBe(64);
+	});
+});
+
 describe('complexity provider: prompt', () => {
 	it('numbers the lines it asks about, so returned indices are unambiguous', () => {
 		const prompt = buildComplexityPrompt({
@@ -182,6 +252,91 @@ describe('complexity provider: merge', () => {
 		expect(merged.regions.length).toBe(before);
 		expect(merged.regions.some((r) => r.name === 'other')).toBe(true);
 		expect(merged.maxCognitiveComplexity).toBe(11);
+	});
+
+	it('does not hide a provider score behind an inherited region type', () => {
+		// The measured failure: Python sorts a class before its own methods, `find`
+		// returns the FIRST overlap, so a provider scoring a method inherited
+		// `type: 'class'` — and the headline pool only counted functions. The result
+		// held a region flagged critical at 21 while the gauge read 0 / Simple, in a
+		// library whose entire claim is that the number does not lie.
+		const code = [
+			'class Service:',
+			'    def handle(self, a, b):',
+			'        if a:',
+			'            if b:',
+			'                return 1',
+			'        return 0',
+			'',
+			'def helper():',
+			'    return 1',
+			''
+		].join('\n');
+		const baseline = new ComplexityAnalyzer().analyze(makeLines(code), 'python');
+		// Guard the guard: the shape only bites when a non-overlapping function
+		// exists to populate the pool, so assert the fixture really has one.
+		expect(baseline.regions.map((r) => r.type)).toContain('class');
+		expect(baseline.regions.some((r) => r.type === 'function' && r.startLine > 6)).toBe(true);
+
+		const merged = mergeProvidedComplexity(
+			baseline,
+			{ regions: [{ startLine: 1, endLine: 5, cognitiveComplexity: 21 }], source: 'parser' },
+			getComplexityLevel
+		);
+
+		expect(merged.maxCognitiveComplexity).toBe(21);
+		expect(merged.level).toBe('critical');
+	});
+
+	it('names the method it scored, not the class enclosing it', () => {
+		// Same root cause: `name` fell back through the same first-overlap lookup,
+		// so the region was labelled with the class name in the tooltip.
+		const code = [
+			'class Service:',
+			'    def handle(self, a):',
+			'        if a:',
+			'            return 1',
+			'        return 0',
+			''
+		].join('\n');
+		const baseline = new ComplexityAnalyzer().analyze(makeLines(code), 'python');
+		const merged = mergeProvidedComplexity(
+			baseline,
+			{ regions: [{ startLine: 1, endLine: 4, cognitiveComplexity: 9 }] },
+			getComplexityLevel
+		);
+		expect(merged.regions.find((r) => r.startLine === 1)?.name).toBe('handle');
+	});
+
+	it('recomputes hotspots instead of carrying the baseline s forward', () => {
+		// `hotspots` arrived via `...baseline` and described regions the merge had
+		// just deleted — one public field of the result contradicting the others.
+		const hot = [
+			'function f(rows) {',
+			'  for (const row of rows) {',
+			'    for (const cell of row) {',
+			'      if (cell && cell.x) {',
+			'        for (const y of cell.list) {',
+			'          if (y) return y;',
+			'        }',
+			'      }',
+			'    }',
+			'  }',
+			'  return null;',
+			'}'
+		].join('\n');
+		const baseline = new ComplexityAnalyzer().analyze(makeLines(hot), 'typescript');
+		// Guard the guard: hotspots only exist above the `high` band, so a fixture
+		// that scored under it would make the assertion below pass vacuously.
+		expect(baseline.hotspots.length).toBeGreaterThan(0);
+
+		const merged = mergeProvidedComplexity(
+			baseline,
+			{ regions: [{ startLine: 0, endLine: 11, cognitiveComplexity: 1 }] },
+			getComplexityLevel
+		);
+		// The provider says this file is simple, so nothing is a hotspot any more.
+		expect(merged.hotspots).toEqual([]);
 	});
 
 	it('carries the band forward so the UI cannot disagree with the number', () => {

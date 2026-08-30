@@ -147,9 +147,24 @@ export function withComplexityCache(
 		}
 
 		const shared = inFlight.get(key);
-		const result = await (shared && !shared.signal.aborted ? shared.promise : start(key, request));
+		const joined = shared && !shared.signal.aborted ? shared : null;
+		let result = await (joined ? joined.promise : start(key, request));
 
-		// Each caller decides for itself, on its OWN signal — a joiner that has
+		// The originator may have aborted DURING the attempt we joined. That check
+		// at attach time is a point-in-time read and nothing revalidates it, so a
+		// joiner could inherit a decline caused entirely by someone else's
+		// keystroke — and then cache it, serving it to live callers until the LRU
+		// evicted it 32 entries later. Measured before this: joiner got null, the
+		// next live caller got null, the provider ran once.
+		//
+		// `null` is overloaded — it means both "declined" and "abandoned" — so the
+		// only honest reading is the originator's signal. If it gave up and we did
+		// not, the answer is not ours to keep; ask again.
+		if (joined && joined.signal.aborted && !request.signal.aborted) {
+			result = await start(key, request);
+		}
+
+		// Each caller then decides for itself, on its OWN signal — a joiner that has
 		// since been abandoned must not write a cache entry on the originator's
 		// behalf, and vice versa.
 		//

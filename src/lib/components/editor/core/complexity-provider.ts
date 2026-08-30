@@ -27,7 +27,11 @@ import type {
 	ComplexityMetrics,
 	ComplexityRegion
 } from './complexity-analyzer';
-import { getComplexitySuggestion, getLegacyComplexityScore } from './complexity-analyzer';
+import {
+	COGNITIVE_COMPLEXITY_BANDS,
+	getComplexitySuggestion,
+	getLegacyComplexityScore
+} from './complexity-analyzer';
 
 /** Where a displayed complexity reading came from. */
 export type ComplexitySource = 'builtin' | 'provider';
@@ -150,10 +154,12 @@ export class ComplexityProviderError extends Error {}
  * does, so an early exit there would drop a real answer.
  *
  * Measured on unbalanced opening braces: 2k chars 9ms, 10k 131ms, 20k 531ms,
- * 40k 2.1s. The bundled transports cap replies at DEFAULT_MAX_TOKENS, roughly 5k
- * characters, which lands at ~21ms — but `parseComplexityResponse` is public API
- * and a consumer's own transport has no such cap, while this runs on the same
- * thread as typing.
+ * 40k 2.1s. The bundled transports now send {@link DEFAULT_MAX_TOKENS}, which
+ * bounds a reply at roughly 5k characters and lands around 21ms — but that was
+ * written here while the cap was still documented-and-never-transmitted, so the
+ * budget was justified by a bound that did not exist. It holds now, and it stays
+ * regardless: `parseComplexityResponse` is public API, a consumer's own transport
+ * has no such cap, and this runs on the same thread as typing.
  *
  * So the scan stops after this many steps and returns the best candidate found
  * so far. Declining is already the documented safe outcome, and every realistic
@@ -324,13 +330,24 @@ export function createOllamaComplexityProvider(options: {
 	/** Defaults to a local Ollama. */
 	endpoint?: string;
 	headers?: Record<string, string>;
+	/** Output cap. Defaults to {@link DEFAULT_MAX_TOKENS}. */
+	maxTokens?: number;
 }): ComplexityProvider {
 	const endpoint = options.endpoint ?? 'http://localhost:11434/api/generate';
 	return createChatComplexityProvider(
 		async (prompt, signal) => {
 			const data = (await postJson(
 				endpoint,
-				{ model: options.model, prompt, stream: false, options: { temperature: 0 } },
+				{
+					model: options.model,
+					prompt,
+					stream: false,
+					// `num_predict` is Ollama's spelling of the cap. It was documented as
+					// load-bearing and never actually sent, so the measured failure it
+					// describes — a reasoning model spending its whole budget on prose and
+					// never reaching the JSON — was never fixed in shipped code.
+					options: { temperature: 0, num_predict: options.maxTokens ?? DEFAULT_MAX_TOKENS }
+				},
 				signal,
 				options.headers ?? {}
 			)) as { response?: unknown };
@@ -352,6 +369,8 @@ export function createOpenAICompatibleComplexityProvider(options: {
 	endpoint: string;
 	apiKey?: string;
 	headers?: Record<string, string>;
+	/** Output cap. Defaults to {@link DEFAULT_MAX_TOKENS}. */
+	maxTokens?: number;
 }): ComplexityProvider {
 	return createChatComplexityProvider(
 		async (prompt, signal) => {
@@ -360,6 +379,7 @@ export function createOpenAICompatibleComplexityProvider(options: {
 				{
 					model: options.model,
 					temperature: 0,
+					max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
 					messages: [{ role: 'user', content: prompt }]
 				},
 				signal,
@@ -397,10 +417,31 @@ export function mergeProvidedComplexity(
 
 	const kept = baseline.regions.filter((r) => !provided.regions.some((p) => overlaps(p, r)));
 
+	/**
+	 * The baseline region a provider region most likely IS — the smallest one it
+	 * overlaps, not the first.
+	 *
+	 * `find` returns the first match in a list sorted by start line, and a class
+	 * starts before its own methods. So a provider scoring a method matched the
+	 * enclosing CLASS, inherited its name and its `type: 'class'`, and was then
+	 * excluded from the function pool that computes the headline below. Measured:
+	 * a provider reporting 21 for a method produced a region list holding a
+	 * critical 21 and a headline of 0 / Simple. The narrowest overlap is the
+	 * specific one.
+	 */
+	const innermostOverlap = (p: { startLine: number; endLine: number }) => {
+		let best: ComplexityRegion | undefined;
+		for (const r of baseline.regions) {
+			if (!overlaps(p, r)) continue;
+			if (!best || r.endLine - r.startLine < best.endLine - best.startLine) best = r;
+		}
+		return best;
+	};
+
 	const merged: ComplexityRegion[] = [
 		...kept,
 		...provided.regions.map((p) => {
-			const nearest = baseline.regions.find((r) => overlaps(p, r));
+			const nearest = innermostOverlap(p);
 			const contributions = p.contributions ?? [];
 			const lineCount = p.endLine - p.startLine + 1;
 			return {
@@ -438,13 +479,31 @@ export function mergeProvidedComplexity(
 		})
 	].sort((a, b) => a.startLine - b.startLine);
 
-	const functions = merged.filter((r) => r.type === 'function');
-	const pool = functions.length > 0 ? functions : merged;
+	// Prefer functions for the headline — a `file` or `class` region spans its
+	// contents, so counting it would report the same complexity twice. Provider
+	// regions always qualify: a provider reports a scored unit, and letting an
+	// INHERITED label decide whether its number can be the headline is how a 21
+	// got hidden behind a 0.
+	const providerSpans = new Set(provided.regions.map((p) => `${p.startLine}:${p.endLine}`));
+	const headlineCandidates = merged.filter(
+		(r) => r.type === 'function' || providerSpans.has(`${r.startLine}:${r.endLine}`)
+	);
+	const pool = headlineCandidates.length > 0 ? headlineCandidates : merged;
 	const maxCognitiveComplexity = pool.reduce((m, r) => Math.max(m, r.cognitiveComplexity), 0);
+
+	// `hotspots` is recomputed, not carried over. It used to arrive via
+	// `...baseline` and describe regions the merge had just deleted — a public
+	// field of the result contradicting the other public fields beside it.
+	const hotspots = new Set<number>();
+	for (const region of merged) {
+		if (region.cognitiveComplexity < COGNITIVE_COMPLEXITY_BANDS.high) continue;
+		for (let line = region.startLine; line <= region.endLine; line++) hotspots.add(line);
+	}
 
 	return {
 		...baseline,
 		regions: merged,
+		hotspots: [...hotspots].sort((a, b) => a - b),
 		maxCognitiveComplexity,
 		level: getLevel(maxCognitiveComplexity),
 		totalCognitiveComplexity: merged.reduce((t, r) => t + r.cognitiveComplexity, 0)
