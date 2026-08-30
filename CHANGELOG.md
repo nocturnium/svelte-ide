@@ -1,3 +1,57 @@
+# [2.0.0](https://github.com/nocturnium/svelte-ide/compare/v1.16.0...v2.0.0) (2026-08-30)
+
+
+### Bug Fixes
+
+* **complexity:** count braceless nesting, and repair sequence bookkeeping ([a0b20a9](https://github.com/nocturnium/svelte-ide/commit/a0b20a912fec023a52bc59f8e34c31a855ff756a))
+* **complexity:** dedup in-flight requests, and stop shipping NUL bytes in dist ([1c75bd2](https://github.com/nocturnium/svelte-ide/commit/1c75bd23d435b9f3c91c69f9a65122461bc9d394))
+* **complexity:** every number in the tooltip is now the metric on its label ([a59a021](https://github.com/nocturnium/svelte-ide/commit/a59a0215d3d88ea9d066a6aecab819cd6c03bf9f))
+* **complexity:** five metric defects, each verified by re-breaking it ([a834ebc](https://github.com/nocturnium/svelte-ide/commit/a834ebc5e90c92405e13955c2bfb2379e70ee015))
+* **complexity:** Go signatures containing interface{} or struct{} read 0 ([ee8a5ac](https://github.com/nocturnium/svelte-ide/commit/ee8a5acb37941e486879c11629a59f3ca7c4e8b6))
+* **complexity:** harden the provider against real models, and record what they scored ([d021ddd](https://github.com/nocturnium/svelte-ide/commit/d021ddd4b21fa455d8e44fcc7b4dfcdaad33ae20))
+* **complexity:** land the review findings — visible plane, honest gauge, one vocabulary ([bd19448](https://github.com/nocturnium/svelte-ide/commit/bd19448a3e80b6029a97d64bf92d15a57292ffea)), closes [hi#complexity](https://github.com/hi/issues/complexity)
+* **complexity:** monotonic gauge, structural statement ends, reachable API ([cc18569](https://github.com/nocturnium/svelte-ide/commit/cc1856933f7dbb822cc678d7481e21d5b869677c))
+* **complexity:** move StructureMap onto the shared bands and ramp ([95e6a25](https://github.com/nocturnium/svelte-ide/commit/95e6a25d6d0097c0e8a2524092c5e4ee6beb9d5d)), closes [f59e0b/#3b82f6](https://github.com/nocturnium/svelte-ide/issues/3b82f6)
+* **complexity:** repair the scanner defects a repo-wide sweep exposed ([18404a3](https://github.com/nocturnium/svelte-ide/commit/18404a307f39862ac87be660dd9f3c1a8dbc0ee0))
+* **complexity:** repair three counting defects found in review ([121a4ec](https://github.com/nocturnium/svelte-ide/commit/121a4eca974cb3fea273ed31b8add4d59ad50915))
+* **complexity:** skip regex literals when scanning braces, and name a function ([c96c32a](https://github.com/nocturnium/svelte-ide/commit/c96c32a8e402ffc00a3d6199757d44752e026bf6))
+* **complexity:** stop counting `?.`, `??` and TS optional members as branches ([7b2f680](https://github.com/nocturnium/svelte-ide/commit/7b2f680b442554fd9920a2231fff6578cc59144c))
+* **complexity:** the response scanner reads the answer, not a draft of it ([66fa6ef](https://github.com/nocturnium/svelte-ide/commit/66fa6ef4f65a6e23b7cf5e60154f8716ff8e1360))
+* **complexity:** three verified paths where a displayed number was wrong ([223f8a2](https://github.com/nocturnium/svelte-ide/commit/223f8a24e92e2e46d6d509f1a74d8e9cfd74e76a))
+* **demo:** make the number the loudest thing, and stop the legend reading as pipes ([d42b1f1](https://github.com/nocturnium/svelte-ide/commit/d42b1f1ff80a48a339583471776c6d192c8b957d))
+* **demo:** one code surface, disclosed simulation, and an audible hero ([311076c](https://github.com/nocturnium/svelte-ide/commit/311076cf1500c1483b0aee04e2ee8ced104f3654))
+* **demo:** stream a mocked AI reply in the playground and repair full page ([97cf6e8](https://github.com/nocturnium/svelte-ide/commit/97cf6e8a0c2cb61bc785856e1c0b6ac52ba38636))
+* **demo:** the rail and the canvas now agree about the agent ([3dbf165](https://github.com/nocturnium/svelte-ide/commit/3dbf165e919918be84ad018bbc78282ab9a661c1))
+* **editor:** overlays span the document instead of one viewport ([1716b1c](https://github.com/nocturnium/svelte-ide/commit/1716b1c38da4ff5db2850b652add0872653357e5))
+* **source:** replace raw NUL bytes with escape sequences, and guard against more ([14003ce](https://github.com/nocturnium/svelte-ide/commit/14003cecc936f1d607fa9847b43169e4d0e2cdaf))
+
+
+### Features
+
+* **complexity:** pluggable analysis via a provider seam ([3012d71](https://github.com/nocturnium/svelte-ide/commit/3012d710d2e82bc0d04e07382b4f6a34ecd86fc0))
+* **complexity:** rebuild the cognitive-load visual as depth, not heat ([0b75bb7](https://github.com/nocturnium/svelte-ide/commit/0b75bb7a171d028da2ab45e1c79c04419ddfee76))
+* **complexity:** ship the Cognitive Complexity rules for any parser ([cac126e](https://github.com/nocturnium/svelte-ide/commit/cac126ef3f02c2bccb2795f13a25b4cd457f1b22))
+
+
+### BREAKING CHANGES
+
+* **complexity:** `complexityThreshold` on `CustomEditor` is now raw Cognitive
+Complexity, not the deprecated 0-100 score. Its default moves from 50 to 5 (the
+`medium` band). A consumer passing 50 previously flagged roughly cognitive
+complexity 7 and above; passing 50 now flags almost nothing. `getLineComplexity`
+likewise returns raw Cognitive Complexity instead of the saturating score.
+
+Both `ComplexityRegion.score` and `ComplexityMetrics.overall` remain, marked
+@deprecated: the first saturates at cognitive complexity 15 so everything from
+"worth a look" to unmaintainable reports 100, and the second is a
+region-length-weighted mean that falls when you append simple functions. Nothing
+in this library displays either. Read `cognitiveComplexity` and
+`maxCognitiveComplexity`.
+
+Migration: pass `COGNITIVE_COMPLEXITY_BANDS.medium` (5), `.high` (10) or
+`.critical` (15) — SonarSource's published refactor threshold — instead of a
+score-space number.
+
 # [1.16.0](https://github.com/nocturnium/svelte-ide/compare/v1.15.0...v1.16.0) (2026-06-22)
 
 
