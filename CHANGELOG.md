@@ -1,3 +1,11 @@
+## [2.0.1](https://github.com/nocturnium/svelte-ide/compare/v2.0.0...v2.0.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **demo:** drop the each-bindings the token renderer made unused ([15ab662](https://github.com/nocturnium/svelte-ide/commit/15ab662233c83cf964f8864bceb6a18fc678a7a0))
+* **demo:** stop the critical band blinking, and colour the intelligence previews ([7c5752e](https://github.com/nocturnium/svelte-ide/commit/7c5752e965dd6f1ceba2f5d4c43440208b9d428c))
+
 # [2.0.0](https://github.com/nocturnium/svelte-ide/compare/v1.16.0...v2.0.0) (2026-08-30)
 
 
