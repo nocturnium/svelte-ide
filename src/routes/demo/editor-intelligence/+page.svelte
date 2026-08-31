@@ -772,7 +772,7 @@ function renderInvoice(order) {
 								class="code-viewport"
 								style="transform: translateY(-{minimapScrollTop * lineHeight}px);"
 							>
-								{#each sampleLines as line, i (i)}
+								{#each sampleLines as _line, i (i)}
 									<div
 										class="code-line"
 										class:code-line--current={i === cursorLine}
@@ -873,7 +873,7 @@ function renderInvoice(order) {
 				</div>
 
 				<div class="editor-preview-small" bind:this={bcPreviewEl}>
-					{#each sampleLines as line, i (i)}
+					{#each sampleLines as _line, i (i)}
 						<div
 							class="code-line"
 							class:code-line--current={i === cursorLine}
@@ -1053,7 +1053,7 @@ function renderInvoice(order) {
 			<div class="outline-demo">
 				<div class="outline-layout">
 					<div class="editor-preview-small">
-						{#each sampleLines as line, i (i)}
+						{#each sampleLines as _line, i (i)}
 							<div
 								class="code-line"
 								class:code-line--current={i === cursorLine}
@@ -1200,7 +1200,7 @@ function renderInvoice(order) {
 						/>
 					{/if}
 
-					{#each ghostBracketLines as line, i (i)}
+					{#each ghostBracketLines as _line, i (i)}
 						<div class="code-line" style="height: {lineHeight}px;">
 							<span class="line-num">{i + 1}</span>
 							<span class="line-content"><TokenRenderer tokens={ghostBracketTokens[i]} /></span>
