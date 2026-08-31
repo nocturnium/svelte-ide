@@ -392,7 +392,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 <DemoPage
 	eyebrow="Intelligence"
 	title="Cognitive complexity"
-	description="SonarSource Cognitive Complexity, measured live, plus AI presence."
+	description="See which functions are hard to hold in your head, scored as you type against SonarSource's published metric — and watch an AI agent's attention move through the same gutter."
 	docTitle="Cognitive complexity & ghost pair"
 >
 	<!-- Cognitive complexity meter -->

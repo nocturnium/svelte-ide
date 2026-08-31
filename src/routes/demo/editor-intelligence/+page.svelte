@@ -9,6 +9,8 @@
 	import DemoPage from '../_components/DemoPage.svelte';
 	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import Minimap from '$lib/components/editor/Minimap.svelte';
+	import TokenRenderer from '$lib/components/editor/TokenRenderer.svelte';
+	import { tokenize } from '$lib/components/editor/tokenizer';
 	import Breadcrumbs, { type BreadcrumbSymbol } from '$lib/components/editor/Breadcrumbs.svelte';
 	import QuickActionsMenu from '$lib/components/editor/QuickActionsMenu.svelte';
 	import SymbolOutline, { type DocumentSymbol } from '$lib/components/editor/SymbolOutline.svelte';
@@ -153,6 +155,22 @@ export const DEFAULT_CONFIG = {
 };`;
 
 	const sampleLines = sampleCode.split('\n');
+
+	/**
+	 * Tokenized copies of every sample this page renders by hand.
+	 *
+	 * These previews are hand-built code viewports rather than real editors — they
+	 * exist to sit under a minimap, a breadcrumb bar or a ghost-bracket overlay
+	 * without dragging a full CustomEditor along. They interpolated each line as
+	 * raw text, so the page that demonstrates the editor's intelligence rendered
+	 * every sample in one flat colour, while the minimap beside it — which
+	 * tokenizes internally — showed the colours the code beneath it did not.
+	 *
+	 * `TokenRenderer` is the same component the editor itself uses, so these now
+	 * paint from the identical tokenizer and theme tokens, and it renders tokens as
+	 * DOM elements rather than through `@html`.
+	 */
+	const sampleTokens = tokenize(sampleCode, 'typescript');
 	const lineHeight = 20;
 	const charWidth = 7.8;
 	const gutterWidth = 50;
@@ -169,6 +187,7 @@ export const DEFAULT_CONFIG = {
   return null;
 }`;
 	const ghostBracketLines = ghostBracketCode.split('\n');
+	const ghostBracketTokens = tokenize(ghostBracketCode, 'typescript');
 
 	const contextLensCode = `interface UserSession {
   userId: string;
@@ -186,6 +205,7 @@ export const formatSession = (session: UserSession): string => {
 	const contextLensLines: Line[] = contextLensCode
 		.split('\n')
 		.map((text, number) => ({ number, text }));
+	const contextLensTokens = tokenize(contextLensCode, 'typescript');
 	const contextLensCursorLine = 5;
 
 	// Minimap usage snippet (Code tab of the Minimap exhibit).
@@ -759,7 +779,7 @@ function renderInvoice(order) {
 										style="height: {lineHeight}px;"
 									>
 										<span class="line-num">{i + 1}</span>
-										<span class="line-content">{line || ' '}</span>
+										<span class="line-content"><TokenRenderer tokens={sampleTokens[i]} /></span>
 									</div>
 								{/each}
 							</div>
@@ -860,7 +880,7 @@ function renderInvoice(order) {
 							style="height: {lineHeight}px;"
 						>
 							<span class="line-num">{i + 1}</span>
-							<span class="line-content">{line || ' '}</span>
+							<span class="line-content"><TokenRenderer tokens={sampleTokens[i]} /></span>
 						</div>
 					{/each}
 				</div>
@@ -1040,7 +1060,7 @@ function renderInvoice(order) {
 								style="height: {lineHeight}px;"
 							>
 								<span class="line-num">{i + 1}</span>
-								<span class="line-content">{line || ' '}</span>
+								<span class="line-content"><TokenRenderer tokens={sampleTokens[i]} /></span>
 							</div>
 						{/each}
 					</div>
@@ -1123,10 +1143,10 @@ function renderInvoice(order) {
 						/>
 					{/if}
 
-					{#each contextLensLines as line (line.number)}
+					{#each contextLensLines as line, i (line.number)}
 						<div class="code-line" style="height: {lineHeight}px;">
 							<span class="line-num">{line.number + 1}</span>
-							<span class="line-content">{line.text || ' '}</span>
+							<span class="line-content"><TokenRenderer tokens={contextLensTokens[i]} /></span>
 						</div>
 					{/each}
 				</div>
@@ -1183,7 +1203,7 @@ function renderInvoice(order) {
 					{#each ghostBracketLines as line, i (i)}
 						<div class="code-line" style="height: {lineHeight}px;">
 							<span class="line-num">{i + 1}</span>
-							<span class="line-content">{line || ' '}</span>
+							<span class="line-content"><TokenRenderer tokens={ghostBracketTokens[i]} /></span>
 						</div>
 					{/each}
 				</div>
@@ -1228,14 +1248,14 @@ function renderInvoice(order) {
 						language="typescript"
 					/>
 
-					{#each contextLensLines as line (line.number)}
+					{#each contextLensLines as line, i (line.number)}
 						<div
 							class="code-line"
 							class:code-line--current={line.number === contextLensCursorLine}
 							style="height: {lineHeight}px;"
 						>
 							<span class="line-num">{line.number + 1}</span>
-							<span class="line-content">{line.text || ' '}</span>
+							<span class="line-content"><TokenRenderer tokens={contextLensTokens[i]} /></span>
 						</div>
 					{/each}
 				</div>

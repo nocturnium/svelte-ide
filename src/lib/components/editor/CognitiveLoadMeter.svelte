@@ -147,7 +147,7 @@
 		<div
 			class="cognitive-meter__fill"
 			style="width: {thresholdProgress}%; background-color: {levelColor}"
-			class:cognitive-meter__fill--animated={level === 'critical'}
+			class:cognitive-meter__fill--critical={level === 'critical'}
 		></div>
 		<!-- Where the refactor threshold falls on the current scale. -->
 		<div
@@ -300,27 +300,13 @@
 			background-color 0.3s ease;
 	}
 
-	.cognitive-meter__fill--animated {
-		animation: pulse-critical 1.5s ease-in-out infinite;
-	}
-
-	/* The only complexity component that lacked this guard, while its seven
-	   siblings all had one — and it is the one that pulses INFINITELY, in the
-	   default state of the flagship demo. */
-	@media (prefers-reduced-motion: reduce) {
-		.cognitive-meter__fill--animated {
-			animation: none;
-		}
-	}
-
-	@keyframes pulse-critical {
-		0%,
-		100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.6;
-		}
+	/* No infinite pulse here either, for the reason recorded on the gutter spine in
+	   ComplexityLayer: a bar that blinks forever is an alarm for a condition that
+	   is merely true. The fill is already coloured by band, and the threshold mark
+	   beside it shows where Refactor begins. The `prefers-reduced-motion` guard
+	   that used to sit here is gone with the animation it guarded. */
+	.cognitive-meter__fill--critical {
+		box-shadow: 0 0 10px color-mix(in srgb, var(--ide-complexity-critical) 45%, transparent);
 	}
 
 	.cognitive-meter__value {

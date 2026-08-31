@@ -367,13 +367,23 @@
 		transform: translateX(-1px);
 	}
 
-	.complexity-gutter__spine--critical {
-		animation: complexity-spine-pulse 2.4s ease-in-out infinite;
-	}
-
-	.complexity-gutter__spine--critical::before {
-		animation: complexity-spine-bloom-pulse 2.4s ease-in-out infinite;
-	}
+	/* The critical band does NOT animate.
+	
+	   It used to pulse forever — spine, bloom and score chip, three infinite 2.4s
+	   loops sitting in the corner of the editor for as long as the file was open.
+	   Motion should encode a CHANGE, and a region's complexity does not change
+	   until you edit it, so the loop was an alarm for a condition that is simply
+	   true. It also contradicted this feature's own vocabulary: the band is called
+	   "Refactor" rather than "Critical" precisely because it is "a prompt to
+	   restructure, not an emergency", and then it blinked like one.
+	
+	   Nothing is lost by stopping. The band is already carried by two channels that
+	   do not move: its colour, and the spine's width (5px critical / 3px high / 2px
+	   medium), which exists so severity survives colour blindness. The bloom's rest
+	   state is the base `::before` style, so the glow stays — it just holds still.
+	
+	   The one-shot `--flash` below is kept: 0.9s, one iteration, fired by
+	   jump-to-hottest. That marks an event, which is what motion is for. */
 
 	.complexity-gutter__spine--flash {
 		animation: complexity-spine-flash 0.9s ease-out 1;
@@ -427,53 +437,15 @@
 		box-sizing: border-box;
 	}
 
+	/* Static glow, the resting frame of what used to be an infinite pulse. */
 	.complexity-gutter__score--critical {
-		animation: complexity-score-glow-pulse 2.4s ease-in-out infinite;
+		box-shadow:
+			0 0 18px color-mix(in srgb, var(--indicator-color) 32%, transparent),
+			inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
 	}
 
 	.complexity-gutter__score--flash {
 		animation: complexity-score-arrival-pop 0.35s ease-out 1;
-	}
-
-	@keyframes complexity-spine-pulse {
-		0%,
-		100% {
-			transform: scaleX(1);
-		}
-		50% {
-			transform: scaleX(1.12);
-		}
-	}
-
-	@keyframes complexity-spine-bloom-pulse {
-		0%,
-		100% {
-			filter: blur(6px);
-			opacity: 0.55;
-			transform: scaleX(1);
-		}
-		50% {
-			filter: blur(10px);
-			opacity: 0.78;
-			transform: scaleX(1.35);
-		}
-	}
-
-	@keyframes complexity-score-glow-pulse {
-		0%,
-		100% {
-			box-shadow:
-				0 0 18px color-mix(in srgb, var(--indicator-color) 32%, transparent),
-				inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
-			transform: scale(1);
-		}
-		50% {
-			box-shadow:
-				0 0 28px color-mix(in srgb, var(--indicator-color) 52%, transparent),
-				0 0 44px color-mix(in srgb, var(--indicator-color) 28%, transparent),
-				inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
-			transform: scale(1.04);
-		}
 	}
 
 	@keyframes complexity-score-arrival-pop {
