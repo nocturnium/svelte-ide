@@ -53,10 +53,10 @@ go build -o lsp-bridge ./cmd/lsp-bridge
 ./lsp-bridge
 
 # Custom port and paths
-./lsp-bridge -addr :9000 -gopls /path/to/gopls
+./lsp-bridge -addr 127.0.0.1:9000 -gopls /path/to/gopls
 
 # Options:
-#   -addr             Server address (default ":8765")
+#   -addr             Server address (default "127.0.0.1:8765", loopback only)
 #   -allowed-origins  Comma-separated extra browser origins; localhost is always allowed
 #   -gopls            Path to gopls (default "gopls")
 #   -max-sessions     Maximum concurrent LSP sessions (default 32; 0 or negative means unlimited)
@@ -65,7 +65,7 @@ go build -o lsp-bridge ./cmd/lsp-bridge
 
 ## Security
 
-The bridge is intended for localhost and development use. It has no authentication, so any local web page on an allowed origin can connect to `/lsp`; this creates a cross-site WebSocket hijacking risk if an origin is too broad. Each accepted session spawns a native language server that can operate against the local filesystem.
+The bridge is intended for localhost and development use. By default it listens on `127.0.0.1` only. It has no authentication: the origin check only stops web pages, and clients that send no `Origin` header (curl, native programs) are always accepted. If you bind a non-loopback address such as `-addr :8765`, any host that can reach the port can start language servers, and the bridge logs a warning at startup. Each accepted session spawns a native language server that can operate against the local filesystem.
 
 Do not expose this server publicly. When embedding it in another application, set `-allowed-origins` explicitly for the trusted browser origin, avoid `*`, and use `-max-sessions` to cap concurrent language server sessions. The default `-max-sessions` value is `32`; set it to `0` or a negative value only if you intentionally want unlimited sessions.
 

@@ -17,7 +17,7 @@ debug: build
 
 # Run on custom port
 run-port: build
-	./$(BINARY) -addr :$(PORT)
+	./$(BINARY) -addr 127.0.0.1:$(PORT)
 
 # Clean build artifacts
 clean:

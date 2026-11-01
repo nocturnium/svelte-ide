@@ -21,6 +21,10 @@ const (
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 1024 * 1024 // 1MB
+	// clientQueueSize bounds messages buffered for a language server that is
+	// slow to read stdin. When it fills, the session is closed: the server is
+	// wedged, and blocking the WebSocket reader would hide client disconnects.
+	clientQueueSize = 256
 )
 
 // OriginAllowed reports whether a browser Origin may access the bridge.
@@ -99,6 +103,16 @@ func (h *Handler) releaseSessionSlot() {
 		return
 	}
 	atomic.AddInt64(&h.liveSessions, -1)
+}
+
+// LiveSessions reports how many session slots are currently held.
+func (h *Handler) LiveSessions() int64 {
+	return atomic.LoadInt64(&h.liveSessions)
+}
+
+// ServeHTTP lets the handler be mounted directly; it serves the WebSocket endpoint.
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.HandleWebSocket(w, r)
 }
 
 // Session represents a client connection with its language server.
@@ -181,8 +195,25 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 // routeClientToServer forwards messages from WebSocket client to language server.
+// Reading the socket and writing to the server's stdin happen on separate
+// goroutines so a stalled server cannot stop us noticing that the client left.
 func (h *Handler) routeClientToServer(session *Session) {
 	defer h.closeSession(session)
+
+	queue := make(chan json.RawMessage, clientQueueSize)
+	defer close(queue)
+	go func() {
+		defer h.recoverGoroutine(session.id, "writeToServer")
+		for msg := range queue {
+			if err := session.process.Send(msg); err != nil {
+				log.Printf("[Session %s] Failed to send to LSP: %v", session.id, err)
+				h.closeSession(session)
+				for range queue {
+				}
+				return
+			}
+		}
+	}()
 
 	session.conn.SetReadLimit(maxMessageSize)
 	session.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -208,16 +239,20 @@ func (h *Handler) routeClientToServer(session *Session) {
 			}
 		}
 
-		// Forward to language server
-		if err := session.process.Send(json.RawMessage(message)); err != nil {
-			log.Printf("[Session %s] Failed to send to LSP: %v", session.id, err)
+		select {
+		case queue <- json.RawMessage(message):
+		default:
+			log.Printf("[Session %s] Language server is not reading input; closing session", session.id)
 			return
 		}
 	}
 }
 
 // routeServerToClient forwards messages from language server to WebSocket client.
+// When the language server exits its message channel closes, and the session
+// is torn down so the client sees the socket close instead of hanging.
 func (h *Handler) routeServerToClient(session *Session) {
+	defer h.closeSession(session)
 	ticker := time.NewTicker(pingPeriod)
 	defer ticker.Stop()
 
