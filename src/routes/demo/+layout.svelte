@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { base, resolve } from '$app/paths';
-	import { page } from '$app/stores';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
 	import BrandMark from '$lib/components/BrandMark.svelte';
 
@@ -50,17 +50,19 @@
 		}
 	];
 
-	let currentPath = $derived($page.url.pathname);
+	let currentPath = $derived(page.url.pathname);
 
 	// Routes whose page renders a full application shell (IDE chrome, multi-panel
 	// dashboards) rather than prose. These fill the whole content area instead of
 	// being capped to the centered reading column. Stored without `base`.
 	const FULL_BLEED_PATHS = new Set(['/demo/editor', '/demo/playground']);
 
-	let isFullBleed = $derived(FULL_BLEED_PATHS.has(currentPath.slice(base.length)));
+	let isFullBleed = $derived(
+		FULL_BLEED_PATHS.has(currentPath.slice(resolve('/').replace(/\/$/, '').length))
+	);
 
 	function isActive(href: string): boolean {
-		const target = `${base}${href}`;
+		const target = resolve(href as '/demo/editor');
 		return currentPath === target;
 	}
 
@@ -194,7 +196,7 @@
 						<a
 							class="nav-item"
 							class:active={isActive(item.href)}
-							href={`${base}${item.href}`}
+							href={resolve(item.href as '/demo/editor')}
 							aria-current={isActive(item.href) ? 'page' : undefined}
 						>
 							<span class="nav-icon" aria-hidden="true">{item.icon}</span>

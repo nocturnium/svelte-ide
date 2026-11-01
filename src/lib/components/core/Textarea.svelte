@@ -62,8 +62,7 @@
 		aria-describedby={ariaDescribedby}
 		oninput={handleInput}
 		{onchange}
-		{onkeydown}
-	></textarea>
+		{onkeydown}></textarea>
 	{#if error}
 		<span class="ide-textarea__error" id={errorId}>{error}</span>
 	{/if}

@@ -342,8 +342,7 @@
 					placeholder="Try: 'Explain this code', 'Find bugs', 'Write tests'..."
 					rows={2}
 					disabled={isStreaming}
-					onkeydown={handleKeydown}
-				></textarea>
+					onkeydown={handleKeydown}></textarea>
 				<div class="input-actions">
 					<Button
 						variant="primary"

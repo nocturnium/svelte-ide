@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
+import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 // `defineConfig` from vitest/config (not 'vite') so the inline `test` block is typed.
 import { defineConfig } from 'vitest/config';
@@ -15,7 +17,34 @@ export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version)
 	},
-	plugins: [tailwindcss(), sveltekit()],
+	plugins: [
+		tailwindcss(),
+		sveltekit({
+			preprocess: vitePreprocess(),
+			// SSR + prerender are on by default (see src/routes/+layout.ts). adapter-static
+			// prerenders every reachable route to its own HTML; the fallback shell
+			// (404.html) serves the client-only routes that opt out of prerendering.
+			// NOTE: we used to copy 404.html → index.html for the SPA root, but now that
+			// the homepage prerenders, that copy would clobber its real SEO HTML — so it's
+			// gone, and the prerendered build/index.html is shipped as-is.
+			adapter: adapter({ fallback: '404.html' }),
+			// Kit 3 removed the built-in $lib alias and deprecated `alias`. It still works,
+			// and the internal imports use all of these, so keep them until a move to #lib subpath imports.
+			alias: {
+				$lib: 'src/lib',
+				$components: 'src/lib/components',
+				$stores: 'src/lib/stores',
+				$types: 'src/lib/types',
+				$utils: 'src/lib/utils',
+				$plugins: 'src/lib/plugins',
+				$crdt: 'src/lib/crdt',
+				$themes: 'src/lib/themes'
+			},
+			paths: {
+				base: (process.env.BASE_PATH || '') as '' | `/${string}`
+			}
+		})
+	],
 	test: {
 		// Polyfill browser event globals (CloseEvent) absent on Node < 23 (incl. CI).
 		setupFiles: ['./vitest.setup.ts'],

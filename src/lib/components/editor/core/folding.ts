@@ -361,7 +361,6 @@ function detectBracketFolds(
 		const lineText = lines[lineNum].text;
 		let inString = false;
 		let stringChar = '';
-		let inLineComment = false;
 
 		for (let col = 0; col < lineText.length; col++) {
 			const char = lineText[col];
@@ -410,11 +409,8 @@ function detectBracketFolds(
 
 			// Handle line comments
 			if (char === '/' && lineText[col + 1] === '/') {
-				inLineComment = true;
 				break;
 			}
-
-			if (inLineComment) continue;
 
 			// Check for opening brackets
 			for (const [open, close] of pairs) {

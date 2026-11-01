@@ -393,7 +393,7 @@ export class JavaScriptTokenizer {
 		);
 		if (numMatch) {
 			const numText = numMatch[0];
-			let type: TokenType = 'number';
+			let type: TokenType;
 			if (numText.startsWith('0x') || numText.startsWith('0X')) {
 				type = 'number.hex';
 			} else if (numText.startsWith('0b') || numText.startsWith('0B')) {

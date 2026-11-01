@@ -732,12 +732,7 @@ export interface LSPClientConfig {
 
 /** LSP client connection state */
 export type LSPConnectionState =
-	| 'disconnected'
-	| 'connecting'
-	| 'connected'
-	| 'initializing'
-	| 'ready'
-	| 'error';
+	'disconnected' | 'connecting' | 'connected' | 'initializing' | 'ready' | 'error';
 
 /** LSP client events */
 export interface LSPClientEvents {

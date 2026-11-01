@@ -427,8 +427,7 @@ renderStatus(status);`);
 							value={echoSourceContent}
 							oninput={(event) =>
 								applyEchoSourceContent((event.currentTarget as HTMLTextAreaElement).value)}
-							spellcheck="false"
-						></textarea>
+							spellcheck="false"></textarea>
 					</label>
 
 					<div class="echo-info">

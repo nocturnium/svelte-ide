@@ -316,8 +316,7 @@
 				disabled={getIsStreaming() || isSubmitting}
 				onkeydown={handleKeydown}
 				oninput={autoResizeTextarea}
-				aria-label="Message input"
-			></textarea>
+				aria-label="Message input"></textarea>
 			<Button
 				variant="primary"
 				size="sm"

@@ -1222,8 +1222,7 @@
 		onfocus={inputHandlers.handleFocus}
 		onblur={inputHandlers.handleBlur}
 		oncompositionstart={inputHandlers.handleCompositionStart}
-		oncompositionend={inputHandlers.handleCompositionEnd}
-	></textarea>
+		oncompositionend={inputHandlers.handleCompositionEnd}></textarea>
 
 	<!-- Measure span for character dimensions -->
 	<span bind:this={measureSpan} class="custom-editor__measure">M</span>

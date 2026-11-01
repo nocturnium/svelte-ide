@@ -26,9 +26,7 @@ test.describe('Editor Undo and Redo', () => {
 		await editor.undo();
 		await page.waitForTimeout(100);
 
-		// Text should be gone (or partially gone depending on undo grouping)
-		content = await editor.getContent();
-		// After enough undos, UNDO_TEST should be gone
+		// Undo grouping varies, so undo a few more times before asserting it is gone
 		await editor.undo();
 		await editor.undo();
 		await editor.undo();

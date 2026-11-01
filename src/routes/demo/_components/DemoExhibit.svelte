@@ -2,6 +2,10 @@
 	// Per-instance counter so multiple exhibits on one page get unique element
 	// ids (the ARIA tab/panel relationships require document-unique ids).
 	let exhibitCount = 0;
+	function nextExhibitId(): string {
+		exhibitCount += 1;
+		return `dx${exhibitCount}`;
+	}
 </script>
 
 <script lang="ts">
@@ -17,7 +21,7 @@
 	 * The tablist mirrors the landing-page quick-start (WAI-ARIA tabs + roving
 	 * tabindex); copy-to-clipboard mirrors AIMessageContent.
 	 */
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { tokenize } from '$components/editor/tokenizer';
 	import TokenRenderer from '$components/editor/TokenRenderer.svelte';
 	import Icon from '$components/core/Icon.svelte';
@@ -62,7 +66,7 @@
 	type TabId = (typeof TABS)[number]['id'];
 
 	// Document-unique id prefix for this exhibit's tab/panel pairs.
-	const uid = `dx${(exhibitCount += 1)}`;
+	const uid = nextExhibitId();
 
 	let view = $state<TabId>('preview');
 
@@ -79,7 +83,7 @@
 
 	function onTabKeydown(event: KeyboardEvent, index: number) {
 		const last = TABS.length - 1;
-		let next = index;
+		let next: number;
 		if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
 			next = index === last ? 0 : index + 1;
 		else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')

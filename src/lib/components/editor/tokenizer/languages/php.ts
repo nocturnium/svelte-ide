@@ -238,7 +238,6 @@ export class PhpTokenizer {
 				if (!openMatch || openMatch.index === undefined) {
 					// No open tag on this line: the whole remainder is inline HTML.
 					tokens.push(createToken('text', remaining, pos));
-					pos = line.length;
 					break;
 				}
 				if (openMatch.index > 0) {

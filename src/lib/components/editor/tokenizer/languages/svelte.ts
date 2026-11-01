@@ -95,7 +95,7 @@ export class SvelteTokenizer implements LanguageTokenizer {
 
 	tokenizeLine(line: string, lineNumber: number, prevState?: SvelteTokenizerState): TokenizedLine {
 		const tokens: RawToken[] = [];
-		let pos = 0;
+		let pos: number;
 		const state: SvelteTokenizerState = {
 			...this.getInitialState(),
 			...prevState,
@@ -325,7 +325,7 @@ export class SvelteTokenizer implements LanguageTokenizer {
 
 	private tokenizeTag(tag: string): RawToken[] {
 		const tokens: RawToken[] = [];
-		let pos = 0;
+		let pos: number;
 
 		// Opening bracket
 		if (tag.startsWith('</')) {

@@ -238,7 +238,6 @@ export class TomlTokenizer {
 
 		// Closing bracket(s)
 		tokens.push(createToken('punctuation.bracket', close, local));
-		local += close.length;
 
 		return tokens;
 	}

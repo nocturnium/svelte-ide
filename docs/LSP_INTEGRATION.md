@@ -489,9 +489,7 @@ For better performance, run the LSP client in a Web Worker:
 // lsp-worker.ts
 import { createLSPClient } from '@nocturnium/svelte-ide';
 
-const client = createLSPClient({
-	/* config */
-});
+const client = createLSPClient({/* config */});
 
 self.onmessage = async (e) => {
 	const { id, method, params } = e.data;

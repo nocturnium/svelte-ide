@@ -214,7 +214,6 @@ export class YamlTokenizer {
 			}
 			if (rest[0] === '#' && (line[pos - 1] === ' ' || line[pos - 1] === '\t')) {
 				tokens.push(createToken('comment.line', rest, pos));
-				pos = line.length;
 				break;
 			}
 			// A tag handle like "!x!" or a tag prefix / version number — emit as type.

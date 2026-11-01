@@ -225,7 +225,7 @@ export function triageLoad(
 	// Roving-tabindex arrow-key navigation for the tablist (WAI-ARIA tabs pattern).
 	function onTabKeydown(event: KeyboardEvent, index: number) {
 		const last = quickTabs.length - 1;
-		let next = index;
+		let next: number;
 		if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
 			next = index === last ? 0 : index + 1;
 		else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
