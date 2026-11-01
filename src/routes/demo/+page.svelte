@@ -1,14 +1,16 @@
 <script lang="ts">
-	import { resolve } from '$app/paths';
 	import Badge from '$lib/components/core/Badge.svelte';
 	import Icon from '$lib/components/core/Icon.svelte';
 	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
 	import Seo from '../_components/Seo.svelte';
 
+	import type { RouteId } from '$app/types';
+	import { routeHref } from './_components/route-href';
+
 	type Demo = {
 		title: string;
 		description: string;
-		href: string;
+		href: RouteId;
 		icon: string;
 		tag: string;
 		featured?: boolean;
@@ -201,7 +203,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 	<!-- Co-flagships: the editor demo and the full IDE playground -->
 	<div class="flagship-pair">
 		{#each flagships as flagship (flagship.href)}
-			<a class="demo-card demo-card--featured" href={resolve(flagship.href as '/demo/editor')}>
+			<a class="demo-card demo-card--featured" href={routeHref(flagship.href)}>
 				<div class="card-head">
 					<span class="card-icon card-icon--featured" aria-hidden="true">{flagship.icon}</span>
 					<span class="demo-tag demo-tag--featured">{flagship.tag}</span>
@@ -222,7 +224,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 			<h2 id={`group-${group.title}`} class="group-title">{group.title}</h2>
 			<div class="card-grid">
 				{#each group.demos as demo (demo.href)}
-					<a class="demo-card demo-card--grouped" href={resolve(demo.href as '/demo/editor')}>
+					<a class="demo-card demo-card--grouped" href={routeHref(demo.href)}>
 						<div class="card-head">
 							<span class="card-icon" aria-hidden="true">{demo.icon}</span>
 							<span class="demo-tag">{demo.tag}</span>

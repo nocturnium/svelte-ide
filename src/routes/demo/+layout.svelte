@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import type { RouteId } from '$app/types';
+	import { routeHref } from './_components/route-href';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
 	import BrandMark from '$lib/components/BrandMark.svelte';
 
@@ -10,10 +12,10 @@
 
 	let { children }: Props = $props();
 
-	type NavItem = { href: string; label: string; icon: string };
+	type NavItem = { href: RouteId; label: string; icon: string };
 	type NavGroup = { title: string; items: NavItem[] };
 
-	// Grouped navigation. Hrefs are stored WITHOUT the base; we prefix `base`
+	// Grouped navigation. Hrefs are route ids; `resolve()` adds the base path
 	// at render time so links stay correct under a deployed sub-path.
 	const navGroups: NavGroup[] = [
 		{
@@ -61,8 +63,8 @@
 		FULL_BLEED_PATHS.has(currentPath.slice(resolve('/').replace(/\/$/, '').length))
 	);
 
-	function isActive(href: string): boolean {
-		const target = resolve(href as '/demo/editor');
+	function isActive(href: RouteId): boolean {
+		const target = routeHref(href);
 		return currentPath === target;
 	}
 
@@ -196,7 +198,7 @@
 						<a
 							class="nav-item"
 							class:active={isActive(item.href)}
-							href={resolve(item.href as '/demo/editor')}
+							href={routeHref(item.href)}
 							aria-current={isActive(item.href) ? 'page' : undefined}
 						>
 							<span class="nav-icon" aria-hidden="true">{item.icon}</span>
