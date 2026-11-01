@@ -4,7 +4,7 @@
  * Handles saving and loading AI conversations to IndexedDB/localStorage
  */
 
-import { browser } from '$app/environment';
+import { browser } from '../utils/env';
 import type { AIConversation } from '$types';
 
 // Configuration
@@ -98,8 +98,10 @@ export async function saveConversation(
 ): Promise<void> {
 	if (!initialized) await initPersistence();
 
+	// $state.snapshot strips Svelte's reactive proxies: IndexedDB uses the
+	// structured clone algorithm, which throws DataCloneError on a Proxy.
 	const data = {
-		...conversation,
+		...$state.snapshot(conversation),
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- plain persistence object, not reactive UI state
 		updatedAt: new Date()
 	};

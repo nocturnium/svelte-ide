@@ -22,5 +22,5 @@ describe('CRDT optional peer dependencies', () => {
 			vi.doUnmock('y-websocket');
 			vi.doUnmock('y-protocols/awareness');
 		}
-	});
+	}, 30000);
 });

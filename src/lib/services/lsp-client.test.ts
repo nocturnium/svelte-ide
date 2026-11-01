@@ -72,6 +72,82 @@ class MockWebSocket {
 // Assign globals
 vi.stubGlobal('WebSocket', MockWebSocket);
 
+// ============================================================================
+// Tests: Lifecycle hardening (review round 1)
+// ============================================================================
+
+describe('LSPClient lifecycle hardening', () => {
+	function sent(ws: MockWebSocket): Array<Record<string, unknown>> {
+		return ws.send.mock.calls.map((c) => JSON.parse(c[0] as string));
+	}
+
+	it('rejects connect() when the socket closes before it opens', async () => {
+		const client = new LSPClient(getDefaultConfig());
+		const pending = client.connect();
+		MockWebSocket.instances[0].simulateClose();
+		await expect(pending).rejects.toThrow(/closed/i);
+	});
+
+	it('sends didOpen for documents opened before the connection was ready', async () => {
+		const client = new LSPClient(getDefaultConfig());
+		client.didOpen('file:///a.ts', 'typescript', 1, 'early');
+		const pending = client.connect();
+		const ws = MockWebSocket.instances[0];
+		ws.simulateOpen();
+		const init = sent(ws)[0];
+		ws.simulateMessage({ jsonrpc: '2.0', id: init.id, result: { capabilities: {} } });
+		await pending;
+		const opens = sent(ws).filter((m) => m.method === 'textDocument/didOpen');
+		expect(opens).toHaveLength(1);
+		expect((opens[0].params as { textDocument: { text: string } }).textDocument.text).toBe('early');
+	});
+
+	it('replays open documents with their latest text after a reconnect', async () => {
+		const { client, ws } = await createConnectedClient();
+		client.didOpen('file:///a.ts', 'typescript', 1, 'hello');
+		client.didChange('file:///a.ts', 2, [
+			{ range: { start: { line: 0, character: 5 }, end: { line: 0, character: 5 } }, text: '!' }
+		]);
+		ws.simulateClose();
+
+		const pending = client.connect();
+		const ws2 = MockWebSocket.instances[MockWebSocket.instances.length - 1];
+		ws2.simulateOpen();
+		const init = sent(ws2)[0];
+		ws2.simulateMessage({ jsonrpc: '2.0', id: init.id, result: { capabilities: {} } });
+		await pending;
+		const open = sent(ws2).find((m) => m.method === 'textDocument/didOpen');
+		expect(open?.params).toMatchObject({ textDocument: { text: 'hello!', version: 2 } });
+	});
+
+	it('answers server requests and never resolves a pending client request with them', async () => {
+		const { client, ws } = await createConnectedClient();
+		client.didOpen('file:///a.ts', 'typescript', 1, 'x');
+		const hover = client.hover('file:///a.ts', { line: 0, character: 0 });
+		const hoverReq = sent(ws).find((m) => m.method === 'textDocument/hover')!;
+
+		// Server -> client request reusing the same numeric id.
+		ws.simulateMessage({
+			jsonrpc: '2.0',
+			id: hoverReq.id,
+			method: 'workspace/configuration',
+			params: { items: [{}, {}] }
+		});
+		const reply = sent(ws).find((m) => m.id === hoverReq.id && !('method' in m));
+		expect(reply).toEqual({ jsonrpc: '2.0', id: hoverReq.id, result: [null, null] });
+
+		ws.simulateMessage({ jsonrpc: '2.0', id: hoverReq.id, result: { contents: 'real' } });
+		await expect(hover).resolves.toMatchObject({ contents: 'real' });
+	});
+
+	it('replies MethodNotFound to unknown server requests', async () => {
+		const { ws } = await createConnectedClient();
+		ws.simulateMessage({ jsonrpc: '2.0', id: 'srv-1', method: 'custom/thing', params: {} });
+		const reply = sent(ws).find((m) => m.id === 'srv-1');
+		expect(reply).toMatchObject({ error: { code: -32601 } });
+	});
+});
+
 beforeEach(() => {
 	MockWebSocket.instances = [];
 });
