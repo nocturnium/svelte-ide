@@ -143,10 +143,10 @@
 			class="mobile-toggle"
 			aria-expanded={mobileOpen}
 			aria-controls="demo-sidebar"
+			aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
 			onclick={() => (mobileOpen = !mobileOpen)}
 		>
 			<span aria-hidden="true">{mobileOpen ? '✕' : '☰'}</span>
-			<span class="ide-visually-hidden">Toggle navigation</span>
 		</button>
 		<a class="mobile-brand" href={resolve('/')}>
 			<BrandMark size={22} />
@@ -237,7 +237,7 @@
 		/>
 	</div>
 
-	<main class="demo-content" class:demo-content--bleed={isFullBleed}>
+	<main class="demo-content" class:demo-content--bleed={isFullBleed} inert={mobileOpen}>
 		<div class="demo-content__inner">
 			{@render children()}
 		</div>
@@ -267,8 +267,8 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 2.25rem;
-		height: 2.25rem;
+		width: 2.75rem;
+		height: 2.75rem;
 		background: var(--ide-bg-tertiary);
 		color: var(--ide-text-primary);
 		border: 1px solid var(--ide-border);
@@ -338,7 +338,7 @@
 	.version-pill {
 		font-size: var(--ide-font-size-xs);
 		font-family: var(--ide-font-mono);
-		color: var(--ide-accent);
+		color: var(--ide-interactive-text);
 		background: color-mix(in srgb, var(--ide-accent) 14%, transparent);
 		padding: 1px var(--ide-spacing-sm);
 		border-radius: var(--ide-radius-full);
@@ -435,7 +435,7 @@
 		color: var(--ide-text-muted);
 	}
 	.nav-item.active .nav-icon {
-		color: var(--ide-accent);
+		color: var(--ide-interactive-text);
 	}
 	.nav-label {
 		white-space: nowrap;

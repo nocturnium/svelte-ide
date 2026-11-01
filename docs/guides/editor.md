@@ -592,7 +592,7 @@ it runs on every language the tokenizer knows. It is also an approximation of a
 parser, and it is worth being precise about how far the verification reaches,
 because a single number would flatter it:
 
-- The tokenizer knows **32** languages. Cognitive Complexity has dedicated rules
+- The tokenizer knows **31** languages plus plaintext. Cognitive Complexity has dedicated rules
   for **four** of them — JavaScript, TypeScript, Python and Go. Every other
   language is scored with the **JavaScript** rules.
 - Only **JavaScript and TypeScript** are pinned exactly. A differential harness

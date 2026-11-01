@@ -124,7 +124,7 @@
 		font-weight: 700;
 	}
 	.stats__sep {
-		color: var(--ide-text-subtle, #64748b);
+		color: var(--ide-text-muted);
 	}
 
 	.lang-group__title {
@@ -144,7 +144,7 @@
 		font-size: 11px;
 		font-weight: 600;
 		letter-spacing: 0;
-		color: var(--ide-text-subtle, #64748b);
+		color: var(--ide-text-muted);
 		background: var(--ide-bg-secondary, #131c2e);
 		border: 1px solid var(--ide-border-subtle, #233148);
 		border-radius: 999px;
@@ -190,7 +190,7 @@
 		margin-left: auto;
 		font-family: var(--ide-font-mono, ui-monospace, monospace);
 		font-size: 11px;
-		color: var(--ide-text-subtle, #64748b);
+		color: var(--ide-text-muted);
 	}
 	.lang-card__copy {
 		flex-shrink: 0;

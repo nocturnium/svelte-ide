@@ -897,6 +897,12 @@ renderStatus(status);`);
 		}
 	}
 
+	@media (prefers-reduced-motion: reduce) {
+		.echo-caret {
+			animation: none;
+		}
+	}
+
 	.echo-label {
 		/* Sit in the right margin instead of over the line's leading code. */
 		margin-left: auto;

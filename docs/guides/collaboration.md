@@ -69,9 +69,7 @@ The `/crdt` barrel exports exactly these four runtime values:
 The high-level `<CollaborativeEditor>` Svelte component is exported from the package root (and from `@nocturnium/svelte-ide/components/editor`), not from `/crdt`:
 
 ```ts
-import { CollaborativeEditor } from '@nocturnium/svelte-ide';
-// or
-import { CollaborativeEditor } from '@nocturnium/svelte-ide/components/editor';
+import { CollaborativeEditor } from '@nocturnium/svelte-ide/crdt';
 ```
 
 > Remember to import the theme once so the editor (and remote-cursor styles) render correctly: `import '@nocturnium/svelte-ide/theme.css';`. See [Theming](../theming.md).
@@ -84,7 +82,7 @@ The smallest end-to-end setup: create a `Y.Doc`, attach a `CollaborativeProvider
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import * as Y from 'yjs';
-	import { CollaborativeEditor } from '@nocturnium/svelte-ide';
+	import { CollaborativeEditor } from '@nocturnium/svelte-ide/crdt';
 	import { CollaborativeProvider } from '@nocturnium/svelte-ide/crdt';
 	import '@nocturnium/svelte-ide/theme.css';
 
@@ -157,7 +155,7 @@ becomes a caret:
 
 ```svelte
 <script lang="ts">
-	import { CollaborativeEditor } from '@nocturnium/svelte-ide';
+	import { CollaborativeEditor } from '@nocturnium/svelte-ide/crdt';
 	import type { RemoteCursor } from '@nocturnium/svelte-ide/components/editor';
 
 	// Whatever your awareness states look like, mapped to carets.

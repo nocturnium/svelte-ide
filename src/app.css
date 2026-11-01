@@ -4,20 +4,20 @@
 /* Rich default syntax palette for editor variables and tokenizer-rendered HTML. */
 :root {
 	/* Comments get their own value rather than borrowing --ide-text-muted, which is
-	   a 60%-alpha token meant for de-emphasized UI chrome. At 60% a comment
-	   measured 4.39:1 on the editor background — under WCAG AA before any overlay
-	   was involved — and 4.02:1 inside a critical complexity region. A comment is
-	   code you are meant to read, not chrome. At 72% it measures 5.81:1 on the
-	   editor background and 5.13:1 under the heaviest complexity veil — both
-	   verified in a real browser.
+	   a 60%-alpha token meant for de-emphasized UI chrome. A comment is code you are
+	   meant to read, not chrome.
 
-	   Scoping that claim precisely, because a loose one has now been wrong twice:
-	   those are the two states THIS feature introduces. A comment on the ACTIVE
-	   LINE measures 3.96:1, and 3.42:1 when that line also sits under the heaviest
-	   veil. The active-line band predates this work — it is in the first commit —
-	   and is a separate, pre-existing AA gap that this token does not claim to
-	   fix. */
-	--editor-token-comment: color-mix(in srgb, var(--ide-text-secondary) 72%, transparent);
+	   92% of --ide-text-secondary is the lowest round alpha that keeps a comment at
+	   or above WCAG AA (4.5:1) on every surface it can land on. Composite alpha, over
+	   the surface actually behind it:
+	     editor background            8.80:1
+	     ...under the critical veil   7.43:1
+	     active-line band             5.40:1
+	     ...under the critical veil   4.54:1   <- the binding case
+	   At the previous 72% the last two were 3.96:1 and 3.43:1.
+	   theme-contrast.test.ts re-measures all four from this file, so changing the
+	   alpha, the band colour or the veil re-runs the arithmetic. */
+	--editor-token-comment: color-mix(in srgb, var(--ide-text-secondary) 92%, transparent);
 	--editor-token-string: var(--color-nocturnium-aurora-green);
 	--editor-token-string-template: var(--color-nocturnium-aurora-green);
 	--editor-token-string-regex: var(--color-nocturnium-aurora-pink);

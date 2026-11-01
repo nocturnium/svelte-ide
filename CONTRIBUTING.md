@@ -74,7 +74,7 @@ npm install yjs y-websocket y-protocols
 cd backend
 go build ./...
 go test ./...
-go run ./cmd/lsp-bridge        # listens on :8765, localhost origins only
+go run ./cmd/lsp-bridge        # listens on 127.0.0.1:8765, localhost origins only
 ```
 
 ## Everyday scripts

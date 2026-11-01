@@ -407,7 +407,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		height: 2.5rem;
 		border-radius: var(--ide-radius-lg);
 		background: color-mix(in srgb, var(--group-accent, var(--ide-accent)) 14%, transparent);
-		color: var(--group-accent, var(--ide-accent));
+		color: color-mix(in srgb, var(--group-accent, var(--ide-accent)) 55%, var(--ide-text-primary));
 		font-size: var(--ide-font-size-lg);
 	}
 	.card-icon--featured {
@@ -426,7 +426,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		padding: 2px var(--ide-spacing-sm);
 		border-radius: var(--ide-radius-full);
 		background: color-mix(in srgb, var(--group-accent, var(--ide-accent)) 18%, transparent);
-		color: var(--group-accent, var(--ide-accent));
+		color: color-mix(in srgb, var(--group-accent, var(--ide-accent)) 55%, var(--ide-text-primary));
 		border: 1px solid color-mix(in srgb, var(--group-accent, var(--ide-accent)) 30%, transparent);
 		font-family: var(--ide-font-sans);
 		font-size: var(--ide-font-size-xs);
@@ -457,7 +457,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		margin-top: var(--ide-spacing-md);
 		font-size: var(--ide-font-size-sm);
 		font-weight: 500;
-		color: var(--group-accent, var(--ide-accent));
+		color: color-mix(in srgb, var(--group-accent, var(--ide-accent)) 55%, var(--ide-text-primary));
 	}
 	.card-link--featured {
 		font-weight: 600;

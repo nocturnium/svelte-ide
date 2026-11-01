@@ -524,6 +524,7 @@ MIT License - see LICENSE file for details
 	class:is-narrow={isNarrow}
 	bind:this={playgroundEl}
 >
+	<h1 class="ide-visually-hidden">Playground: the full IDE composed from the library</h1>
 	<!-- Activity Bar -->
 	<div class="activity-bar">
 		<button
