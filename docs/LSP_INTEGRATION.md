@@ -312,7 +312,7 @@ go build -o lsp-bridge ./cmd/lsp-bridge
 ./lsp-bridge
 
 # Custom port
-./lsp-bridge -addr :9000
+./lsp-bridge -addr 127.0.0.1:9000
 
 # Custom language server paths
 ./lsp-bridge -gopls /custom/path/gopls -tsserver /custom/path/tsserver

@@ -238,7 +238,7 @@
 		font-size: 10px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: var(--ide-text-subtle, #64748b);
+		color: var(--ide-text-muted);
 	}
 	.props-playground__usage code {
 		font-family: var(--ide-font-mono, ui-monospace, monospace);

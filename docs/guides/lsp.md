@@ -457,7 +457,7 @@ go mod tidy
 go run ./cmd/lsp-bridge        # or: go build -o lsp-bridge ./cmd/lsp-bridge && ./lsp-bridge
 ```
 
-By default it listens on `:8765` and exposes:
+By default it listens on `127.0.0.1:8765` (loopback only) and exposes:
 
 | Endpoint                                  | Purpose                                               |
 | ----------------------------------------- | ----------------------------------------------------- |
@@ -471,14 +471,16 @@ Out of the box, `language=go` routes to `gopls` and `language=typescript` (also 
 
 | Flag               | Default                      | Description                                               |
 | ------------------ | ---------------------------- | --------------------------------------------------------- |
-| `-addr`            | `:8765`                      | Listen address.                                           |
+| `-addr`            | `127.0.0.1:8765`             | Listen address.                                           |
 | `-gopls`           | `gopls`                      | Path to the `gopls` binary.                               |
 | `-tsserver`        | `typescript-language-server` | Path to the TypeScript server binary.                     |
 | `-allowed-origins` | _(empty)_                    | Comma-separated extra browser origins allowed to connect. |
 
 ```bash
-go run ./cmd/lsp-bridge -addr :9000 -gopls /opt/go/bin/gopls
+go run ./cmd/lsp-bridge -addr 127.0.0.1:9000 -gopls /opt/go/bin/gopls
 ```
+
+The bridge has no authentication and each session starts a native language server. Binding a non-loopback address such as `-addr :8765` lets any host that can reach the port start language servers; the bridge logs a warning when you do.
 
 ### Origin policy (security)
 

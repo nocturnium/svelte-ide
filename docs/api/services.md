@@ -1,8 +1,8 @@
 # API: Services
 
-Services are the plain-TypeScript layer that talks to your backends — the virtual filesystem, the language server, and the cross-store glue that wires it all together — plus a pair of pure utility services (error handling and optimistic updates) that have no network of their own. Every service is zero-dependency and framework-agnostic: it ships as ordinary functions and classes you can call from a Svelte component, a store, or even a plain Node script. The four namespaced services (`vfsClient`, `ideIntegration`, `errorHandling`, `optimistic`) are exported as `import * as` namespaces from the package root, while the LSP client is exported as named symbols. All HTTP/WebSocket endpoints default to a same-origin path and are configurable — the library never bakes in a host. Each service is detailed below; for deeper, task-oriented walkthroughs see the [LSP](../guides/lsp.md), [collaboration](../guides/collaboration.md), and [plugins](../guides/plugins.md) guides.
+Services are the plain-TypeScript layer that talks to your backends — the virtual filesystem, the language server, and the cross-store glue that wires it all together — plus a pair of pure utility services (error handling and optimistic updates) that have no network of their own. Every service is zero-dependency and framework-agnostic: it ships as ordinary functions and classes you can call from a Svelte component, a store, or even a plain Node script. The four namespaced services (`vfsClient`, `ideIntegration`, `errorHandling`, `optimistic`) are experimental and exported as `import * as` namespaces from the `@nocturnium/svelte-ide/services` entry. The LSP client is exported as named symbols from both the package root and `/services`. All HTTP/WebSocket endpoints default to a same-origin path and are configurable — the library never bakes in a host. Each service is detailed below; for deeper, task-oriented walkthroughs see the [LSP](../guides/lsp.md), [collaboration](../guides/collaboration.md), and [plugins](../guides/plugins.md) guides.
 
-> Every service export is re-exported from the package root (`@nocturnium/svelte-ide`). Import paths below use the published package; never use `$lib`.
+> The namespaced services are imported from `@nocturnium/svelte-ide/services`. The LSP client is stable and also available from the package root. Import paths below use the published package; never use `$lib`.
 
 ---
 
@@ -15,7 +15,7 @@ A namespaced HTTP client for a virtual-filesystem (VFS) backend. It is a module 
 **Default endpoint:** `/api/vfs` (same-origin). Configurable via `vfsClient.configure({ baseUrl })`.
 
 ```ts
-import { vfsClient } from '@nocturnium/svelte-ide';
+import { vfsClient } from '@nocturnium/svelte-ide/services';
 
 // Point the client at your backend (defaults to '/api/vfs')
 vfsClient.configure({
@@ -152,7 +152,7 @@ A stateful coordination service that connects the VFS, agents, and collaboration
 **Default endpoint:** none of its own; it reuses the VFS client and collaboration store. The collaboration server URL defaults to `/api/collab`, supplied through `config.vfsEndpoint`.
 
 ```ts
-import { ideIntegration } from '@nocturnium/svelte-ide';
+import { ideIntegration } from '@nocturnium/svelte-ide/services';
 
 ideIntegration.initialize({
 	workspaceId: 'workspace-1',
@@ -210,7 +210,7 @@ A pure (no-network) service for turning raw errors into a structured, user-prese
 **Default endpoint:** none — this service performs no I/O.
 
 ```ts
-import { errorHandling } from '@nocturnium/svelte-ide';
+import { errorHandling } from '@nocturnium/svelte-ide/services';
 
 try {
 	await vfsClient.writeFile(ws, path, content, version);
@@ -271,7 +271,7 @@ A pure service for optimistic UI updates with automatic rollback: apply a change
 **Default endpoint:** none — the `commit` callback you pass does the I/O.
 
 ```ts
-import { optimistic, vfsClient } from '@nocturnium/svelte-ide';
+import { optimistic, vfsClient } from '@nocturnium/svelte-ide/services';
 
 const result = await optimistic.optimisticUpdate({
 	type: 'file_save',
@@ -321,7 +321,7 @@ The service tracks in-flight operations in a module-level queue.
 
 ## LSP client
 
-The Language Server Protocol client speaks JSON-RPC over a WebSocket to any LSP-over-WebSocket bridge — for example the standalone Go `lsp-bridge` server in [`backend/`](../../backend) (defaults to `:8765`). Unlike the four namespaced services above, the LSP client is exported as named symbols (`LSPClient`, `createLSPClient`, and three position helpers), and is part of the **stable** public API.
+The Language Server Protocol client speaks JSON-RPC over a WebSocket to any LSP-over-WebSocket bridge — for example the standalone Go `lsp-bridge` server in [`backend/`](../../backend) (defaults to `127.0.0.1:8765`). Unlike the four namespaced services above, the LSP client is exported as named symbols (`LSPClient`, `createLSPClient`, and three position helpers), and is part of the **stable** public API.
 
 **Source:** `src/lib/services/lsp-client.ts`
 

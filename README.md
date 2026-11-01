@@ -18,7 +18,7 @@ full IDE experience.
 ## Features
 
 - **Custom code editor** — no CodeMirror, no Monaco; pure Svelte 5.
-- **Syntax highlighting** for 12 languages via a built-in tokenizer.
+- **Syntax highlighting** for 31 languages via a built-in tokenizer (plus plaintext).
 - **Code folding** — bracket, indentation, comment, and region strategies.
 - **Multi-cursor editing** with overlap merging and configurable limits.
 - **Find & replace** with regex support.
@@ -130,7 +130,7 @@ You supply the LSP bridge. A ready-to-run Go WebSocket bridge lives in
 
 ```svelte
 <script>
-	import { CollaborativeEditor } from '@nocturnium/svelte-ide';
+	import { CollaborativeEditor } from '@nocturnium/svelte-ide/crdt';
 	import '@nocturnium/svelte-ide/theme.css';
 	// requires: npm install yjs y-websocket y-protocols
 

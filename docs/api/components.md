@@ -179,8 +179,6 @@ UI for collaborating-agent presence: avatars, an activity feed, a presence bar, 
 
 ```svelte
 <script>
-	import { AgentPresenceBar, AgentCursor } from '@nocturnium/svelte-ide';
-	// or, scoped to the domain:
 	import { AgentPresenceBar, AgentCursor } from '@nocturnium/svelte-ide/components/agents';
 </script>
 ```
@@ -202,8 +200,6 @@ Virtual-filesystem UI for file locking and conflict resolution. These coordinate
 
 ```svelte
 <script>
-	import { LockIndicator, VersionConflictDialog } from '@nocturnium/svelte-ide';
-	// or, scoped to the domain:
 	import { LockIndicator, VersionConflictDialog } from '@nocturnium/svelte-ide/components/vfs';
 </script>
 ```
@@ -225,8 +221,6 @@ UI for the proposal-based plugin lifecycle: a management panel, plugin cards, a 
 
 ```svelte
 <script>
-	import { PluginPanel, PluginCard } from '@nocturnium/svelte-ide';
-	// or, scoped to the domain:
 	import { PluginPanel, PluginCard } from '@nocturnium/svelte-ide/components/plugins';
 </script>
 ```

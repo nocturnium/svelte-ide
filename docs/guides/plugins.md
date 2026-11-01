@@ -1,6 +1,6 @@
 # Plugin System
 
-`@nocturnium/svelte-ide` ships a **proposal-based** plugin system: extensions are not loaded from disk or a registry, they are _proposed_, reviewed, tested, and gradually rolled out before they ever run in front of a user. The library provides the client-side pieces — a reactive store that tracks proposal lifecycle, a loader for server-rendered plugin components, a best-effort sandbox, and small helpers for declaring plugin metadata. It deliberately ships **no backend**. You bring your own _plugin host_: an HTTP + Server-Sent-Events service that stores proposals, runs reviews/tests, and serves compiled plugin artifacts. Everything in this guide talks to that host over a small, fully configurable contract.
+`@nocturnium/svelte-ide` ships a **proposal-based** plugin system: extensions are not loaded from disk or a registry, they are _proposed_, reviewed, tested, and gradually rolled out before they ever run in front of a user. The library provides the client-side pieces — a reactive store that tracks proposal lifecycle, a loader for server-rendered plugin components, and small helpers for declaring plugin metadata. It deliberately ships **no backend**. You bring your own _plugin host_: an HTTP + Server-Sent-Events service that stores proposals, runs reviews/tests, and serves compiled plugin artifacts. Everything in this guide talks to that host over a small, fully configurable contract.
 
 ---
 
@@ -481,7 +481,7 @@ To make the plugin system live, your backend must:
 5. **Run review, testing, and rollout** however you like, advancing `status` and emitting the matching events (`review_started`, `approved`/`rejected`, `testing_started`/`test_completed`, `deploying`/`rollout_step`/`deployed`, `rolled_back`).
 6. **Serve artifacts** for deployed plugins at `GET /api/plugins/plugins/:id/component` and `/module`, returning JSON the loader can consume.
 
-The library handles the rest: reactive state, optimistic transitions, event reconciliation, the loader, the sandbox guard, and the UI.
+The library handles the rest: reactive state, optimistic transitions, event reconciliation, the loader, and the UI.
 
 ---
 

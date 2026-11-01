@@ -140,9 +140,13 @@ print(active_names(users))
 		{
 			label: 'Go',
 			language: 'go',
+			// Grouped import form on purpose: a line-leading single import of one package inside
+			// this string is read by Vite's dependency scanner as a module import and fails to resolve.
 			content: `package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type User struct {
 	ID   int

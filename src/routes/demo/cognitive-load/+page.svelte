@@ -401,8 +401,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		<p class="section-desc">
 			Regions at or above the Moderate band get a coloured edge in the gutter and a slight lift of
 			the background. The code itself is never washed over, so nothing becomes harder to read: in
-			the busiest region a comment — the faintest token — measures 5.13:1, against 5.81:1 on
-			unmarked code.
+			the busiest region a comment — the faintest token — measures 7.4:1, against 8.8:1 on unmarked
+			code.
 		</p>
 
 		<!-- Standalone meter display -->
@@ -725,8 +725,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	.meter-label {
 		font-size: 0.75rem;
-		/* --ide-text-muted is a 60%-alpha token; on these surfaces it measured
-		   2.47:1 on the stat card and 3.93:1 here. Secondary is 10.2:1. */
+		/* Secondary text: these labels carry the reading, so they get more weight
+		   than muted helper text. */
 		color: var(--ide-text-secondary);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -836,8 +836,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		letter-spacing: 0.04em;
 		text-transform: uppercase;
 		/* Secondary, not muted, for the reason already recorded on `.meter-label`
-		   in this same file: --ide-text-muted is a 60%-alpha token and measures
-		   3.93:1 on --ide-bg-secondary, under the 4.5:1 floor. Secondary is 10.2:1.
+		   in this same file: secondary text gives the title more weight than the
+		   notes under it (8.2:1 on --ide-bg-secondary; muted is 6.8:1).
 		   The rail's own title was the least legible thing in the rail. */
 		color: var(--ide-text-secondary);
 	}
@@ -945,7 +945,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		font-size: 0.8125rem;
 		font-style: italic;
 		/* The one string whose job is to say nothing is broken; it has to be
-		   readable. Muted measures 3.93:1 here. */
+		   readable, so it uses the stronger secondary text. */
 		color: var(--ide-text-secondary);
 	}
 
@@ -963,6 +963,12 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		}
 		50% {
 			opacity: 0.5;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ai-dot {
+			animation: none;
 		}
 	}
 

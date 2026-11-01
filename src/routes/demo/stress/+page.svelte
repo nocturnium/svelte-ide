@@ -129,11 +129,13 @@
 	description="A real Nocturnium CustomEditor rendering a generated 50,000-line file — proof that virtualized rendering stays smooth, with live DOM-node and FPS counters."
 />
 
-<main class="stress-demo">
+<section class="stress-demo" aria-labelledby="stress-title">
 	<header class="stress-hero">
 		<div class="stress-hero__copy">
 			<p class="eyebrow">Virtualized editor stress test</p>
-			<h1>{formatNumber(selectedLineCount)} lines, ~{renderedLineNodes} DOM nodes, {fps}fps.</h1>
+			<h1 id="stress-title">
+				{formatNumber(selectedLineCount)} lines, ~{renderedLineNodes} DOM nodes, {fps}fps.
+			</h1>
 			<p>
 				The real CustomEditor is mounted below with a generated TypeScript-scale workload. Only the
 				visible window is in the DOM while the document remains fully scrollable.
@@ -197,7 +199,7 @@
 			/>
 		</div>
 	</section>
-</main>
+</section>
 
 <style>
 	.stress-demo {

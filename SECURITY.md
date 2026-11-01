@@ -2,14 +2,14 @@
 
 ## Supported versions
 
-The library follows a "latest patch" support model for the current 1.x release
-line. Security fixes land on the most recent `1.x` release. Please upgrade to
-the latest version before reporting an issue.
+The library follows a "latest release" support model for the current 2.x line.
+Security fixes land on the most recent `2.x` release. Please upgrade to the
+latest version before reporting an issue.
 
 | Version | Supported |
 | ------- | --------- |
-| 1.0.x   | ✅        |
-| < 1.0   | ❌        |
+| 2.x     | ✅        |
+| < 2.0   | ❌        |
 
 ## Reporting a vulnerability
 
@@ -34,9 +34,13 @@ A few areas are worth calling out for anyone assessing this project:
   `{@html}` use, but you remain responsible for the trust level of the model
   endpoint you connect.
 - **The `backend/` LSP bridge** spawns native language servers against the local
-  filesystem. By design it only accepts connections from `localhost` origins
-  unless you explicitly pass `-allowed-origins`. **Do not expose it to untrusted
+  filesystem. By default it listens on `127.0.0.1` only and accepts browser
+  connections from `localhost` origins unless you pass `-allowed-origins`. It
+  has no authentication, and clients that send no `Origin` header are accepted,
+  so binding it to a non-loopback address exposes it to that network. **Do not expose it to untrusted
   networks**, and never run it with `-allowed-origins '*'` on a public host.
-- **The plugin system** can execute untrusted plugin code. The provided sandbox
-  is best-effort; treat plugin sources as you would any third-party code and run
-  them behind your own review/approval flow.
+- **The plugin system** ships no client-side sandbox. Plugin code you load runs
+  with your app's privileges, and `PluginPreviewSandbox`, despite its name, runs
+  preview transforms in the host page. Run untrusted plugin code on your plugin
+  host or in a cross-origin iframe or Worker (see `docs/guides/plugins.md`,
+  "Running untrusted plugin code").

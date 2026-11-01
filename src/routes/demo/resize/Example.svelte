@@ -268,7 +268,7 @@
 		font-weight: 700;
 		font-variant-numeric: tabular-nums;
 		line-height: 1;
-		color: color-mix(in srgb, var(--ide-text-primary) 28%, transparent);
+		color: color-mix(in srgb, var(--ide-text-primary) 55%, transparent);
 		user-select: none;
 	}
 

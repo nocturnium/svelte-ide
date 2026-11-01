@@ -1,6 +1,6 @@
 # @nocturnium/svelte-ide — Documentation
 
-`@nocturnium/svelte-ide` is a Svelte 5-native code editor component library with **zero required runtime dependencies beyond the Svelte 5 peer**. It ships a custom editor (no CodeMirror) with syntax highlighting for 12 languages, code folding, multi-cursor editing, and find & replace, plus optional layers for LSP, real-time CRDT collaboration, AI panels, a virtual filesystem, and a proposal-based plugin system. Styling is plain CSS custom properties — no CSS framework required — and the only other runtime dependency is the optional Yjs collaboration stack, pulled in only if you use the realtime-collaboration components. This page is the navigational hub for the docs — start with **Getting started**, then dig into the guides and API reference below.
+`@nocturnium/svelte-ide` is a Svelte 5-native code editor component library with **zero required runtime dependencies beyond the Svelte 5 peer**. It ships a custom editor (no CodeMirror) with syntax highlighting for 31 languages, code folding, multi-cursor editing, and find & replace, plus optional layers for LSP, real-time CRDT collaboration, AI panels, a virtual filesystem, and a proposal-based plugin system. Styling is plain CSS custom properties — no CSS framework required — and the only other runtime dependency is the optional Yjs collaboration stack, pulled in only if you use the realtime-collaboration components. This page is the navigational hub for the docs — start with **Getting started**, then dig into the guides and API reference below.
 
 ```bash
 npm install @nocturnium/svelte-ide
@@ -66,12 +66,8 @@ Everything is re-exported from the package root, but you can import from a narro
 
 ```ts
 // Everything (root)
-import {
-	CustomEditor,
-	LSPEditor,
-	createLSPClient,
-	CollaborativeEditor
-} from '@nocturnium/svelte-ide';
+import { CustomEditor, LSPEditor, createLSPClient } from '@nocturnium/svelte-ide';
+import { CollaborativeEditor } from '@nocturnium/svelte-ide/crdt';
 
 // Scoped entry points
 import { openFile } from '@nocturnium/svelte-ide/stores';
