@@ -1,4 +1,4 @@
-import { browser } from '$app/env';
+import { browser } from '$lib/utils/env';
 import { streamMockResponse } from '$lib/services/mock-ai';
 
 /**

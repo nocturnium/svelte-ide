@@ -98,7 +98,7 @@
 </script>
 
 <script lang="ts">
-	import { browser } from '$app/env';
+	import { browser } from '$lib/utils/env';
 	import DemoPage from '../_components/DemoPage.svelte';
 	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import { seedProposals } from '$lib/stores/plugin.svelte';

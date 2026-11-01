@@ -12,7 +12,7 @@
 	 * can't express those, so the playground would render a control that silently
 	 * lies about the real API. Those need a real controls schema, not this.
 	 */
-	import { browser } from '$app/env';
+	import { browser } from '$lib/utils/env';
 	import { untrack, type Snippet } from 'svelte';
 	import CustomEditor from '$lib/components/editor/CustomEditor.svelte';
 

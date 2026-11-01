@@ -1,4 +1,5 @@
 {
+	// SvelteKit 3: `svelte-kit sync` writes this virtual base config to node_modules/$app/tsconfig.json.
 	"extends": "$app/tsconfig",
 	"compilerOptions": {
 		"allowJs": true,

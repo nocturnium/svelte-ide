@@ -8,7 +8,7 @@
 	import Icon from '$lib/components/core/Icon.svelte';
 	import FileIcon from '$lib/components/editor/FileIcon.svelte';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
-	import { browser } from '$app/env';
+	import { browser } from '$lib/utils/env';
 	import { onDestroy } from 'svelte';
 	import { seedProposals } from '$lib/stores/plugin.svelte';
 	import { installScopedChatMock } from '../_components/scoped-chat-mock';
