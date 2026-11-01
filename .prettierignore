@@ -6,3 +6,4 @@ CHANGELOG.md
 
 # Local Codex dispatch run artifacts — not part of the repo.
 .codex-dispatch/
+.review/

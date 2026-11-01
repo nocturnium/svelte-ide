@@ -58,7 +58,8 @@ export default ts.config(
 			'node_modules/',
 			'playwright-report/',
 			'test-results/',
-			'coverage/'
+			'coverage/',
+			'.review/'
 		]
 	}
 );

@@ -61,3 +61,4 @@ backend/dist/
 # only file `prettier --check .` reports, which made every "formatting is clean"
 # claim carry an asterisk.
 resume.md
+.review/
