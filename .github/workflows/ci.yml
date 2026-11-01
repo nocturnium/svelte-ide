@@ -59,6 +59,9 @@ jobs:
       - name: Build + validate library (svelte-package + publint)
         run: npm run package
 
+      - name: Build the packed library in a plain Vite app (no SvelteKit)
+        run: node scripts/verify-consumer.mjs
+
   e2e:
     name: Playwright e2e (Chromium)
     runs-on: ubuntu-latest

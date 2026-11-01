@@ -11,7 +11,9 @@
 	},
 	"svelte": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"sideEffects": false,
+	"sideEffects": [
+		"**/*.css"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -79,6 +81,11 @@
 			"svelte": "./dist/plugins/index.js",
 			"default": "./dist/plugins/index.js"
 		},
+		"./services": {
+			"types": "./dist/services/index.d.ts",
+			"svelte": "./dist/services/index.js",
+			"default": "./dist/services/index.js"
+		},
 		"./crdt": {
 			"types": "./dist/crdt/index.d.ts",
 			"svelte": "./dist/crdt/index.js",
@@ -93,7 +100,7 @@
 		"build": "vite build",
 		"build:lib": "npm run package",
 		"preview": "vite preview",
-		"package": "svelte-kit sync && svelte-package && node scripts/strip-dist-tests.mjs && publint",
+		"package": "svelte-kit sync && svelte-package && node scripts/strip-dist-tests.mjs && node scripts/check-dist.mjs && publint",
 		"prepublishOnly": "npm run check && npm run package",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

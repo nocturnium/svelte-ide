@@ -194,8 +194,10 @@ test.describe('Editor Performance', () => {
 		const totalTime = endTime - startTime;
 
 		// Typing with syntax highlighting should still be responsive
-		// Allow more time since we're typing full snippet
-		const expectedTime = codeSnippet.length * 30; // 30ms per char max
+		// Playwright keystroke dispatch alone costs ~25-30ms per char, and the
+		// measured range on an unchanged tree overlaps the old 30ms/char budget,
+		// so allow 60ms per char. A real highlighting regression is still far over.
+		const expectedTime = codeSnippet.length * 60;
 		expect(totalTime).toBeLessThan(expectedTime);
 
 		// Verify syntax tokens are present
