@@ -18,6 +18,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,9 +30,17 @@ import (
 	"github.com/nocturnium/svelte-ide/backend/internal/server"
 )
 
+// version is reported by /health. Override at build time with
+// -ldflags "-X main.version=x.y.z".
+var version = "2.0.0"
+
+// defaultAddr keeps the bridge reachable only from this machine.
+const defaultAddr = "127.0.0.1:8765"
+
 func main() {
 	// Configuration flags
-	addr := flag.String("addr", ":8765", "Server address")
+	addr := flag.String("addr", defaultAddr,
+		"Server address. Defaults to loopback only; binding a non-loopback address lets any host that can reach the port spawn language servers")
 	gopls := flag.String("gopls", "gopls", "Path to gopls binary")
 	tsserver := flag.String("tsserver", "typescript-language-server", "Path to typescript-language-server")
 	maxSessions := flag.Int("max-sessions", 32, "Maximum concurrent LSP sessions; 0 or negative means unlimited")
@@ -77,7 +86,7 @@ func main() {
 	// Health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok","version":"1.0.0"}`))
+		w.Write([]byte(`{"status":"ok","version":"` + version + `"}`))
 	})
 
 	// Server info endpoint
@@ -104,9 +113,13 @@ func main() {
 		}()
 
 		log.Printf("🚀 LSP Bridge server starting on %s", *addr)
-		log.Printf("   WebSocket endpoint: ws://localhost%s/lsp", *addr)
-		log.Printf("   Health check: http://localhost%s/health", *addr)
-		log.Printf("   Server info: http://localhost%s/info", *addr)
+		host := displayAddr(*addr)
+		log.Printf("   WebSocket endpoint: ws://%s/lsp", host)
+		log.Printf("   Health check: http://%s/health", host)
+		log.Printf("   Server info: http://%s/info", host)
+		if !isLoopbackAddr(*addr) {
+			log.Println("   ⚠️  Listening on a non-loopback address: any host that can reach this port can start language servers. There is no authentication.")
+		}
 		if *maxSessions <= 0 {
 			log.Println("   Max sessions: unlimited")
 		} else {
@@ -149,6 +162,33 @@ func main() {
 	}
 
 	log.Println("Server stopped")
+}
+
+// corsMiddleware reflects the request Origin only when it is allowed, instead of
+// displayAddr turns a listen address into something a user can paste into a
+// browser: ":8765" becomes "localhost:8765".
+func displayAddr(addr string) string {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "localhost"
+	}
+	return net.JoinHostPort(host, port)
+}
+
+// isLoopbackAddr reports whether a listen address only accepts local connections.
+func isLoopbackAddr(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil || host == "" {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // corsMiddleware reflects the request Origin only when it is allowed, instead of

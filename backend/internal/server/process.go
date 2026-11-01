@@ -13,14 +13,22 @@ import (
 	"sync"
 )
 
+// maxContentLength caps a single LSP message from the language server. A
+// malformed or hostile header must not make the bridge allocate unbounded memory.
+const maxContentLength = 64 << 20 // 64 MiB
+
 // Process manages a running language server process.
 type Process struct {
-	cmd      *exec.Cmd
-	stdin    io.WriteCloser
-	stdout   io.ReadCloser
-	stderr   io.ReadCloser
-	config   Config
-	mu       sync.Mutex
+	cmd    *exec.Cmd
+	stdin  io.WriteCloser
+	stdout io.ReadCloser
+	stderr io.ReadCloser
+	config Config
+	// mu guards lifecycle state (running, cmd). It is never held across I/O,
+	// so a language server that stops reading stdin cannot block Stop().
+	mu sync.Mutex
+	// writeMu serialises writes to stdin so messages are not interleaved.
+	writeMu  sync.Mutex
 	running  bool
 	messages chan json.RawMessage
 	errors   chan error
@@ -55,6 +63,7 @@ func (p *Process) Start() error {
 	}
 
 	p.cmd = exec.CommandContext(p.ctx, p.config.Command, p.config.Args...)
+	configureProcessGroup(p.cmd)
 
 	var err error
 	p.stdin, err = p.cmd.StdinPipe()
@@ -126,7 +135,7 @@ func (p *Process) Stop() error {
 	}
 
 	if p.cmd != nil && p.cmd.Process != nil {
-		p.cmd.Process.Kill()
+		killProcessTree(p.cmd)
 	}
 
 	p.running = false
@@ -139,9 +148,11 @@ func (p *Process) Stop() error {
 // Send writes an LSP message to the language server.
 func (p *Process) Send(msg json.RawMessage) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	running := p.running
+	stdin := p.stdin
+	p.mu.Unlock()
 
-	if !p.running {
+	if !running || stdin == nil {
 		return fmt.Errorf("process not running")
 	}
 
@@ -149,7 +160,11 @@ func (p *Process) Send(msg json.RawMessage) error {
 	content := string(msg)
 	header := fmt.Sprintf("Content-Length: %d\r\n\r\n", len(content))
 
-	if _, err := p.stdin.Write([]byte(header + content)); err != nil {
+	// Only writeMu is held during the (possibly blocking) write. Stop() closes
+	// stdin and kills the process without taking writeMu, which unblocks us.
+	p.writeMu.Lock()
+	defer p.writeMu.Unlock()
+	if _, err := stdin.Write([]byte(header + content)); err != nil {
 		return fmt.Errorf("failed to write to stdin: %w", err)
 	}
 
@@ -186,6 +201,7 @@ func (p *Process) readMessages() {
 
 		// Read headers
 		contentLength := 0
+		sawLength := false
 		for {
 			line, err := reader.ReadString('\n')
 			if err != nil {
@@ -200,13 +216,18 @@ func (p *Process) readMessages() {
 				break // End of headers
 			}
 
-			if strings.HasPrefix(line, "Content-Length:") {
-				lenStr := strings.TrimSpace(strings.TrimPrefix(line, "Content-Length:"))
-				contentLength, _ = strconv.Atoi(lenStr)
+			if name, value, ok := strings.Cut(line, ":"); ok && strings.EqualFold(strings.TrimSpace(name), "Content-Length") {
+				n, err := strconv.Atoi(strings.TrimSpace(value))
+				if err != nil || n < 0 || n > maxContentLength {
+					p.protocolError(fmt.Errorf("invalid Content-Length header %q", line))
+					return
+				}
+				contentLength = n
+				sawLength = true
 			}
 		}
 
-		if contentLength == 0 {
+		if !sawLength || contentLength == 0 {
 			continue
 		}
 
@@ -223,6 +244,20 @@ func (p *Process) readMessages() {
 		if !p.sendMessage(json.RawMessage(content)) {
 			return
 		}
+	}
+}
+
+// protocolError reports an unrecoverable framing error from the language
+// server and kills it, so the session observes the exit and closes instead of
+// sitting on a dead reader forever.
+func (p *Process) protocolError(err error) {
+	log.Printf("[LSP] Protocol error: %v", err)
+	p.sendError(err)
+	p.mu.Lock()
+	cmd := p.cmd
+	p.mu.Unlock()
+	if cmd != nil && cmd.Process != nil {
+		killProcessTree(cmd)
 	}
 }
 

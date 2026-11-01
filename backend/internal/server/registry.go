@@ -76,22 +76,18 @@ func (r *Registry) InfoJSON() string {
 
 	info := struct {
 		Servers map[string]struct {
-			Command   string   `json:"command"`
 			Languages []string `json:"languages"`
 		} `json:"servers"`
 	}{
 		Servers: make(map[string]struct {
-			Command   string   `json:"command"`
 			Languages []string `json:"languages"`
 		}),
 	}
 
 	for name, cfg := range r.configs {
 		info.Servers[name] = struct {
-			Command   string   `json:"command"`
 			Languages []string `json:"languages"`
 		}{
-			Command:   cfg.Command,
 			Languages: cfg.Languages,
 		}
 	}
