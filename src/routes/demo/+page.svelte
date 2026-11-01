@@ -4,13 +4,12 @@
 	import { tokenize, tokensToHTML } from '$lib/components/editor/tokenizer';
 	import Seo from '../_components/Seo.svelte';
 
-	import type { RouteId } from '$app/types';
-	import { routeHref } from './_components/route-href';
+	import { routeHref, type StaticRouteId } from './_components/route-href';
 
 	type Demo = {
 		title: string;
 		description: string;
-		href: RouteId;
+		href: StaticRouteId;
 		icon: string;
 		tag: string;
 		featured?: boolean;

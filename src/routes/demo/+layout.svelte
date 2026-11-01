@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import type { RouteId } from '$app/types';
-	import { routeHref } from './_components/route-href';
+	import { routeHref, type StaticRouteId } from './_components/route-href';
 	import ResizeHandle from '$lib/components/core/ResizeHandle.svelte';
 	import BrandMark from '$lib/components/BrandMark.svelte';
 
@@ -12,7 +11,7 @@
 
 	let { children }: Props = $props();
 
-	type NavItem = { href: RouteId; label: string; icon: string };
+	type NavItem = { href: StaticRouteId; label: string; icon: string };
 	type NavGroup = { title: string; items: NavItem[] };
 
 	// Grouped navigation. Hrefs are route ids; `resolve()` adds the base path
@@ -63,7 +62,7 @@
 		FULL_BLEED_PATHS.has(currentPath.slice(resolve('/').replace(/\/$/, '').length))
 	);
 
-	function isActive(href: RouteId): boolean {
+	function isActive(href: StaticRouteId): boolean {
 		const target = routeHref(href);
 		return currentPath === target;
 	}
