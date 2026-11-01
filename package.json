@@ -170,9 +170,8 @@
 		"yjs": "^13.6.33"
 	},
 	"overrides": {
-		"minimatch": "^11.0.3",
-		"npm": "^12.2.1",
-		"cookie": "^2.0.1"
+		"cookie": "^2.0.1",
+		"minimatch": "^11.0.3"
 	},
 	"keywords": [
 		"svelte",
