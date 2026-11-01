@@ -32,4 +32,11 @@
 		border-radius: 50%;
 		animation: ide-spin 0.6s linear infinite;
 	}
+
+	/* Reduced motion: keep the loading cue, but slow it down. */
+	@media (prefers-reduced-motion: reduce) {
+		.ide-spinner {
+			animation-duration: 2.4s;
+		}
+	}
 </style>

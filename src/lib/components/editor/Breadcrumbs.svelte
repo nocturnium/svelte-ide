@@ -42,7 +42,7 @@
 	 * - Icons for different symbol types
 	 */
 
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	interface Props {
 		/** Current breadcrumb path */
@@ -70,6 +70,19 @@
 
 	let activeDropdown = $state<string | null>(null);
 	let dropdownPosition = $state({ top: 0, left: 0 });
+	let navEl = $state<HTMLElement | null>(null);
+
+	// Keep the current (last) symbol visible when the crumbs still overflow
+	// (for example a very long file name): scroll the list to its end.
+	$effect(() => {
+		void path;
+		void fileName;
+		const el = navEl;
+		if (!el) return;
+		tick().then(() => {
+			el.scrollLeft = el.scrollWidth;
+		});
+	});
 
 	// Symbol type icons
 	const typeIcons: Record<BreadcrumbSymbol['type'], string> = {
@@ -149,9 +162,11 @@
 				activeDropdown = null;
 			} else {
 				const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+				// Keep the dropdown inside the viewport (it is up to 350px wide)
+				const dropdownWidth = Math.min(350, window.innerWidth - 16);
 				dropdownPosition = {
 					top: rect.bottom + 2,
-					left: rect.left
+					left: Math.max(8, Math.min(rect.left, window.innerWidth - dropdownWidth - 8))
 				};
 				activeDropdown = symbol.id;
 			}
@@ -191,6 +206,7 @@
 		class="breadcrumbs"
 		style={maxWidth ? `max-width: ${maxWidth}px;` : ''}
 		aria-label="Code navigation breadcrumbs"
+		bind:this={navEl}
 	>
 		<!-- File root -->
 		<button
@@ -206,10 +222,19 @@
 
 		<!-- Path segments -->
 		{#each path as symbol, index (symbol.id)}
-			<span class="breadcrumb-separator">›</span>
+			{@const collapsible = index < path.length - 1}
+			{#if collapsible && index === 0}
+				<!-- Shown instead of the middle crumbs when the bar is narrow -->
+				<span class="breadcrumb-separator breadcrumb-collapsed-only">›</span>
+				<span class="breadcrumb-ellipsis breadcrumb-collapsed-only" title="Collapsed path segments"
+					>…</span
+				>
+			{/if}
+			<span class="breadcrumb-separator" class:breadcrumb-collapsible={collapsible}>›</span>
 
 			<button
 				class="breadcrumb-item"
+				class:breadcrumb-collapsible={collapsible}
 				class:breadcrumb-item--has-siblings={symbol.siblings && symbol.siblings.length > 0}
 				class:breadcrumb-item--active={index === path.length - 1}
 				onclick={(e) => handleClick(symbol, e)}
@@ -275,6 +300,8 @@
 
 <style>
 	.breadcrumbs {
+		/* Lets the narrow-width rules below respond to the bar's own width */
+		container-type: inline-size;
 		display: flex;
 		align-items: center;
 		gap: 2px;
@@ -300,6 +327,9 @@
 		align-items: center;
 		gap: 4px;
 		padding: 3px 6px;
+		min-height: 24px;
+		min-width: 0;
+		flex: 0 1 auto;
 		background: transparent;
 		border: none;
 		border-radius: 4px;
@@ -337,6 +367,7 @@
 	.breadcrumb-label {
 		overflow: hidden;
 		text-overflow: ellipsis;
+		min-width: 0;
 	}
 
 	.breadcrumb-chevron {
@@ -350,12 +381,39 @@
 	}
 
 	.breadcrumb-separator {
+		flex: 0 0 auto;
 		color: var(--ide-text-muted, #666);
 		font-size: 11px;
 		margin: 0 2px;
 	}
 
+	.breadcrumb-ellipsis {
+		flex: 0 0 auto;
+		color: var(--ide-text-muted, #666);
+		padding: 0 4px;
+	}
+
+	.breadcrumb-collapsed-only {
+		display: none;
+	}
+
+	@container (max-width: 480px) {
+		/* Keep the file and the current symbol; fold the middle into an ellipsis */
+		.breadcrumb-collapsible {
+			display: none;
+		}
+
+		.breadcrumb-collapsed-only {
+			display: inline;
+		}
+
+		.breadcrumb-position {
+			display: none;
+		}
+	}
+
 	.breadcrumb-position {
+		flex: 0 0 auto;
 		margin-left: auto;
 		padding-left: 12px;
 		font-size: 11px;

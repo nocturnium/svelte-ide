@@ -20,6 +20,11 @@
 
 	let { open = $bindable(false), onClose, placeholder = 'Type a command...' }: Props = $props();
 
+	const uid = $props.id();
+	const listboxId = `${uid}-listbox`;
+	const optionId = (commandId: string) => `${uid}-opt-${commandId.replace(/[^\w-]/g, '_')}`;
+	const groupLabelId = (category: string) => `${uid}-grp-${category.replace(/[^\w-]/g, '_')}`;
+
 	const registry = getCommandRegistry();
 
 	let query = $state('');
@@ -52,8 +57,12 @@
 		return groups;
 	});
 
-	// Flat list for keyboard navigation
-	let flatCommands = $derived(commands);
+	// Flat list for keyboard navigation, in the same order the groups are rendered
+	let flatCommands = $derived([...groupedCommands.values()].flat());
+
+	let activeDescendant = $derived(
+		flatCommands[selectedIndex] ? optionId(flatCommands[selectedIndex].id) : undefined
+	);
 
 	// Reset selection when query changes
 	$effect(() => {
@@ -84,6 +93,15 @@
 				selectedIndex = Math.max(selectedIndex - 1, 0);
 				scrollToSelected();
 				break;
+			case 'Home':
+			case 'End':
+				// Only take over Home/End with Ctrl/Cmd; plain Home/End edit the query text
+				if (e.ctrlKey || e.metaKey) {
+					e.preventDefault();
+					selectedIndex = e.key === 'Home' ? 0 : Math.max(flatCommands.length - 1, 0);
+					scrollToSelected();
+				}
+				break;
 			case 'Enter':
 				e.preventDefault();
 				executeSelected();
@@ -96,8 +114,11 @@
 	}
 
 	function scrollToSelected() {
-		const selected = document.querySelector('.command-palette__item--selected');
-		selected?.scrollIntoView({ block: 'nearest' });
+		// Wait for aria-activedescendant / the selected class to update
+		queueMicrotask(() => {
+			const id = activeDescendant;
+			if (id) document.getElementById(id)?.scrollIntoView({ block: 'nearest' });
+		});
 	}
 
 	function executeSelected() {
@@ -184,6 +205,13 @@
 					bind:value={query}
 					type="text"
 					class="command-palette__input"
+					role="combobox"
+					aria-expanded="true"
+					aria-haspopup="listbox"
+					aria-controls={listboxId}
+					aria-autocomplete="list"
+					aria-activedescendant={activeDescendant}
+					aria-label="Search commands"
 					{placeholder}
 					autocomplete="off"
 					spellcheck="false"
@@ -193,25 +221,46 @@
 				</button>
 			</div>
 
-			<div class="command-palette__content">
+			<div class="command-palette__sr-only" role="status" aria-live="polite">
+				{flatCommands.length === 0
+					? 'No commands found'
+					: `${flatCommands.length} command${flatCommands.length === 1 ? '' : 's'} available`}
+			</div>
+
+			<div class="command-palette__content" id={listboxId} role="listbox" aria-label="Commands">
 				{#if flatCommands.length === 0}
-					<div class="command-palette__empty">No commands found</div>
+					<div class="command-palette__empty" role="presentation">No commands found</div>
 				{:else}
 					{#each [...groupedCommands] as [category, categoryCommands], _categoryIdx (category)}
-						<div class="command-palette__group">
-							<div class="command-palette__group-header">
-								<span class="command-palette__group-icon">{getCategoryIcon(category)}</span>
-								<span class="command-palette__group-label">{getCategoryLabel(category)}</span>
+						<div
+							class="command-palette__group"
+							role="group"
+							aria-labelledby={groupLabelId(category)}
+						>
+							<div class="command-palette__group-header" role="presentation">
+								<span class="command-palette__group-icon" aria-hidden="true"
+									>{getCategoryIcon(category)}</span
+								>
+								<span class="command-palette__group-label" id={groupLabelId(category)}
+									>{getCategoryLabel(category)}</span
+								>
 							</div>
 							{#each categoryCommands as command, cmdIdx (command.id)}
 								{@const flatIdx = getFlatIndex(category, cmdIdx)}
 								<button
 									class="command-palette__item"
 									class:command-palette__item--selected={flatIdx === selectedIndex}
+									id={optionId(command.id)}
+									role="option"
+									aria-selected={flatIdx === selectedIndex}
+									tabindex="-1"
+									onmousedown={(e) => e.preventDefault()}
 									onclick={() => executeCommand(command)}
 									onmouseenter={() => (selectedIndex = flatIdx)}
 								>
-									<span class="command-palette__item-icon">{command.icon || ''}</span>
+									<span class="command-palette__item-icon" aria-hidden="true"
+										>{command.icon || ''}</span
+									>
 									<span class="command-palette__item-label">
 										<!-- eslint-disable-next-line svelte/no-at-html-tags -- content is sanitized via escapeHtml before regex substitution -->
 										{@html highlightMatch(command.label, query)}
@@ -363,7 +412,7 @@
 	}
 
 	.command-palette__item--selected {
-		background: var(--ide-interactive, #4a8db7) !important;
+		background: var(--ide-bg-selected, #3b7aa3) !important;
 		color: #fff;
 	}
 
@@ -428,5 +477,17 @@
 		border-radius: 4px;
 		font-family: inherit;
 		font-size: 10px;
+	}
+
+	.command-palette__sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
 	}
 </style>

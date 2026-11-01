@@ -527,4 +527,12 @@
 		border-radius: 2px;
 		pointer-events: none;
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ai-focus-layer *,
+		.ai-focus-layer *::before,
+		.ai-focus-layer *::after {
+			animation: none !important;
+		}
+	}
 </style>

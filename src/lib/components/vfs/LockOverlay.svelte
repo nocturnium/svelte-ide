@@ -341,4 +341,10 @@
 		font-size: 12px;
 		color: var(--ide-text-secondary, #a0a0a0);
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ai-sparkle {
+			animation: none;
+		}
+	}
 </style>

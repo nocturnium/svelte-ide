@@ -56,34 +56,41 @@
 	}
 
 	/* Variants */
+	/*
+	 * Tinted variants: the text is the variant colour pulled toward --ide-text-primary.
+	 * The pure status colours measured 4.0-4.4:1 on a 20% tint of themselves over the
+	 * panel surfaces (below AA for small text). 45% variant colour keeps each hue
+	 * recognisable and holds every variant at or above 4.5:1 on the primary, secondary,
+	 * elevated and tertiary surfaces. theme-contrast.test.ts re-measures this.
+	 */
 	.ide-badge--default {
 		background: color-mix(in srgb, var(--ide-text-secondary) 12%, transparent);
-		color: var(--ide-text-secondary);
+		color: color-mix(in srgb, var(--ide-text-secondary) 80%, var(--ide-text-primary));
 	}
 
 	.ide-badge--primary {
 		background: color-mix(in srgb, var(--ide-primary) 20%, transparent);
-		color: var(--ide-primary);
+		color: color-mix(in srgb, var(--ide-primary) 45%, var(--ide-text-primary));
 	}
 
 	.ide-badge--success {
 		background: color-mix(in srgb, var(--ide-success) 20%, transparent);
-		color: var(--ide-success);
+		color: color-mix(in srgb, var(--ide-success) 45%, var(--ide-text-primary));
 	}
 
 	.ide-badge--warning {
 		background: color-mix(in srgb, var(--ide-warning) 20%, transparent);
-		color: var(--ide-warning);
+		color: color-mix(in srgb, var(--ide-warning) 45%, var(--ide-text-primary));
 	}
 
 	.ide-badge--error {
 		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
-		color: var(--ide-error);
+		color: color-mix(in srgb, var(--ide-error) 45%, var(--ide-text-primary));
 	}
 
 	.ide-badge--info {
 		background: color-mix(in srgb, var(--ide-info) 20%, transparent);
-		color: var(--ide-info);
+		color: color-mix(in srgb, var(--ide-info) 45%, var(--ide-text-primary));
 	}
 
 	.ide-badge--secondary {
@@ -93,7 +100,7 @@
 
 	.ide-badge--danger {
 		background: color-mix(in srgb, var(--ide-error) 20%, transparent);
-		color: var(--ide-error);
+		color: color-mix(in srgb, var(--ide-error) 45%, var(--ide-text-primary));
 	}
 
 	/* Dot */

@@ -18,7 +18,8 @@
 		type SearchMatch,
 		type FoldManager,
 		type FoldRegion,
-		type Cursor
+		type Cursor,
+		type Position
 	} from './core';
 	import FindReplace from './FindReplace.svelte';
 	import { createEditorFind, type EditorFind } from './editor-find';
@@ -98,6 +99,14 @@
 		remoteCursors?: RemoteCursor[];
 		/** Show remote collaborator name flags (default: true) */
 		showRemoteCursorLabels?: boolean;
+		/**
+		 * Start in "Tab moves focus" mode: Tab / Shift+Tab leave the editor instead of
+		 * inserting indentation. Users can toggle this at runtime with Ctrl+M, and
+		 * Escape followed by Tab always leaves the editor once (WCAG 2.1.2).
+		 */
+		tabMovesFocus?: boolean;
+		/** Accessible name of the editor input (default: "Code editor") */
+		ariaLabel?: string;
 		onChange?: (content: string) => void;
 		onCursorChange?: (line: number, column: number) => void;
 		/** Callback when cursors change (for multi-cursor) */
@@ -124,6 +133,8 @@
 		showAIFocusRegions = false,
 		remoteCursors = [],
 		showRemoteCursorLabels = true,
+		tabMovesFocus = false,
+		ariaLabel = 'Code editor',
 		onChange,
 		onCursorChange,
 		onCursorsChange,
@@ -301,11 +312,35 @@
 	}
 
 	// Debounced onChange to avoid excessive callbacks
+	let pendingOnChange: string | null = null;
+
+	/** Deliver a pending debounced onChange now, so the parent holds the latest text. */
+	function flushOnChange() {
+		if (!onChangeTimeout) return;
+		clearTimeout(onChangeTimeout);
+		onChangeTimeout = null;
+		if (pendingOnChange === null) return;
+		const last = pendingOnChange;
+		pendingOnChange = null;
+		try {
+			onChange?.(last);
+		} catch (error) {
+			console.error('[CustomEditor] onChange callback failed:', error);
+		}
+	}
+
+	/** Ctrl+S right after typing must save what is on screen, not a 50 ms old copy. */
+	function saveWithLatestContent() {
+		flushOnChange();
+		onSave?.();
+	}
 	function debouncedOnChange(newContent: string) {
+		pendingOnChange = newContent;
 		if (onChangeTimeout) {
 			clearTimeout(onChangeTimeout);
 		}
 		onChangeTimeout = setTimeout(() => {
+			pendingOnChange = null;
 			try {
 				onChange?.(newContent);
 			} catch (error) {
@@ -345,7 +380,7 @@
 
 		// Set up keybindings
 		const keybindings = createDefaultKeybindings(editorState, navigation, {
-			onSave,
+			onSave: onSave ? saveWithLatestContent : undefined,
 			readonly,
 			pageSize: Math.floor((container?.clientHeight ?? FALLBACK_VIEWPORT_HEIGHT) / lineHeight)
 		});
@@ -426,6 +461,7 @@
 			getMeasureSpan: () => measureSpan,
 
 			isReadonly: () => readonly,
+			isTabMovesFocus: () => tabMovesFocus,
 			isMultiCursor: () => multiCursor,
 			isFolding: () => folding,
 			hasMultipleCursors: () => hasMultipleCursors,
@@ -448,7 +484,7 @@
 			onShowCommandPalette: () => {
 				showCommandPalette = true;
 			},
-			onSave,
+			onSave: onSave ? saveWithLatestContent : undefined,
 			announce,
 			resetCursorBlink,
 			stopCursorBlink: () => {
@@ -704,6 +740,30 @@
 	/** Text covered by the current primary selection ('' when collapsed). */
 	export function getSelectedText(): string {
 		return editorState.getSelectedText();
+	}
+
+	/**
+	 * Apply text edits as ONE undo step, then place the caret. Positions are
+	 * 0-based. Edits are applied bottom-up so earlier ranges stay valid. Used by
+	 * integrations such as LSP completion to replace text programmatically.
+	 */
+	export function applyEdits(
+		edits: readonly { from: Position; to: Position; text: string }[],
+		caret?: Position
+	): void {
+		if (edits.length === 0) return;
+		const ordered = [...edits].sort((a, b) =>
+			a.from.line !== b.from.line ? b.from.line - a.from.line : b.from.column - a.from.column
+		);
+		editorState.transact((tx) => {
+			for (const edit of ordered) {
+				const before = edit.to.line > edit.from.line || edit.to.column > edit.from.column;
+				if (before) tx.delete(edit.from, edit.to);
+				if (edit.text) tx.insert(edit.from, edit.text);
+			}
+		});
+		if (caret) editorState.setCursor(caret);
+		hiddenInput?.focus();
 	}
 
 	function handleFoldIndicatorClick(lineNumber: number, e: MouseEvent) {
@@ -1074,11 +1134,9 @@
 			unsubscribeCursors = null;
 			unsubscribeFold = null;
 
-			// Clean up debounce timeout
-			if (onChangeTimeout) {
-				clearTimeout(onChangeTimeout);
-				onChangeTimeout = null;
-			}
+			// Flush a pending onChange instead of dropping it: a tab switch or
+			// unmount within the debounce window must not lose the last edit.
+			flushOnChange();
 
 			// Clean up fold update timeout
 			if (foldUpdateTimeout) {
@@ -1153,6 +1211,9 @@
 		autocomplete="off"
 		spellcheck={false}
 		tabindex={0}
+		aria-readonly={readonly}
+		aria-label={readonly ? `Read-only ${ariaLabel.toLowerCase()}` : ariaLabel}
+		aria-describedby="editor-help"
 		onkeydown={inputHandlers.handleKeyDown}
 		oninput={inputHandlers.handleInput}
 		onpaste={inputHandlers.handlePaste}
@@ -1185,7 +1246,8 @@
 	<!-- Hidden keyboard shortcuts help for screen readers -->
 	<div id="editor-help" class="custom-editor__sr-status">
 		Keyboard shortcuts: Ctrl+F to find, Ctrl+H to replace, Ctrl+D to add cursor at next occurrence,
-		Ctrl+Shift+L to select all occurrences, Escape to clear.{folding
+		Ctrl+Shift+L to select all occurrences, Escape to clear. Tab inserts indentation. To move focus
+		out of the editor, press Escape and then Tab, or press Ctrl+M to toggle whether Tab moves focus.{folding
 			? ' Ctrl+Shift+[ to fold, Ctrl+Shift+] to unfold.'
 			: ''}
 	</div>
@@ -1197,12 +1259,7 @@
 		class:custom-editor__content--readonly={readonly}
 		onmousedown={inputHandlers.handleMouseDown}
 		onscroll={inputHandlers.handleScroll}
-		role="textbox"
-		aria-multiline="true"
-		aria-readonly={readonly}
-		aria-label={readonly ? 'Read-only code editor' : 'Code editor'}
-		aria-describedby="editor-help"
-		tabindex={0}
+		role="presentation"
 	>
 		<!-- Complexity highlighting layer (bottommost) -->
 		{#if complexityHighlighting && complexityMetrics}
@@ -1330,7 +1387,7 @@
 </div>
 
 <!-- Command Palette -->
-<CommandPalette bind:open={showCommandPalette} onClose={() => editorContent?.focus()} />
+<CommandPalette bind:open={showCommandPalette} onClose={() => hiddenInput?.focus()} />
 
 <style>
 	.custom-editor {
@@ -1341,6 +1398,23 @@
 		background: var(--ide-bg-primary);
 		font-family: var(--editor-font-family), var(--ide-font-mono);
 		font-size: var(--editor-font-size);
+	}
+
+	/*
+	 * The real focus target is the 1px hidden textarea, so draw the ring on the frame.
+	 * It is an overlay (not an outline) so the gutter and line highlight cannot cover it.
+	 */
+	.custom-editor::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 20;
+		pointer-events: none;
+		border-radius: inherit;
+	}
+
+	.custom-editor:focus-within::after {
+		box-shadow: inset 0 0 0 2px var(--ide-focus-ring);
 	}
 
 	.custom-editor__input {

@@ -259,7 +259,7 @@
 	}
 
 	.plugin-panel__tab--active {
-		color: var(--ide-interactive);
+		color: var(--ide-interactive-text);
 		border-bottom-color: var(--ide-interactive);
 	}
 

@@ -8,12 +8,26 @@
 	 */
 
 	export interface FileNode {
-		id: string;
+		/** Stable key. Optional: falls back to `path` (the shape used by the VFS FileNode type). */
+		id?: string;
 		name: string;
-		type: 'file' | 'folder';
+		/** 'file' | 'folder'. Optional when `isDirectory` is given instead. */
+		type?: 'file' | 'folder';
+		/** VFS-style folder flag; equivalent to `type === 'folder'` */
+		isDirectory?: boolean;
 		path: string;
 		children?: FileNode[];
 		expanded?: boolean;
+	}
+
+	/** True for folders, whichever shape (`type` or `isDirectory`) the node uses. */
+	export function isFolder(node: FileNode): boolean {
+		return node.type === 'folder' || node.isDirectory === true;
+	}
+
+	/** Stable identity for keyed each blocks. */
+	export function nodeKey(node: FileNode): string {
+		return node.id ?? node.path;
 	}
 
 	/** File change status type - for transaction/git operations */
@@ -113,7 +127,7 @@
 
 	// Get the most "important" status for a folder (deleted > modified > created > renamed)
 	function getFolderStatus(node: FileNode): FileChangeStatus {
-		if (node.type === 'file') return getFileStatus(node.path);
+		if (!isFolder(node)) return getFileStatus(node.path);
 		if (!node.children) return 'clean';
 
 		let hasDeleted = false;
@@ -123,7 +137,7 @@
 
 		function checkChildren(children: FileNode[]) {
 			for (const child of children) {
-				if (child.type === 'file') {
+				if (!isFolder(child)) {
 					const status = getFileStatus(child.path);
 					if (status === 'deleted') hasDeleted = true;
 					else if (status === 'modified') hasModified = true;
@@ -164,6 +178,38 @@
 	}
 
 	let expandedFolders = new SvelteSet<string>();
+
+	const uid = $props.id();
+	const groupId = (node: FileNode) => `${uid}-grp-${nodeKey(node).replace(/[^\w-]/g, '_')}`;
+	const rootNodes = $derived(sortNodes(files));
+
+	// Roving tabindex: exactly one treeitem is in the tab order at a time.
+	let treeEl = $state<HTMLElement | null>(null);
+	let focusedPath = $state<string | null>(null);
+
+	function collectVisible(nodes: FileNode[], out: string[]) {
+		for (const n of sortNodes(nodes)) {
+			out.push(n.path);
+			if (isFolder(n) && expandedFolders.has(n.path) && n.children) {
+				collectVisible(n.children, out);
+			}
+		}
+	}
+
+	const visiblePaths = $derived.by(() => {
+		const out: string[] = [];
+		collectVisible(files, out);
+		return out;
+	});
+
+	const tabStopPath = $derived(
+		focusedPath && visiblePaths.includes(focusedPath)
+			? focusedPath
+			: selectedPath && visiblePaths.includes(selectedPath)
+				? selectedPath
+				: (visiblePaths[0] ?? null)
+	);
+
 	let contextMenuNode = $state<FileNode | null>(null);
 	let contextMenuPos = $state({ x: 0, y: 0 });
 	let showContextMenu = $state(false);
@@ -184,7 +230,7 @@
 	});
 
 	function toggleFolder(node: FileNode) {
-		if (node.type !== 'folder') return;
+		if (!isFolder(node)) return;
 
 		if (expandedFolders.has(node.path)) {
 			expandedFolders.delete(node.path);
@@ -245,33 +291,85 @@
 	}
 
 	function handleClick(node: FileNode) {
-		if (node.type === 'folder') {
+		if (isFolder(node)) {
 			toggleFolder(node);
 		}
 		onSelect?.(node);
 	}
 
 	function handleDoubleClick(node: FileNode) {
-		if (node.type === 'file') {
+		if (!isFolder(node)) {
 			onOpen?.(node);
 		}
 	}
 
 	function handleKeyDown(e: KeyboardEvent, node: FileNode) {
-		if (e.key === 'Enter') {
-			if (node.type === 'folder') {
-				toggleFolder(node);
-			} else {
-				onOpen?.(node);
-			}
-		} else if (e.key === 'ArrowRight' && node.type === 'folder') {
-			if (!expandedFolders.has(node.path)) {
-				toggleFolder(node);
-			}
-		} else if (e.key === 'ArrowLeft' && node.type === 'folder') {
-			if (expandedFolders.has(node.path)) {
-				toggleFolder(node);
-			}
+		// Ignore keys that bubble up from controls inside a row
+		if (e.target !== e.currentTarget) return;
+		if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+		const row = e.currentTarget as HTMLElement;
+		const items = treeEl
+			? Array.from(treeEl.querySelectorAll<HTMLElement>('[role="treeitem"]'))
+			: [];
+		const index = items.indexOf(row);
+		const level = Number(row.getAttribute('aria-level') ?? 1);
+		const go = (target: HTMLElement | undefined) => {
+			if (target) target.focus();
+		};
+
+		switch (e.key) {
+			case 'ArrowDown':
+				e.preventDefault();
+				go(items[index + 1]);
+				break;
+			case 'ArrowUp':
+				e.preventDefault();
+				go(items[index - 1]);
+				break;
+			case 'Home':
+				e.preventDefault();
+				go(items[0]);
+				break;
+			case 'End':
+				e.preventDefault();
+				go(items[items.length - 1]);
+				break;
+			case 'ArrowRight':
+				if (!isFolder(node)) break;
+				e.preventDefault();
+				if (!expandedFolders.has(node.path)) {
+					toggleFolder(node);
+				} else {
+					const next = items[index + 1];
+					if (next && Number(next.getAttribute('aria-level')) === level + 1) go(next);
+				}
+				break;
+			case 'ArrowLeft':
+				e.preventDefault();
+				if (isFolder(node) && expandedFolders.has(node.path)) {
+					toggleFolder(node);
+				} else {
+					for (let i = index - 1; i >= 0; i--) {
+						if (Number(items[i].getAttribute('aria-level')) === level - 1) {
+							go(items[i]);
+							break;
+						}
+					}
+				}
+				break;
+			case 'Enter':
+				e.preventDefault();
+				if (isFolder(node)) {
+					toggleFolder(node);
+				} else {
+					onOpen?.(node);
+				}
+				break;
+			case ' ':
+				e.preventDefault();
+				handleClick(node);
+				break;
 		}
 	}
 
@@ -293,7 +391,7 @@
 
 		const items: ContextMenuItem[] = [];
 
-		if (contextMenuNode.type === 'folder') {
+		if (isFolder(contextMenuNode)) {
 			items.push(
 				{
 					id: 'new-file',
@@ -314,7 +412,7 @@
 		}
 
 		// Lock/Unlock options for files
-		if (contextMenuNode.type === 'file' && showLocks) {
+		if (!isFolder(contextMenuNode) && showLocks) {
 			const lockStatus = lockStatuses.get(contextMenuNode.path);
 			if (lockStatus?.status === 'locked' && isOwnedByMe(contextMenuNode.path)) {
 				items.push({
@@ -386,8 +484,8 @@
 	function sortNodes(nodes: FileNode[]): FileNode[] {
 		return [...nodes].sort((a, b) => {
 			// Folders first
-			if (a.type !== b.type) {
-				return a.type === 'folder' ? -1 : 1;
+			if (isFolder(a) !== isFolder(b)) {
+				return isFolder(a) ? -1 : 1;
 			}
 			// Then alphabetically
 			return a.name.localeCompare(b.name);
@@ -402,31 +500,50 @@
 			<Button
 				variant="ghost"
 				size="xs"
+				class="file-explorer__action"
 				onclick={() => startInlineCreation('', 'file')}
 				title="New File"
+				aria-label="New File"
 			>
-				<Icon name="file-plus" size={14} />
+				<Icon name="file-plus" size={16} />
 			</Button>
 			<Button
 				variant="ghost"
 				size="xs"
+				class="file-explorer__action"
 				onclick={() => startInlineCreation('', 'folder')}
 				title="New Folder"
+				aria-label="New Folder"
 			>
-				<Icon name="folder-plus" size={14} />
+				<Icon name="folder-plus" size={16} />
 			</Button>
 		</div>
 	</div>
 
-	<div class="file-explorer__tree" role="tree">
-		<!-- Inline creation at root level -->
-		{#if inlineCreation && inlineCreation.parentPath === ''}
-			{@render inlineInput(0)}
-		{/if}
-		{#each sortNodes(files) as node (node.id)}
-			{@render fileNode(node, 0)}
-		{/each}
-	</div>
+	{#if files.length === 0 && !inlineCreation}
+		<div class="file-explorer__empty">
+			<p class="file-explorer__empty-title">No files yet</p>
+			<p class="file-explorer__empty-hint">Create a file to start working.</p>
+			<Button
+				variant="secondary"
+				size="sm"
+				class="file-explorer__empty-action"
+				onclick={() => startInlineCreation('', 'file')}
+			>
+				New File
+			</Button>
+		</div>
+	{:else}
+		<div class="file-explorer__tree" role="tree" aria-label="File explorer" bind:this={treeEl}>
+			<!-- Inline creation at root level -->
+			{#if inlineCreation && inlineCreation.parentPath === ''}
+				{@render inlineInput(0)}
+			{/if}
+			{#each rootNodes as node, i (nodeKey(node))}
+				{@render fileNode(node, 0, i + 1, rootNodes.length)}
+			{/each}
+		</div>
+	{/if}
 
 	{#if showContextMenu && contextMenuNode}
 		<ContextMenu
@@ -439,15 +556,15 @@
 	{/if}
 </div>
 
-{#snippet fileNode(node: FileNode, depth: number)}
+{#snippet fileNode(node: FileNode, depth: number, posInSet: number, setSize: number)}
 	{@const lockStatus = lockStatuses.get(node.path)}
 	{@const fileAgents = getAgentsForFile(node.path)}
 	{@const isLockedByAnother = lockStatus?.status === 'locked' && !isOwnedByMe(node.path)}
-	{@const changeStatus = node.type === 'file' ? getFileStatus(node.path) : getFolderStatus(node)}
+	{@const changeStatus = !isFolder(node) ? getFileStatus(node.path) : getFolderStatus(node)}
 	<div
 		class="file-node"
 		class:file-node--selected={selectedPath === node.path}
-		class:file-node--folder={node.type === 'folder'}
+		class:file-node--folder={isFolder(node)}
 		class:file-node--locked={isLockedByAnother}
 		class:file-node--status-created={showStatus && changeStatus === 'created'}
 		class:file-node--status-modified={showStatus && changeStatus === 'modified'}
@@ -456,8 +573,14 @@
 		style="--depth: {depth}"
 		role="treeitem"
 		aria-selected={selectedPath === node.path}
-		aria-expanded={node.type === 'folder' ? isExpanded(node) : undefined}
-		tabindex={0}
+		aria-expanded={isFolder(node) ? isExpanded(node) : undefined}
+		aria-level={depth + 1}
+		aria-posinset={posInSet}
+		aria-setsize={setSize}
+		aria-owns={isFolder(node) && isExpanded(node) ? groupId(node) : undefined}
+		data-path={node.path}
+		tabindex={tabStopPath === node.path ? 0 : -1}
+		onfocus={() => (focusedPath = node.path)}
 		onclick={() => handleClick(node)}
 		ondblclick={() => handleDoubleClick(node)}
 		onkeydown={(e) => handleKeyDown(e, node)}
@@ -481,7 +604,7 @@
 								: 'Renamed'}
 				></span>
 			{/if}
-			{#if node.type === 'folder'}
+			{#if isFolder(node)}
 				<span class="file-node__chevron" class:file-node__chevron--expanded={isExpanded(node)}>
 					<Icon name="chevron-right" size={12} />
 				</span>
@@ -528,15 +651,16 @@
 		</div>
 	</div>
 
-	{#if node.type === 'folder' && isExpanded(node)}
-		<div class="file-node__children" role="group">
+	{#if isFolder(node) && isExpanded(node)}
+		<div class="file-node__children" role="group" id={groupId(node)}>
 			<!-- Inline creation inside this folder -->
 			{#if inlineCreation && inlineCreation.parentPath === node.path}
 				{@render inlineInput(depth + 1)}
 			{/if}
 			{#if node.children}
-				{#each sortNodes(node.children) as child (child.id)}
-					{@render fileNode(child, depth + 1)}
+				{@const kids = sortNodes(node.children)}
+				{#each kids as child, i (nodeKey(child))}
+					{@render fileNode(child, depth + 1, i + 1, kids.length)}
 				{/each}
 			{/if}
 		</div>
@@ -595,6 +719,49 @@
 	.file-explorer__actions {
 		display: flex;
 		gap: var(--ide-spacing-xs);
+	}
+
+	/* 32px icon buttons (44px for touch) so they are comfortable targets */
+	.file-explorer__actions :global(.file-explorer__action) {
+		width: 2rem;
+		height: 2rem;
+		min-width: 2rem;
+		padding: 0;
+		justify-content: center;
+	}
+
+	.file-explorer__empty {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--ide-spacing-xs);
+		padding: var(--ide-spacing-xl, 24px) var(--ide-spacing-md);
+		text-align: center;
+	}
+
+	.file-explorer__empty-title {
+		margin: 0;
+		font-size: var(--ide-font-size-sm);
+		font-weight: 600;
+		color: var(--ide-text-primary);
+	}
+
+	.file-explorer__empty-hint {
+		margin: 0 0 var(--ide-spacing-sm);
+		font-size: var(--ide-font-size-xs);
+		color: var(--ide-text-secondary);
+	}
+
+	@media (pointer: coarse) {
+		.file-explorer__actions :global(.file-explorer__action) {
+			width: 2.75rem;
+			height: 2.75rem;
+			min-width: 2.75rem;
+		}
+
+		.file-node__content {
+			min-height: 44px;
+		}
 	}
 
 	.file-explorer__tree {

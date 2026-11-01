@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import * as Y from 'yjs';
 import {
+	applyMinimalDiff,
 	CRDTBinding,
 	createCRDTBinding,
 	createRelativePosition,
@@ -547,5 +548,83 @@ describe('two-document collaboration sync', () => {
 
 		binding1.destroy();
 		binding2.destroy();
+	});
+});
+
+describe('CRDT binding: concurrent edits (review round 1)', () => {
+	function peer() {
+		const doc = new Y.Doc();
+		const editorState = new EditorState();
+		const binding = createCRDTBinding({ doc, editorState });
+		return { doc, editorState, binding };
+	}
+
+	function exchange(a: Y.Doc, b: Y.Doc) {
+		const ua = Y.encodeStateAsUpdate(a, Y.encodeStateVector(b));
+		const ub = Y.encodeStateAsUpdate(b, Y.encodeStateVector(a));
+		Y.applyUpdate(b, ua);
+		Y.applyUpdate(a, ub);
+	}
+
+	it('merges concurrent whole-content edits to different lines without duplication', () => {
+		const A = peer();
+		const B = peer();
+		A.binding.setContent('line one\nline two\nline three');
+		exchange(A.doc, B.doc);
+		expect(B.editorState.getContent()).toBe('line one\nline two\nline three');
+
+		A.binding.setContent('LINE ONE\nline two\nline three');
+		B.binding.setContent('line one\nline two\nLINE THREE');
+		exchange(A.doc, B.doc);
+
+		const expected = 'LINE ONE\nline two\nLINE THREE';
+		expect(A.doc.getText('content').toString()).toBe(expected);
+		expect(B.doc.getText('content').toString()).toBe(expected);
+		expect(A.editorState.getContent()).toBe(expected);
+		expect(B.editorState.getContent()).toBe(expected);
+	});
+
+	it('sends an update proportional to the edit, not the document', () => {
+		const A = peer();
+		A.binding.setContent('x'.repeat(5000));
+		let size = 0;
+		A.doc.on('update', (u: Uint8Array) => {
+			size = u.length;
+		});
+		A.binding.setContent('x'.repeat(5000) + 'y');
+		expect(size).toBeGreaterThan(0);
+		expect(size).toBeLessThan(100);
+	});
+
+	it('keeps surrogate pairs intact when the diff boundary falls inside one', () => {
+		const A = peer();
+		A.binding.setContent('a\u{1F600}b');
+		A.binding.setContent('a\u{1F601}b');
+		expect(A.doc.getText('content').toString()).toBe('a\u{1F601}b');
+	});
+});
+
+describe('applyMinimalDiff', () => {
+	it('produces the target text for random edits', () => {
+		const doc = new Y.Doc();
+		const text = doc.getText('t');
+		let current = 'the quick brown fox';
+		text.insert(0, current);
+		const alphabet = [...'ab \n\u{1F600}'];
+		let seed = 7;
+		const rand = (n: number) => {
+			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+			return seed % n;
+		};
+		for (let i = 0; i < 300; i++) {
+			const chars = [...current];
+			const at = rand(chars.length + 1);
+			const del = rand(Math.min(4, chars.length - at) + 1);
+			const ins = Array.from({ length: rand(4) }, () => alphabet[rand(alphabet.length)]).join('');
+			chars.splice(at, del, ins);
+			current = chars.join('');
+			doc.transact(() => applyMinimalDiff(text, current));
+			expect(text.toString()).toBe(current);
+		}
 	});
 });

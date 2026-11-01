@@ -7,6 +7,8 @@
 		disabled?: boolean;
 		readonly?: boolean;
 		error?: string;
+		/** Id of extra help text; the error message id is appended while an error is shown. */
+		'aria-describedby'?: string;
 		size?: 'sm' | 'md' | 'lg';
 		fullWidth?: boolean;
 		class?: string;
@@ -25,6 +27,7 @@
 		disabled = false,
 		readonly = false,
 		error = '',
+		'aria-describedby': describedBy,
 		size = 'md',
 		fullWidth = false,
 		class: className = '',
@@ -34,6 +37,12 @@
 		onfocus,
 		onblur
 	}: Props = $props();
+
+	const uid = $props.id();
+	const errorId = `ide-field-${uid}-error`;
+	const ariaDescribedby = $derived(
+		[describedBy, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
+	);
 
 	function handleInput(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -52,6 +61,8 @@
 		{placeholder}
 		{disabled}
 		{readonly}
+		aria-invalid={error ? 'true' : undefined}
+		aria-describedby={ariaDescribedby}
 		oninput={handleInput}
 		{onchange}
 		{onkeydown}
@@ -59,13 +70,14 @@
 		{onblur}
 	/>
 	{#if error}
-		<span class="ide-input__error">{error}</span>
+		<span class="ide-input__error" id={errorId}>{error}</span>
 	{/if}
 </div>
 
 <style>
 	.ide-input-wrapper {
 		display: inline-flex;
+		min-width: 0;
 		flex-direction: column;
 		gap: var(--ide-spacing-xs);
 	}
@@ -76,6 +88,7 @@
 
 	.ide-input {
 		width: 100%;
+		min-width: 0;
 		font-family: var(--ide-font-sans);
 		background: var(--ide-bg-secondary);
 		color: var(--ide-text-primary);
@@ -89,7 +102,9 @@
 	}
 
 	.ide-input:focus {
-		outline: none;
+		/* Invisible in normal rendering (the box-shadow ring shows), but forced-colors
+		   mode repaints it, so keyboard focus stays visible there. */
+		outline: 2px solid transparent;
 		border-color: var(--ide-interactive-focus);
 		box-shadow: 0 0 0 2px color-mix(in srgb, var(--ide-interactive-focus) 25%, transparent);
 	}
@@ -134,5 +149,11 @@
 	.ide-input__error {
 		font-size: var(--ide-font-size-xs);
 		color: var(--ide-error);
+	}
+
+	@media (pointer: coarse) {
+		.ide-input {
+			min-height: 44px;
+		}
 	}
 </style>

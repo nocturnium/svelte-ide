@@ -629,6 +629,12 @@
 		}
 	}
 
+	@media (prefers-reduced-motion: reduce) {
+		.loading-spinner {
+			animation-duration: 3s;
+		}
+	}
+
 	.transform-info {
 		display: flex;
 		align-items: center;

@@ -207,10 +207,13 @@
 	<!-- Left section: Git + Sync -->
 	<div class="status-bar__left">
 		{#if branch}
-			<Tooltip content="Current branch (click to switch)">
-				<button class="status-bar__item status-bar__item--clickable" onclick={onBranchClick}>
+			<Tooltip content="Current branch (click to switch)" class="status-bar__branch-tip">
+				<button
+					class="status-bar__item status-bar__item--clickable status-bar__branch"
+					onclick={onBranchClick}
+				>
 					<Icon name="git-branch" size={12} />
-					<span>{branch}</span>
+					<span class="status-bar__branch-name">{branch}</span>
 				</button>
 			</Tooltip>
 		{/if}
@@ -281,47 +284,51 @@
 	<div class="status-bar__right">
 		<!-- Cognitive complexity meter -->
 		{#if complexityMetrics}
-			<CognitiveLoadMeter
-				metrics={complexityMetrics}
-				showDetails={true}
-				onclick={onComplexityClick}
-			/>
-			<span class="status-bar__separator"></span>
+			<span class="status-bar__low">
+				<CognitiveLoadMeter
+					metrics={complexityMetrics}
+					showDetails={true}
+					onclick={onComplexityClick}
+				/>
+			</span>
+			<span class="status-bar__separator status-bar__low"></span>
 		{/if}
 
-		<Tooltip content="Cursor position">
+		<Tooltip content="Cursor position" class="status-bar__low">
 			<span class="status-bar__item">
 				Ln {cursorLine}, Col {cursorColumn}
 			</span>
 		</Tooltip>
 
-		<span class="status-bar__separator"></span>
+		<span class="status-bar__separator status-bar__low"></span>
 
-		<Tooltip content="Line ending">
+		<Tooltip content="Line ending" class="status-bar__low status-bar__low--600">
 			<span class="status-bar__item">
 				{lineEnding}
 			</span>
 		</Tooltip>
 
-		<Tooltip content="File encoding">
+		<Tooltip content="File encoding" class="status-bar__low status-bar__low--600">
 			<span class="status-bar__item">
 				{encoding}
 			</span>
 		</Tooltip>
 
-		<Tooltip content="Language mode (click to change)">
+		<Tooltip content="Language mode (click to change)" class="status-bar__low">
 			<button class="status-bar__item status-bar__item--clickable" onclick={onLanguageClick}>
 				{language}
 			</button>
 		</Tooltip>
 
-		<span class="status-bar__separator"></span>
+		<span class="status-bar__separator status-bar__low"></span>
 
 		<Tooltip content={connected ? 'Connected to server' : 'Disconnected'}>
 			<span
 				class="status-bar__item status-bar__connection"
 				class:status-bar__connection--connected={connected}
 				class:status-bar__connection--disconnected={!connected}
+				role="img"
+				aria-label={connected ? 'Connected to server' : 'Disconnected'}
 			>
 				{#if connected}
 					<Icon name="wifi" size={12} />
@@ -353,6 +360,7 @@
 		display: flex;
 		align-items: center;
 		gap: var(--ide-spacing-sm);
+		min-width: 0;
 	}
 
 	.status-bar__left {
@@ -377,7 +385,31 @@
 		padding: 2px var(--ide-spacing-xs);
 		border-radius: var(--ide-radius-sm);
 		transition: all var(--ide-transition-fast);
-		min-height: 20px;
+		min-height: 24px;
+	}
+
+	/* The branch is the one item allowed to shrink: long names truncate with an ellipsis. */
+	.status-bar :global(.status-bar__branch-tip) {
+		min-width: 0;
+	}
+
+	.status-bar__branch {
+		min-width: 0;
+		max-width: 100%;
+	}
+
+	.status-bar__branch-name {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.status-bar__item--dirty,
+	.status-bar__item--syncing,
+	.status-bar__connection {
+		flex-shrink: 0;
+		white-space: nowrap;
 	}
 
 	.status-bar__item--clickable {
@@ -505,18 +537,41 @@
 
 	/* Responsive: hide less important info on narrow screens */
 	@media (max-width: 600px) {
-		.status-bar__right > :nth-child(n + 3):nth-child(-n + 5) {
+		.status-bar :global(.status-bar__low--600) {
 			display: none;
 		}
 	}
 
+	/* Under 400px only branch, unsaved count and connection stay. */
 	@media (max-width: 400px) {
-		.status-bar__left {
+		.status-bar__low,
+		.status-bar :global(.status-bar__low),
+		.status-bar__center {
 			display: none;
 		}
-		.status-bar__center {
-			flex: 1;
-			justify-content: flex-start;
+		.status-bar__left {
+			flex: 1 1 auto;
+		}
+		.status-bar__right {
+			flex: 0 0 auto;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.status-bar {
+			height: auto;
+			min-height: 44px;
+		}
+		.status-bar__item--clickable {
+			min-height: 44px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.status-bar__ai-dot,
+		.status-bar__expiry--warning,
+		.status-bar__connection--disconnected {
+			animation: none;
 		}
 	}
 </style>

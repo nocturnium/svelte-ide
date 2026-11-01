@@ -184,4 +184,14 @@
 	:global(.lock-indicator__spinner) {
 		animation: ide-spin 1s linear infinite;
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.lock-indicator--conflict,
+		.lock-indicator__sparkle {
+			animation: none;
+		}
+		:global(.lock-indicator__spinner) {
+			animation-duration: 2.4s;
+		}
+	}
 </style>

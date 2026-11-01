@@ -203,27 +203,13 @@ export class CRDTBinding {
 						break;
 
 					case 'replace': {
-						// A `replace` rewrites the whole document (setContent, undo/redo,
-						// replace-all, external load). The event's from/to are computed
-						// against the POST-change line array, but the Yjs text still holds
-						// the OLD content here, so deriving a delete range from them would
-						// target the wrong span and corrupt the shared doc.
-						//
-						// Make replace robust: delete the entire current Yjs range and
-						// insert the full new content. This is correct regardless of the
-						// from/to positions carried on the event.
-						const currentLength = this.text.length;
-						if (currentLength > 0) {
-							this.text.delete(0, currentLength);
-						}
-						// Source the full content from the editor itself, not from
-						// event.text: undo/redo emit a `replace` with no `text`, so
-						// trusting event.text here would empty the shared doc. getContent()
-						// is the authoritative post-change content for any replace emitter.
-						const fullContent = this.editorState.getContent();
-						if (fullContent) {
-							this.text.insert(0, fullContent);
-						}
+						// A replace event (setContent, undo/redo, replace-all, an inner
+						// editor pushing its whole text) carries no reliable range, so
+						// diff the editor's post-change content against the Yjs text and
+						// write only the span that changed. Deleting and reinserting the
+						// whole text would clobber concurrent remote edits and send the
+						// entire document on every keystroke.
+						applyMinimalDiff(this.text, this.editorState.getContent());
 						break;
 					}
 				}
@@ -261,7 +247,11 @@ export class CRDTBinding {
 			const isLastLine = line === lines.length - 1;
 			const effectiveLength = isLastLine ? lineText.length : lineLength;
 
-			if (remaining <= effectiveLength) {
+			// An index equal to a line's length plus its newline is column 0 of the
+			// NEXT line, so non-final lines use a strict comparison. Using <= here
+			// mapped every line start onto the end of the previous line, so remote
+			// edits at column 0 landed one line early and swallowed a newline.
+			if (isLastLine ? remaining <= effectiveLength : remaining < lineLength) {
 				return { line, column: Math.min(remaining, lineText.length) };
 			}
 			remaining -= lineLength;
@@ -339,8 +329,45 @@ export class CRDTBinding {
 }
 
 /**
- * Create a CRDT binding
+ * Update a Y.Text to equal next by replacing only the span between the
+ * longest common prefix and suffix. Concurrent edits outside that span merge
+ * cleanly, and the update is proportional to the edit, not the document.
+ * Must be called inside a transaction for the edit to be atomic.
  */
+export function applyMinimalDiff(text: Y.Text, next: string): void {
+	const prev = text.toString();
+	if (prev === next) return;
+	const max = Math.min(prev.length, next.length);
+	let start = 0;
+	while (start < max && prev.charCodeAt(start) === next.charCodeAt(start)) start++;
+	// Never split a surrogate pair.
+	if (start > 0 && isHighSurrogate(prev.charCodeAt(start - 1))) start--;
+	let prevEnd = prev.length;
+	let nextEnd = next.length;
+	while (
+		prevEnd > start &&
+		nextEnd > start &&
+		prev.charCodeAt(prevEnd - 1) === next.charCodeAt(nextEnd - 1)
+	) {
+		prevEnd--;
+		nextEnd--;
+	}
+	if (prevEnd < prev.length && isLowSurrogate(prev.charCodeAt(prevEnd))) {
+		prevEnd++;
+		nextEnd++;
+	}
+	if (prevEnd > start) text.delete(start, prevEnd - start);
+	if (nextEnd > start) text.insert(start, next.slice(start, nextEnd));
+}
+
+function isHighSurrogate(code: number): boolean {
+	return code >= 0xd800 && code <= 0xdbff;
+}
+
+function isLowSurrogate(code: number): boolean {
+	return code >= 0xdc00 && code <= 0xdfff;
+}
+
 export function createCRDTBinding(config: CRDTBindingConfig): CRDTBinding {
 	return new CRDTBinding(config);
 }

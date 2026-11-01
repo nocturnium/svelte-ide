@@ -231,4 +231,11 @@
 	.agent-cursor--typing .agent-cursor__line {
 		animation: ide-pulse 0.5s infinite;
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.agent-cursor__typing span,
+		.agent-cursor--typing .agent-cursor__line {
+			animation: none;
+		}
+	}
 </style>

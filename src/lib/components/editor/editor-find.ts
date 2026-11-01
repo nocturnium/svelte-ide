@@ -12,6 +12,7 @@ import {
 	getPrevMatchIndex,
 	replaceMatch,
 	replaceAllMatches,
+	searchRegex,
 	type SearchMatch,
 	type Position,
 	type Selection
@@ -125,7 +126,7 @@ export function createEditorFind(deps: EditorFindDeps) {
 
 		const match = matches[currentIndex];
 		const lines = deps.getLines();
-		const result = replaceMatch(lines, match, replace);
+		const result = replaceMatch(lines, match, replace, currentRegex());
 
 		deps.setContent(result.newLines.join('\n'));
 		deps.setCursor(result.cursorPosition);
@@ -141,11 +142,16 @@ export function createEditorFind(deps: EditorFindDeps) {
 		if (deps.isReadonly() || matches.length === 0) return;
 
 		const lines = deps.getLines();
-		const newLines = replaceAllMatches(lines, matches, replace);
+		const newLines = replaceAllMatches(lines, matches, replace, currentRegex());
 
 		deps.setContent(newLines.join('\n'));
 
 		updateMatches();
+	}
+
+	/** The active regex in regex mode, so replacements can expand $1, $& and named groups. */
+	function currentRegex(): RegExp | undefined {
+		return searchRegex(query, { caseSensitive, useRegex }) ?? undefined;
 	}
 
 	function computeMatchRects(viewport: ViewportInfo, measurements: MeasurementInfo): MatchRect[] {

@@ -1097,3 +1097,127 @@ describe('EditorState — transact', () => {
 		expect(events).toBeGreaterThan(0);
 	});
 });
+
+// ============================================================
+// Regression: review round 1 (E10, E11, E22)
+// ============================================================
+
+describe('EditorState — undo/redo cursor bounds (E10)', () => {
+	function expectCursorInBounds(state: EditorState): void {
+		for (const c of state.cursorManager.getCursors()) {
+			for (const p of [c.selection.anchor, c.selection.head]) {
+				expect(p.line).toBeLessThan(state.lineCount);
+				expect(p.column).toBeLessThanOrEqual(state.getLine(p.line)!.text.length);
+			}
+		}
+	}
+
+	it('keeps the cursor inside the document after newline, undo, redo, undo', () => {
+		const state = makeState('abc\ndef');
+		state.setCursor({ line: 1, column: 2 });
+		state.insertNewline();
+		state.undo();
+		state.redo();
+		state.undo();
+
+		expect(state.getContent()).toBe('abc\ndef');
+		expect(state.cursor).toEqual({ line: 1, column: 2 });
+		expectCursorInBounds(state);
+
+		state.insert('X');
+		expect(state.getContent()).toBe('abc\ndeXf');
+	});
+
+	it('clamps restored cursors when history leaves them past the end of the document', () => {
+		const state = makeState('abc');
+		state.setCursor({ line: 0, column: 3 });
+		state.insert('def');
+		// Shrink the document outside of history so the saved cursors are stale.
+		state.setContent('a');
+		state.undo();
+		expectCursorInBounds(state);
+		state.redo();
+		expectCursorInBounds(state);
+	});
+});
+
+describe('EditorState — line ending normalisation (E11)', () => {
+	it('insert() converts CRLF and lone CR to LF', () => {
+		const state = makeState();
+		state.insert('a\r\nb\rc');
+		expect(state.getContent()).toBe('a\nb\nc');
+		expect(state.lineCount).toBe(3);
+		expect(state.cursor).toEqual({ line: 2, column: 1 });
+	});
+
+	it('insertAt() converts CRLF to LF', () => {
+		const state = makeState('xy');
+		state.insertAt({ line: 0, column: 1 }, '1\r\n2');
+		expect(state.getContent()).toBe('x1\n2y');
+	});
+
+	it('transact insert converts CRLF to LF', () => {
+		const state = makeState('');
+		state.transact((tx) => tx.insert({ line: 0, column: 0 }, 'a\r\nb'));
+		expect(state.getContent()).toBe('a\nb');
+	});
+
+	it('undo of a CRLF insert restores the original content', () => {
+		const state = makeState('start');
+		state.setCursor({ line: 0, column: 5 });
+		state.insert('\r\nnext');
+		state.undo();
+		expect(state.getContent()).toBe('start');
+	});
+
+	it('setContent emits the normalised text', () => {
+		const state = makeState('old');
+		const events: ChangeEvent[] = [];
+		state.onContentChange((e) => events.push(e));
+		state.setContent('a\r\nb\rc');
+		expect(events).toHaveLength(1);
+		expect(events[0].text).toBe('a\nb\nc');
+		expect(events[0].text).toBe(state.getContent());
+	});
+
+	it('setContent emits nothing when only the line endings differ from the current text', () => {
+		const state = makeState('a\nb');
+		const events: ChangeEvent[] = [];
+		state.onContentChange((e) => events.push(e));
+		state.setContent('a\r\nb');
+		expect(events).toHaveLength(0);
+	});
+});
+
+describe('EditorState — surrogate pairs (E22)', () => {
+	it('deleteBackward after an emoji removes the whole emoji', () => {
+		const state = makeState('a😀b');
+		state.setCursor({ line: 0, column: 3 });
+		state.deleteBackward();
+		expect(state.getContent()).toBe('ab');
+		expect(state.cursor).toEqual({ line: 0, column: 1 });
+	});
+
+	it('deleteForward before an emoji removes the whole emoji', () => {
+		const state = makeState('a😀b');
+		state.setCursor({ line: 0, column: 1 });
+		state.deleteForward();
+		expect(state.getContent()).toBe('ab');
+		expect(state.cursor).toEqual({ line: 0, column: 1 });
+	});
+
+	it('deleteBackward at the end of a line ending in an emoji leaves no lone surrogate', () => {
+		const state = makeState('x😀');
+		state.setCursor({ line: 0, column: 3 });
+		state.deleteBackward();
+		expect(state.getContent()).toBe('x');
+	});
+
+	it('deleteBackward handles multiple cursors after emoji', () => {
+		const state = makeState('😀\n😀');
+		state.setCursor({ line: 0, column: 2 });
+		state.cursorManager.addCursor({ line: 1, column: 2 });
+		state.deleteBackward();
+		expect(state.getContent()).toBe('\n');
+	});
+});

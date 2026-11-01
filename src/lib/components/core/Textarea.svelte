@@ -8,6 +8,8 @@
 		rows?: number;
 		resize?: 'none' | 'vertical' | 'horizontal' | 'both';
 		error?: string;
+		/** Id of extra help text; the error message id is appended while an error is shown. */
+		'aria-describedby'?: string;
 		fullWidth?: boolean;
 		class?: string;
 		oninput?: (event: Event) => void;
@@ -24,12 +26,19 @@
 		rows = 3,
 		resize = 'vertical',
 		error = '',
+		'aria-describedby': describedBy,
 		fullWidth = false,
 		class: className = '',
 		oninput,
 		onchange,
 		onkeydown
 	}: Props = $props();
+
+	const uid = $props.id();
+	const errorId = `ide-field-${uid}-error`;
+	const ariaDescribedby = $derived(
+		[describedBy, error ? errorId : undefined].filter(Boolean).join(' ') || undefined
+	);
 
 	function handleInput(event: Event) {
 		const target = event.target as HTMLTextAreaElement;
@@ -49,18 +58,21 @@
 		{disabled}
 		{readonly}
 		{rows}
+		aria-invalid={error ? 'true' : undefined}
+		aria-describedby={ariaDescribedby}
 		oninput={handleInput}
 		{onchange}
 		{onkeydown}
 	></textarea>
 	{#if error}
-		<span class="ide-textarea__error">{error}</span>
+		<span class="ide-textarea__error" id={errorId}>{error}</span>
 	{/if}
 </div>
 
 <style>
 	.ide-textarea-wrapper {
 		display: inline-flex;
+		min-width: 0;
 		flex-direction: column;
 		gap: var(--ide-spacing-xs);
 	}
@@ -71,6 +83,7 @@
 
 	.ide-textarea {
 		width: 100%;
+		min-width: 0;
 		padding: var(--ide-spacing-sm);
 		font-family: var(--ide-font-sans);
 		font-size: var(--ide-font-size-sm);
@@ -87,7 +100,8 @@
 	}
 
 	.ide-textarea:focus {
-		outline: none;
+		/* Invisible normally (the box-shadow ring shows); repainted in forced-colors mode. */
+		outline: 2px solid transparent;
 		border-color: var(--ide-interactive-focus);
 		box-shadow: 0 0 0 2px color-mix(in srgb, var(--ide-interactive-focus) 25%, transparent);
 	}

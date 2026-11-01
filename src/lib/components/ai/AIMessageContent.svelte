@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatInlineMarkdown } from '../../utils/safe-markdown';
 	import { Icon } from '$components/core';
 	import { tokenize } from '$components/editor/tokenizer';
 
@@ -109,34 +110,10 @@
 			.replace(/'/g, '&#39;');
 	}
 
-	// Whitelist link schemes. Relative/anchor URLs and http(s)/mailto are allowed;
-	// anything else (e.g. javascript:, data:, vbscript:) is rejected.
-	function safeUrl(url: string): string | null {
-		const trimmed = url.trim();
-		if (/^(\/|#|\.\/|\.\.\/)/.test(trimmed)) return trimmed;
-		if (/^(https?:|mailto:)/i.test(trimmed)) return trimmed;
-		return null;
-	}
-
 	// Format text with basic markdown. Input is escaped FIRST, then a small set of
-	// safe inline elements is re-introduced — so the only HTML emitted is ours.
+	// safe inline elements is re-introduced, so the only HTML emitted is ours.
 	function formatText(text: string): string {
-		return (
-			escapeHtml(text)
-				// Bold
-				.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-				// Italic
-				.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-				// Links (href is validated; unsafe schemes degrade to plain text)
-				.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
-					const url = safeUrl(href);
-					return url
-						? `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
-						: label;
-				})
-				// Line breaks
-				.replace(/\n/g, '<br>')
-		);
+		return formatInlineMarkdown(escapeHtml(text)).replace(/\n/g, '<br>');
 	}
 
 	// Copy code to clipboard
@@ -246,7 +223,7 @@
 	.code-language {
 		font-size: var(--ide-font-size-xs);
 		font-weight: 500;
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 		text-transform: lowercase;
 	}
 
@@ -260,7 +237,7 @@
 		border-radius: var(--ide-radius-sm);
 		font-family: var(--ide-font-sans);
 		font-size: var(--ide-font-size-xs);
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}

@@ -1,3 +1,9 @@
+<script lang="ts" module>
+	// Names already reported as missing, shared by every Icon instance. Not UI state.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- never rendered
+	const warnedIcons = new Set<string>();
+</script>
+
 <script lang="ts">
 	interface Props {
 		name: string;
@@ -111,9 +117,12 @@
 	const path = $derived(icons[name] ?? icons.file);
 	const sizeValue = $derived(typeof size === 'number' ? `${size}px` : size);
 
-	// Dev-time guard: warn when a name misses the map so silent `file`-fallback drift is caught.
+	// Guard: report a name that misses the map so silent `file`-fallback drift is
+	// caught. Once per name, and without Vite's build-time env object, which other
+	// bundlers do not provide.
 	$effect(() => {
-		if (import.meta.env.DEV && !(name in icons)) {
+		if (!(name in icons) && !warnedIcons.has(name)) {
+			warnedIcons.add(name);
 			console.warn(`[Icon] no glyph for name "${name}" — falling back to the generic "file" icon`);
 		}
 	});

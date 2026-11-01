@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button, Icon, Input, Textarea } from '$components/core';
 	import { createProposal } from '$stores/plugin.svelte';
+	import { focusTrap } from '$lib/utils/focus-trap';
 	import type { PluginCategory } from '$types';
 
 	interface Props {
@@ -78,14 +79,19 @@
 	<div
 		class="plugin-form"
 		onclick={(e) => e.stopPropagation()}
-		onkeydown={(e) => e.stopPropagation()}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') onClose();
+			e.stopPropagation();
+		}}
 		role="dialog"
 		aria-modal="true"
+		aria-labelledby="plugin-form-title"
 		tabindex={-1}
+		use:focusTrap
 	>
 		<div class="plugin-form__header">
-			<h2>Create Plugin Proposal</h2>
-			<Button variant="ghost" size="xs" onclick={onClose}>
+			<h2 id="plugin-form-title">Create Plugin Proposal</h2>
+			<Button variant="ghost" size="xs" aria-label="Close" onclick={onClose}>
 				<Icon name="close" size={16} />
 			</Button>
 		</div>
