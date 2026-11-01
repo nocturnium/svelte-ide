@@ -171,7 +171,8 @@
 	},
 	"overrides": {
 		"minimatch": "^11.0.3",
-		"npm": "^12.2.1"
+		"npm": "^12.2.1",
+		"cookie": "^2.0.1"
 	},
 	"keywords": [
 		"svelte",
