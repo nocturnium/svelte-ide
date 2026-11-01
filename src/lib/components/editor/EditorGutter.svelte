@@ -34,6 +34,7 @@
 	<button
 		class="custom-editor__fold-indicator"
 		class:custom-editor__fold-indicator--collapsed={isFoldCollapsed}
+		tabindex="-1"
 		onclick={(e) => onFoldIndicatorClick(lineIndex, e)}
 		aria-label={isFoldCollapsed
 			? `Expand fold at line ${lineIndex + 1} (Ctrl+Shift+])`
@@ -85,6 +86,29 @@
 
 	.custom-editor__fold-indicator:hover {
 		color: var(--ide-text-primary);
+	}
+
+	/* Visible glyph stays 16px wide; the hit area grows to 24px */
+	.custom-editor__fold-indicator::after {
+		content: '';
+		position: absolute;
+		inset: -2px -4px;
+	}
+
+	.custom-editor__fold-indicator:focus-visible {
+		opacity: 1;
+		outline: 2px solid var(--ide-focus-ring);
+		outline-offset: -2px;
+	}
+
+	@media (pointer: coarse) {
+		.custom-editor__fold-indicator {
+			opacity: 0.7;
+		}
+
+		.custom-editor__fold-indicator::after {
+			inset: -2px -14px;
+		}
 	}
 
 	.custom-editor__fold-indicator--collapsed {

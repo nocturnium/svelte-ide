@@ -199,7 +199,8 @@ export function getPrevMatchIndex(
 export function replaceMatch(
 	lines: readonly { text: string }[],
 	match: SearchMatch,
-	replacement: string
+	replacement: string,
+	regex?: RegExp
 ): {
 	newLines: string[];
 	cursorPosition: Position;
@@ -207,21 +208,56 @@ export function replaceMatch(
 } {
 	const newLines = lines.map((l) => l.text);
 	const line = newLines[match.line];
+	const text = regex ? expandReplacement(line, match, regex, replacement) : replacement;
 
 	// Replace the match
 	newLines[match.line] =
-		line.substring(0, match.startColumn) + replacement + line.substring(match.endColumn);
+		line.substring(0, match.startColumn) + text + line.substring(match.endColumn);
 
-	const lengthDiff = replacement.length - match.text.length;
+	const lengthDiff = text.length - match.text.length;
 
 	return {
 		newLines,
 		cursorPosition: {
 			line: match.line,
-			column: match.startColumn + replacement.length
+			column: match.startColumn + text.length
 		},
 		lengthDiff
 	};
+}
+
+/**
+ * Expand $1, $<name>, $&, $$, $` and $' in a regex replacement for one match,
+ * with the same result as String.prototype.replace.
+ *
+ * The pattern is re-run on the whole line, sticky at the match start, so
+ * lookbehind and lookahead see the text around the match. If the pattern no
+ * longer matches the same text there, the replacement is returned unexpanded.
+ */
+export function expandReplacement(
+	lineText: string,
+	match: Pick<SearchMatch, 'text' | 'startColumn' | 'endColumn'>,
+	regex: RegExp,
+	replacement: string
+): string {
+	const sticky = new RegExp(regex.source, regex.flags.replace(/[gy]/g, '') + 'y');
+	sticky.lastIndex = match.startColumn;
+	const found = sticky.exec(lineText);
+	if (!found || found.index !== match.startColumn || found[0] !== match.text) return replacement;
+
+	sticky.lastIndex = match.startColumn;
+	const replaced = lineText.replace(sticky, replacement);
+	return replaced.slice(match.startColumn, replaced.length - (lineText.length - match.endColumn));
+}
+
+/** Build the RegExp findAllMatches uses, or null for a literal or invalid query. */
+export function searchRegex(query: string, options: SearchOptions = {}): RegExp | null {
+	if (!query || !options.useRegex) return null;
+	try {
+		return new RegExp(query, options.caseSensitive ? 'g' : 'gi');
+	} catch {
+		return null;
+	}
 }
 
 /**
@@ -231,7 +267,8 @@ export function replaceMatch(
 export function replaceAllMatches(
 	lines: readonly { text: string }[],
 	matches: SearchMatch[],
-	replacement: string
+	replacement: string,
+	regex?: RegExp
 ): string[] {
 	if (matches.length === 0) return lines.map((l) => l.text);
 
@@ -245,8 +282,12 @@ export function replaceAllMatches(
 
 	for (const match of sortedMatches) {
 		const line = newLines[match.line];
+		// Expand against the original line so lookarounds never see replaced text.
+		const text = regex
+			? expandReplacement(lines[match.line].text, match, regex, replacement)
+			: replacement;
 		newLines[match.line] =
-			line.substring(0, match.startColumn) + replacement + line.substring(match.endColumn);
+			line.substring(0, match.startColumn) + text + line.substring(match.endColumn);
 	}
 
 	return newLines;

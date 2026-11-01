@@ -133,6 +133,31 @@ export interface ChangeEvent {
 	removed?: string;
 }
 
+/** Normalise CRLF and lone CR line endings to LF. */
+function normalizeLineEndings(text: string): string {
+	return text.includes('\r') ? text.replace(/\r\n?/g, '\n') : text;
+}
+
+/** UTF-16 length of the code point that ends at the column (1 or 2). */
+function codePointLengthBefore(text: string, column: number): number {
+	if (column >= 2) {
+		const low = text.charCodeAt(column - 1);
+		const high = text.charCodeAt(column - 2);
+		if (low >= 0xdc00 && low <= 0xdfff && high >= 0xd800 && high <= 0xdbff) return 2;
+	}
+	return 1;
+}
+
+/** UTF-16 length of the code point that starts at the column (1 or 2). */
+function codePointLengthAt(text: string, column: number): number {
+	if (column + 1 < text.length) {
+		const high = text.charCodeAt(column);
+		const low = text.charCodeAt(column + 1);
+		if (high >= 0xd800 && high <= 0xdbff && low >= 0xdc00 && low <= 0xdfff) return 2;
+	}
+	return 1;
+}
+
 /**
  * Core editor state class
  */
@@ -251,8 +276,7 @@ export class EditorState {
 	 */
 	setContent(content: string): void {
 		const oldContent = this.getContent();
-		// Normalize line endings: CRLF and CR to LF
-		const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+		const normalized = normalizeLineEndings(content);
 		const textLines = normalized.split('\n');
 
 		this._lines = textLines.map((text, i) => ({
@@ -267,12 +291,12 @@ export class EditorState {
 		this.retokenize(0, this._lines.length);
 
 		// Emit change event
-		if (oldContent !== content) {
+		if (oldContent !== normalized) {
 			this.emitChange({
 				type: 'replace',
 				from: { line: 0, column: 0 },
 				to: this.endPosition(),
-				text: content,
+				text: normalized,
 				removed: oldContent
 			});
 		}
@@ -543,6 +567,7 @@ export class EditorState {
 	 * Insert text at all cursor positions
 	 */
 	insert(text: string): void {
+		text = normalizeLineEndings(text);
 		const history = this.beginHistory('insert');
 
 		// Get cursors in reverse order (bottom to top) to maintain position validity
@@ -610,6 +635,7 @@ export class EditorState {
 	 * @returns New position after insert
 	 */
 	private insertAtInternal(position: Position, text: string, changes?: HistoryChange[]): Position {
+		text = normalizeLineEndings(text);
 		const pos = this.clampPosition(position);
 		if (changes) {
 			changes.push({
@@ -675,6 +701,7 @@ export class EditorState {
 	 * Insert text at a specific position (public API - single cursor)
 	 */
 	insertAt(position: Position, text: string): void {
+		text = normalizeLineEndings(text);
 		const history = this.beginHistory('insert');
 		const newPos = this.insertAtInternal(position, text, history.entry.changes);
 		this.setCursor(newPos);
@@ -807,7 +834,10 @@ export class EditorState {
 			const { line, column } = cursor.selection.head;
 
 			if (column > 0) {
-				const from = { line, column: column - 1 };
+				const from = {
+					line,
+					column: column - codePointLengthBefore(this._lines[line].text, column)
+				};
 				const to = { line, column };
 
 				this.deleteRangeInternal(from, to, history.entry.changes);
@@ -866,7 +896,7 @@ export class EditorState {
 
 			if (column < currentLine.text.length) {
 				const from = { line, column };
-				const to = { line, column: column + 1 };
+				const to = { line, column: column + codePointLengthAt(currentLine.text, column) };
 
 				this.deleteRangeInternal(from, to, history.entry.changes);
 
@@ -1004,16 +1034,24 @@ export class EditorState {
 			return false;
 		}
 
-		this._redoStack.push(this.createHistoryEntryFromCurrent(entry.changes));
+		// The redo entry keeps the pre-edit cursors, so a later undo restores them.
+		const redoEntry = this.createHistoryEntryFromCurrent(entry.changes);
+		redoEntry.selection = entry.selection;
+		redoEntry.cursors = entry.cursors;
+		redoEntry.primaryCursorId = entry.primaryCursorId;
+		this._redoStack.push(redoEntry);
 
 		this.applyHistoryChanges(entry.changes, 'undo');
 
 		// Restore cursor state
 		if (entry.cursors && entry.primaryCursorId) {
-			this._cursorManager.restore(entry.cursors, entry.primaryCursorId);
+			this._cursorManager.restore(this.clampCursors(entry.cursors), entry.primaryCursorId);
 		} else {
 			// Fallback for old history entries
-			this._cursorManager.setSingleSelection(entry.selection.anchor, entry.selection.head);
+			this._cursorManager.setSingleSelection(
+				this.clampPosition(entry.selection.anchor),
+				this.clampPosition(entry.selection.head)
+			);
 		}
 
 		this.emitChange({ type: 'replace', from: { line: 0, column: 0 } });
@@ -1051,12 +1089,15 @@ export class EditorState {
 
 		// Restore cursor state
 		if (entry.afterCursors && entry.afterPrimaryCursorId) {
-			this._cursorManager.restore(entry.afterCursors, entry.afterPrimaryCursorId);
+			this._cursorManager.restore(
+				this.clampCursors(entry.afterCursors),
+				entry.afterPrimaryCursorId
+			);
 		} else {
 			// Fallback for old history entries
 			this._cursorManager.setSingleSelection(
-				entry.afterSelection.anchor,
-				entry.afterSelection.head
+				this.clampPosition(entry.afterSelection.anchor),
+				this.clampPosition(entry.afterSelection.head)
 			);
 		}
 
@@ -1066,6 +1107,17 @@ export class EditorState {
 		this.resetHistoryGrouping();
 
 		return true;
+	}
+
+	/** Copy cursors with anchors and heads clamped to the current document bounds. */
+	private clampCursors(cursors: readonly Cursor[]): Cursor[] {
+		return cursors.map((c) => ({
+			...c,
+			selection: {
+				anchor: this.clampPosition(c.selection.anchor),
+				head: this.clampPosition(c.selection.head)
+			}
+		}));
 	}
 
 	private applyHistoryChanges(changes: readonly HistoryChange[], direction: 'undo' | 'redo'): void {

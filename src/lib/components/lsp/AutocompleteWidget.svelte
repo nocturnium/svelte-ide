@@ -29,6 +29,7 @@
 	 */
 
 	import type { CompletionItem } from '$lib/types/lsp';
+	import { placeInViewport } from './placement';
 
 	interface Props {
 		/** Completion items to display */
@@ -137,28 +138,34 @@
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
+		if (e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
 		switch (e.key) {
 			case 'ArrowUp': {
 				e.preventDefault();
+				e.stopPropagation();
 				const prevIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
 				onSelectionChange?.(prevIndex);
 				break;
 			}
 			case 'ArrowDown': {
 				e.preventDefault();
+				e.stopPropagation();
 				const nextIndex = selectedIndex < items.length - 1 ? selectedIndex + 1 : 0;
 				onSelectionChange?.(nextIndex);
 				break;
 			}
 			case 'Enter':
 			case 'Tab':
+				if (e.shiftKey) return;
 				e.preventDefault();
+				e.stopPropagation();
 				if (items[selectedIndex]) {
 					onSelect(items[selectedIndex]);
 				}
 				break;
 			case 'Escape':
 				e.preventDefault();
+				e.stopPropagation();
 				onDismiss();
 				break;
 		}
@@ -170,11 +177,15 @@
 	}
 </script>
 
-<svelte:window onkeydown={handleKeyDown} />
+<!-- Capture phase plus stopPropagation: while the popup is open it is the only
+	 handler for these keys, so the editor never also inserts a newline or tab or
+	 moves the caret. -->
+<svelte:window onkeydowncapture={handleKeyDown} />
 
 <div
 	class="autocomplete-widget {className}"
-	style="left: {position.x}px; top: {position.y}px; max-height: {maxHeight}px;"
+	style:max-height="{maxHeight}px"
+	use:placeInViewport={{ x: position.x, y: position.y }}
 	role="listbox"
 	aria-label="Completions"
 >
@@ -235,12 +246,14 @@
 		box-shadow: var(--ide-shadow-lg);
 		overflow: hidden;
 		display: flex;
-		min-width: 300px;
-		max-width: 500px;
+		min-width: min(300px, calc(100vw - 16px));
+		max-width: min(520px, calc(100vw - 16px));
 	}
 
 	.autocomplete-widget__list {
-		flex: 1;
+		/* The list owns at least 260px so labels keep room next to the docs pane. */
+		flex: 1 1 260px;
+		min-width: min(260px, 100%);
 		overflow-y: auto;
 		max-height: inherit;
 	}
@@ -267,7 +280,7 @@
 	}
 
 	.autocomplete-widget__item--selected {
-		background: var(--ide-interactive);
+		background: var(--ide-bg-selected);
 		color: white;
 	}
 
@@ -296,7 +309,9 @@
 	}
 
 	.autocomplete-widget__label {
-		flex: 1;
+		/* The name is the point of a completion row: it may truncate but never vanish. */
+		flex: 1 1 auto;
+		min-width: min(8ch, 100%);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -309,10 +324,11 @@
 	}
 
 	.autocomplete-widget__detail {
-		flex-shrink: 0;
+		flex: 0 1 auto;
+		min-width: 0;
 		font-size: var(--ide-font-size-xs);
 		color: var(--ide-text-muted);
-		max-width: 150px;
+		max-width: 45%;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -324,7 +340,8 @@
 	}
 
 	.autocomplete-widget__docs {
-		width: 300px;
+		flex: 0 1 240px;
+		min-width: 0;
 		max-height: inherit;
 		overflow-y: auto;
 		padding: var(--ide-spacing-sm);
@@ -345,6 +362,26 @@
 		font-size: var(--ide-font-size-xs);
 		color: var(--ide-text-secondary);
 		line-height: 1.5;
+	}
+
+	/* Not enough width for two columns: put the docs under the list. */
+	@media (max-width: 560px) {
+		.autocomplete-widget {
+			flex-direction: column;
+		}
+
+		.autocomplete-widget__list {
+			flex: 1 1 auto;
+			min-height: 0;
+			max-height: none;
+		}
+
+		.autocomplete-widget__docs {
+			flex: 0 1 auto;
+			max-height: 120px;
+			border-left: none;
+			border-top: 1px solid var(--ide-border);
+		}
 	}
 
 	/* Scrollbar styling */

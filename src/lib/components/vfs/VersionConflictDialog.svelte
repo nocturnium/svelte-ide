@@ -6,6 +6,8 @@
 	 * to choose how to resolve the conflict (merge, overwrite, or discard).
 	 */
 
+	import { focusTrap } from '$lib/utils/focus-trap';
+
 	interface ConflictDetails {
 		path: string;
 		localVersion: number;
@@ -66,7 +68,13 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="conflict-overlay" role="dialog" aria-modal="true" aria-labelledby="conflict-title">
+<div
+	class="conflict-overlay"
+	role="dialog"
+	aria-modal="true"
+	aria-labelledby="conflict-title"
+	use:focusTrap
+>
 	<div class="conflict-dialog">
 		<header class="conflict-header">
 			<div class="conflict-title-row">

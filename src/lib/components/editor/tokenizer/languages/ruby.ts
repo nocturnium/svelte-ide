@@ -236,6 +236,13 @@ interface OpenLiteral {
  */
 const NO_CLOSER = '';
 
+/**
+ * Lines longer than this are highlighted up to this column, then shown as plain
+ * text. Ruby's lookbehind rules re-scan the line prefix, so per-token cost grows
+ * with column and a minified or generated line would otherwise freeze the tab.
+ */
+const MAX_HIGHLIGHT_LINE_LENGTH = 10_000;
+
 export class RubyTokenizer {
 	language = 'ruby';
 
@@ -307,6 +314,10 @@ export class RubyTokenizer {
 		}
 
 		while (pos < line.length) {
+			if (pos >= MAX_HIGHLIGHT_LINE_LENGTH) {
+				tokens.push(createToken('text', line.slice(pos), pos));
+				break;
+			}
 			const remaining = line.slice(pos);
 			const produced = this.getNextToken(remaining, pos, line, state);
 

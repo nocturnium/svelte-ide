@@ -1,4 +1,6 @@
 <script module lang="ts">
+	import { formatInlineMarkdown } from '../../utils/safe-markdown';
+
 	// Simple markdown renderer for hover content
 	// Handles code blocks, inline code, bold, italic, and links
 	function renderMarkdown(text: string): string {
@@ -14,17 +16,8 @@
 		// Inline code
 		html = html.replace(/`([^`]+)`/g, '<code class="hover-tooltip__inline-code">$1</code>');
 
-		// Bold
-		html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-		// Italic
-		html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-
-		// Links (href is validated; unsafe schemes degrade to plain text)
-		html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, href: string) => {
-			const url = safeUrl(href);
-			return url ? `<a href="${url}" target="_blank" rel="noopener">${label}</a>` : label;
-		});
+		// Bold, italic and links (links first, hrefs validated)
+		html = formatInlineMarkdown(html, 'noopener');
 
 		// Line breaks
 		html = html.replace(/\n/g, '<br>');
@@ -42,15 +35,6 @@
 		};
 		return text.replace(/[&<>"']/g, (char) => map[char]);
 	}
-
-	// Whitelist link schemes. Relative/anchor URLs and http(s)/mailto are allowed;
-	// anything else (e.g. javascript:, data:, vbscript:) is rejected.
-	function safeUrl(url: string): string | null {
-		const trimmed = url.trim();
-		if (/^(\/|#|\.\/|\.\.\/)/.test(trimmed)) return trimmed;
-		if (/^(https?:|mailto:)/i.test(trimmed)) return trimmed;
-		return null;
-	}
 </script>
 
 <script lang="ts">
@@ -62,6 +46,7 @@
 	 */
 
 	import type { Hover, MarkupContent } from '$lib/types/lsp';
+	import { placeInViewport } from './placement';
 
 	interface Props {
 		/** Hover content from LSP */
@@ -76,34 +61,6 @@
 	}
 
 	let { hover, position, maxWidth = 500, onDismiss, class: className = '' }: Props = $props();
-
-	let tooltipRef: HTMLElement;
-
-	// Adjust position to stay within viewport
-	let adjustedPosition = $derived(() => {
-		if (!tooltipRef) return position;
-
-		const rect = tooltipRef.getBoundingClientRect();
-		const viewportWidth = window.innerWidth;
-		const viewportHeight = window.innerHeight;
-
-		let x = position.x;
-		let y = position.y;
-
-		// Adjust horizontal position
-		if (x + rect.width > viewportWidth - 16) {
-			x = viewportWidth - rect.width - 16;
-		}
-		if (x < 16) x = 16;
-
-		// Adjust vertical position - show above if not enough space below
-		if (y + rect.height > viewportHeight - 16) {
-			y = position.y - rect.height - 24; // 24px to account for cursor height
-		}
-		if (y < 16) y = 16;
-
-		return { x, y };
-	});
 
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
@@ -150,8 +107,8 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
 	class="hover-tooltip {className}"
-	style="left: {adjustedPosition().x}px; top: {adjustedPosition().y}px; max-width: {maxWidth}px;"
-	bind:this={tooltipRef}
+	style:max-width="min({maxWidth}px, calc(100vw - 16px))"
+	use:placeInViewport={{ x: position.x, y: position.y, anchorHeight: 24 }}
 	role="tooltip"
 	onclick={(e) => e.stopPropagation()}
 >

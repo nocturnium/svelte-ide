@@ -23,6 +23,57 @@
 	let { items, x, y, onSelect, onClose }: Props = $props();
 
 	let menuRef: HTMLDivElement;
+	let activeId = $state<string | null>(null);
+
+	// Focus moves into the menu on open and returns to whatever invoked it on close.
+	$effect(() => {
+		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		focusItem(enabledItems()[0]);
+		return () => {
+			if (opener?.isConnected) opener.focus();
+		};
+	});
+
+	function enabledItems(): HTMLButtonElement[] {
+		return Array.from(
+			menuRef?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []
+		);
+	}
+
+	function focusItem(el: HTMLButtonElement | undefined) {
+		if (!el) return;
+		activeId = el.dataset.itemId ?? null;
+		el.focus();
+	}
+
+	function handleMenuKeydown(event: KeyboardEvent) {
+		const enabled = enabledItems();
+		if (enabled.length === 0) return;
+		const current = enabled.indexOf(document.activeElement as HTMLButtonElement);
+		let next: number | null = null;
+		switch (event.key) {
+			case 'ArrowDown':
+				next = current < 0 ? 0 : (current + 1) % enabled.length;
+				break;
+			case 'ArrowUp':
+				next = current < 0 ? enabled.length - 1 : (current - 1 + enabled.length) % enabled.length;
+				break;
+			case 'Home':
+				next = 0;
+				break;
+			case 'End':
+				next = enabled.length - 1;
+				break;
+			case 'Tab':
+				event.preventDefault();
+				onClose();
+				return;
+		}
+		if (next !== null) {
+			event.preventDefault();
+			focusItem(enabled[next]);
+		}
+	}
 
 	// Adjust position to stay in viewport
 	let adjustedX = $state(0);
@@ -80,6 +131,8 @@
 		class="ide-context-menu"
 		style="left: {adjustedX}px; top: {adjustedY}px"
 		role="menu"
+		tabindex="-1"
+		onkeydown={handleMenuKeydown}
 	>
 		{#each items as item (item.id)}
 			{#if item.separator}
@@ -91,6 +144,8 @@
 					class:ide-context-menu__item--danger={item.danger}
 					disabled={item.disabled}
 					role="menuitem"
+					data-item-id={item.id}
+					tabindex={activeId === item.id ? 0 : -1}
 					onclick={() => handleClick(item)}
 				>
 					{#if item.icon}
@@ -128,6 +183,7 @@
 
 	.ide-context-menu__item {
 		display: flex;
+		min-height: 28px;
 		align-items: center;
 		gap: var(--ide-spacing-sm);
 		width: 100%;
@@ -143,8 +199,20 @@
 		transition: background var(--ide-transition-fast);
 	}
 
-	.ide-context-menu__item:hover:not(:disabled) {
+	.ide-context-menu__item:hover:not(:disabled),
+	.ide-context-menu__item:focus-visible {
 		background: var(--ide-bg-hover);
+	}
+
+	.ide-context-menu__item:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: -2px;
+	}
+
+	@media (pointer: coarse) {
+		.ide-context-menu__item {
+			min-height: 44px;
+		}
 	}
 
 	.ide-context-menu__item--disabled {

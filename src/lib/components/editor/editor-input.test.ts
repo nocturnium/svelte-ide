@@ -432,3 +432,92 @@ describe('measureCharacter', () => {
 		expect(deps.setCharWidth).not.toHaveBeenCalled();
 	});
 });
+
+// ============================================================
+// Tab focus escape hatch (WCAG 2.1.2)
+// ============================================================
+
+describe('Tab focus escape hatch', () => {
+	function press(
+		input: ReturnType<typeof createEditorInput>,
+		key: string,
+		mods: Partial<KeyboardEvent> = {}
+	) {
+		const e = {
+			key,
+			ctrlKey: false,
+			metaKey: false,
+			shiftKey: false,
+			altKey: false,
+			...mods,
+			preventDefault: vi.fn(),
+			stopPropagation: vi.fn()
+		} as unknown as KeyboardEvent;
+		input.handleKeyDown(e);
+		return e;
+	}
+
+	function setup(overrides: Partial<EditorInputDeps> = {}) {
+		const keyHandler = vi.fn(() => true);
+		const deps = makeDeps({
+			getKeyboardHandler: () =>
+				({ handleKeyDown: keyHandler }) as unknown as ReturnType<typeof createKeyboardHandler>,
+			...overrides
+		});
+		return { deps, keyHandler, input: createEditorInput(deps) };
+	}
+
+	it('inserts indentation on Tab by default', () => {
+		const { input, keyHandler } = setup();
+		const e = press(input, 'Tab');
+		expect(keyHandler).toHaveBeenCalledTimes(1);
+		expect(e.preventDefault).not.toHaveBeenCalled();
+	});
+
+	it('Ctrl+M toggles Tab-moves-focus and announces each state', () => {
+		const { deps, input, keyHandler } = setup();
+
+		const on = press(input, 'm', { ctrlKey: true });
+		expect(on.preventDefault).toHaveBeenCalled();
+		expect(deps.announce).toHaveBeenLastCalledWith(expect.stringMatching(/^Tab moves focus/));
+
+		press(input, 'Tab');
+		press(input, 'Tab', { shiftKey: true });
+		expect(keyHandler).not.toHaveBeenCalled();
+
+		press(input, 'm', { ctrlKey: true });
+		expect(deps.announce).toHaveBeenLastCalledWith(
+			expect.stringMatching(/^Tab inserts indentation/)
+		);
+		press(input, 'Tab');
+		expect(keyHandler).toHaveBeenCalledTimes(1);
+	});
+
+	it('Escape then Tab leaves the editor once, and only once', () => {
+		const { input, keyHandler } = setup();
+		press(input, 'Escape');
+		press(input, 'Tab');
+		expect(keyHandler).toHaveBeenCalledTimes(1); // only the Escape reached the key handler
+
+		press(input, 'Tab');
+		expect(keyHandler).toHaveBeenCalledTimes(2); // second Tab indents again
+	});
+
+	it('another key between Escape and Tab cancels the escape', () => {
+		const { input, keyHandler } = setup();
+		press(input, 'Escape');
+		press(input, 'a');
+		press(input, 'Tab');
+		expect(keyHandler).toHaveBeenCalledTimes(3);
+	});
+
+	it('honours the tabMovesFocus preference and lets Ctrl+M override it', () => {
+		const { input, keyHandler } = setup({ isTabMovesFocus: () => true });
+		press(input, 'Tab');
+		expect(keyHandler).not.toHaveBeenCalled();
+
+		press(input, 'm', { ctrlKey: true }); // preference on -> override off
+		press(input, 'Tab');
+		expect(keyHandler).toHaveBeenCalledTimes(1);
+	});
+});

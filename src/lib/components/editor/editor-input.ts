@@ -29,6 +29,12 @@ export interface EditorInputDeps {
 
 	// State queries
 	isReadonly: () => boolean;
+	/**
+	 * Host preference for "Tab moves focus" mode. When true, Tab / Shift+Tab are
+	 * left to the browser instead of inserting indentation (WCAG 2.1.2). Ctrl+M
+	 * toggles a runtime override on top of this value. Optional: defaults to false.
+	 */
+	isTabMovesFocus?: () => boolean;
 	isMultiCursor: () => boolean;
 	isFolding: () => boolean;
 	hasMultipleCursors: () => boolean;
@@ -88,6 +94,14 @@ export function createEditorInput(deps: EditorInputDeps) {
 	let isComposing = false;
 	let boundMouseMove: ((e: MouseEvent) => void) | null = null;
 	let boundMouseUp: (() => void) | null = null;
+	/** Runtime override set by Ctrl+M; null defers to deps.isTabMovesFocus(). */
+	let tabFocusOverride: boolean | null = null;
+	/** True after a bare Escape: the next Tab leaves the editor once. */
+	let escapeArmed = false;
+
+	function isTabMovingFocus(): boolean {
+		return tabFocusOverride ?? deps.isTabMovesFocus?.() ?? false;
+	}
 
 	/**
 	 * Map a horizontal pixel offset (relative to the start of the text content,
@@ -264,6 +278,28 @@ export function createEditorInput(deps: EditorInputDeps) {
 		const isMod = e.ctrlKey || e.metaKey;
 		const editorState = deps.getEditorState();
 
+		// Keyboard-trap escape hatch (WCAG 2.1.2): Ctrl+M toggles "Tab moves focus",
+		// and Escape followed by Tab leaves the editor once.
+		if (isMod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'm') {
+			e.preventDefault();
+			escapeArmed = false;
+			tabFocusOverride = !isTabMovingFocus();
+			deps.announce(
+				tabFocusOverride
+					? 'Tab moves focus. Press Control M to make Tab insert indentation again.'
+					: 'Tab inserts indentation. Press Control M to make Tab move focus.'
+			);
+			return;
+		}
+
+		if (e.key === 'Tab' && !isMod && !e.altKey) {
+			const leave = escapeArmed || isTabMovingFocus();
+			escapeArmed = false;
+			if (leave) return; // browser default: move focus
+		} else if (e.key !== 'Escape') {
+			escapeArmed = false;
+		}
+
 		// Find/Replace shortcuts
 		if (isMod && e.key === 'f') {
 			e.preventDefault();
@@ -303,6 +339,12 @@ export function createEditorInput(deps: EditorInputDeps) {
 			e.preventDefault();
 			deps.onCloseFind();
 			return;
+		}
+
+		// A bare Escape (nothing above consumed it) arms the Escape-then-Tab escape.
+		// Multi-cursor Escape below clears cursors first and does not arm.
+		if (e.key === 'Escape' && !(deps.isMultiCursor() && deps.hasMultipleCursors())) {
+			escapeArmed = true;
 		}
 
 		// Folding shortcuts (Ctrl+Shift+[ and Ctrl+Shift+])
@@ -551,6 +593,7 @@ export function createEditorInput(deps: EditorInputDeps) {
 	}
 
 	function handleBlur(): void {
+		escapeArmed = false;
 		deps.stopCursorBlink();
 		deps.setCursorVisible(false);
 	}

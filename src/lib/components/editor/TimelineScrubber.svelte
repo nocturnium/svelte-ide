@@ -476,4 +476,10 @@
 		font-size: 10px;
 		color: var(--ide-text-muted, #a8c5d9);
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.timeline-scrubber__live {
+			animation: none;
+		}
+	}
 </style>

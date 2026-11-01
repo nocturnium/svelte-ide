@@ -179,4 +179,19 @@
 		align-items: center;
 		justify-content: center;
 	}
+
+	/* Touch: every size reaches the 44px target. */
+	@media (pointer: coarse) {
+		.ide-button {
+			min-height: 44px;
+			min-width: 44px;
+		}
+	}
+
+	/* Reduced motion: keep the loading cue, but slow it down. */
+	@media (prefers-reduced-motion: reduce) {
+		.ide-button__spinner {
+			animation-duration: 2.4s;
+		}
+	}
 </style>

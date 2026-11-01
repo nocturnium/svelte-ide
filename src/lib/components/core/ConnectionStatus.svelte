@@ -296,4 +296,13 @@
 			opacity: 0.4;
 		}
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.icon-loader {
+			animation-duration: 2.4s;
+		}
+		.connection-status.connecting .dot {
+			animation: none;
+		}
+	}
 </style>

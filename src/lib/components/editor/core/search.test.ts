@@ -8,6 +8,7 @@ import {
 	getPrevMatchIndex,
 	replaceMatch,
 	replaceAllMatches,
+	searchRegex,
 	isPositionInMatch,
 	findMatchAtPosition,
 	type SearchMatch
@@ -555,5 +556,60 @@ describe('integration: find, navigate, replace cycle', () => {
 
 		const doneMatches = findAllMatches(newSrc, 'done');
 		expect(doneMatches).toHaveLength(2);
+	});
+});
+
+describe('regex replacement expansion (review round 1)', () => {
+	it('expands capture groups, named groups and $& in regex mode', () => {
+		const lines = [{ text: 'foo-123 bar-45' }];
+		const regex = searchRegex('(\\w+)-(?<n>\\d+)', { useRegex: true })!;
+		const matches = findAllMatches(lines, '(\\w+)-(?<n>\\d+)', { useRegex: true });
+		expect(replaceAllMatches(lines, matches, '$<n>:$1 [$&] $$', regex)).toEqual([
+			'123:foo [foo-123] $ 45:bar [bar-45] $'
+		]);
+		const single = replaceMatch(lines, matches[0], '$2$1', regex);
+		expect(single.newLines[0]).toBe('123foo bar-45');
+		expect(single.cursorPosition.column).toBe(6);
+	});
+
+	it('keeps the replacement literal outside regex mode', () => {
+		const lines = [{ text: 'a.b' }];
+		const matches = findAllMatches(lines, '.', {});
+		expect(replaceAllMatches(lines, matches, '$&')).toEqual(['a$&b']);
+	});
+});
+
+describe('regex replacement with lookaround (review round 2, M1)', () => {
+	function replaceAll(text: string, pattern: string, replacement: string): string {
+		const lines = [{ text }];
+		const regex = searchRegex(pattern, { useRegex: true, caseSensitive: true })!;
+		const matches = findAllMatches(lines, pattern, { useRegex: true, caseSensitive: true });
+		return replaceAllMatches(lines, matches, replacement, regex)[0];
+	}
+
+	it.each([
+		['(?<=@)\\w+', '$&.com', 'me@host'],
+		['x(?=y)', '[$&]', 'xy xz'],
+		['(?<=\\$)(\\d+)', '$1 USD', 'cost $5'],
+		['(\\w+)(?=\\()', 'this.$1', 'call(x)'],
+		['(?<!a)b', "<$`|$'>", 'ab cb bb']
+	])('matches String.replace for /%s/ with %s', (pattern, replacement, text) => {
+		const native = text.replace(new RegExp(pattern, 'g'), replacement);
+		expect(replaceAll(text, pattern, replacement)).toBe(native);
+	});
+
+	it('expands a single match with replaceMatch', () => {
+		const lines = [{ text: 'call(x) run(y)' }];
+		const pattern = '(\\w+)(?=\\()';
+		const regex = searchRegex(pattern, { useRegex: true })!;
+		const matches = findAllMatches(lines, pattern, { useRegex: true });
+		const result = replaceMatch(lines, matches[1], 'this.$1', regex);
+		expect(result.newLines[0]).toBe('call(x) this.run(y)');
+		expect(result.cursorPosition.column).toBe(16);
+	});
+
+	it('lets a lookahead see the original text of later matches', () => {
+		expect(replaceAll('aa', 'a(?=a)', 'b')).toBe('ba');
+		expect(replaceAll('a1 a2', 'a(?=\\d)', 'X$&')).toBe('Xa1 Xa2');
 	});
 });

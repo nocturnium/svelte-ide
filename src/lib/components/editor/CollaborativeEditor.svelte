@@ -101,18 +101,14 @@
 	// Yjs text observer used to mirror remote edits into `content`
 	let yTextObserver: (() => void) | null = null;
 
+	// Unsubscribe for the provider's first-sync listener used to seed initialContent
+	let unsubscribeSeed: (() => void) | null = null;
+
 	// Initialize on mount
 	onMount(() => {
 		// Use external doc or create internal one
 		const doc = externalDoc ?? new Y.Doc();
-		if (!externalDoc) {
-			internalDoc = doc;
-			// Initialize with content if provided
-			if (initialContent) {
-				const text = doc.getText(textName);
-				text.insert(0, initialContent);
-			}
-		}
+		if (!externalDoc) internalDoc = doc;
 
 		const provider =
 			externalProvider ??
@@ -121,6 +117,28 @@
 				: null);
 		if (provider && !externalProvider) {
 			ownedProvider = provider;
+		}
+
+		// Seed initialContent only into an empty shared text, and when a provider
+		// is attached only after the first sync: otherwise every peer that mounts
+		// inserts the seed and the document ends up with one copy per peer.
+		const seed = () => {
+			const text = doc.getText(textName);
+			if (initialContent && text.length === 0) text.insert(0, initialContent);
+		};
+		if (!initialContent) {
+			// nothing to seed
+		} else if (!provider) {
+			seed();
+		} else if (provider.synced) {
+			seed();
+		} else {
+			unsubscribeSeed = provider.onSync((synced) => {
+				if (!synced) return;
+				unsubscribeSeed?.();
+				unsubscribeSeed = null;
+				seed();
+			});
 		}
 
 		const awareness = provider?.awareness ?? externalAwareness;
@@ -137,7 +155,7 @@
 
 		// Create editor state
 		editorState = createEditorState({
-			content: initialContent,
+			content: doc.getText(textName).toString(),
 			language,
 			tabSize: preferences.tabSize ?? 2,
 			insertSpaces: preferences.insertSpaces ?? false
@@ -179,6 +197,8 @@
 	});
 
 	onDestroy(() => {
+		unsubscribeSeed?.();
+		unsubscribeSeed = null;
 		unsubscribeContent?.();
 		unsubscribeContent = null;
 		yTextObserver?.();

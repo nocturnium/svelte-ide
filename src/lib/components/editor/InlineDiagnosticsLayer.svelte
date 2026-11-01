@@ -498,7 +498,7 @@
 		background: color-mix(in srgb, var(--ide-text-muted) 22%, transparent);
 		font-size: 10px;
 		font-weight: 600;
-		color: var(--ide-text-secondary, #aaa);
+		color: var(--ide-text-primary);
 		text-align: center;
 	}
 
@@ -536,7 +536,7 @@
 	}
 	.diagnostic-row--error .row-icon,
 	.diagnostic-row--error .row-message {
-		color: var(--ide-error);
+		color: color-mix(in srgb, var(--ide-error) 50%, var(--ide-text-primary));
 	}
 
 	.diagnostic-row--warning {
@@ -549,7 +549,7 @@
 	}
 	.diagnostic-row--warning .row-icon,
 	.diagnostic-row--warning .row-message {
-		color: var(--ide-warning);
+		color: color-mix(in srgb, var(--ide-warning) 50%, var(--ide-text-primary));
 	}
 
 	.diagnostic-row--info {
@@ -562,7 +562,7 @@
 	}
 	.diagnostic-row--info .row-icon,
 	.diagnostic-row--info .row-message {
-		color: var(--ide-info);
+		color: color-mix(in srgb, var(--ide-info) 50%, var(--ide-text-primary));
 	}
 
 	.diagnostic-row--hint {
@@ -575,7 +575,7 @@
 	}
 	.diagnostic-row--hint .row-icon,
 	.diagnostic-row--hint .row-message {
-		color: var(--ide-text-muted);
+		color: var(--ide-text-secondary);
 	}
 
 	/* Opaque chip surfaces: an elevated base tinted by severity, so the message

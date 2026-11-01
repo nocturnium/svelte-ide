@@ -64,6 +64,7 @@
 					<button
 						class="presence-bar__avatar"
 						style="--index: {i}; --total: {visibleAgents.length}"
+						aria-label="{agent.name}, {agent.type}, {agent.status}"
 						onclick={() => onAgentClick?.(agent)}
 					>
 						<AgentAvatar {agent} size="sm" showBadge={false} showProgress={false} />
@@ -73,7 +74,11 @@
 
 			{#if overflowCount > 0}
 				<Tooltip content="{overflowCount} more agents">
-					<button class="presence-bar__overflow" onclick={onExpand}>
+					<button
+						class="presence-bar__overflow"
+						aria-label="{overflowCount} more agents"
+						onclick={onExpand}
+					>
 						+{overflowCount}
 					</button>
 				</Tooltip>
@@ -84,16 +89,22 @@
 			{#if busyCount > 0}
 				<Tooltip content="{busyCount} agent{busyCount > 1 ? 's' : ''} working">
 					<span class="presence-bar__stat presence-bar__stat--busy">
-						<span class="presence-bar__dot presence-bar__dot--busy"></span>
-						{busyCount}
+						<span class="presence-bar__dot presence-bar__dot--busy" aria-hidden="true"></span>
+						<span aria-hidden="true">{busyCount}</span>
+						<span class="ide-visually-hidden">
+							{busyCount} agent{busyCount > 1 ? 's' : ''} working
+						</span>
 					</span>
 				</Tooltip>
 			{/if}
 			{#if stalledCount > 0}
 				<Tooltip content="{stalledCount} agent{stalledCount > 1 ? 's' : ''} stalled">
 					<span class="presence-bar__stat presence-bar__stat--stalled">
-						<span class="presence-bar__dot presence-bar__dot--stalled"></span>
-						{stalledCount}
+						<span class="presence-bar__dot presence-bar__dot--stalled" aria-hidden="true"></span>
+						<span aria-hidden="true">{stalledCount}</span>
+						<span class="ide-visually-hidden">
+							{stalledCount} agent{stalledCount > 1 ? 's' : ''} stalled
+						</span>
 					</span>
 				</Tooltip>
 			{/if}
@@ -107,7 +118,7 @@
 
 	{#if expandable && activeAgents.length > 0}
 		<Tooltip content="View all agents">
-			<button class="presence-bar__expand" onclick={onExpand}>
+			<button class="presence-bar__expand" aria-label="View all agents" onclick={onExpand}>
 				<Icon name={orientation === 'vertical' ? 'chevron-right' : 'chevron-down'} size={12} />
 			</button>
 		</Tooltip>
@@ -145,6 +156,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		min-width: 32px;
+		min-height: 32px;
 		border: none;
 		background: transparent;
 		padding: 0;
@@ -156,7 +169,7 @@
 
 	/* Stacked effect for horizontal - overlap avatars */
 	.presence-bar--horizontal .presence-bar__avatar:not(:first-child) {
-		margin-left: -8px;
+		margin-left: -4px;
 	}
 
 	.presence-bar--horizontal .presence-bar__avatar:hover {
@@ -166,7 +179,7 @@
 
 	/* Stacked effect for vertical - overlap avatars */
 	.presence-bar--vertical .presence-bar__avatar:not(:first-child) {
-		margin-top: -6px;
+		margin-top: -2px;
 	}
 
 	.presence-bar--vertical .presence-bar__avatar:hover {
@@ -178,8 +191,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 24px;
-		height: 24px;
+		width: 32px;
+		height: 32px;
 		font-size: 10px;
 		font-weight: 600;
 		color: var(--ide-text-secondary);
@@ -191,11 +204,11 @@
 	}
 
 	.presence-bar--horizontal .presence-bar__overflow {
-		margin-left: -8px;
+		margin-left: -4px;
 	}
 
 	.presence-bar--vertical .presence-bar__overflow {
-		margin-top: -6px;
+		margin-top: -2px;
 	}
 
 	.presence-bar__overflow:hover {
@@ -250,6 +263,8 @@
 		justify-content: center;
 		width: 20px;
 		height: 20px;
+		min-width: 32px;
+		min-height: 32px;
 		background: transparent;
 		border: none;
 		border-radius: var(--ide-radius-sm);
@@ -261,5 +276,28 @@
 	.presence-bar__expand:hover {
 		background: var(--ide-bg-hover);
 		color: var(--ide-text-primary);
+	}
+
+	.presence-bar__avatar:focus-visible,
+	.presence-bar__overflow:focus-visible,
+	.presence-bar__expand:focus-visible {
+		outline: 2px solid var(--ide-interactive-focus);
+		outline-offset: 2px;
+	}
+
+	@media (pointer: coarse) {
+		.presence-bar__avatar,
+		.presence-bar__overflow,
+		.presence-bar__expand {
+			min-width: 44px;
+			min-height: 44px;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.presence-bar__dot--busy,
+		.presence-bar__dot--stalled {
+			animation: none;
+		}
 	}
 </style>

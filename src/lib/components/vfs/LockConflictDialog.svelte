@@ -10,6 +10,7 @@
 	 */
 
 	import { Avatar } from '$lib/components/core';
+	import { focusTrap } from '$lib/utils/focus-trap';
 	import AgentAvatar from '$components/agents/AgentAvatar.svelte';
 	import type { VFSFileLock, Agent } from '$lib/types';
 
@@ -22,7 +23,10 @@
 		canForceUnlock?: boolean;
 		/** Pending local changes count */
 		pendingChanges?: number;
-		/** Last successful sync time */
+		/**
+		 * Last successful sync time as an ISO-8601 string (for example `2026-10-31T12:00:00Z`).
+		 * A value that cannot be parsed as a date is shown as given.
+		 */
 		lastSyncTime?: string;
 		onWait?: () => void;
 		onRequestAccess?: () => void;
@@ -67,6 +71,7 @@
 
 	let lastSyncDisplay = $derived.by(() => {
 		if (!lastSyncTime) return null;
+		if (Number.isNaN(Date.parse(lastSyncTime))) return lastSyncTime;
 		const date = new Date(lastSyncTime);
 		const diff = Date.now() - date.getTime();
 		if (diff < 60000) return 'Just now';
@@ -104,6 +109,7 @@
 		aria-modal="true"
 		aria-labelledby="lock-dialog-title"
 		tabindex="-1"
+		use:focusTrap
 		onclick={handleBackdropClick}
 		onkeydown={handleKeyDown}
 	>

@@ -79,6 +79,12 @@
 	function getStatusClass(status: AgentStatus): string {
 		return `agent-avatar__ring--${status}`;
 	}
+
+	// "Atlas, coder, busy": the whole avatar is one image for assistive tech, so the name,
+	// role and state travel together instead of the state living only in ring colour.
+	let accessibleLabel = $derived(
+		[agent.name, agent.type, agent.status, showPhase ? phaseLabel : null].filter(Boolean).join(', ')
+	);
 </script>
 
 <div
@@ -86,6 +92,8 @@
 	class:agent-avatar--ai={isAI}
 	class:agent-avatar--busy={agent.status === 'busy'}
 	style="--avatar-size: {avatarSize}px"
+	role="img"
+	aria-label={accessibleLabel}
 >
 	<!-- SVG Definitions for gradients -->
 	<svg class="agent-avatar__defs" aria-hidden="true">
@@ -475,6 +483,16 @@
 		to {
 			opacity: 1;
 			transform: translateY(0);
+		}
+	}
+
+	/* Reduced motion: stop the infinite loops; state stays visible through ring colour/style. */
+	@media (prefers-reduced-motion: reduce) {
+		.agent-avatar--busy .agent-avatar__inner,
+		.agent-avatar__ring,
+		.agent-avatar__badge--ai,
+		.agent-avatar__badge-glow {
+			animation: none;
 		}
 	}
 

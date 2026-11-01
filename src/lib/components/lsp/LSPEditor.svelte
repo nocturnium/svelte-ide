@@ -18,6 +18,7 @@
 	import AutocompleteWidget from './AutocompleteWidget.svelte';
 	import HoverTooltip from './HoverTooltip.svelte';
 	import SignatureHelpWidget from './SignatureHelpWidget.svelte';
+	import { planCompletionEdits } from './completion-edits';
 
 	interface Props {
 		/** Editor content */
@@ -172,12 +173,11 @@
 		completionItems = [];
 	}
 
-	function handleCompletionSelect(_item: CompletionItem) {
-		// TODO: Apply text edit from completion item using _item.insertText ?? _item.label
-		// For now, just insert at cursor position
-		// This would need integration with the editor's insert method
-
+	function handleCompletionSelect(item: CompletionItem) {
 		hideCompletion();
+		if (readonly || !editorRef) return;
+		const plan = planCompletionEdits(item, content, cursorLine - 1, cursorColumn - 1);
+		editorRef.applyEdits(plan.edits, plan.caret);
 	}
 
 	function handleCompletionSelectionChange(index: number) {
@@ -252,32 +252,9 @@
 	// === Keyboard Handling ===
 
 	function handleKeyDown(e: KeyboardEvent) {
-		// Handle completion navigation
-		if (showCompletion) {
-			switch (e.key) {
-				case 'ArrowUp':
-					e.preventDefault();
-					completionSelectedIndex =
-						completionSelectedIndex > 0 ? completionSelectedIndex - 1 : completionItems.length - 1;
-					return;
-				case 'ArrowDown':
-					e.preventDefault();
-					completionSelectedIndex =
-						completionSelectedIndex < completionItems.length - 1 ? completionSelectedIndex + 1 : 0;
-					return;
-				case 'Enter':
-				case 'Tab':
-					e.preventDefault();
-					if (completionItems[completionSelectedIndex]) {
-						handleCompletionSelect(completionItems[completionSelectedIndex]);
-					}
-					return;
-				case 'Escape':
-					e.preventDefault();
-					hideCompletion();
-					return;
-			}
-		}
+		// Completion navigation (arrows, Enter, Tab, Escape) is owned by
+		// AutocompleteWidget, which intercepts those keys in the capture phase
+		// so neither this handler nor the editor also acts on them.
 
 		// Manual completion trigger (Ctrl+Space)
 		if ((e.ctrlKey || e.metaKey) && e.key === ' ') {

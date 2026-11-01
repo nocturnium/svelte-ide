@@ -7,6 +7,7 @@
 	 */
 
 	import type { SignatureHelp, SignatureInformation, ParameterInformation } from '$lib/types/lsp';
+	import { placeInViewport } from './placement';
 
 	interface Props {
 		/** Signature help data from LSP */
@@ -99,7 +100,7 @@
 
 <div
 	class="signature-help {className}"
-	style="left: {position.x}px; top: {position.y}px;"
+	use:placeInViewport={{ x: position.x, y: position.y }}
 	role="tooltip"
 	aria-label="Signature help"
 >
@@ -151,8 +152,8 @@
 		border: 1px solid var(--ide-border);
 		border-radius: var(--ide-radius-md);
 		box-shadow: var(--ide-shadow-lg);
-		min-width: 200px;
-		max-width: 600px;
+		min-width: min(200px, calc(100vw - 16px));
+		max-width: min(600px, calc(100vw - 16px));
 		font-size: var(--ide-font-size-sm);
 	}
 

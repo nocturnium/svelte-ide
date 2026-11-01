@@ -88,6 +88,7 @@
 				{#if folding && isFoldCollapsed(index)}
 					<button
 						class="custom-editor__fold-placeholder"
+						tabindex="-1"
 						title="{getHiddenLineCount(index)} lines hidden"
 						onclick={(e) => {
 							e.stopPropagation();

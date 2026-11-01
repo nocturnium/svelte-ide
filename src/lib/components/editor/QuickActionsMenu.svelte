@@ -229,8 +229,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 20px;
-		height: 20px;
+		width: 24px;
+		height: 24px;
 		padding: 0;
 		background: var(--ide-bg-secondary, #252536);
 		border: 1px solid var(--ide-border, #333);
@@ -254,6 +254,23 @@
 		animation: pulse 2s infinite;
 	}
 
+	@media (prefers-reduced-motion: reduce) {
+		.lightbulb--has-preferred {
+			animation: none;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.lightbulb {
+			width: 44px;
+			height: 44px;
+		}
+
+		.action-item {
+			min-height: 44px;
+		}
+	}
+
 	@keyframes pulse {
 		0%,
 		100% {
@@ -273,11 +290,14 @@
 		position: absolute;
 		top: -4px;
 		right: -4px;
-		width: 10px;
-		height: 10px;
+		/* Decorative count inside the 24px lightbulb button, not a separate target */
+		min-width: 12px;
+		height: 12px;
+		padding: 0 2px;
+		box-sizing: border-box;
 		background: #f44747;
 		border-radius: 50%;
-		font-size: 8px;
+		font-size: 9px;
 		font-weight: bold;
 		color: white;
 		display: flex;
