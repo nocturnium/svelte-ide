@@ -20,7 +20,7 @@ import type {
 	VFSLockReleasedEvent
 } from '$lib/types';
 import * as vfsClient from '$lib/services/vfs-client';
-import { browser } from '$app/environment';
+import { browser } from '../utils/env';
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { parseError, isConflictError, logError, type VFSError } from '$lib/services/error-handling';
 import { optimisticUpdate, type OptimisticResult } from '$lib/services/optimistic';
@@ -390,8 +390,65 @@ export async function writeFileOptimistic(
 		};
 	}
 
-	const previousFile = state.fileMap.get(path);
 	const workspaceId = state.workspace.id;
+
+	// Writes to one path run one at a time, in call order. Without this an older
+	// write that fails and retries can land after a newer one and overwrite it.
+	const token = {};
+	latestWrite.set(path, token);
+	const skipped = { value: false };
+	const run = enqueueForPath(path, () => doWrite(path, content, workspaceId, token, skipped));
+	// A write that was skipped for a newer one reports that newer write's outcome,
+	// not a success for content that was never sent.
+	const result = run.then((r) => (skipped.value ? (latestResult.get(path) ?? r) : r));
+	latestResult.set(path, result);
+	void result.then(
+		() => {
+			if (latestResult.get(path) === result) latestResult.delete(path);
+		},
+		() => {}
+	);
+	return result;
+}
+
+/**
+ * Run a task after everything already queued for the path, and make later
+ * tasks for the path wait for it. Failures do not block the queue.
+ */
+function enqueueForPath<T>(path: string, task: () => Promise<T>): Promise<T> {
+	const previous = writeChains.get(path) ?? Promise.resolve();
+	const run = previous.then(task);
+	const chain = run.then(
+		() => undefined,
+		() => undefined
+	);
+	writeChains.set(path, chain);
+	void chain.then(() => {
+		if (writeChains.get(path) === chain) writeChains.delete(path);
+	});
+	return run;
+}
+
+/** Per-path tail of the write and delete queue. Bookkeeping only, never rendered. */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- not UI state
+const writeChains = new Map<string, Promise<void>>();
+/** Result promise of the newest write requested for each path. */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- not UI state
+const latestResult = new Map<string, Promise<OptimisticResult<VFSFileInfo>>>();
+/** Identity of the most recent write requested for each path. */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- not UI state
+const latestWrite = new Map<string, object>();
+
+async function doWrite(
+	path: string,
+	content: string,
+	workspaceId: string,
+	token: object,
+	skipped: { value: boolean }
+): Promise<OptimisticResult<VFSFileInfo>> {
+	const previousFile = state.fileMap.get(path);
+	const wasDirty = state.dirtyFiles.has(path);
+	const isSuperseded = () => latestWrite.get(path) !== token;
 
 	return await optimisticUpdate({
 		type: 'file_write',
@@ -403,27 +460,41 @@ export async function writeFileOptimistic(
 				updateFileInfo({
 					...previousFile,
 					size: new Blob([content]).size,
-					// eslint-disable-next-line svelte/prefer-svelte-reactivity -- ephemeral Date used only for toISOString(), not stored as reactive state
 					modTime: new Date().toISOString()
 				});
 			}
 		},
 		rollback: () => {
-			// Restore previous state
-			markClean(path);
+			// The edit never reached the server, so the file stays dirty: the tab
+			// keeps its unsaved marker and close-without-saving still prompts.
+			// Only metadata is rolled back.
+			if (wasDirty || !isSuperseded()) markDirty(path);
 			if (previousFile) {
 				updateFileInfo(previousFile);
 			}
 		},
 		commit: async () => {
+			// A newer write for this path is queued; it carries newer content, so
+			// sending this one (or retrying it) could only overwrite that edit.
+			if (isSuperseded()) {
+				skipped.value = true;
+				return state.fileMap.get(path) ?? (previousFile as VFSFileInfo);
+			}
 			const result = await vfsClient.quickWriteFile(workspaceId, path, content);
-			markClean(path);
+			if (!isSuperseded()) markClean(path);
 			updateFileInfo(result);
 			return result;
 		},
 		config: {
 			maxRetries: 3,
 			retryDelay: 1000,
+			// Conflicts, permission and not-found errors will not succeed on retry;
+			// fail at once so a conflict reaches the queue without a 7 s delay.
+			shouldRetry: (error) => {
+				if (isSuperseded()) return false;
+				const vfsError = parseError(error, { path });
+				return vfsError.retryable || vfsError.code === 'UNKNOWN';
+			},
 			onRollback: (op, error) => {
 				const vfsError = parseError(error, { path, workspaceId });
 				state.structuredError = vfsError;
@@ -482,7 +553,10 @@ export async function deleteFileOptimistic(path: string): Promise<OptimisticResu
 			}
 		},
 		commit: async () => {
-			await vfsClient.deleteFile(workspaceId, path);
+			// The file leaves the UI at once, but the request joins the path's write
+			// queue so it cannot reach the server before an earlier write, which
+			// would then recreate the file.
+			await enqueueForPath(path, () => vfsClient.deleteFile(workspaceId, path));
 		},
 		config: {
 			maxRetries: 2,

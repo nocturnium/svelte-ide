@@ -24,6 +24,12 @@ export interface OptimisticOperation<T> {
 export interface OptimisticConfig {
 	maxRetries?: number;
 	retryDelay?: number;
+	/**
+	 * Decide whether a failed commit is worth retrying. Defaults to retrying
+	 * every error. Return false for errors that will never succeed on retry
+	 * (conflicts, permissions, not found) so they fail immediately.
+	 */
+	shouldRetry?: (error: Error, attempt: number) => boolean;
 	onCommit?: (operation: OptimisticOperation<unknown>) => void;
 	onRollback?: (operation: OptimisticOperation<unknown>, error: Error) => void;
 	onRetry?: (operation: OptimisticOperation<unknown>, attempt: number) => void;
@@ -85,7 +91,14 @@ export async function optimisticUpdate<T, R>(options: {
 	config?: OptimisticConfig;
 }): Promise<OptimisticResult<R>> {
 	const { type, payload, apply, rollback, commit, config = {} } = options;
-	const { maxRetries = 3, retryDelay = 1000, onCommit, onRollback, onRetry } = config;
+	const {
+		maxRetries = 3,
+		retryDelay = 1000,
+		shouldRetry = () => true,
+		onCommit,
+		onRollback,
+		onRetry
+	} = config;
 	const scopeKey = options.scopeKey ?? getScopeKeyFromPayload(payload);
 
 	const operation: OptimisticOperation<T> = {
@@ -138,6 +151,7 @@ export async function optimisticUpdate<T, R>(options: {
 			lastError = commitError instanceof Error ? commitError : new Error(String(commitError));
 			operation.retryCount++;
 
+			if (!shouldRetry(lastError, operation.retryCount)) break;
 			if (operation.retryCount <= maxRetries) {
 				onRetry?.(operation as OptimisticOperation<unknown>, operation.retryCount);
 				await delay(getRetryDelay(retryDelay, operation.retryCount));

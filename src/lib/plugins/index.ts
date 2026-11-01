@@ -129,6 +129,9 @@ export interface PluginLoader {
 
 	/**
 	 * Load a plugin module from the server
+	 *
+	 * The result is whatever JSON the plugin host returns, unvalidated. The
+	 * library has no sandbox, so treat it as untrusted input from your host.
 	 */
 	loadModule(proposalId: string, entryPoint: string): Promise<Record<string, unknown>>;
 }

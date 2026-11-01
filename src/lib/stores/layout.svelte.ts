@@ -6,7 +6,7 @@
  * We use getter functions to expose reactive derived state.
  */
 
-import { browser } from '$app/environment';
+import { browser } from '../utils/env';
 
 interface LayoutState {
 	// Sidebar

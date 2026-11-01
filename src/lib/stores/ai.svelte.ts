@@ -53,6 +53,9 @@ const state = $state<AIState>({
 	error: null
 });
 
+/** Abort controller for the in-flight sendMessage request, if any. */
+let streamController: AbortController | null = null;
+
 // Getter functions for derived values (Svelte 5 module-safe)
 export function getConversations(): AIConversation[] {
 	return state.conversations;
@@ -213,18 +216,26 @@ export function addMessage(message: Omit<AIMessage, 'id' | 'timestamp'>): string
 		createConversation();
 	}
 
+	return addMessageTo(state.activeConversationId!, message);
+}
+
+/**
+ * Add a message to a specific conversation, regardless of which one is active.
+ */
+function addMessageTo(
+	conversationId: string,
+	message: Omit<AIMessage, 'id' | 'timestamp'>
+): string {
 	const id = crypto.randomUUID();
 	const newMessage: AIMessage = {
 		...message,
 		id,
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIMessage object; type expects Date, not SvelteDate
 		timestamp: new Date()
 	};
 
 	state.conversations = state.conversations.map((c) =>
-		c.id === state.activeConversationId
-			? // eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
-				{ ...c, messages: [...c.messages, newMessage], updatedAt: new Date() }
+		c.id === conversationId
+			? { ...c, messages: [...c.messages, newMessage], updatedAt: new Date() }
 			: c
 	);
 
@@ -235,12 +246,23 @@ export function addMessage(message: Omit<AIMessage, 'id' | 'timestamp'>): string
  * Update a message (for streaming)
  */
 export function updateMessage(messageId: string, updates: Partial<AIMessage>): void {
+	if (!state.activeConversationId) return;
+	updateMessageIn(state.activeConversationId, messageId, updates);
+}
+
+/**
+ * Update a message in a specific conversation, regardless of which one is active.
+ */
+function updateMessageIn(
+	conversationId: string,
+	messageId: string,
+	updates: Partial<AIMessage>
+): void {
 	state.conversations = state.conversations.map((c) =>
-		c.id === state.activeConversationId
+		c.id === conversationId
 			? {
 					...c,
 					messages: c.messages.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
-					// eslint-disable-next-line svelte/prefer-svelte-reactivity -- timestamp snapshot on plain AIConversation object; type expects Date, not SvelteDate
 					updatedAt: new Date()
 				}
 			: c
@@ -248,16 +270,36 @@ export function updateMessage(messageId: string, updates: Partial<AIMessage>): v
 }
 
 /**
+ * Stop the in-flight response, keeping whatever has streamed so far.
+ * The assistant message is finalised (isStreaming false) and no error is reported.
+ */
+export function cancelStreaming(): void {
+	streamController?.abort();
+}
+
+/**
  * Send a user message and get AI response
+ *
+ * The reply is written to the conversation that was active when the message was sent,
+ * even if the user switches conversations while it streams. Calls made while another
+ * response is streaming are ignored.
  */
 export async function sendMessage(content: string, context?: AIContext): Promise<void> {
 	if (!content.trim()) return;
+	if (streamController) return;
+
+	if (!state.activeConversationId) {
+		createConversation();
+	}
+	const conversationId = state.activeConversationId!;
+	const controller = new AbortController();
+	streamController = controller;
 
 	// Add user message
-	addMessage({ role: 'user', content });
+	addMessageTo(conversationId, { role: 'user', content });
 
 	// Create placeholder for assistant response
-	const assistantId = addMessage({
+	const assistantId = addMessageTo(conversationId, {
 		role: 'assistant',
 		content: '',
 		isStreaming: true
@@ -266,10 +308,13 @@ export async function sendMessage(content: string, context?: AIContext): Promise
 	state.isStreaming = true;
 	state.error = null;
 
+	let fullContent = '';
+
 	try {
-		const activeConv = getActiveConversation();
+		const activeConv = state.conversations.find((c) => c.id === conversationId);
 		const response = await fetch(state.config.endpoint ?? '/api/chat', {
 			method: 'POST',
+			signal: controller.signal,
 			headers: {
 				'Content-Type': 'application/json',
 				...state.config.headers
@@ -296,28 +341,31 @@ export async function sendMessage(content: string, context?: AIContext): Promise
 		if (state.config.streaming && response.body) {
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
-			let fullContent = '';
+			// Wake a pending read() when the user cancels.
+			controller.signal.addEventListener('abort', () => void reader.cancel().catch(() => {}), {
+				once: true
+			});
 
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
 
-				const chunk = decoder.decode(value);
-				fullContent += chunk;
+				fullContent += decoder.decode(value, { stream: true });
 
-				updateMessage(assistantId, {
+				updateMessageIn(conversationId, assistantId, {
 					content: fullContent,
 					isStreaming: true
 				});
 			}
 
-			updateMessage(assistantId, {
+			fullContent += decoder.decode();
+			updateMessageIn(conversationId, assistantId, {
 				content: fullContent,
 				isStreaming: false
 			});
 		} else {
 			const data = await response.json();
-			updateMessage(assistantId, {
+			updateMessageIn(conversationId, assistantId, {
 				content: data.content,
 				toolCalls: data.toolCalls,
 				isStreaming: false,
@@ -327,19 +375,27 @@ export async function sendMessage(content: string, context?: AIContext): Promise
 			// Handle tool calls
 			if (data.toolCalls?.length) {
 				for (const toolCall of data.toolCalls) {
-					await executeToolCall(toolCall.name, toolCall.arguments, toolCall.id);
+					await executeToolCall(conversationId, toolCall.name, toolCall.arguments, toolCall.id);
 				}
 			}
 		}
 	} catch (err) {
+		if (controller.signal.aborted) {
+			updateMessageIn(conversationId, assistantId, {
+				content: fullContent,
+				isStreaming: false
+			});
+			return;
+		}
 		const errorMessage = err instanceof Error ? err.message : 'Unknown error';
 		state.error = errorMessage;
-		updateMessage(assistantId, {
+		updateMessageIn(conversationId, assistantId, {
 			content: '',
 			error: errorMessage,
 			isStreaming: false
 		});
 	} finally {
+		streamController = null;
 		state.isStreaming = false;
 	}
 }
@@ -348,13 +404,14 @@ export async function sendMessage(content: string, context?: AIContext): Promise
  * Execute a tool call
  */
 async function executeToolCall(
+	conversationId: string,
 	toolName: string,
 	args: Record<string, unknown>,
 	toolCallId: string
 ): Promise<void> {
 	const tool = state.tools.get(toolName);
 	if (!tool) {
-		addMessage({
+		addMessageTo(conversationId, {
 			role: 'tool',
 			content: '',
 			toolResult: {
@@ -367,9 +424,9 @@ async function executeToolCall(
 	}
 
 	try {
-		const activeConv = getActiveConversation();
+		const activeConv = state.conversations.find((c) => c.id === conversationId);
 		const result = await tool.handler(args, activeConv?.context ?? {});
-		addMessage({
+		addMessageTo(conversationId, {
 			role: 'tool',
 			content: '',
 			toolResult: {
@@ -378,7 +435,7 @@ async function executeToolCall(
 			}
 		});
 	} catch (err) {
-		addMessage({
+		addMessageTo(conversationId, {
 			role: 'tool',
 			content: '',
 			toolResult: {

@@ -137,6 +137,37 @@ const DEFAULT_CLIENT_CAPABILITIES: ClientCapabilities = {
 // LSP Client Class
 // ============================================================================
 
+/** Offset of an LSP position (UTF-16 code units, which match JS strings). */
+function offsetAt(text: string, pos: Position): number {
+	let offset = 0;
+	for (let line = 0; line < pos.line; line++) {
+		const nl = text.indexOf('\n', offset);
+		if (nl === -1) return text.length;
+		offset = nl + 1;
+	}
+	const lineEnd = text.indexOf('\n', offset);
+	const end = lineEnd === -1 ? text.length : lineEnd;
+	return Math.min(offset + pos.character, end);
+}
+
+/** Apply LSP content changes (full or incremental) in order to a text. */
+export function applyContentChanges(
+	text: string,
+	changes: readonly TextDocumentContentChangeEvent[]
+): string {
+	let result = text;
+	for (const change of changes) {
+		if (!change.range) {
+			result = change.text;
+			continue;
+		}
+		const start = offsetAt(result, change.range.start);
+		const end = Math.max(start, offsetAt(result, change.range.end));
+		result = result.slice(0, start) + change.text + result.slice(end);
+	}
+	return result;
+}
+
 export class LSPClient {
 	private ws: WebSocket | null = null;
 	private requestId = 0;
@@ -160,7 +191,9 @@ export class LSPClient {
 	private incomingBuffer = '';
 
 	// Document tracking
-	private openDocuments = new Map<string, { version: number; languageId: string }>();
+	// The latest full text is kept so documents can be re-opened after a
+	// reconnect (or opened late, if didOpen was called before the socket was up).
+	private openDocuments = new Map<string, { version: number; languageId: string; text: string }>();
 	private diagnosticsCache = new Map<string, Diagnostic[]>();
 
 	// Event handlers. Each event may have multiple subscribers; store a Set per
@@ -249,12 +282,22 @@ export class LSPClient {
 		this.setState('connecting');
 
 		return new Promise((resolve, reject) => {
+			let settled = false;
+			const settle = (err?: unknown) => {
+				if (settled) return;
+				settled = true;
+				if (err) reject(err);
+				else resolve();
+			};
 			try {
 				const socket = new WebSocket(this.config.serverUrl);
 				this.ws = socket;
 
 				socket.onopen = async () => {
-					if (socket !== this.ws) return;
+					if (socket !== this.ws) {
+						settle(new Error('Connection superseded'));
+						return;
+					}
 					if (this.reconnectTimeout) {
 						clearTimeout(this.reconnectTimeout);
 						this.reconnectTimeout = null;
@@ -264,13 +307,16 @@ export class LSPClient {
 
 					try {
 						await this.initialize();
-						resolve();
+						settle();
 					} catch (err) {
-						reject(err);
+						settle(err);
 					}
 				};
 
 				socket.onclose = () => {
+					// A socket that closes before (or during) initialisation must
+					// settle connect(); otherwise callers awaiting it hang forever.
+					settle(new Error('Connection closed'));
 					this.handleDisconnect(socket);
 				};
 
@@ -278,9 +324,7 @@ export class LSPClient {
 					if (socket !== this.ws) return;
 					const error = new Error('WebSocket error');
 					this.emitEvent('onError', error);
-					if (this._state === 'connecting') {
-						reject(error);
-					}
+					settle(error);
 				};
 
 				socket.onmessage = (event) => {
@@ -289,7 +333,7 @@ export class LSPClient {
 				};
 			} catch (err) {
 				this.setState('error');
-				reject(err);
+				settle(err);
 			}
 		});
 	}
@@ -317,6 +361,8 @@ export class LSPClient {
 	}
 
 	private handleDisconnect(socket: WebSocket | null = this.ws): void {
+		// Ignore close events from sockets that have already been replaced.
+		if (socket !== this.ws) return;
 		const wasIntentional = this.intentionalDisconnect;
 		this.cleanupSocket(socket);
 		this.setState('disconnected');
@@ -405,6 +451,14 @@ export class LSPClient {
 		this.sendNotification('initialized', {});
 
 		this.setState('ready');
+
+		// Re-open documents that were open before a reconnect, or that were
+		// opened while the socket was down. The server has no state for them.
+		for (const [uri, doc] of this.openDocuments) {
+			this.sendNotification('textDocument/didOpen', {
+				textDocument: { uri, languageId: doc.languageId, version: doc.version, text: doc.text }
+			});
+		}
 
 		if (this.config.debug) {
 			console.log('[LSP] Initialized with capabilities:', result.capabilities);
@@ -510,7 +564,17 @@ export class LSPClient {
 				console.log('[LSP] Received:', rpcMessage);
 			}
 
-			if ('id' in rpcMessage && rpcMessage.id !== null) {
+			if (
+				rpcMessage.method &&
+				'id' in rpcMessage &&
+				rpcMessage.id !== null &&
+				rpcMessage.id !== undefined
+			) {
+				// Server -> client request. It must be answered, and its id lives in
+				// the server's id space, so it must never be matched to our pending
+				// requests.
+				this.handleServerRequest(rpcMessage.id, rpcMessage.method, rpcMessage.params);
+			} else if ('id' in rpcMessage && rpcMessage.id !== null) {
 				// Response to a request
 				const pending =
 					typeof rpcMessage.id === 'number' ? this.pendingRequests.get(rpcMessage.id) : undefined;
@@ -547,6 +611,61 @@ export class LSPClient {
 				console.error('[LSP] Failed to handle message:', err);
 			}
 		}
+	}
+
+	/**
+	 * Answer a request the server sent us. Subscribers registered with
+	 * onNotification() for the method are still called (for observation); the
+	 * reply is a sensible default so servers that block on these (for example
+	 * workspace/configuration or client/registerCapability) keep working.
+	 */
+	private handleServerRequest(id: number | string, method: string, params: unknown): void {
+		const handlers = this.notificationHandlers.get(method);
+		if (handlers) {
+			for (const handler of [...handlers]) {
+				try {
+					handler(params);
+				} catch (err) {
+					if (this.config.debug) {
+						console.error(`[LSP] Request handler for "${method}" threw:`, err);
+					}
+				}
+			}
+		}
+
+		let response: Record<string, unknown>;
+		switch (method) {
+			case 'workspace/configuration': {
+				const items = (params as { items?: unknown[] } | undefined)?.items ?? [];
+				response = { result: items.map(() => null) };
+				break;
+			}
+			case 'client/registerCapability':
+			case 'client/unregisterCapability':
+			case 'window/workDoneProgress/create':
+			case 'window/showMessageRequest':
+			case 'workspace/semanticTokens/refresh':
+			case 'workspace/inlayHint/refresh':
+			case 'workspace/codeLens/refresh':
+			case 'workspace/diagnostic/refresh':
+				response = { result: null };
+				break;
+			case 'workspace/workspaceFolders':
+				response = {
+					result: [
+						{ uri: this.config.rootUri, name: this.config.rootUri.split('/').pop() ?? 'workspace' }
+					]
+				};
+				break;
+			case 'workspace/applyEdit':
+				response = { result: { applied: false, failureReason: 'Not supported by this client' } };
+				break;
+			default:
+				response = { error: { code: -32601, message: `Method not found: ${method}` } };
+		}
+
+		if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+		this.ws.send(JSON.stringify({ jsonrpc: '2.0', id, ...response }));
 	}
 
 	private async sendRequest<T>(method: string, params: unknown): Promise<T> {
@@ -650,7 +769,10 @@ export class LSPClient {
 	// ============================================================================
 
 	didOpen(uri: string, languageId: string, version: number, text: string): void {
-		this.openDocuments.set(uri, { version, languageId });
+		this.openDocuments.set(uri, { version, languageId, text });
+		// Before initialisation the server cannot accept documents; initialize()
+		// replays everything in openDocuments once the server is ready.
+		if (this._state !== 'ready') return;
 
 		const params: TextDocumentItem = {
 			uri,
@@ -666,7 +788,11 @@ export class LSPClient {
 		const doc = this.openDocuments.get(uri);
 		if (doc) {
 			doc.version = version;
+			// Keep the replay snapshot current so a reconnect re-opens the
+			// document with the text the editor actually has.
+			doc.text = applyContentChanges(doc.text, changes);
 		}
+		if (this._state !== 'ready') return;
 
 		this.sendNotification('textDocument/didChange', {
 			textDocument: { uri, version },

@@ -55,6 +55,7 @@ export {
 	addMessage,
 	updateMessage,
 	sendMessage,
+	cancelStreaming,
 	registerTool,
 	unregisterTool,
 	updateConfig,

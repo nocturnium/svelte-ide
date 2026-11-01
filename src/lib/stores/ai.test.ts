@@ -373,3 +373,124 @@ describe('ai store — error', () => {
 		expect(ai.getError()).toBe(null);
 	});
 });
+
+// ============================================================================
+// sendMessage streaming (review round 1: E12, E13)
+// ============================================================================
+
+describe('ai store — sendMessage streaming', () => {
+	function streamOf(parts: Uint8Array[], gate?: Promise<void>, gateAfter = parts.length) {
+		return new ReadableStream<Uint8Array>({
+			async start(controller) {
+				for (let i = 0; i < parts.length; i++) {
+					if (gate && i === gateAfter) await gate;
+					controller.enqueue(parts[i]);
+				}
+				controller.close();
+			}
+		});
+	}
+
+	function mockFetch(body: ReadableStream<Uint8Array>) {
+		const fn = vi.fn(async () => new Response(body, { status: 200 }));
+		vi.stubGlobal('fetch', fn);
+		return fn;
+	}
+
+	const tick = () => new Promise((r) => setTimeout(r, 10));
+
+	it('decodes multi-byte characters split across chunks (E12)', async () => {
+		const bytes = new TextEncoder().encode('h\u00e9llo \u{1F600} \u4e16\u754c');
+		// Splits inside the e-acute, the emoji and the CJK characters.
+		mockFetch(
+			streamOf([bytes.slice(0, 2), bytes.slice(2, 8), bytes.slice(8, 12), bytes.slice(12)])
+		);
+		ai.createConversation();
+		await ai.sendMessage('hi');
+
+		const reply = ai.getMessages().at(-1)!;
+		expect(reply.content).toBe('h\u00e9llo \u{1F600} \u4e16\u754c');
+		expect(reply.content).not.toContain('\ufffd');
+		expect(reply.isStreaming).toBe(false);
+	});
+
+	it('writes the reply to the original conversation when the user switches mid-stream (E13)', async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((r) => (release = r));
+		const enc = new TextEncoder();
+		mockFetch(streamOf([enc.encode('part1 '), enc.encode('part2')], gate, 1));
+
+		const first = ai.createConversation('first');
+		const pending = ai.sendMessage('question');
+		await tick();
+		const second = ai.createConversation('second');
+		release();
+		await pending;
+
+		const convs = ai.getConversations();
+		const firstMsgs = convs.find((c) => c.id === first)!.messages;
+		expect(firstMsgs.map((m) => m.role)).toEqual(['user', 'assistant']);
+		expect(firstMsgs[1].content).toBe('part1 part2');
+		expect(firstMsgs[1].isStreaming).toBe(false);
+		expect(convs.find((c) => c.id === second)!.messages).toEqual([]);
+		expect(ai.getIsStreaming()).toBe(false);
+	});
+
+	it('ignores sendMessage while a response is streaming', async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((r) => (release = r));
+		const enc = new TextEncoder();
+		const fetchMock = mockFetch(streamOf([enc.encode('a'), enc.encode('b')], gate, 1));
+
+		ai.createConversation();
+		const pending = ai.sendMessage('one');
+		await tick();
+		await ai.sendMessage('two');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		release();
+		await pending;
+
+		const msgs = ai.getMessages();
+		expect(msgs.map((m) => m.content)).toEqual(['one', 'ab']);
+	});
+
+	it('cancelStreaming keeps partial content and finalises the message', async () => {
+		const enc = new TextEncoder();
+		const gate = new Promise<void>(() => {}); // never released
+		mockFetch(streamOf([enc.encode('partial'), enc.encode('never')], gate, 1));
+
+		ai.createConversation();
+		const pending = ai.sendMessage('go');
+		await tick();
+		expect(ai.getIsStreaming()).toBe(true);
+		expect(ai.getMessages().at(-1)!.content).toBe('partial');
+
+		ai.cancelStreaming();
+		await pending;
+
+		const reply = ai.getMessages().at(-1)!;
+		expect(reply.content).toBe('partial');
+		expect(reply.isStreaming).toBe(false);
+		expect(reply.error).toBeUndefined();
+		expect(ai.getIsStreaming()).toBe(false);
+		expect(ai.getError()).toBe(null);
+	});
+
+	it('allows a new message after a cancelled one', async () => {
+		const enc = new TextEncoder();
+		mockFetch(streamOf([enc.encode('x'), enc.encode('y')], new Promise<void>(() => {}), 1));
+		ai.createConversation();
+		const pending = ai.sendMessage('one');
+		await tick();
+		ai.cancelStreaming();
+		await pending;
+
+		mockFetch(streamOf([enc.encode('done')]));
+		await ai.sendMessage('two');
+		expect(ai.getMessages().at(-1)!.content).toBe('done');
+	});
+
+	it('cancelStreaming with nothing in flight is a no-op', () => {
+		expect(() => ai.cancelStreaming()).not.toThrow();
+	});
+});

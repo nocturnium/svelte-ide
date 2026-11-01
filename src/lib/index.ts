@@ -28,7 +28,7 @@
  *   - Plugin UI components ...... `@nocturnium/svelte-ide/components/plugins`
  *   - Plugin runtime/loader .... `@nocturnium/svelte-ide/plugins`
  *   - CRDT collaboration ....... `@nocturnium/svelte-ide/crdt`
- *   - Backend services ......... `@nocturnium/svelte-ide/services/*`
+ *   - Backend services ......... `@nocturnium/svelte-ide/services`
  *   - Full store surface ....... `@nocturnium/svelte-ide/stores`
  *   - Full type/util surface ... `@nocturnium/svelte-ide/types`, `.../utils`
  *
@@ -343,6 +343,7 @@ export {
 	getLanguageConfig,
 	getLanguageFromExtension,
 	getLanguageFromFilename,
+	getLanguageFromMimeType,
 	resolveLanguage,
 	type LanguageConfig
 } from './components/editor/languages';
@@ -479,6 +480,7 @@ export {
  * @public - Diagnostic, LSPConnectionState, ServerCapabilities are part of the stable API
  */
 export type { Diagnostic, LSPConnectionState, ServerCapabilities } from './types/lsp';
+export { DiagnosticSeverity } from './types/lsp';
 
 // ============================================
 // Stores (Svelte 5 runes, zero external dependencies)
@@ -525,6 +527,7 @@ export {
  * @public - Stable API
  */
 export type * from './types/editor';
+export { DEFAULT_EDITOR_PREFERENCES } from './types/editor';
 
 /**
  * Filesystem types

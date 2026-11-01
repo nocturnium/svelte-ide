@@ -39,7 +39,11 @@
 	/* IDE Surface Colors */
 	--ide-bg-primary: var(--color-nocturnium-night);
 	--ide-bg-secondary: var(--color-nocturnium-deep);
-	--ide-bg-tertiary: var(--color-nocturnium-ocean);
+	/* Raised fills (active rows, code blocks, inline code, secondary buttons).
+	   Text sits on this, so it is a darker ocean than the brand swatch: every
+	   text token holds 4.5:1+ (secondary 5.7:1, muted 4.7:1), where the brand
+	   ocean left secondary text at 4.1:1. */
+	--ide-bg-tertiary: #21445e;
 	--ide-bg-elevated: color-mix(in srgb, var(--ide-bg-secondary) 90%, white 10%);
 	--ide-bg-hover: color-mix(in srgb, var(--ide-bg-tertiary) 50%, transparent);
 	--ide-bg-active: var(--ide-bg-tertiary);
@@ -53,7 +57,11 @@
 	/* IDE Text Colors */
 	--ide-text-primary: var(--color-nocturnium-moon);
 	--ide-text-secondary: var(--color-nocturnium-foam);
-	--ide-text-muted: color-mix(in srgb, var(--ide-text-secondary) 60%, transparent);
+	/* Opaque, so contrast does not depend on the surface behind it. Measured
+	   against every --ide-bg-* surface: 8.5:1 on primary, 6.8:1 on secondary,
+	   5.0:1 on elevated, 5.6:1 on hover. The old 60% foam mix fell to 3.2:1 on
+	   elevated panels. theme-contrast.test.ts guards these pairs. */
+	--ide-text-muted: #9bb3c6;
 	--ide-text-accent: var(--color-nocturnium-ember);
 	--ide-text-inverse: var(--color-nocturnium-night);
 
@@ -68,6 +76,13 @@
 	   white on --ide-interactive (#4a8db7) is only ~3.4:1, below WCAG AA; white on
 	   this ocean blue (#2d5a7b) is ~5.3:1. Use for active pills/toggles/tabs. */
 	--ide-interactive-strong: var(--color-nocturnium-ocean);
+	/* Interactive TEXT (links, pills, version badges) on raised surfaces. The
+	   wave blue is 5.1:1 on the page but 3.0:1 on elevated panels; this lighter
+	   wave holds 4.5:1+ on every surface. */
+	--ide-interactive-text: #8ec0e3;
+	/* Selected rows with light text: white on this is 4.7:1 (white on the wave
+	   blue was 3.6:1). */
+	--ide-bg-selected: #3b7aa3;
 
 	/* Primary action — the signature warm ember accent, shared as a single
 	   source of truth by primary buttons and badges so "primary" reads the
@@ -107,9 +122,9 @@
 	   is already near-black (#0d1421), so a "deepening" veil is arithmetically
 	   invisible — measured at 1.008-1.018:1 against the backdrop across all three
 	   bands, below display banding. Lifting is the only direction with headroom.
-	   Alphas are capped so the worst-case token (comments) stays above 4.5:1: at
-	   the critical band the region reads 1.20:1 against unmarked code while
-	   comments hold 5.13:1. Composite alpha when re-measuring — treating a
+	   Alphas are capped so the worst-case token (comments, --ide-text-muted) stays
+	   well above 4.5:1: at the critical band the region reads 1.20:1 against
+	   unmarked code while comments hold 7.4:1. Composite alpha when re-measuring — treating a
 	   translucent token as solid overstates the headroom badly. */
 	--ide-complexity-veil: 122, 152, 205;
 
