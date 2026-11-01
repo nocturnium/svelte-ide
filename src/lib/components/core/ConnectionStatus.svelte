@@ -7,11 +7,7 @@
 	 */
 
 	export type ConnectionState =
-		| 'connected'
-		| 'disconnected'
-		| 'connecting'
-		| 'reconnecting'
-		| 'error';
+		'connected' | 'disconnected' | 'connecting' | 'reconnecting' | 'error';
 
 	interface Props {
 		state: ConnectionState;

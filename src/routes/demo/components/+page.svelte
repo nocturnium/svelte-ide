@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import DemoPage from '../_components/DemoPage.svelte';
 	import DemoExhibit from '../_components/DemoExhibit.svelte';
 	import Button from '$lib/components/core/Button.svelte';
@@ -38,14 +38,7 @@
 
 	type BadgePlaygroundProps = {
 		variant:
-			| 'default'
-			| 'primary'
-			| 'secondary'
-			| 'success'
-			| 'warning'
-			| 'error'
-			| 'danger'
-			| 'info';
+			'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'danger' | 'info';
 		size: 'sm' | 'md';
 		dot: boolean;
 		label: string;
@@ -457,7 +450,7 @@
 	</section>
 
 	<footer class="page-footer">
-		<a class="footer-next" href={`${base}/demo/resize`}>
+		<a class="footer-next" href={resolve('/demo/resize')}>
 			<span class="footer-next__label">Next</span>
 			<span class="footer-next__title">Resizable Panes</span>
 			<span class="footer-next__arrow" aria-hidden="true">&rarr;</span>

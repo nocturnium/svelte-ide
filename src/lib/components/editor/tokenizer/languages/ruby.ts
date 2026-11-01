@@ -466,7 +466,7 @@ export class RubyTokenizer {
 		const punctMatch = text.match(/^[{}[\](),.;:&|]/);
 		if (punctMatch) {
 			const char = punctMatch[0];
-			let type: TokenType = 'punctuation';
+			let type: TokenType;
 			if (char === '{' || char === '}') type = 'punctuation.brace';
 			else if (char === '[' || char === ']') type = 'punctuation.bracket';
 			else if (char === '(' || char === ')') type = 'punctuation.paren';

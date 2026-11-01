@@ -131,8 +131,7 @@ export function planCompletionEdits(
 	let range: Range | undefined;
 	let raw: string;
 	const edit = item.textEdit as
-		| { range?: Range; insert?: Range; replace?: Range; newText: string }
-		| undefined;
+		{ range?: Range; insert?: Range; replace?: Range; newText: string } | undefined;
 	if (edit) {
 		range = edit.range ?? edit.replace ?? edit.insert;
 		raw = edit.newText;

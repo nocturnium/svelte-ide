@@ -409,7 +409,7 @@ export class VueTokenizer implements LanguageTokenizer {
 
 	private tokenizeTag(tag: string, state?: VueTokenizerState): RawToken[] {
 		const tokens: RawToken[] = [];
-		let pos = 0;
+		let pos: number;
 
 		// Opening bracket
 		if (tag.startsWith('</')) {

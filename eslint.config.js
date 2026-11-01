@@ -2,7 +2,6 @@ import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
 import globals from 'globals';
 import ts from 'typescript-eslint';
-import svelteConfig from './svelte.config.js';
 
 // Flat config (ESLint 9) for a SvelteKit + TypeScript + Svelte 5 project.
 // Type-aware rules are intentionally left off to keep linting fast and avoid
@@ -45,8 +44,7 @@ export default ts.config(
 		languageOptions: {
 			parserOptions: {
 				parser: ts.parser,
-				extraFileExtensions: ['.svelte'],
-				svelteConfig
+				extraFileExtensions: ['.svelte']
 			}
 		}
 	},

@@ -1,5 +1,5 @@
 {
-	"extends": "./.svelte-kit/tsconfig.json",
+	"extends": "$app/tsconfig",
 	"compilerOptions": {
 		"allowJs": true,
 		"checkJs": true,
@@ -13,5 +13,7 @@
 		"target": "ES2022",
 		"module": "ES2022",
 		"lib": ["ES2022", "DOM", "DOM.Iterable"]
-	}
+	},
+	"include": ["src", "tests", "*.ts", "*.js"],
+	"exclude": ["build", "dist", ".svelte-kit", "node_modules", "src/service-worker"]
 }

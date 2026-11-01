@@ -435,7 +435,6 @@ export class ComplexityAnalyzer {
 			// Process character by character to properly match braces
 			// Skip braces inside strings, comments and regex literals
 			let inString: string | null = null;
-			let inLineComment = false;
 			let inRegex = false;
 			let inRegexClass = false;
 			// Last non-space character, to tell a regex literal from division.
@@ -465,40 +464,37 @@ export class ComplexityAnalyzer {
 
 				// Handle line comments
 				if (!inString && c === '/' && next === '/') {
-					inLineComment = true;
 					break;
 				}
 
 				// Handle strings
-				if (!inLineComment) {
-					if (inString) {
-						// Consume the escape and its target together. Looking BACK at
-						// `text[ch - 1] !== '\\'` mis-reads a literal ending in an escaped
-						// backslash — in `"\\"` the character before the closing quote IS a
-						// backslash, so the string never closed, the rest of the line
-						// (including its `{`) was swallowed, brace depth desynchronised and
-						// the enclosing region truncated. Measured across this repo: 58
-						// truncated regions, the worst reporting cognitive complexity 2 for a
-						// function whose true value is 39 — an under-report, which is the
-						// dangerous direction: it calls the hottest function in a file fine.
-						if (c === '\\') {
-							ch++;
-							continue;
-						}
-						if (c === inString) {
-							inString = null;
-						}
-						continue;
-					} else if (c === '"' || c === "'" || c === '`') {
-						inString = c;
-						prevSignificant = c;
+				if (inString) {
+					// Consume the escape and its target together. Looking BACK at
+					// `text[ch - 1] !== '\\'` mis-reads a literal ending in an escaped
+					// backslash — in `"\\"` the character before the closing quote IS a
+					// backslash, so the string never closed, the rest of the line
+					// (including its `{`) was swallowed, brace depth desynchronised and
+					// the enclosing region truncated. Measured across this repo: 58
+					// truncated regions, the worst reporting cognitive complexity 2 for a
+					// function whose true value is 39 — an under-report, which is the
+					// dangerous direction: it calls the hottest function in a file fine.
+					if (c === '\\') {
+						ch++;
 						continue;
 					}
+					if (c === inString) {
+						inString = null;
+					}
+					continue;
+				} else if (c === '"' || c === "'" || c === '`') {
+					inString = c;
+					prevSignificant = c;
+					continue;
 				}
 
 				// A `/` starts a regex only where a value may begin; after an operand it
 				// is division. `a / b` must not swallow the rest of the line.
-				if (!inString && !inLineComment && c === '/' && next !== '/' && next !== '*') {
+				if (!inString && c === '/' && next !== '/' && next !== '*') {
 					if (prevSignificant === '' || '(,=:[!&|?{};+-*%~^<>'.includes(prevSignificant)) {
 						inRegex = true;
 						continue;
@@ -507,7 +503,7 @@ export class ComplexityAnalyzer {
 
 				if (c.trim() !== '') prevSignificant = c;
 
-				if (!inString && !inLineComment) {
+				if (!inString) {
 					// A statement end retires an unconsumed definition candidate. A
 					// concise arrow whose body sits on the NEXT line —
 					// `const isImportLine = (t) =>` / `  /^\s*import\b/.test(t);` —
@@ -653,8 +649,7 @@ export class ComplexityAnalyzer {
 		}> = [];
 		let braceDepth = 0;
 		let pending:
-			| { line: number; type: ComplexityRegion['type']; name?: string; depth: number }
-			| undefined;
+			{ line: number; type: ComplexityRegion['type']; name?: string; depth: number } | undefined;
 
 		for (let i = 0; i < lines.length; i++) {
 			const tokens = this.getCodeTokens(tokenized[i]?.tokens ?? []);

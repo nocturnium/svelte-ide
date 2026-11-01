@@ -8,7 +8,7 @@
 	 * there's no duplication with app.html (whose static title/description/OG were
 	 * removed in favour of this).
 	 */
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { SITE_NAME, DEFAULT_TITLE, DEFAULT_DESCRIPTION, OG_IMAGE, absoluteUrl } from '$lib/seo';
 
 	interface Props {
@@ -28,7 +28,7 @@
 	}: Props = $props();
 
 	const fullTitle = $derived(title ? `${title} | ${SITE_NAME}` : DEFAULT_TITLE);
-	const url = $derived(absoluteUrl($page.url.pathname));
+	const url = $derived(absoluteUrl(page.url.pathname));
 </script>
 
 <svelte:head>

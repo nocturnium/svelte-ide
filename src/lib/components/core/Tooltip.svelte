@@ -2,6 +2,10 @@
 	// Stable per-instance counter (SSR-safe — no Math.random/Date) so the bubble's
 	// id matches across server render and hydration for aria-describedby.
 	let tooltipCounter = 0;
+	function nextTooltipId(): string {
+		tooltipCounter += 1;
+		return `ide-tooltip-${tooltipCounter}`;
+	}
 </script>
 
 <script lang="ts">
@@ -17,7 +21,7 @@
 
 	let { content, position = 'top', delay = 300, class: className = '', children }: Props = $props();
 
-	const tooltipId = `ide-tooltip-${++tooltipCounter}`;
+	const tooltipId = nextTooltipId();
 	let visible = $state(false);
 	let timeout: ReturnType<typeof setTimeout> | null = null;
 	let wrapperRef: HTMLDivElement | undefined = $state();

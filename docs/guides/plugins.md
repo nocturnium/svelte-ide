@@ -117,9 +117,7 @@ data: {"id":"evt_1","proposalId":"p_42","type":"deployed","actor":"ci","details"
 
 ```json
 {
-	"proposals": [
-		/* PluginProposal[] */
-	]
+	"proposals": [/* PluginProposal[] */]
 }
 ```
 

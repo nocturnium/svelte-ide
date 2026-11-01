@@ -3,14 +3,7 @@
 
 	interface Props {
 		variant?:
-			| 'default'
-			| 'primary'
-			| 'secondary'
-			| 'success'
-			| 'warning'
-			| 'error'
-			| 'danger'
-			| 'info';
+			'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'danger' | 'info';
 		size?: 'sm' | 'md';
 		dot?: boolean;
 		class?: string;
