@@ -21,7 +21,7 @@
 	 * The tablist mirrors the landing-page quick-start (WAI-ARIA tabs + roving
 	 * tabindex); copy-to-clipboard mirrors AIMessageContent.
 	 */
-	import { browser } from '$app/env';
+	import { browser } from '$lib/utils/env';
 	import { tokenize } from '$components/editor/tokenizer';
 	import TokenRenderer from '$components/editor/TokenRenderer.svelte';
 	import Icon from '$components/core/Icon.svelte';

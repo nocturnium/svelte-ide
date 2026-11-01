@@ -19,6 +19,8 @@ export default defineConfig({
 	},
 	plugins: [
 		tailwindcss(),
+		// SvelteKit 3 reads its configuration from these plugin options; svelte.config.js is no
+		// longer loaded (the build fails with config_file_unsupported if one exists).
 		sveltekit({
 			preprocess: vitePreprocess(),
 			// SSR + prerender are on by default (see src/routes/+layout.ts). adapter-static

@@ -44,6 +44,8 @@ export default ts.config(
 		languageOptions: {
 			parserOptions: {
 				parser: ts.parser,
+				// No svelteConfig here: SvelteKit 3 has no svelte.config.js, and the preprocessing
+				// lives in vite.config.ts, which these lint rules do not need.
 				extraFileExtensions: ['.svelte']
 			}
 		}
