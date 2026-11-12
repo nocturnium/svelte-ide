@@ -302,7 +302,7 @@ export function triageLoad(
 					</Button>
 				</div>
 				<a class="hero-tertiary" href={resolve('/demo/playground')}>
-					Or see the full IDE playground
+					Or see the full IDE playground <span aria-hidden="true"></span>
 				</a>
 				<dl class="hero-stats">
 					{#each stats as stat, i (i)}
@@ -630,6 +630,10 @@ export function triageLoad(
 		text-decoration: none;
 		transition: color var(--ide-transition-fast);
 	}
+	.hero-tertiary span::before {
+		content: '\2192';
+	}
+
 	.hero-tertiary span {
 		transition: transform var(--ide-transition-fast);
 	}
