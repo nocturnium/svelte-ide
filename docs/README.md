@@ -62,7 +62,7 @@ npm install @nocturnium/svelte-ide
 
 ## Entry points
 
-Everything is re-exported from the package root, but you can import from a narrower entry point to keep bundles lean:
+Nearly everything is re-exported from the package root (`CollaborativeEditor` is the exception, see below), but you can import from a narrower entry point to keep bundles lean:
 
 ```ts
 // Everything (root)

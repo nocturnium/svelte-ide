@@ -131,7 +131,7 @@ const memoryAdapter: FilesystemAdapter = {
 };
 ```
 
-For a concrete networked backend, see the VFS client in [API: Services](./services.md) and the [VFS types](#vfs--virtual-filesystem-backend) below.
+For a concrete networked backend, see the VFS client in [API: Services](./services.md) and the [VFS types](#vfs-virtual-filesystem-backend) below.
 
 ---
 

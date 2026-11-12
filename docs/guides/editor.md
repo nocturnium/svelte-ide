@@ -28,7 +28,7 @@ Both are exported from the package root and from the `./components/editor` subpa
 
 ```svelte
 <script lang="ts">
-	// Either import path works — root re-exports everything.
+	// Either import path works: the root re-exports both.
 	import { Editor } from '@nocturnium/svelte-ide';
 	// or: import { Editor } from "@nocturnium/svelte-ide/components/editor";
 
