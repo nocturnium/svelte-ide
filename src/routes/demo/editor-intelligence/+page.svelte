@@ -972,20 +972,17 @@ function renderInvoice(order) {
 						<ul class="qa-triggers">
 							<li>
 								<span class="qa-triggers__do">select <code>subtotal * order.taxRate</code></span>
-								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
-								<!-- copy-scan:ignore decorative -->
+								<span class="qa-triggers__arrow" aria-hidden="true"></span>
 								<span class="qa-triggers__action">Extract to variable</span>
 							</li>
 							<li>
 								<span class="qa-triggers__do">select the three <code>const</code> lines</span>
-								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
-								<!-- copy-scan:ignore decorative -->
+								<span class="qa-triggers__arrow" aria-hidden="true"></span>
 								<span class="qa-triggers__action">Extract to function</span>
 							</li>
 							<li>
 								<span class="qa-triggers__do">click into the imports</span>
-								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
-								<!-- copy-scan:ignore decorative -->
+								<span class="qa-triggers__arrow" aria-hidden="true"></span>
 								<span class="qa-triggers__action">Organize imports</span>
 								<span class="qa-triggers__note">(removes the duplicate)</span>
 							</li>
@@ -1505,6 +1502,10 @@ function renderInvoice(order) {
 		border-radius: 3px;
 		font-family: 'JetBrains Mono', monospace;
 		font-size: 0.78rem;
+	}
+
+	.qa-triggers__arrow::before {
+		content: '\2192';
 	}
 
 	.qa-triggers__arrow {

@@ -453,8 +453,7 @@
 		<a class="footer-next" href={resolve('/demo/resize')}>
 			<span class="footer-next__label">Next</span>
 			<span class="footer-next__title">Resizable Panes</span>
-			<span class="footer-next__arrow" aria-hidden="true">&rarr;</span>
-			<!-- copy-scan:ignore decorative -->
+			<span class="footer-next__arrow" aria-hidden="true"></span>
 		</a>
 		<a
 			class="footer-source"
@@ -601,6 +600,10 @@
 		font-size: 0.9375rem;
 		font-weight: 600;
 		color: var(--ide-text-primary);
+	}
+
+	.footer-next__arrow::before {
+		content: '\2192';
 	}
 
 	.footer-next__arrow {

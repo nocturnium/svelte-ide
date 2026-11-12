@@ -78,7 +78,7 @@ import { createPluginLoader } from '@nocturnium/svelte-ide/plugins';
 
 Available entry points: `.` · `./theme.css` · `./stores` · `./components/editor` · `./components/core` · `./components/ai` · `./components/layout` · `./components/lsp` · `./components/agents` · `./components/vfs` · `./components/plugins` · `./types` · `./utils` · `./plugins` · `./crdt`.
 
-> The `<CollaborativeEditor>` component itself is exported from the package root (and from `./components/editor`); the `./crdt` entry point exports the lower-level CRDT primitives (`CollaborativeDocument`, `CollaborativeProvider`, `createAwarenessProtocol`, `createUndoManager`). See [Collaboration](guides/collaboration.md).
+> The `<CollaborativeEditor>` component is exported only from `./crdt`, together with the lower-level CRDT primitives (`CollaborativeDocument`, `CollaborativeProvider`, `createAwarenessProtocol`, `createUndoManager`). See [Collaboration](guides/collaboration.md).
 
 ## Backend (separate)
 

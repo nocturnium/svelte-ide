@@ -297,8 +297,7 @@
 					<p>Create and edit your plugin proposal</p>
 				</div>
 			</div>
-			<div class="lifecycle-arrow">→</div>
-			<!-- copy-scan:ignore decorative -->
+			<div class="lifecycle-arrow" aria-hidden="true"></div>
 			<div class="lifecycle-step">
 				<div class="step-number">2</div>
 				<div class="step-content">
@@ -306,8 +305,7 @@
 					<p>Submit for community review</p>
 				</div>
 			</div>
-			<div class="lifecycle-arrow">→</div>
-			<!-- copy-scan:ignore decorative -->
+			<div class="lifecycle-arrow" aria-hidden="true"></div>
 			<div class="lifecycle-step">
 				<div class="step-number">3</div>
 				<div class="step-content">
@@ -315,8 +313,7 @@
 					<p>Community votes and feedback</p>
 				</div>
 			</div>
-			<div class="lifecycle-arrow">→</div>
-			<!-- copy-scan:ignore decorative -->
+			<div class="lifecycle-arrow" aria-hidden="true"></div>
 			<div class="lifecycle-step">
 				<div class="step-number">4</div>
 				<div class="step-content">
@@ -324,8 +321,7 @@
 					<p>Automated tests and validation</p>
 				</div>
 			</div>
-			<div class="lifecycle-arrow">→</div>
-			<!-- copy-scan:ignore decorative -->
+			<div class="lifecycle-arrow" aria-hidden="true"></div>
 			<div class="lifecycle-step">
 				<div class="step-number">5</div>
 				<div class="step-content">
@@ -575,6 +571,10 @@ unloadPlugin('prettier-format');`}</code
 		/* 12px lifecycle description, AA-safe secondary, not muted. */
 		color: var(--ide-text-secondary);
 		margin: 0;
+	}
+
+	.lifecycle-arrow::before {
+		content: '\2192';
 	}
 
 	.lifecycle-arrow {

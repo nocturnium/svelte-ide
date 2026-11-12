@@ -135,7 +135,7 @@ import {
 } from '@nocturnium/svelte-ide/crdt';
 ```
 
-The ready-made `CollaborativeEditor` component is available from the package root. The collaboration server URL is always **caller-supplied**, there's no host baked into the library, so you point it at your own y-websocket server. The full walkthrough lives in the [Collaboration guide](./guides/collaboration.md).
+The ready-made `CollaborativeEditor` component is exported only from `@nocturnium/svelte-ide/crdt`, so the root entry never loads the optional Yjs peers. The collaboration server URL is always **caller-supplied**, there's no host baked into the library, so you point it at your own y-websocket server. The full walkthrough lives in the [Collaboration guide](./guides/collaboration.md).
 
 ### Language Server Protocol (LSP)
 

@@ -302,8 +302,7 @@ export function triageLoad(
 					</Button>
 				</div>
 				<a class="hero-tertiary" href={resolve('/demo/playground')}>
-					Or see the full IDE playground <span aria-hidden="true">→</span>
-					<!-- copy-scan:ignore decorative -->
+					Or see the full IDE playground
 				</a>
 				<dl class="hero-stats">
 					{#each stats as stat, i (i)}
