@@ -417,7 +417,7 @@ off();
 undo.destroy();
 ```
 
-To scope undo to a single participant's edits in a multi-user room, set `trackedOrigins` to that user's origin (e.g. `new Set(['user-7'])`) and tag that user's transactions with the same origin.
+To scope undo to a single participant's edits in a multi-user room, set `trackedOrigins` to that user's origin (e.g. `new Set(['user-7'])`) and tag that user's transactions with the same origin. `createUserUndoManager(document, userId)` does the first half for you: it sets `trackedOrigins` to `new Set([userId])`.
 
 ## Bring your own server
 

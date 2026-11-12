@@ -19,7 +19,7 @@ See [Getting Started](../getting-started.md) for first-run setup and [Theming](.
 
 ## Importing components
 
-Every component is re-exported from the package root, so the simplest import is:
+Every component except `CollaborativeEditor` and the three AI components noted below is re-exported from the package root, so the simplest import is:
 
 ```svelte
 <script>
@@ -86,7 +86,7 @@ Foundational, framework-agnostic UI primitives used throughout the library and s
 
 ## Editor
 
-The custom-built code editor and its surrounding chrome (tabs, panes, file tree, file icons). The editor is built from scratch, no CodeMirror, with its own tokenizer, folding, and multi-cursor support. Import from the root or from `@nocturnium/svelte-ide/components/editor`.
+The custom-built code editor and its surrounding chrome (tabs, panes, file tree, file icons). The editor is built from scratch, no CodeMirror, with its own tokenizer, folding, and multi-cursor support. Import from the root or from `@nocturnium/svelte-ide/components/editor`. `CollaborativeEditor` is the exception: import it from `@nocturnium/svelte-ide/crdt`.
 
 ```svelte
 <script>
