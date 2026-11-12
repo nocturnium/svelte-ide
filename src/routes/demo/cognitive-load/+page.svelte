@@ -756,7 +756,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		transition: color 0.15s ease;
 	}
 
-	/* Same plane as the meter, no card, no elevation, these are footnotes. */
+	/* Same plane as the meter, no card, no elevation; these are footnotes. */
 	.metrics-summary {
 		display: flex;
 		gap: 1.5rem;
@@ -865,7 +865,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		}
 
 		.ghost-rail {
-			/* A horizontal bar once it is full width, it reads as a toolbar for the
+			/* A horizontal bar once it is full width; it reads as a toolbar for the
 			   canvas rather than a card stranded beneath it. */
 			flex-direction: row;
 			flex-wrap: wrap;
@@ -1045,7 +1045,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		border-color: color-mix(in srgb, var(--ide-success) 35%, transparent);
 	}
 
-	/* The extract action is a refactor, not an AI control, use the page's
+	/* The extract action is a refactor, not an AI control; use the page's
 	   interactive accent instead of the shared .control-btn AI-purple. */
 	.extract-btn:hover:not(:disabled) {
 		border-color: var(--ide-interactive);
@@ -1069,7 +1069,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		gap: 1rem;
 	}
 
-	/* Feature cards are descriptive content, not links/buttons, keep the hover
+	/* Feature cards are descriptive content, not links/buttons; keep the hover
 	   subtle (border tint only). The translateY lift + box-shadow read as a press
 	   affordance and promise an action these <div>s don't have. */
 	/* No per-card accent. The complexity ramp is ORDINAL, cyan to terracotta means

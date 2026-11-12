@@ -6,7 +6,7 @@
 
 ## Mental model
 
-A plugin starts life as a **proposal** and moves through a lifecycle managed entirely by your host. The library never advances the lifecycle itself, it reflects the host's state (via SSE) and lets the user trigger transitions (create, submit, load) through the host's REST API.
+A plugin starts life as a **proposal** and moves through a lifecycle managed entirely by your host. The library never advances the lifecycle itself; it reflects the host's state (via SSE) and lets the user trigger transitions (create, submit, load) through the host's REST API.
 
 ```
 draft → submitted → reviewing → approved → testing → deploying → deployed
@@ -362,7 +362,7 @@ Imperative lookups are also available: `getProposal(id)` and `getInstance(id)` r
 
 ## The plugin loader
 
-`createPluginLoader` is a thin client over the host's component/module endpoints. It is independent of the store, use it when you want to fetch artifacts yourself. Import it from the package's `plugins` entry point:
+`createPluginLoader` is a thin client over the host's component/module endpoints. It is independent of the store; use it when you want to fetch artifacts yourself. Import it from the package's `plugins` entry point:
 
 ```ts
 import { createPluginLoader } from '@nocturnium/svelte-ide/plugins';
@@ -385,10 +385,10 @@ Both throw on a non-2xx response. The host is responsible for compilation and fo
 
 This library deliberately ships **no** client-side sandbox. An earlier
 `createSandbox` helper evaluated plugin code with `new Function(...)` in the app's
-own realm; it was removed in v1.0.0 because in-realm evaluation is not a real
+own global scope; it was removed in v1.0.0 because same-scope evaluation is not a real
 security boundary and only invited a false sense of safety.
 
-To run untrusted plugin code safely, keep it out of your app's realm entirely:
+To run untrusted plugin code safely, keep it out of your app's global scope entirely:
 
 - **Run it on the host, out of band.** Fetch the result with `loadModule` (above);
   the plugin host executes the module in an environment _you_ control and returns

@@ -8,7 +8,7 @@ Services are the plain-TypeScript layer that talks to your backends, the virtual
 
 ## `vfsClient`
 
-A namespaced HTTP client for a virtual-filesystem (VFS) backend. It is a module of standalone async functions, there is no class to instantiate; a single module-level config object is shared across all calls.
+A namespaced HTTP client for a virtual-filesystem (VFS) backend. It is a module of standalone async functions; there is no class to instantiate; a single module-level config object is shared across all calls.
 
 **Source:** `src/lib/services/vfs-client.ts`
 
@@ -145,7 +145,7 @@ interface VFSSearchResult {
 
 ## `ideIntegration`
 
-A stateful coordination service that connects the VFS, agents, and collaboration stores into one system and routes events between them. Unlike `vfsClient`, this service holds a single internal session, call `initialize` once, then `cleanup` when you tear the IDE down.
+A stateful coordination service that connects the VFS, agents, and collaboration stores into one system and routes events between them. Unlike `vfsClient`, this service holds a single internal session; call `initialize` once, then `cleanup` when you tear the IDE down.
 
 **Source:** `src/lib/services/ide-integration.ts`
 
@@ -178,7 +178,7 @@ Once initialized, it subscribes to VFS, team (agent), and collaboration events a
 | `updateAgentCursorPosition` | `(agentId, filePath, position, selection?) => void`                                    | Pushes a cursor into the agents store and, if collaboration is on, mirrors it to the collaboration store. |
 | `acquireLockWithContext`    | `(filePath: string, purpose?: VFSFileLock['purpose']) => Promise<VFSFileLock \| null>` | Acquires a lock and updates collaboration awareness.                                                      |
 | `releaseLockWithContext`    | `(filePath: string) => Promise<void>`                                                  | Releases the lock and clears awareness.                                                                   |
-| `canEditFile`               | `(filePath: string) => boolean`                                                        | `true` when unlocked, or locked by the current user.                                                      |
+| `canEditFile`               | `(filePath: string) => boolean`                                                        | `true` when not locked, or locked by the current user.                                                    |
 | `getFileEditors`            | `(filePath: string) => Agent[]`                                                        | Agents currently working on a file.                                                                       |
 | `getOnlineAgents`           | `() => Agent[]`                                                                        |                                                                                                           |
 | `getAllLocks`               | `() => VFSFileLock[]`                                                                  |                                                                                                           |
@@ -207,7 +207,7 @@ A pure (no-network) service for turning raw errors into a structured, user-prese
 
 **Source:** `src/lib/services/error-handling.ts`
 
-**Default endpoint:** none, this service performs no I/O.
+**Default endpoint:** none; this service performs no I/O.
 
 ```ts
 import { errorHandling } from '@nocturnium/svelte-ide/services';
@@ -264,7 +264,7 @@ A `RecoveryOption` is `{ id, label, description, action, recommended?, dangerous
 
 ## `optimistic`
 
-A pure service for optimistic UI updates with automatic rollback: apply a change locally, attempt to commit it to the server with retries, and revert if every attempt fails. No network of its own, you supply the `commit` function.
+A pure service for optimistic UI updates with automatic rollback: apply a change locally, attempt to commit it to the server with retries, and revert if every attempt fails. No network of its own; you supply the `commit` function.
 
 **Source:** `src/lib/services/optimistic.ts`
 

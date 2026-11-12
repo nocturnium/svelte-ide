@@ -28,7 +28,7 @@
 	import type { Snippet } from 'svelte';
 
 	interface Props {
-		/** Source shown in the Code tab, pass the demo's own `Example.svelte?raw`. */
+		/** Source shown in the Code tab; pass the demo's own `Example.svelte?raw`. */
 		code: string;
 		/** Tokenizer language for the Code tab (defaults to svelte). */
 		language?: string;

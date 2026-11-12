@@ -118,7 +118,7 @@ CustomEditor.svelte  ──uses──►  editor/core (state · navigation · mu
              • CRDT binding mirrors the change into the shared Yjs doc
 ```
 
-The editor document model in `editor/core/state` (`createEditorState`, `EditorState`, `Position`, `Selection`, `Line`, `ChangeEvent`) is deliberately plain, it is not a rune. Components own the runes; `core/` owns the algorithms. That separation is why every `core/` module is unit-tested in isolation (`*.test.ts` siblings) without a DOM. When you contribute editor logic, prefer adding it to `core/` as a pure function and let a `.svelte` file bind it to `$state`/`$derived`/`$effect`.
+The editor document model in `editor/core/state` (`createEditorState`, `EditorState`, `Position`, `Selection`, `Line`, `ChangeEvent`) is deliberately plain; it is not a rune. Components own the runes; `core/` owns the algorithms. That separation is why every `core/` module is unit-tested in isolation (`*.test.ts` siblings) without a DOM. When you contribute editor logic, prefer adding it to `core/` as a pure function and let a `.svelte` file bind it to `$state`/`$derived`/`$effect`.
 
 > The editor store has no explicit "mark dirty" call: `updateContent(tabId, content)` sets the tab's `isDirty` field by comparing the new content against the saved content, and `markSaved()` clears it. The `dirtyTabs` accessor is derived from those tab flags. (The separate VFS store _does_ expose a `markDirty()` for filesystem-level dirty tracking, don't confuse the two.)
 
@@ -126,7 +126,7 @@ For deeper, feature-specific flow see [Editor](guides/editor.md), [Multi-cursor]
 
 ## The networked boundaries
 
-Each networked feature is isolated behind exactly one seam, so you can adopt them independently. None of these connect on import, you must call the connect/configure function with your own endpoint.
+Each networked feature is isolated behind exactly one seam, so you can adopt them independently. None of these connect on import; you must call the connect/configure function with your own endpoint.
 
 | Feature     | Client surface                                                                        | Transport                   | Default / endpoint                                              | Backend you provide                                                |
 | ----------- | ------------------------------------------------------------------------------------- | --------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -174,7 +174,7 @@ For end-to-end setup of each boundary, see [LSP](guides/lsp.md), Collaboration (
 A few seams handle untrusted input and are worth knowing about when reviewing changes:
 
 - **AI rendering**: `AIMessageContent` escapes HTML and whitelists link schemes _before_ any `{@html}`, so model output can never inject markup.
-- **Untrusted plugin code**: the library ships **no** client-side sandbox. The former in-realm `createSandbox` (`new Function`) evaluator was removed in v1.0.0 because it was not a real security boundary. Run untrusted plugin code on the host (out of band, via `loadModule`) or in `<iframe sandbox>`/Web Worker isolation you control, see the [plugins guide](guides/plugins.md#running-untrusted-plugin-code).
+- **Untrusted plugin code**: the library ships **no** client-side sandbox. The former `createSandbox` (`new Function`) evaluator was removed in v1.0.0 because it was not a real security boundary. Run untrusted plugin code on the host (out of band, via `loadModule`) or in `<iframe sandbox>`/Web Worker isolation you control, see the [plugins guide](guides/plugins.md#running-untrusted-plugin-code).
 - **CRDT relay & LSP bridge**: because the URLs are caller-supplied, origin and auth policy are entirely your backend's responsibility. The reference Go bridge in `backend/` defaults to localhost-only origins.
 
 ## Build and publish model
@@ -199,7 +199,7 @@ The repository is two independent units:
 
 Notes for contributors:
 
-- Inside the library, internal imports use the SvelteKit aliases `$lib`, `$types`, `$utils`. **Published consumers must never use `$lib`**, they import from `@nocturnium/svelte-ide` or one of its subpath exports. Examples in docs always use the published paths.
+- Inside the library, internal imports use the SvelteKit aliases `$lib`, `$types`, `$utils`. **Published consumers must never use `$lib`**; they import from `@nocturnium/svelte-ide` or one of its subpath exports. Examples in docs always use the published paths.
 - `"sideEffects": false` lets bundlers tree-shake unused exports, including the entire `crdt` module when collaboration is not used.
 - `svelte` and the three Yjs packages (`yjs`, `y-websocket`, `y-protocols`) are **peer dependencies**; the Yjs trio is marked optional and only needed by the `./crdt` entry point.
 - The demo app under `src/routes/` (`npm run dev`, http://localhost:5173) exercises every feature and is the fastest way to see a change in context. It is public in the repo but excluded from the npm tarball.

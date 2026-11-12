@@ -6,7 +6,7 @@
 	 * input is strict JSON (parsed with JSON.parse, never eval'd) and the last VALID
 	 * value keeps rendering while you mistype.
 	 *
-	 * SCOPE, only for components whose props are JSON-serializable primitives/enums
+	 * SCOPE; only for components whose props are JSON-serializable primitives/enums
 	 * (variant/size, booleans, strings, plain labels). Do NOT wire this onto
 	 * components with event handlers, snippet/function props, or `bind:value`: JSON
 	 * can't express those, so the playground would render a control that silently

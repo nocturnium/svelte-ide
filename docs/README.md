@@ -17,7 +17,7 @@ npm install @nocturnium/svelte-ide
 <CustomEditor content={code} language="javascript" onChange={(next) => (code = next)} />
 ```
 
-> Components are unstyled until you import the shipped theme. Load `@nocturnium/svelte-ide/theme.css` once at your app root, then override its CSS custom properties to retheme, see [Theming](theming.md).
+> Components are unstyled until you import the shipped theme. Load `@nocturnium/svelte-ide/theme.css` once at your app root, then override its CSS custom properties to retheme; see [Theming](theming.md).
 
 ## Getting started
 
@@ -82,7 +82,7 @@ Available entry points: `.` · `./theme.css` · `./stores` · `./components/edit
 
 ## Backend (separate)
 
-Optional features that need a server bring their own backend, none is bundled with the npm package. The repo includes a standalone Go `lsp-bridge` WebSocket server under [`backend/`](../backend) for LSP, and the [LSP guide](guides/lsp.md) covers how to connect to it (or any LSP-over-WebSocket server).
+Optional features that need a server bring their own backend; none is bundled with the npm package. The repo includes a standalone Go `lsp-bridge` WebSocket server under [`backend/`](../backend) for LSP, and the [LSP guide](guides/lsp.md) covers how to connect to it (or any LSP-over-WebSocket server).
 
 ---
 

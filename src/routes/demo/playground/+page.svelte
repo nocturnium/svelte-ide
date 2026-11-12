@@ -825,7 +825,7 @@ MIT License - see LICENSE file for details
 		position: fixed;
 		inset: 0;
 		z-index: 1000;
-		/* Size from `inset: 0` alone, it resolves against the *visible* viewport.
+		/* Size from `inset: 0` alone; it resolves against the *visible* viewport.
 		   Do NOT reintroduce width/height here: `100vh` overshoots the visible area
 		   on mobile browsers that exclude the address bar, which pushed the
 		   status-bar exit off-screen (both exits sat in the last 32px), and `100vw`
@@ -996,7 +996,7 @@ MIT License - see LICENSE file for details
 
 	.tree-file.active {
 		/* Filled selected row carries white text, so use the deeper blue token
-		   (--ide-interactive-strong) for AA, see activity-btn.active above. */
+		   (--ide-interactive-strong) for AA; see activity-btn.active above. */
 		background: var(--ide-interactive-strong);
 		color: #fff;
 	}

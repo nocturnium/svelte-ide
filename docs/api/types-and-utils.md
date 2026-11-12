@@ -2,7 +2,7 @@
 
 `@nocturnium/svelte-ide` ships a large set of TypeScript type definitions and a small bundle of zero-dependency utility functions. The types model every domain the library touches, the editor, the virtual filesystem, AI assistance, plugins, real-time collaboration, agents, the IDE event system, and the Language Server Protocol, and are published both from the package root (`@nocturnium/svelte-ide`) and from the dedicated `@nocturnium/svelte-ide/types` entry point. The utilities (`@nocturnium/svelte-ide/utils`) cover language detection, human-readable formatting, and keybinding handling. This page summarizes the public type modules and documents the utility functions with real signatures and examples. Everything below is re-exported from the root entry, so you can import any of it from `@nocturnium/svelte-ide` directly. For the components and stores that consume these types, see [API: Components](./components.md), [API: Stores](./stores.md), and [API: Services](./services.md).
 
-> Stability note: in the package's root barrel (`src/lib/index.ts`), the re-export blocks are annotated with `@public`/`@experimental` JSDoc tags. Almost everything on this page is tagged `@experimental` and may change between minor versions. The exception is a small, deliberately stable LSP subset, see [Stable vs. experimental](#stable-vs-experimental-lsp-types) below. Treat experimental types as useful shapes for your own code, not as a frozen contract.
+> Stability note: in the package's root barrel (`src/lib/index.ts`), the re-export blocks are annotated with `@public`/`@experimental` JSDoc tags. Almost everything on this page is tagged `@experimental` and may change between minor versions. The exception is a small, deliberately stable LSP subset; see [Stable vs. experimental](#stable-vs-experimental-lsp-types) below. Treat experimental types as useful shapes for your own code, not as a frozen contract.
 
 ---
 
@@ -137,7 +137,7 @@ For a concrete networked backend, see the VFS client in [API: Services](./servic
 
 ## `ai`, assistant messages, tools, and sessions
 
-Types behind the `<AIPanel>` component and the `ai` store. The panel talks to your own chat endpoint, these types describe what flows in and out.
+Types behind the `<AIPanel>` component and the `ai` store. The panel talks to your own chat endpoint; these types describe what flows in and out.
 
 - **`AIRole`**: `'user' | 'assistant' | 'system' | 'tool'`.
 - **`AIMessage`**: a single turn: `id`, `role`, `content`, `timestamp`, optional `toolCalls`/`toolResult`, an `isStreaming` flag, an `error`, and `metadata` (`AIMessageMetadata`: model, tokens used, latency, finish reason).

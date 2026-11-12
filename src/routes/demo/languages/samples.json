@@ -106,7 +106,7 @@
 				{
 					"id": "html",
 					"name": "HTML",
-					"code": "<!DOCTYPE html>\n<!-- Product card component -->\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <title>Product Card</title>\n    <link rel=\"stylesheet\" href=\"/styles/card.css\" />\n  </head>\n  <body>\n    <article class=\"card\" data-index=\"3\" aria-label=\"Product\">\n      <img src=\"/img/preview.webp\" alt=\"Preview\" width=\"320\" />\n      <h2 class=\"card__title\">Nocturnium IDE</h2>\n      <p class=\"card__desc\">A lightweight editor — <em>fast</em>.</p>\n      <a href=\"/download?v=2.0&amp;track=beta\" class=\"btn btn--primary\">\n        Download free\n      </a>\n    </article>\n  </body>\n</html>"
+					"code": "<!DOCTYPE html>\n<!-- Product card component -->\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <title>Product Card</title>\n    <link rel=\"stylesheet\" href=\"/styles/card.css\" />\n  </head>\n  <body>\n    <article class=\"card\" data-index=\"3\" aria-label=\"Product\">\n      <img src=\"/img/preview.webp\" alt=\"Preview\" width=\"320\" />\n      <h2 class=\"card__title\">Nocturnium IDE</h2>\n      <p class=\"card__desc\">A lightweight editor, <em>fast</em>.</p>\n      <a href=\"/download?v=2.0&amp;track=beta\" class=\"btn btn--primary\">\n        Download free\n      </a>\n    </article>\n  </body>\n</html>"
 				},
 				{
 					"id": "css",
@@ -151,7 +151,7 @@
 				{
 					"id": "markdown",
 					"name": "Markdown",
-					"code": "# Project Setup Guide\n\nWelcome to **Nocturnium IDE** — a browser-based editor.\n\n## Installation\n\n```bash\nnpm install && npm run dev\n```\n\n> **Note:** Requires Node.js >= 18.\n\n## Configuration\n\nSet your environment in `.env`:\n\n| Key        | Default   | Description          |\n|------------|-----------|----------------------|\n| `PORT`     | `5173`    | Dev server port      |\n| `BASE_URL` | `/`       | Public base path     |\n\nSee the [full docs](https://ide.nocturnium.ai/docs) for details."
+					"code": "# Project Setup Guide\n\nWelcome to **Nocturnium IDE**, a browser-based editor.\n\n## Installation\n\n```bash\nnpm install && npm run dev\n```\n\n> **Note:** Requires Node.js >= 18.\n\n## Configuration\n\nSet your environment in `.env`:\n\n| Key        | Default   | Description          |\n|------------|-----------|----------------------|\n| `PORT`     | `5173`    | Dev server port      |\n| `BASE_URL` | `/`       | Public base path     |\n\nSee the [full docs](https://ide.nocturnium.ai/docs) for details."
 				}
 			]
 		},

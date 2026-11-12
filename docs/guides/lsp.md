@@ -318,7 +318,7 @@ const { start, end } = rangeToOffsets(content, range);
 | `onSave`          | `() => void`                             | none          | Fires on Ctrl+S / Cmd+S.                                                               |
 | `onDiagnostics`   | `(diagnostics: Diagnostic[]) => void`    | none          | Fires when diagnostics for this document arrive.                                       |
 
-`<LSPEditor>` opens the document (`didOpen`) when it mounts with a client, forwards edits as `didChange`, subscribes to `onDiagnostics` for the matching `uri`, and calls `didClose` on teardown, you do not call those methods yourself when using the component.
+`<LSPEditor>` opens the document (`didOpen`) when it mounts with a client, forwards edits as `didChange`, subscribes to `onDiagnostics` for the matching `uri`, and calls `didClose` on teardown; you do not call those methods yourself when using the component.
 
 ### Switching languages
 
@@ -438,7 +438,7 @@ A single inline squiggle or gutter marker for one diagnostic.
 
 ## Running an LSP bridge
 
-A browser cannot launch `gopls` or `tsserver` itself. The repo ships a standalone Go bridge in [`backend/`](../../backend/README.md) that accepts WebSocket connections and proxies JSON-RPC to a native language server over stdio. It is a separate Go module and is **not** part of the npm package, you run it yourself (or substitute any LSP-over-WebSocket server).
+A browser cannot launch `gopls` or `tsserver` itself. The repo ships a standalone Go bridge in [`backend/`](../../backend/README.md) that accepts WebSocket connections and proxies JSON-RPC to a native language server over stdio. It is a separate Go module and is **not** part of the npm package; you run it yourself (or substitute any LSP-over-WebSocket server).
 
 ### Prerequisites
 

@@ -485,7 +485,7 @@ import { createSnapshot } from '$lib/stores/collaboration.svelte';
 
 createSnapshot('doc-id', currentDocumentText, 'manual');
 
-// AI collaboration session, pass an AI user; returns the session id
+// AI collaboration session; pass an AI user; returns the session id
 import { startAISession, proposeAIChange } from '$lib/stores/collaboration.svelte';
 
 const sessionId = startAISession('doc-id', {

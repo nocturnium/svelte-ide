@@ -30,7 +30,7 @@ npm install yjs y-websocket y-protocols
 | `y-websocket` | The `WebsocketProvider` that syncs a `Y.Doc` over a WebSocket.       |
 | `y-protocols` | The `Awareness` protocol used for cursors, selections, and presence. |
 
-If these packages are absent, the rest of the library still works; only imports from `@nocturnium/svelte-ide/crdt` (and `<CollaborativeEditor>`) require them.
+If these packages are absent, the rest of the library still works; only imports from `@nocturnium/svelte-ide/crdt` (which includes `<CollaborativeEditor>`) require them.
 
 ## The `/crdt` entry point
 
@@ -122,7 +122,7 @@ Open the same `serverUrl` + `roomId` in two browser tabs and edits merge live.
 
 ## `<CollaborativeEditor>`
 
-`<CollaborativeEditor>` wraps the [custom editor](./editor.md) with a Yjs binding so the editor's buffer stays in sync with a `Y.Text`. It does **not** open a network connection by itself, you pair it with a `CollaborativeProvider` (or any `WebsocketProvider`) that syncs the same `Y.Doc`.
+`<CollaborativeEditor>` wraps the [custom editor](./editor.md) with a Yjs binding so the editor's buffer stays in sync with a `Y.Text`. It does **not** open a network connection by itself; you pair it with a `CollaborativeProvider` (or any `WebsocketProvider`) that syncs the same `Y.Doc`.
 
 ### Props
 
