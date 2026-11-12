@@ -71,7 +71,6 @@
 	let activeDropdown = $state<string | null>(null);
 	let dropdownPosition = $state({ top: 0, left: 0 });
 	let navEl = $state<HTMLElement | null>(null);
-	let navWidth = $state(0);
 
 	// Keep the current (last) symbol visible when the crumbs still overflow
 	// (for example a very long file name): scroll the list to its end.
@@ -203,10 +202,9 @@
 </script>
 
 {#if enabled}
+	{@const activeSymbol = path.find((symbol) => symbol.id === activeDropdown)}
 	<nav
 		class="breadcrumbs"
-		class:breadcrumbs--narrow={navWidth > 0 && navWidth <= 480}
-		bind:clientWidth={navWidth}
 		style={maxWidth ? `max-width: ${maxWidth}px;` : ''}
 		aria-label="Code navigation breadcrumbs"
 		bind:this={navEl}
@@ -259,36 +257,6 @@
 					</span>
 				{/if}
 			</button>
-
-			<!-- Dropdown for siblings -->
-			{#if activeDropdown === symbol.id && symbol.siblings}
-				<div
-					class="breadcrumb-dropdown"
-					style="top: {dropdownPosition.top}px; left: {dropdownPosition.left}px;"
-				>
-					<div class="dropdown-header">
-						{symbol.type}s in scope
-					</div>
-					<div class="dropdown-list">
-						{#each symbol.siblings as sibling (sibling.id)}
-							<button
-								class="dropdown-item"
-								class:dropdown-item--current={sibling.id === symbol.id}
-								onclick={() => handleSiblingSelect(sibling)}
-							>
-								<span class="dropdown-icon" style="color: {typeColors[sibling.type]};">
-									{typeIcons[sibling.type]}
-								</span>
-								<span class="dropdown-label">{sibling.name}</span>
-								{#if sibling.detail}
-									<span class="dropdown-detail">{sibling.detail}</span>
-								{/if}
-								<span class="dropdown-line">:{sibling.line + 1}</span>
-							</button>
-						{/each}
-					</div>
-				</div>
-			{/if}
 		{/each}
 
 		<!-- Current position indicator -->
@@ -299,10 +267,43 @@
 			</span>
 		{/if}
 	</nav>
+
+	<!-- Dropdown for siblings. Rendered outside the nav: the nav is a size container, and
+	     container-type would otherwise make it the containing block of this fixed element. -->
+	{#if activeSymbol?.siblings}
+		<div
+			class="breadcrumb-dropdown"
+			style="top: {dropdownPosition.top}px; left: {dropdownPosition.left}px;"
+		>
+			<div class="dropdown-header">
+				{activeSymbol.type}s in scope
+			</div>
+			<div class="dropdown-list">
+				{#each activeSymbol.siblings as sibling (sibling.id)}
+					<button
+						class="dropdown-item"
+						class:dropdown-item--current={sibling.id === activeSymbol.id}
+						onclick={() => handleSiblingSelect(sibling)}
+					>
+						<span class="dropdown-icon" style="color: {typeColors[sibling.type]};">
+							{typeIcons[sibling.type]}
+						</span>
+						<span class="dropdown-label">{sibling.name}</span>
+						{#if sibling.detail}
+							<span class="dropdown-detail">{sibling.detail}</span>
+						{/if}
+						<span class="dropdown-line">:{sibling.line + 1}</span>
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
 {/if}
 
 <style>
 	.breadcrumbs {
+		/* Lets the narrow-width rules below respond to the bar's own width */
+		container-type: inline-size;
 		display: flex;
 		align-items: center;
 		gap: 2px;
@@ -398,19 +399,19 @@
 		display: none;
 	}
 
-	/* Narrow bar: keep the file and the current symbol; fold the middle into an ellipsis.
-	   Driven by a measured class, not a container query, because container-type
-	   would clip the position: fixed sibling dropdown. */
-	.breadcrumbs--narrow .breadcrumb-collapsible {
-		display: none;
-	}
+	@container (max-width: 480px) {
+		/* Keep the file and the current symbol; fold the middle into an ellipsis */
+		.breadcrumb-collapsible {
+			display: none;
+		}
 
-	.breadcrumbs--narrow .breadcrumb-collapsed-only {
-		display: inline;
-	}
+		.breadcrumb-collapsed-only {
+			display: inline;
+		}
 
-	.breadcrumbs--narrow .breadcrumb-position {
-		display: none;
+		.breadcrumb-position {
+			display: none;
+		}
 	}
 
 	.breadcrumb-position {

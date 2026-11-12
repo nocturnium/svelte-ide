@@ -30,7 +30,7 @@ npm install yjs y-websocket y-protocols
 | `y-websocket` | The `WebsocketProvider` that syncs a `Y.Doc` over a WebSocket.       |
 | `y-protocols` | The `Awareness` protocol used for cursors, selections, and presence. |
 
-If these packages are absent, the rest of the library still works; only imports from `@nocturnium/svelte-ide/crdt` (and `<CollaborativeEditor>`) require them.
+If these packages are absent, the rest of the library still works; only imports from `@nocturnium/svelte-ide/crdt` (which includes `<CollaborativeEditor>`) require them.
 
 ## The `/crdt` entry point
 

@@ -110,7 +110,7 @@ import { CustomEditor } from '@nocturnium/svelte-ide/components/editor';
 import { AIPanel } from '@nocturnium/svelte-ide/components/ai';
 ```
 
-Available subpaths include `./stores`, `./components/editor`, `./components/core`, `./components/ai`, `./components/layout`, `./components/lsp`, `./components/agents`, `./components/vfs`, `./components/plugins`, `./types`, `./utils`, `./plugins`, and `./crdt`. The CRDT module is the one piece **not** re-exported from root; import it from `@nocturnium/svelte-ide/crdt` (see below).
+Available subpaths include `./stores`, `./components/editor`, `./components/core`, `./components/ai`, `./components/layout`, `./components/lsp`, `./components/agents`, `./components/vfs`, `./components/plugins`, `./types`, `./utils`, `./plugins`, and `./crdt`. The CRDT module and the client-side plugin runtime are **not** re-exported from root; import them from `@nocturnium/svelte-ide/crdt` and `@nocturnium/svelte-ide/plugins` (see below).
 
 > Always import from the published package name. Don't reference `$lib`, that's an internal alias used inside this repo's source, not a public entry point.
 
