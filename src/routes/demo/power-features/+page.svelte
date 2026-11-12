@@ -59,7 +59,7 @@ renderStatus(status);`);
 		}
 	}
 	return results;
-// The function body's closing brace is missing — flagged at line 1, where '{' opened`);
+// The function body's closing brace is missing, flagged at line 1, where '{' opened`);
 	let ghosts = $state<GhostBracket[]>([]);
 	let mismatches = $state<BracketMismatch[]>([]);
 
@@ -538,7 +538,7 @@ renderStatus(status);`);
 				<h2>Plugin Preview</h2>
 				<p>
 					Preview a plugin's transformation, see the diff and stats, before applying it to your
-					code. Trusted plugin code runs in this editor's realm, not an isolated sandbox.
+					code. Trusted plugin code runs in this editor's global scope, not an isolated sandbox.
 				</p>
 			</div>
 

@@ -43,7 +43,7 @@ docs/               # user & contributor documentation
 tests/              # Playwright end-to-end tests
 ```
 
-Only `dist/` (compiled from `src/lib/`) is published to npm, see the `files`
+Only `dist/` (compiled from `src/lib/`) is published to npm; see the `files`
 field in `package.json`.
 
 ## Development setup
@@ -112,7 +112,7 @@ npm run check && npm run lint && npm test
 - **Public API hygiene.** Anything exported from `src/lib/index.ts` ships in the
   published type declarations. Tag exports `@public` (stable) or `@experimental`
   in JSDoc, and keep comments free of internal/private references.
-- **Formatting & linting** are enforced by Prettier and ESLint, run
+- **Formatting & linting** are enforced by Prettier and ESLint; run
   `npm run format` and `npm run lint:fix` before committing.
 
 ## Tests

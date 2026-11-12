@@ -85,7 +85,7 @@ cursors.addCursorAbove(lineCount); // returns false if already on the first line
 cursors.addCursorBelow(lineCount); // returns false if already on the last line
 ```
 
-`addCursor` accepts a second `makePrimary` argument; passing `true` promotes the new cursor to primary and demotes the previous one. When the set is already at `maxCursors`, `addCursor` does **not** add another caret, it returns the existing cursor closest to the requested position instead, so the call always yields a usable `Cursor`. Both `addCursorAbove`/`addCursorBelow` operate from the primary cursor's `head` and place the new caret at the same column on the adjacent line (the editor clamps that column to the target line's length).
+`addCursor` accepts a second `makePrimary` argument; passing `true` promotes the new cursor to primary and demotes the previous one. When the set is already at `maxCursors`, `addCursor` does **not** add another caret; it returns the existing cursor closest to the requested position instead, so the call always yields a usable `Cursor`. Both `addCursorAbove`/`addCursorBelow` operate from the primary cursor's `head` and place the new caret at the same column on the adjacent line (the editor clamps that column to the target line's length).
 
 ### Removing cursors
 
@@ -113,7 +113,7 @@ cursors.batchUpdateCursors([
 ]);
 ```
 
-To collapse everything down to one cursor in a single step, use the "single" helpers, they clear all secondary cursors and then position the primary:
+To collapse everything down to one cursor in a single step, use the "single" helpers; they clear all secondary cursors and then position the primary:
 
 ```ts
 cursors.setSingleCursor(position); // one caret, no selection
@@ -183,11 +183,11 @@ After any change to the set, the manager runs a merge pass. It sorts cursors by 
 
 This means:
 
-- Adding a cursor inside an existing selection will not create a duplicate, it collapses into that selection.
+- Adding a cursor inside an existing selection will not create a duplicate; it collapses into that selection.
 - Moving two carets onto the same position leaves you with one caret there.
 - You cannot end up with overlapping highlighted ranges; the visible selection set is always disjoint.
 
-You get this behavior for free through every `addCursor*`, `setCursor`, `setSelection`, `extendSelection`, and `batchUpdateCursors` call, there is no separate "merge" step to invoke.
+You get this behavior for free through every `addCursor*`, `setCursor`, `setSelection`, `extendSelection`, and `batchUpdateCursors` call; there is no separate "merge" step to invoke.
 
 ## Using cursors through EditorState
 
@@ -220,7 +220,7 @@ state.getSelectedTextFromAllCursors(); // every non-empty selection, joined by "
 state.cursorManager.setSelection(state.primaryCursor.id, anchor, head);
 ```
 
-Note that `state.setCursor`, `state.setSelection`, and `state.extendSelection` operate on the **primary cursor only** and clear secondary cursors first, they are single-cursor operations. To move or extend a specific secondary cursor, go through `state.cursorManager`.
+Note that `state.setCursor`, `state.setSelection`, and `state.extendSelection` operate on the **primary cursor only** and clear secondary cursors first; they are single-cursor operations. To move or extend a specific secondary cursor, go through `state.cursorManager`.
 
 For the full `EditorState` surface (history, editing, navigation), see the [Editor guide](./editor.md) and the [stores reference](../api/stores.md).
 

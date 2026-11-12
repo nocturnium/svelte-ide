@@ -50,7 +50,7 @@ The package exposes these component subpaths (from `package.json` `exports`):
 | Plugins | `@nocturnium/svelte-ide/components/plugins` |
 | Layout  | `@nocturnium/svelte-ide/components/layout`  |
 
-> Always import from the published package paths above. Do **not** import from `$lib/...`, that path only exists inside this repository's source tree, not in the installed package.
+> Always import from the published package paths above. Do **not** import from `$lib/...`; that path only exists inside this repository's source tree, not in the installed package.
 
 ---
 
@@ -106,7 +106,7 @@ The custom-built code editor and its surrounding chrome (tabs, panes, file tree,
 | `FileIcon`            | File-type icon derived from a filename/extension.                                                             | `@experimental` |
 | `FileExplorer`        | File-tree sidebar with optional Git change status.                                                            | `@public`       |
 
-> `FileExplorer` also exports two associated types from the same module: `FileChangeStatus` (`@public`) and `GitFileStatus` (`@experimental`). The editor domain barrel additionally re-exports editor-core utilities, theme helpers, language config, and tokenizer functions, those are documented under [Types & Utils](./types-and-utils.md), not here.
+> `FileExplorer` also exports two associated types from the same module: `FileChangeStatus` (`@public`) and `GitFileStatus` (`@experimental`). The editor domain barrel additionally re-exports editor-core utilities, theme helpers, language config, and tokenizer functions; those are documented under [Types & Utils](./types-and-utils.md), not here.
 
 Related guides: [Editor](../guides/editor.md), [Syntax Highlighting](../guides/syntax-highlighting.md), [Code Folding](../guides/code-folding.md), [Multi-Cursor](../guides/multi-cursor.md), and [Collaboration](../guides/collaboration.md) for `CollaborativeEditor`.
 
@@ -254,7 +254,7 @@ Top-level structural shell components: the IDE layout frame and the status bar. 
 | `StatusBar` | Bottom status bar.                                     | `@public` |
 
 `IDELayout` regions are provided as [snippet](https://svelte.dev/docs/svelte/snippet) props
-(`activityBar`, `leftSidebar`, `editor`, `bottomPanel`, `rightSidebar`, `statusBar`), each is
+(`activityBar`, `leftSidebar`, `editor`, `bottomPanel`, `rightSidebar`, `statusBar`); each is
 optional, and the sidebars / bottom panel / status bar render only when their corresponding
 [layout store](./stores.md) visibility flag is on:
 

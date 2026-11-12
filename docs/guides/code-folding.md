@@ -18,7 +18,7 @@ Folding is enabled by default on `CustomEditor` and `LSPEditor`. Pass `folding={
 
 Once enabled, lines that start a foldable region show a chevron in the gutter. Click it to collapse or expand that region. See [Interacting with folds](#interacting-with-folds) below for the keyboard shortcuts.
 
-> Note: the higher-level `Editor` component (`<Editor>`) is a thin wrapper that does not forward a `folding` prop, it uses the editor's default behavior. To control folding explicitly, use `CustomEditor` (or `LSPEditor`). See the [Editor guide](./editor.md) for the differences between these components.
+> Note: the higher-level `Editor` component (`<Editor>`) is a thin wrapper that does not forward a `folding` prop; it uses the editor's default behavior. To control folding explicitly, use `CustomEditor` (or `LSPEditor`). See the [Editor guide](./editor.md) for the differences between these components.
 
 ## Folding strategies
 
@@ -215,7 +215,7 @@ unsubscribe();
 
 ## Interacting with folds
 
-Inside the editor, folding is driven entirely by the gutter indicators and keyboard shortcuts, you do not normally touch the `FoldManager` yourself.
+Inside the editor, folding is driven entirely by the gutter indicators and keyboard shortcuts; you do not normally touch the `FoldManager` yourself.
 
 ### Gutter indicators
 

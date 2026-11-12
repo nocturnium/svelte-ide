@@ -159,7 +159,7 @@ export const DEFAULT_CONFIG = {
 	/**
 	 * Tokenized copies of every sample this page renders by hand.
 	 *
-	 * These previews are hand-built code viewports rather than real editors, they
+	 * These previews are hand-built code viewports rather than real editors; they
 	 * exist to sit under a minimap, a breadcrumb bar or a ghost-bracket overlay
 	 * without dragging a full CustomEditor along. They interpolated each line as
 	 * raw text, so the page that demonstrates the editor's intelligence rendered
@@ -253,7 +253,7 @@ export const formatSession = (session: UserSession): string => {
 	// Breadcrumbs state
 	// The file's two top-level symbols and getUser's sibling methods, defined ONCE
 	// so navigation can rebuild the trail (and keep the sibling dropdowns working)
-	// as you jump around, see handleBreadcrumbNavigate.
+	// as you jump around; see handleBreadcrumbNavigate.
 	const classSiblings: BreadcrumbSymbol[] = [
 		{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 17 },
 		{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 65 }

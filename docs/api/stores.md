@@ -11,7 +11,7 @@
 Svelte 5 modules **cannot directly export `$derived` (or `$state`) values**. A `$derived` rune only stays reactive while it is read inside a reactive context (a component, an `$effect`, or another rune) in the module where it was declared, re-exporting the value itself snapshots it and breaks reactivity across the module boundary. Each store works around this in two complementary ways:
 
 1. A **`.current` accessor object** per piece of state, a small object with a single `current` getter that reads the rune on each access. These are exported from every store and are the most broadly available way to read state across the package boundary.
-2. Internal **`get*()` functions** that read the rune on each call. Some of these are re-exported from the barrel (notably all of the **layout** store, most of **vfs** and **agents**, plus argument-taking lookups like `getTab(id)`), but for the **editor**, **ai**, **plugin**, and **collaboration** stores the plain state `get*()` readers are _not_ re-exported, use the `.current` accessors instead.
+2. Internal **`get*()` functions** that read the rune on each call. Some of these are re-exported from the barrel (notably all of the **layout** store, most of **vfs** and **agents**, plus argument-taking lookups like `getTab(id)`), but for the **editor**, **ai**, **plugin**, and **collaboration** stores the plain state `get*()` readers are _not_ re-exported; use the `.current` accessors instead.
 
 Read either form **inside** a reactive context in your own component and Svelte tracks the dependency for you:
 
@@ -62,7 +62,7 @@ Several stores export the same generic names (`error`, `connect`, `disconnect`, 
 
 ## Layout store, the stable `@public` set
 
-Source: `src/lib/stores/layout.svelte.ts`. Manages IDE chrome: sidebars, bottom panel, activity bar, status bar, full-screen / zen mode, and the command-palette / search / settings overlays. This is the **only store whose functions are part of the stable public API** (per the `@public` annotation on the `./stores` re-export in `src/lib/index.ts`); the explicitly-blessed stable functions are `toggleLeftSidebar`, `toggleRightSidebar`, `toggleBottomPanel`, `setLeftSidebarPanel`, `setRightSidebarPanel`, `setBottomPanelTab`, `getLeftSidebarVisible`, `getLeftSidebarActivePanel`, `getRightSidebarVisible`, `getRightSidebarActivePanel`, `getBottomPanelVisible`, `getBottomPanelActiveTab`, `openCommandPalette`, `closeCommandPalette`, `getCommandPaletteOpen`, `focusAIPanel`, `focusTerminal`, and `focusExplorer`. The remaining layout helpers below are exported too and follow the same conventions. Unlike the other stores, layout is re-exported with `export *`, so **all** of its `get*()` functions are importable and the names below are unchanged. The layout store does **not** provide `.current` accessors, use the getters.
+Source: `src/lib/stores/layout.svelte.ts`. Manages IDE chrome: sidebars, bottom panel, activity bar, status bar, full-screen / zen mode, and the command-palette / search / settings overlays. This is the **only store whose functions are part of the stable public API** (per the `@public` annotation on the `./stores` re-export in `src/lib/index.ts`); the explicitly-blessed stable functions are `toggleLeftSidebar`, `toggleRightSidebar`, `toggleBottomPanel`, `setLeftSidebarPanel`, `setRightSidebarPanel`, `setBottomPanelTab`, `getLeftSidebarVisible`, `getLeftSidebarActivePanel`, `getRightSidebarVisible`, `getRightSidebarActivePanel`, `getBottomPanelVisible`, `getBottomPanelActiveTab`, `openCommandPalette`, `closeCommandPalette`, `getCommandPaletteOpen`, `focusAIPanel`, `focusTerminal`, and `focusExplorer`. The remaining layout helpers below are exported too and follow the same conventions. Unlike the other stores, layout is re-exported with `export *`, so **all** of its `get*()` functions are importable and the names below are unchanged. The layout store does **not** provide `.current` accessors; use the getters.
 
 ```ts
 import {
@@ -137,7 +137,7 @@ Source: `src/lib/stores/editor.svelte.ts`. Manages open tabs, the active file, s
 import { openFile, tabs, activeTab, editorError } from '@nocturnium/svelte-ide/stores';
 ```
 
-> The editor store's plain state `get*()` readers (`getTabs`, `getActiveTab`, `getError`, …) are **not** re-exported from the package, read state via the `.current` accessors listed below. The argument-taking lookups `getTab(id)` and `getTabByPath(path)` _are_ exported.
+> The editor store's plain state `get*()` readers (`getTabs`, `getActiveTab`, `getError`, …) are **not** re-exported from the package; read state via the `.current` accessors listed below. The argument-taking lookups `getTab(id)` and `getTabByPath(path)` _are_ exported.
 >
 > Renamed on export to avoid collisions: the `error` accessor is exported as **`editorError`**, `setError` becomes **`setEditorError`**, `updateCursor` becomes **`updateEditorCursor`**.
 
@@ -192,7 +192,7 @@ Source: `src/lib/stores/ai.svelte.ts`. Manages AI conversations, messages, regis
 import { sendMessage, messages, aiConfig, updateConfig } from '@nocturnium/svelte-ide/stores';
 ```
 
-> The AI store exports **no** `get*()` functions, read state via the `.current` accessors below.
+> The AI store exports **no** `get*()` functions; read state via the `.current` accessors below.
 >
 > Renamed on export: the `config` accessor becomes **`aiConfig`**, `error` accessor becomes **`aiError`**, `clearError` becomes **`clearAIError`**.
 
@@ -244,7 +244,7 @@ Source: `src/lib/stores/plugin.svelte.ts`. Manages the proposal-based plugin lif
 import { connect, fetchProposals, loadPlugin, pluginError } from '@nocturnium/svelte-ide/stores';
 ```
 
-> The plugin store's plain state `get*()` readers are **not** re-exported, read state via the `.current` accessors below. The argument lookups `getProposal(id)` and `getInstance(id)` _are_ exported.
+> The plugin store's plain state `get*()` readers are **not** re-exported; read state via the `.current` accessors below. The argument lookups `getProposal(id)` and `getInstance(id)` _are_ exported.
 >
 > Renamed on export: the `error` accessor becomes **`pluginError`**, `disconnect` becomes **`disconnectPlugins`**, `onEvent` becomes **`onPluginEvent`**, `clearError` becomes **`clearPluginError`**. (`connect` is **not** renamed.)
 
@@ -293,7 +293,7 @@ Source: `src/lib/stores/collaboration.svelte.ts`. Manages CRDT-based real-time c
 import { initialize, addUser, setLocalCursor, collabConfig } from '@nocturnium/svelte-ide/stores';
 ```
 
-> The collaboration store's plain state `get*()` readers are **not** re-exported, read state via the `.current` accessors below. The argument lookups `getDocumentSnapshots(id)` and `getUserColor(index)` _are_ exported. (This store has no `clearError` function.)
+> The collaboration store's plain state `get*()` readers are **not** re-exported; read state via the `.current` accessors below. The argument lookups `getDocumentSnapshots(id)` and `getUserColor(index)` _are_ exported. (This store has no `clearError` function.)
 >
 > Renamed on export: the `config` accessor becomes **`collabConfig`**, `error` accessor becomes **`collabError`**, `updateCursor` becomes **`updateCollabCursor`**, `disconnect` becomes **`disconnectCollab`**, `onEvent` becomes **`onCollabEvent`**. (`initialize` and `reset` are **not** renamed.)
 
@@ -351,7 +351,7 @@ Source: `src/lib/stores/vfs.svelte.ts`. Manages a virtual-filesystem workspace: 
 import { initializeVFS, getFileTree, acquireLock, vfsError } from '@nocturnium/svelte-ide/stores';
 ```
 
-> Renamed on export: the `connected` accessor becomes **`vfsConnected`**, `error` accessor becomes **`vfsError`**, `clearError` becomes **`clearVFSError`**, `connect` becomes **`connectVFS`**, `disconnect` becomes **`disconnectVFS`**, `onEvent` becomes **`onVFSEvent`**, `reset` becomes **`resetVFS`**, and `initialize` becomes **`initializeVFS`**. Note that `getConnected()` and `getError()` are **not** re-exported, read connection state via `vfsConnected.current` and the error via `vfsError.current`.
+> Renamed on export: the `connected` accessor becomes **`vfsConnected`**, `error` accessor becomes **`vfsError`**, `clearError` becomes **`clearVFSError`**, `connect` becomes **`connectVFS`**, `disconnect` becomes **`disconnectVFS`**, `onEvent` becomes **`onVFSEvent`**, `reset` becomes **`resetVFS`**, and `initialize` becomes **`initializeVFS`**. Note that `getConnected()` and `getError()` are **not** re-exported; read connection state via `vfsConnected.current` and the error via `vfsError.current`.
 
 ### Getters
 
@@ -404,7 +404,7 @@ Source: `src/lib/stores/agents.svelte.ts`. Manages multi-agent coordination: an 
 import { addAgent, getOnlineAgents, onTeamEvent, agentsError } from '@nocturnium/svelte-ide/stores';
 ```
 
-> Renamed on export: the `events` accessor becomes **`agentEvents`**, `cursors` accessor becomes **`agentCursors`**, `filter` accessor becomes **`agentFilter`**, `connected` accessor becomes **`agentsConnected`**, `error` accessor becomes **`agentsError`**, `getEvents` becomes **`getAgentEvents`**, `getCursors` becomes **`getAgentCursors`**, `getCursor` becomes **`getAgentCursor`**, `getFilter` becomes **`getAgentFilter`**, `updateCursor` becomes **`updateAgentCursor`**, `removeCursor` becomes **`removeAgentCursor`**, `addEvent` becomes **`addAgentEvent`**, `setFilter` becomes **`setAgentFilter`**, `clearEvents` becomes **`clearAgentEvents`**, `setConnected` becomes **`setAgentsConnected`**, `setError` becomes **`setAgentsError`**, `clearError` becomes **`clearAgentsError`**, and `reset` becomes **`resetAgents`**. Note `getConnected()` and `getError()` are **not** re-exported, read connection state via `agentsConnected.current` and the error via `agentsError.current`.
+> Renamed on export: the `events` accessor becomes **`agentEvents`**, `cursors` accessor becomes **`agentCursors`**, `filter` accessor becomes **`agentFilter`**, `connected` accessor becomes **`agentsConnected`**, `error` accessor becomes **`agentsError`**, `getEvents` becomes **`getAgentEvents`**, `getCursors` becomes **`getAgentCursors`**, `getCursor` becomes **`getAgentCursor`**, `getFilter` becomes **`getAgentFilter`**, `updateCursor` becomes **`updateAgentCursor`**, `removeCursor` becomes **`removeAgentCursor`**, `addEvent` becomes **`addAgentEvent`**, `setFilter` becomes **`setAgentFilter`**, `clearEvents` becomes **`clearAgentEvents`**, `setConnected` becomes **`setAgentsConnected`**, `setError` becomes **`setAgentsError`**, `clearError` becomes **`clearAgentsError`**, and `reset` becomes **`resetAgents`**. Note `getConnected()` and `getError()` are **not** re-exported; read connection state via `agentsConnected.current` and the error via `agentsError.current`.
 
 ### Getters
 

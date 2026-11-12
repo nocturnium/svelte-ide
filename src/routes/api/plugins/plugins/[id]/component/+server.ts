@@ -71,7 +71,7 @@ const mockComponents: Record<string, string> = {
 </style>`,
 
 	terminal: `<script lang="ts">
-  let output = $state<string[]>(['$ Welcome to the terminal']);
+  let output = $state<string[]>(['$ terminal ready']);
   let input = $state('');
 
   function handleCommand() {

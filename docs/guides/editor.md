@@ -22,7 +22,7 @@ There are two components, and the distinction matters:
 | Surface area | Small, curated prop set                      | Every feature flag                                                                                                |
 | Use when     | You want a code editor and sensible defaults | You need folding flags, multi-cursor limits, complexity highlighting, AI-presence layers, or per-cursor callbacks |
 
-`Editor` simply wraps `CustomEditor`, forwarding `content`, `language`, `readonly`, `preferences`, `onChange`, `onCursorChange`, and `onSave`, and applying the `.ide-editor` container. It is the recommended entry point, start here and reach for `CustomEditor` only when you need a prop that `Editor` does not surface.
+`Editor` simply wraps `CustomEditor`, forwarding `content`, `language`, `readonly`, `preferences`, `onChange`, `onCursorChange`, and `onSave`, and applying the `.ide-editor` container. It is the recommended entry point; start here and reach for `CustomEditor` only when you need a prop that `Editor` does not surface.
 
 Both are exported from the package root and from the `./components/editor` subpath:
 
@@ -65,7 +65,7 @@ These are the exact props from the `Editor` component's `Props` interface:
 | `onCursorChange`     | `(line: number, column: number) => void` | none          | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                         |
 | `onSave`             | `() => void`                             | none          | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself, this is your hook to write the buffer wherever it belongs.   |
 
-There are no Svelte `createEventDispatcher` events on these components, all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
+There are no Svelte `createEventDispatcher` events on these components; all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
 
 ---
 
@@ -199,7 +199,7 @@ The editor maintains its own internal document state, so you get to choose how t
 
 ### Controlled
 
-You hold the source of truth in `$state` and write back to it inside `onChange`. The `content` prop reflects your state; your state reflects user edits. This is the right default, it keeps your model authoritative and lets you transform, validate, or persist on every change.
+You hold the source of truth in `$state` and write back to it inside `onChange`. The `content` prop reflects your state; your state reflects user edits. This is the right default; it keeps your model authoritative and lets you transform, validate, or persist on every change.
 
 ```svelte
 <script lang="ts">
@@ -338,7 +338,7 @@ See [Stores reference](../api/stores.md) for the full editor-store API.
 
 ### `EditorTabs`
 
-`EditorTabs` is the presentational tab strip. Unlike `EditorPane`, it is fully **prop-driven**, pass it the tab list and callbacks, and it owns no store coupling. Useful when you maintain tab state yourself or want the tab UI without the editor body.
+`EditorTabs` is the presentational tab strip. Unlike `EditorPane`, it is fully **prop-driven**; pass it the tab list and callbacks, and it owns no store coupling. Useful when you maintain tab state yourself or want the tab UI without the editor body.
 
 | Prop            | Type                                         | Default  | Description                                           |
 | --------------- | -------------------------------------------- | -------- | ----------------------------------------------------- |
@@ -422,7 +422,7 @@ A file tree (`FileExplorer`) and a per-extension icon (`FileIcon`) round out a t
 </div>
 ```
 
-`FileExplorer` also accepts lock/agent/status maps (`lockStatuses`, `agentsByFile`, `fileStatuses`) for collaborative scenarios, see the [VFS](../api/services.md) and [collaboration](./collaboration.md) docs.
+`FileExplorer` also accepts lock/agent/status maps (`lockStatuses`, `agentsByFile`, `fileStatuses`) for collaborative scenarios; see the [VFS](../api/services.md) and [collaboration](./collaboration.md) docs.
 
 ---
 
@@ -474,7 +474,7 @@ state.redo();
 
 ### `createNavigation(state)`
 
-Wraps an `EditorState` with cursor movement. Every movement method takes an optional `extend` boolean, pass `true` to extend the selection instead of collapsing it.
+Wraps an `EditorState` with cursor movement. Every movement method takes an optional `extend` boolean; pass `true` to extend the selection instead of collapsing it.
 
 ```ts
 const nav = createNavigation(state);
@@ -595,7 +595,7 @@ because a single number would flatter it:
 - The tokenizer knows **31** languages plus plaintext. Cognitive Complexity has dedicated rules
   for **four** of them, JavaScript, TypeScript, Python and Go. Every other
   language is scored with the **JavaScript** rules.
-- Only **JavaScript and TypeScript** are pinned exactly. A differential harness
+- Only **JavaScript and TypeScript** are pinned exactly. A differential test
   runs an independent AST oracle over a shared corpus on every build, and the
   walker and the scanner must agree on every function.
 - **Python and Go** are pinned by a 30-case parity corpus: each case is a
@@ -701,8 +701,8 @@ a number it produces.
 ### The rules, for any parser
 
 Parsing is a solved problem with a dozen good libraries. Implementing Campbell's
-rules correctly is not, it took this repository four review rounds and a
-differential harness to get the token scanner there, and every defect found was
+rules correctly is not; it took this repository four review rounds and a
+differential test to get the token scanner there, and every defect found was
 in the rules, not the parsing. So the rules ship here, and you bring the tree.
 
 Describe your parser's node shapes with a `ComplexityAstAdapter` and
@@ -822,7 +822,7 @@ pre-commit hook, with `astComplexityMetrics(tree, adapter)`.
 `analyzeAstComplexity` returns a `contributions` array beside each score: one
 entry per increment, with its line, kind, increment and nesting depth. The hover
 tooltip renders it, so a parser-backed reading explains itself exactly as fully as
-the built-in one, you get the number **and** the per-line arithmetic that
+the built-in one; you get the number **and** the per-line arithmetic that
 produced it.
 
 If you write a provider by hand rather than from a tree, fill
@@ -839,7 +839,7 @@ const { maxNesting, incrementCount, total } = summarizeContributions(region.cont
 ```
 
 `summarizeContributions` counts only increments that scored. A nested
-function contributes `0`, it exists in the list to explain why the lines under it
+function contributes `0`; it exists in the list to explain why the lines under it
 cost more, so counting it would report more increments than the score has.
 
 #### Decisions this library made
@@ -903,7 +903,7 @@ twenty-one still pin the score; they just do not discriminate, because brace- an
 keyword-shaped constructs fall out of the scanner's shared core either way.
 
 Not translated, deliberately: parameter-shaped cases (Go has no defaults and
-Python's differ), and comprehension `if` and `case` guards, there is no citable
+Python's differ), and comprehension `if` and `case` guards; there is no citable
 SonarSource rule for either, so a corpus entry would invent an answer and then
 agree with itself.
 
@@ -934,7 +934,7 @@ const provider = withComplexityCache(
 `composeComplexityProviders` takes the first provider that answers; one that
 declines or throws is skipped, so a failing network provider cannot mask a
 working local one. `withComplexityCache` keys on content and language, so it is
-always coherent, there is no invalidation to get wrong. `withComplexityTimeout`
+always coherent; there is no invalidation to get wrong. `withComplexityTimeout`
 aborts the inner provider rather than merely ignoring it.
 
 There is deliberately **no retry combinator**. One model averaged 44.7 seconds

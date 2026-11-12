@@ -30,7 +30,7 @@ Import the theme **once**, near your application's entry point:
 import '@nocturnium/svelte-ide/theme.css';
 ```
 
-This applies the built-in dark "Nocturnium" theme. The stylesheet intentionally does **not** ship global `html`/`body` resets, so it won't fight your app's base styles, it only defines the tokens, a few keyframes, and the opt-in `.ide-*` utility classes the components use.
+This applies the built-in dark "Nocturnium" theme. The stylesheet intentionally does **not** ship global `html`/`body` resets, so it won't fight your app's base styles; it only defines the tokens, a few keyframes, and the opt-in `.ide-*` utility classes the components use.
 
 Because every value is a CSS variable, you can retheme without forking: load your own stylesheet _after_ the theme and override any token. See [Theming](./theming.md) for the full token reference and customization patterns.
 
@@ -77,7 +77,7 @@ The cleanest place for the one-time theme import is your root layout. Create or 
 
 Then use the editor in any page or component, exactly as shown in [Your first editor](#your-first-editor).
 
-If you render the editor during server-side rendering, keep it inside normal component markup, it hydrates on the client like any Svelte component. No special adapter configuration is required.
+If you render the editor during server-side rendering, keep it inside normal component markup; it hydrates on the client like any Svelte component. No special adapter configuration is required.
 
 ### Plain Vite
 
@@ -110,7 +110,7 @@ import { CustomEditor } from '@nocturnium/svelte-ide/components/editor';
 import { AIPanel } from '@nocturnium/svelte-ide/components/ai';
 ```
 
-Available subpaths include `./stores`, `./components/editor`, `./components/core`, `./components/ai`, `./components/layout`, `./components/lsp`, `./components/agents`, `./components/vfs`, `./components/plugins`, `./types`, `./utils`, `./plugins`, and `./crdt`. The CRDT module is the one piece **not** re-exported from root, import it from `@nocturnium/svelte-ide/crdt` (see below).
+Available subpaths include `./stores`, `./components/editor`, `./components/core`, `./components/ai`, `./components/layout`, `./components/lsp`, `./components/agents`, `./components/vfs`, `./components/plugins`, `./types`, `./utils`, `./plugins`, and `./crdt`. The CRDT module is the one piece **not** re-exported from root; import it from `@nocturnium/svelte-ide/crdt` (see below).
 
 > Always import from the published package name. Don't reference `$lib`, that's an internal alias used inside this repo's source, not a public entry point.
 
@@ -139,7 +139,7 @@ The ready-made `CollaborativeEditor` component is exported only from `@nocturniu
 
 ### Language Server Protocol (LSP)
 
-For autocomplete, hover info, signature help, and diagnostics, the library includes an LSP client and an `LSPEditor` component. The client connects to a language server **over WebSocket**, you bring (or run) the server. This repo includes a standalone Go "lsp-bridge" you can use, documented in the [LSP guide](./guides/lsp.md) and the lower-level [LSP_INTEGRATION.md](./LSP_INTEGRATION.md).
+For autocomplete, hover info, signature help, and diagnostics, the library includes an LSP client and an `LSPEditor` component. The client connects to a language server **over WebSocket**; you bring (or run) the server. This repo includes a standalone Go "lsp-bridge" you can use, documented in the [LSP guide](./guides/lsp.md) and the lower-level [LSP_INTEGRATION.md](./LSP_INTEGRATION.md).
 
 A minimal client looks like this:
 
@@ -173,7 +173,7 @@ Pass the client to the `LSPEditor` component along with the document `uri`:
 </div>
 ```
 
-No LSP server is bundled with the npm package, see the [LSP guide](./guides/lsp.md) for how to run the bridge and wire it up end to end.
+No LSP server is bundled with the npm package; see the [LSP guide](./guides/lsp.md) for how to run the bridge and wire it up end to end.
 
 ### AI, plugins, agents, and VFS
 

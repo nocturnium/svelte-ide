@@ -252,7 +252,7 @@ export const capitalize = (str: string): string =>
 	]);
 
 	// Folding is driven entirely by the preset's `hide` set (applyFoldPreset only
-	// collapses hidden categories, it does not isolate a `show` set), so the readout
+	// collapses hidden categories; it does not isolate a `show` set), so the readout
 	// surfaces the categories actually being collapsed, filtered to ones that exist.
 	let activeHiddenCategories = $derived(
 		activePreset ? activePreset.hide.filter((c) => EMITTABLE_CATEGORIES.has(c)) : []
@@ -280,7 +280,7 @@ export const capitalize = (str: string): string =>
 	// NOTE: CustomEditor scrolls inside its own internal content element and exposes
 	// no scroll callback/accessor today, so this handler on .editor-pane does not yet
 	// fire (the inner `scroll` event doesn't bubble). It activates honestly once
-	// CustomEditor surfaces its scroll position, see componentChangesNeeded.
+	// CustomEditor surfaces its scroll position; see componentChangesNeeded.
 	function handleScroll(e: Event) {
 		const target = e.target as HTMLElement;
 		scrollLine = Math.floor(target.scrollTop / 20); // Approximate line height
@@ -712,7 +712,7 @@ export const capitalize = (str: string): string =>
 		background: rgba(255, 255, 255, 0.1);
 		border-radius: 10px;
 		font-size: 0.75rem;
-		/* 0.75rem digits carry real data (counts), keep them >=4.5:1 AA */
+		/* 0.75rem digits carry real data (counts); keep them >=4.5:1 AA */
 		color: var(--ide-text-secondary);
 	}
 
@@ -748,7 +748,7 @@ export const capitalize = (str: string): string =>
 	}
 
 	.region-item__lines {
-		/* The L-range labels are the actual data on each card, keep them >=4.5:1 AA */
+		/* The L-range labels are the actual data on each card; keep them >=4.5:1 AA */
 		color: var(--ide-text-secondary);
 		font-family: var(--ide-font-mono);
 	}
@@ -830,7 +830,7 @@ export const capitalize = (str: string): string =>
 	.preset-card__desc {
 		display: block;
 		font-size: 0.75rem;
-		/* 0.75rem description text, keep readable at >=4.5:1 AA */
+		/* 0.75rem description text; keep readable at >=4.5:1 AA */
 		color: var(--ide-text-secondary);
 	}
 

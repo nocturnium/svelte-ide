@@ -452,7 +452,7 @@ unloadPlugin('prettier-format');`}</code
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		/* Small (11px) section label, use the AA-safe secondary token, not the
+		/* Small (11px) section label; use the AA-safe secondary token, not the
 		   ~3:1 muted token, so the group headings stay legible. */
 		color: var(--ide-text-secondary);
 	}
@@ -518,7 +518,7 @@ unloadPlugin('prettier-format');`}</code
 
 	.category-card p {
 		font-size: 0.75rem;
-		/* 12px description carries real taxonomy copy, keep it >=AA with the
+		/* 12px description carries real taxonomy copy; keep it >=AA with the
 		   secondary token rather than the washed-out muted token. */
 		color: var(--ide-text-secondary);
 		margin: 0;

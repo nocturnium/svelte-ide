@@ -122,7 +122,7 @@ Open the same `serverUrl` + `roomId` in two browser tabs and edits merge live.
 
 ## `<CollaborativeEditor>`
 
-`<CollaborativeEditor>` wraps the [custom editor](./editor.md) with a Yjs binding so the editor's buffer stays in sync with a `Y.Text`. It does **not** open a network connection by itself, you pair it with a `CollaborativeProvider` (or any `WebsocketProvider`) that syncs the same `Y.Doc`.
+`<CollaborativeEditor>` wraps the [custom editor](./editor.md) with a Yjs binding so the editor's buffer stays in sync with a `Y.Text`. It does **not** open a network connection by itself; you pair it with a `CollaborativeProvider` (or any `WebsocketProvider`) that syncs the same `Y.Doc`.
 
 ### Props
 

@@ -6,7 +6,7 @@
 
 ## Quick start
 
-Install the package and import the theme once (components are unstyled without the design tokens, see [Theming](../theming.md)):
+Install the package and import the theme once (components are unstyled without the design tokens; see [Theming](../theming.md)):
 
 ```ts
 import '@nocturnium/svelte-ide/theme.css';
@@ -56,7 +56,7 @@ Everything the AI/agents features expose is also re-exported from the package ro
 | `showSidebar` | `boolean` | `false` | Show the conversation list sidebar (toggleable from the header). |
 | `class`       | `string`  | `''`    | Extra class applied to the panel root.                           |
 
-The panel reads and drives the `ai` store directly, it calls `sendMessage()` on submit, renders `getMessages()`, shows `getIsStreaming()` while a response streams, and surfaces `getError()` in the banner. You don't pass messages in as props; you configure the store and let the panel react.
+The panel reads and drives the `ai` store directly; it calls `sendMessage()` on submit, renders `getMessages()`, shows `getIsStreaming()` while a response streams, and surfaces `getError()` in the banner. You don't pass messages in as props; you configure the store and let the panel react.
 
 Conversation history is persisted locally (via the panel's built-in persistence layer) so the sidebar survives reloads. Conversations can be created, selected, renamed, starred, deleted, and exported to Markdown or JSON from the sidebar UI.
 
@@ -192,7 +192,7 @@ Renders a single `AIMessage`, avatar, role label, relative timestamp, body, any 
 />
 ```
 
-Props: `message` (required), `showActions` (default `true`), and the optional callbacks `onCopy`, `onEdit`, `onRetry`, `onDelete`, `onBranch`, each receives the `AIMessage`. (`onEdit` is only wired for user messages.)
+Props: `message` (required), `showActions` (default `true`), and the optional callbacks `onCopy`, `onEdit`, `onRetry`, `onDelete`, `onBranch`; each receives the `AIMessage`. (`onEdit` is only wired for user messages.)
 
 ### `<AIMessageContent>` and the HTML-safety model
 
@@ -213,7 +213,7 @@ Props: `content` (required `string`) and `isStreaming` (default `false`, which a
 1. **HTML is escaped first.** Before any formatting is applied, `&`, `<`, `>`, `"`, and `'` are replaced with entities, so raw markup in the model's reply is shown as literal text and never interpreted as DOM. Only a small, fixed set of inline elements the component generates itself (`<strong>`, `<em>`, links, `<br>`) is re-introduced afterward.
 2. **Link schemes are whitelisted.** Markdown links are only emitted as `<a>` when the href is a relative/anchor URL (`/…`, `#…`, `./…`, `../…`) or uses `http:`, `https:`, or `mailto:`. Anything else (`javascript:`, `data:`, `vbscript:`, …) degrades to plain text. Emitted links always carry `target="_blank" rel="noopener noreferrer"`.
 
-This protects against markup injected _through_ the model's response. It does **not** establish trust in the endpoint itself, you still own the security of the backend you point `endpoint` at (authentication, what the model is allowed to return, and any tool side effects). Treat the chat backend as part of your trust boundary.
+This protects against markup injected _through_ the model's response. It does **not** establish trust in the endpoint itself; you still own the security of the backend you point `endpoint` at (authentication, what the model is allowed to return, and any tool side effects). Treat the chat backend as part of your trust boundary.
 
 ### `<AIToolCallDisplay>`
 

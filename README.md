@@ -48,7 +48,7 @@ npm install yjs y-websocket y-protocols
 
 ## Dependencies
 
-The published package carries **no top-level `dependencies`**, it ships with
+The published package carries **no top-level `dependencies`**; it ships with
 zero required runtime dependencies beyond the Svelte 5 peer.
 
 - **`svelte` `^5.0.0`**: the one required peer. Your app already has it.
@@ -87,7 +87,7 @@ without the design tokens):
 
 > **Theme it your way:** all tokens are CSS variables on `:root` (prefixed
 > `--ide-*` and `--color-nocturnium-*`). Override them in a stylesheet loaded
-> after `theme.css`, see [Theming](https://github.com/nocturnium/svelte-ide/blob/main/docs/theming.md).
+> after `theme.css`; see [Theming](https://github.com/nocturnium/svelte-ide/blob/main/docs/theming.md).
 
 ## Language support
 
@@ -169,7 +169,7 @@ link-scheme whitelisting before rendering. See the
 ## Entry points
 
 The package root exposes the **stable core**. Backend-dependent and
-experimental subsystems live behind dedicated subpaths, this keeps intent
+experimental subsystems live behind dedicated subpaths; this keeps intent
 explicit and tree-shaking clean.
 
 | Import                             | Contents                                                                                                                                                           |
@@ -198,7 +198,7 @@ stable core and a set of experimental subpaths.
 SemVer and only change with a major version bump:
 
 - Editors: `Editor`, `CustomEditor`, `LSPEditor` (`CollaborativeEditor` is
-  experimental, see below).
+  experimental; see below).
 - Composition: `EditorPane`, `EditorTabs`, `FileExplorer`, `FileIcon`,
   `IDELayout`, `StatusBar`.
 - Core UI primitives: `Button`, `Icon`, `Input`, `Textarea`, `Tooltip`, `Kbd`,

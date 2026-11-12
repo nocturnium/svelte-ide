@@ -14,7 +14,7 @@ import { tokenize, getTokenClass, tokensToHTML, getTokenizer } from '@nocturnium
 import { tokenize, getTokenClass, tokensToHTML } from '@nocturnium/svelte-ide/components/editor';
 ```
 
-> Always import from the published package. Do not import from `$lib/...`, that path only exists inside this repository.
+> Always import from the published package. Do not import from `$lib/...`; that path only exists inside this repository.
 
 Remember that components are unstyled until you load the shipped theme once. The `token-*` colors come from the design tokens in that stylesheet:
 
@@ -44,7 +44,7 @@ The tokenizer resolves a language name (or file extension) to a canonical id, th
 | `svelte`     | Svelte           | HTML plus `{...}` template expressions and `<script>`/`<style>` blocks    |
 | `plaintext`  | Plain Text       | no highlighting (every line is a single `text` token)                     |
 
-You never need to hard-code this list, read it at runtime:
+You never need to hard-code this list; read it at runtime:
 
 ```ts
 import { getSupportedLanguages, isLanguageSupported } from '@nocturnium/svelte-ide';
@@ -130,7 +130,7 @@ A `LanguageTokenizer` exposes exactly three members:
 - `getInitialState(): TokenizerState`: the state to pass for the first line.
 - `tokenizeLine(line, lineNumber, state?): TokenizedLine`: tokenize one line, returning the next-line state on the result.
 
-Tokenizers are cached internally with an LRU policy, so calling `getTokenizer("javascript")` repeatedly returns the same instance, there is no need to memoize it yourself.
+Tokenizers are cached internally with an LRU policy, so calling `getTokenizer("javascript")` repeatedly returns the same instance; there is no need to memoize it yourself.
 
 ### `getTokenClass(type): string`
 
