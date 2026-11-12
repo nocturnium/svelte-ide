@@ -217,7 +217,7 @@ export const capitalize = (str: string): string =>
 	// Active preset
 	let activePreset = $state<FoldPreset | null>(null);
 
-	// Editor instance — exposes applyFoldPreset()/unfoldAll() via bind:this so the
+	// Editor instance, exposes applyFoldPreset()/unfoldAll() via bind:this so the
 	// preset cards drive real folding in the live editor.
 	let editor = $state<CustomEditor | null>(null);
 
@@ -233,7 +233,7 @@ export const capitalize = (str: string): string =>
 
 	// Categories the TypeScript/JavaScript semantic analyzer can actually emit
 	// (see JAVASCRIPT_PATTERNS in semantic-analyzer.ts). Some shipped presets list
-	// aspirational categories — `public`, `setup`, `boilerplate` — that have no
+	// aspirational categories, `public`, `setup`, `boilerplate`, that have no
 	// detector, so they never match a region and never fold anything. We filter the
 	// active-preset readout to the categories that genuinely do something, so the
 	// panel reports what folds rather than what the preset wishes it could fold.
@@ -252,7 +252,7 @@ export const capitalize = (str: string): string =>
 	]);
 
 	// Folding is driven entirely by the preset's `hide` set (applyFoldPreset only
-	// collapses hidden categories — it does not isolate a `show` set), so the readout
+	// collapses hidden categories, it does not isolate a `show` set), so the readout
 	// surfaces the categories actually being collapsed, filtered to ones that exist.
 	let activeHiddenCategories = $derived(
 		activePreset ? activePreset.hide.filter((c) => EMITTABLE_CATEGORIES.has(c)) : []
@@ -280,7 +280,7 @@ export const capitalize = (str: string): string =>
 	// NOTE: CustomEditor scrolls inside its own internal content element and exposes
 	// no scroll callback/accessor today, so this handler on .editor-pane does not yet
 	// fire (the inner `scroll` event doesn't bubble). It activates honestly once
-	// CustomEditor surfaces its scroll position — see componentChangesNeeded.
+	// CustomEditor surfaces its scroll position, see componentChangesNeeded.
 	function handleScroll(e: Event) {
 		const target = e.target as HTMLElement;
 		scrollLine = Math.floor(target.scrollTop / 20); // Approximate line height
@@ -395,8 +395,8 @@ export const capitalize = (str: string): string =>
 	<section class="component-section">
 		<h2>Fold Presets</h2>
 		<p class="section-desc">
-			One-click folding based on semantic understanding. Each preset collapses a set of categories —
-			hide tests, fold comments and types, or focus on error handling — and clears with one click.
+			One-click folding based on semantic understanding. Each preset collapses a set of categories,
+			hide tests, fold comments and types, or focus on error handling, and clears with one click.
 		</p>
 
 		<div class="presets-grid">
@@ -431,7 +431,7 @@ export const capitalize = (str: string): string =>
 		{#if activePreset}
 			<div class="active-preset-info">
 				<strong>Active:</strong>
-				{activePreset.name} —
+				{activePreset.name},
 				{#if activeHiddenCategories.length > 0}
 					collapsing {activeHiddenCategories.join(', ')}
 				{:else}
@@ -445,8 +445,8 @@ export const capitalize = (str: string): string =>
 	<section class="component-section">
 		<h2>Live Demo</h2>
 		<p class="section-desc">
-			Editor with a live Structure Map (right panel). Click a symbol in the map — or a region in the
-			Semantic Analysis cards above — to scroll the editor to it.
+			Editor with a live Structure Map (right panel). Click a symbol in the map, or a region in the
+			Semantic Analysis cards above, to scroll the editor to it.
 		</p>
 
 		<DemoExhibit
@@ -592,7 +592,7 @@ export const capitalize = (str: string): string =>
 				</div>
 				<h3>Semantic Regions</h3>
 				<p>
-					The analyzer labels code by meaning — imports, types, exports, tests, error handling — not
+					The analyzer labels code by meaning, imports, types, exports, tests, error handling, not
 					just syntax.
 				</p>
 			</div>
@@ -634,7 +634,7 @@ export const capitalize = (str: string): string =>
 				</div>
 				<h3>Fold Presets</h3>
 				<p>
-					Built-in folding presets for code review, debugging, and documentation — one click to
+					Built-in folding presets for code review, debugging, and documentation, one click to
 					reshape the view.
 				</p>
 			</div>
@@ -712,7 +712,7 @@ export const capitalize = (str: string): string =>
 		background: rgba(255, 255, 255, 0.1);
 		border-radius: 10px;
 		font-size: 0.75rem;
-		/* 0.75rem digits carry real data (counts) — keep them >=4.5:1 AA */
+		/* 0.75rem digits carry real data (counts), keep them >=4.5:1 AA */
 		color: var(--ide-text-secondary);
 	}
 
@@ -748,7 +748,7 @@ export const capitalize = (str: string): string =>
 	}
 
 	.region-item__lines {
-		/* The L-range labels are the actual data on each card — keep them >=4.5:1 AA */
+		/* The L-range labels are the actual data on each card, keep them >=4.5:1 AA */
 		color: var(--ide-text-secondary);
 		font-family: var(--ide-font-mono);
 	}
@@ -830,7 +830,7 @@ export const capitalize = (str: string): string =>
 	.preset-card__desc {
 		display: block;
 		font-size: 0.75rem;
-		/* 0.75rem description text — keep readable at >=4.5:1 AA */
+		/* 0.75rem description text, keep readable at >=4.5:1 AA */
 		color: var(--ide-text-secondary);
 	}
 
@@ -880,7 +880,7 @@ export const capitalize = (str: string): string =>
 		color: var(--ide-text-primary);
 	}
 
-	/* Editor with Map — the outer frame is supplied by DemoExhibit */
+	/* Editor with Map, the outer frame is supplied by DemoExhibit */
 	.editor-with-map {
 		display: flex;
 		height: 500px;
@@ -897,7 +897,7 @@ export const capitalize = (str: string): string =>
 		flex-shrink: 0;
 	}
 
-	/* Mobile Structure Map accordion — hidden on desktop */
+	/* Mobile Structure Map accordion, hidden on desktop */
 	.structure-accordion {
 		display: none;
 	}
@@ -1022,7 +1022,7 @@ export const capitalize = (str: string): string =>
 
 		.structure-accordion__scroll {
 			/* StructureMap renders into a near-zero-height box unless its parent has a
-			   definite height — give the scroll body a real, scrollable height so all
+			   definite height, give the scroll body a real, scrollable height so all
 			   nodes render and scroll (matches the desktop pane). */
 			height: 320px;
 			max-height: 320px;

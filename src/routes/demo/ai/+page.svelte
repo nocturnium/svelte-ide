@@ -741,7 +741,7 @@ registerTool({
 		   small widths, so the rail can never escape and overlap the page heading.
 		   Frameless: the enclosing <DemoExhibit> supplies the only window frame, so
 		   this container drops its own border/radius to avoid a concentric
-		   card-on-card. position/height/overflow stay — they are load-bearing for
+		   card-on-card. position/height/overflow stay, they are load-bearing for
 		   the rail clip, not chrome. */
 		position: relative;
 		height: 500px;

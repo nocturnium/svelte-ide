@@ -759,7 +759,7 @@
 			min-width: 2.75rem;
 		}
 
-		.file-node__content {
+		.file-node .file-node__content {
 			min-height: 44px;
 		}
 	}

@@ -126,7 +126,7 @@
 
 <Seo
 	title="Stress Demo"
-	description="A real Nocturnium CustomEditor rendering a generated 50,000-line file — proof that virtualized rendering stays smooth, with live DOM-node and FPS counters."
+	description="A real Nocturnium CustomEditor rendering a generated 50,000-line file, proof that virtualized rendering stays smooth, with live DOM-node and FPS counters."
 />
 
 <section class="stress-demo" aria-labelledby="stress-title">

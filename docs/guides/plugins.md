@@ -1,12 +1,12 @@
 # Plugin System
 
-`@nocturnium/svelte-ide` ships a **proposal-based** plugin system: extensions are not loaded from disk or a registry, they are _proposed_, reviewed, tested, and gradually rolled out before they ever run in front of a user. The library provides the client-side pieces — a reactive store that tracks proposal lifecycle, a loader for server-rendered plugin components, and small helpers for declaring plugin metadata. It deliberately ships **no backend**. You bring your own _plugin host_: an HTTP + Server-Sent-Events service that stores proposals, runs reviews/tests, and serves compiled plugin artifacts. Everything in this guide talks to that host over a small, fully configurable contract.
+`@nocturnium/svelte-ide` ships a **proposal-based** plugin system: extensions are not loaded from disk or a registry, they are _proposed_, reviewed, tested, and gradually rolled out before they ever run in front of a user. The library provides the client-side pieces, a reactive store that tracks proposal lifecycle, a loader for server-rendered plugin components, and small helpers for declaring plugin metadata. It deliberately ships **no backend**. You bring your own _plugin host_: an HTTP + Server-Sent-Events service that stores proposals, runs reviews/tests, and serves compiled plugin artifacts. Everything in this guide talks to that host over a small, fully configurable contract.
 
 ---
 
 ## Mental model
 
-A plugin starts life as a **proposal** and moves through a lifecycle managed entirely by your host. The library never advances the lifecycle itself — it reflects the host's state (via SSE) and lets the user trigger transitions (create, submit, load) through the host's REST API.
+A plugin starts life as a **proposal** and moves through a lifecycle managed entirely by your host. The library never advances the lifecycle itself, it reflects the host's state (via SSE) and lets the user trigger transitions (create, submit, load) through the host's REST API.
 
 ```
 draft → submitted → reviewing → approved → testing → deploying → deployed
@@ -36,7 +36,7 @@ Only `deployed` proposals can be loaded into the running editor (see [`loadPlugi
 
 ## Installation
 
-The plugin system is part of the core package — no extra dependencies.
+The plugin system is part of the core package, no extra dependencies.
 
 ```bash
 npm install @nocturnium/svelte-ide
@@ -100,9 +100,9 @@ type PluginEventType =
 
 The store reacts to these automatically:
 
-- `created` → re-fetches the full proposal list.
-- `submitted`, `review_started`, `approved`, `rejected`, `testing_started`, `deploying`, `deployed`, `rolled_back` → patch the matching proposal's `status` in place (`review_started` maps to `reviewing`, `testing_started` maps to `testing`).
-- `vote_cast`, `test_completed`, `rollout_step`, `consensus`, `feedback` → no built-in state change, but you can observe them (see [`onPluginEvent`](#observing-raw-events)).
+- `created`: re-fetches the full proposal list.
+- `submitted`, `review_started`, `approved`, `rejected`, `testing_started`, `deploying`, `deployed`, `rolled_back`: patch the matching proposal's `status` in place (`review_started` maps to `reviewing`, `testing_started` maps to `testing`).
+- `vote_cast`, `test_completed`, `rollout_step`, `consensus`, `feedback`: no built-in state change, but you can observe them (see [`onPluginEvent`](#observing-raw-events)).
 
 A minimal host SSE frame looks like:
 
@@ -197,11 +197,11 @@ import {
 } from '@nocturnium/svelte-ide/stores';
 ```
 
-> Several names are aliased on the stores entry point to avoid clashing with other stores: `disconnect` → `disconnectPlugins`, `onEvent` → `onPluginEvent`, `error` → `pluginError`, and `clearError` → `clearPluginError`. Inside the store module the originals keep their plain names.
+> Several names are aliased on the stores entry point to avoid clashing with other stores: `disconnect` becomes `disconnectPlugins`, `onEvent` becomes `onPluginEvent`, `error` becomes `pluginError`, and `clearError` becomes `clearPluginError`. Inside the store module the originals keep their plain names.
 
 ### Connecting and listing
 
-Open the event stream and load the current proposals — typically once when your plugin UI mounts:
+Open the event stream and load the current proposals, typically once when your plugin UI mounts:
 
 ```svelte
 <script lang="ts">
@@ -341,8 +341,8 @@ Svelte 5 module scripts cannot export `$derived` values directly, so the store e
 | `activeInstances`    | instances with `status === 'active'`     |
 | `commands`           | registered `PluginCommand[]`             |
 | `panels`             | registered `PluginPanel[]`               |
-| `connected`          | `boolean` — SSE connection state         |
-| `loadingProposals`   | `boolean` — list fetch in flight         |
+| `connected`          | `boolean`, SSE connection state          |
+| `loadingProposals`   | `boolean`, list fetch in flight          |
 | `loadingInstance`    | proposal id currently loading, or `null` |
 | `pluginError`        | last error message, or `null`            |
 
@@ -362,7 +362,7 @@ Imperative lookups are also available: `getProposal(id)` and `getInstance(id)` r
 
 ## The plugin loader
 
-`createPluginLoader` is a thin client over the host's component/module endpoints. It is independent of the store — use it when you want to fetch artifacts yourself. Import it from the package's `plugins` entry point:
+`createPluginLoader` is a thin client over the host's component/module endpoints. It is independent of the store, use it when you want to fetch artifacts yourself. Import it from the package's `plugins` entry point:
 
 ```ts
 import { createPluginLoader } from '@nocturnium/svelte-ide/plugins';
@@ -374,8 +374,8 @@ const { default: Component } = await loader.loadComponent('p_42', 'src/Panel.sve
 const exports = await loader.loadModule('p_42', 'main');
 ```
 
-- `loadComponent(proposalId, componentPath)` → `GET <base>/plugins/:id/component?path=...`, expects the host to return a compiled Svelte component as JSON (`{ default: ... }`).
-- `loadModule(proposalId, entryPoint)` → `GET <base>/plugins/:id/module?entry=...`, expects the host to execute the module in _its_ sandbox and return the exports as JSON.
+- `loadComponent(proposalId, componentPath)` calls `GET <base>/plugins/:id/component?path=...`, expects the host to return a compiled Svelte component as JSON (`{ default: ... }`).
+- `loadModule(proposalId, entryPoint)` calls `GET <base>/plugins/:id/module?entry=...`, expects the host to execute the module in _its_ sandbox and return the exports as JSON.
 
 Both throw on a non-2xx response. The host is responsible for compilation and for whatever real isolation it enforces server-side.
 
@@ -392,7 +392,7 @@ To run untrusted plugin code safely, keep it out of your app's realm entirely:
 
 - **Run it on the host, out of band.** Fetch the result with `loadModule` (above);
   the plugin host executes the module in an environment _you_ control and returns
-  only its JSON output — no untrusted code ever reaches the browser.
+  only its JSON output, no untrusted code ever reaches the browser.
 - **Isolate it in the browser** with an `<iframe sandbox>` or a Web Worker (ideally
   cross-origin) and communicate over `postMessage`. Code running there cannot touch
   your DOM, cookies, or module scope.
@@ -404,7 +404,7 @@ comes back, never trust the code itself.
 
 ## Declaring plugin metadata
 
-Three identity helpers give you typed, no-op wrappers for authoring manifests and contributions. They simply return their argument with the right type — handy for `definePlugin`-style authoring with autocompletion. Import them from the `plugins` entry point:
+Three identity helpers give you typed, no-op wrappers for authoring manifests and contributions. They simply return their argument with the right type, handy for `definePlugin`-style authoring with autocompletion. Import them from the `plugins` entry point:
 
 ```ts
 import { definePlugin, defineCommand, definePanel } from '@nocturnium/svelte-ide/plugins';
@@ -435,11 +435,11 @@ export const outputPanel = definePanel({
 });
 ```
 
-- `definePlugin(manifest: PluginManifest)` → `PluginManifest`
-- `defineCommand(command)` → `PluginCommand` (`id` required)
-- `definePanel(panel)` → `PluginPanel` (`id` required)
+- `definePlugin(manifest: PluginManifest)` returns `PluginManifest`
+- `defineCommand(command)` returns `PluginCommand` (`id` required)
+- `definePanel(panel)` returns `PluginPanel` (`id` required)
 
-There is also a module-level `pluginRegistry` (an instance of an internal `PluginRegistry`) exported from `@nocturnium/svelte-ide/plugins` for managing plugin instances, commands, and panels imperatively outside the store — `register`, `unregister`, `get`, `getAll`, `registerCommand`, `executeCommand`, `getCommands`, `registerPanel`, `getPanels`, and `getPanelsByPosition`.
+There is also a module-level `pluginRegistry` (an instance of an internal `PluginRegistry`) exported from `@nocturnium/svelte-ide/plugins` for managing plugin instances, commands, and panels imperatively outside the store, `register`, `unregister`, `get`, `getAll`, `registerCommand`, `executeCommand`, `getCommands`, `registerPanel`, `getPanels`, and `getPanelsByPosition`.
 
 ---
 
@@ -462,7 +462,7 @@ The package ships ready-made plugin UI, importable from `@nocturnium/svelte-ide/
 | `PluginProposalForm` | Modal form that gathers name, description, category, tags, and author, then calls `createProposal()`. Takes an `onClose` prop.                                                                           |
 | `PluginStatusBadge`  | Small badge that renders a `PluginStatus` as a humanized label. Takes `status` (and optional `class`).                                                                                                   |
 
-`PluginPanel` is the fastest way to get a working plugin browser: drop it into a [layout](./editor.md) panel, point your host at `/api/plugins`, and it handles connection, listing, creating, installing, and uninstalling out of the box.
+`PluginPanel` is the fastest way to get a working plugin browser: drop it into a [layout](./editor.md) panel, point your host at `/api/plugins`, and it handles connection, listing, creating, installing, and uninstalling with no extra configuration.
 
 See [Component reference](../api/components.md) for full prop tables.
 
@@ -485,9 +485,9 @@ The library handles the rest: reactive state, optimistic transitions, event reco
 
 ## Related guides
 
-- [Architecture overview](../architecture.md) — where the plugin system sits in the module map.
-- [Stores reference](../api/stores.md) — every exported store accessor and action.
-- [Services reference](../api/services.md) — the other backend-facing clients (VFS, LSP, AI).
-- [Types & utilities](../api/types-and-utils.md) — the full plugin type surface.
-- [Component reference](../api/components.md) — props for `PluginPanel`, `PluginCard`, and friends.
-- [AI & agents](./ai-and-agents.md) and [LSP](./lsp.md) — other bring-your-own-backend integrations that follow the same pattern.
+- [Architecture overview](../architecture.md): where the plugin system sits in the module map.
+- [Stores reference](../api/stores.md): every exported store accessor and action.
+- [Services reference](../api/services.md): the other backend-facing clients (VFS, LSP, AI).
+- [Types & utilities](../api/types-and-utils.md): the full plugin type surface.
+- [Component reference](../api/components.md): props for `PluginPanel`, `PluginCard`, and friends.
+- [AI & agents](./ai-and-agents.md) and [LSP](./lsp.md), other bring-your-own-backend integrations that follow the same pattern.

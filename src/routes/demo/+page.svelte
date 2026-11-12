@@ -16,7 +16,7 @@
 	};
 
 	// Two co-flagships: the focused editor demo and the full multi-pane IDE
-	// playground — the two "see the whole thing" entry points, lifted above the
+	// playground, the two "see the whole thing" entry points, lifted above the
 	// per-feature grid.
 	const flagships: Demo[] = [
 		{
@@ -31,7 +31,7 @@
 		{
 			title: 'Playground',
 			description:
-				'The full IDE composed from the library — file explorer, tabbed editors, an AI panel, and a live status bar.',
+				'The full IDE composed from the library, file explorer, tabbed editors, an AI panel, and a live status bar.',
 			href: '/demo/playground',
 			icon: '▶',
 			tag: 'Full IDE',
@@ -155,7 +155,7 @@ import '@nocturnium/svelte-ide/theme.css';
 import { toggleLeftSidebar } from '@nocturnium/svelte-ide/stores';
 import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 
-	// Render a snippet to highlighted HTML using the library tokenizer — same token
+	// Render a snippet to highlighted HTML using the library tokenizer, same token
 	// classes (and palette) as the landing page and the live editor. Lines are
 	// tokenized independently then joined so multi-line state carries line-to-line.
 	function highlightToHTML(source: string, language: string): string {
@@ -186,7 +186,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 
 <Seo
 	title="Demos"
-	description="Explore every surface of the Nocturnium Svelte IDE library — the editor core, code intelligence, debugging, real-time collaboration, and AI — each as a live, interactive demo."
+	description="Explore every surface of the Nocturnium Svelte IDE library, the editor core, code intelligence, debugging, real-time collaboration, and AI, each as a live, interactive demo."
 />
 
 <div class="demo-hub">
@@ -194,8 +194,8 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 		<Badge variant="info">Demo gallery</Badge>
 		<h1>Explore the library</h1>
 		<p class="hub-lede">
-			Every surface of <strong>@nocturnium/svelte-ide</strong> — from the editor core to AI and real-time
-			collaboration. Pick a demo to see it running.
+			Every surface of <strong>@nocturnium/svelte-ide</strong>, from the editor core to AI and
+			real-time collaboration. Pick a demo to see it running.
 		</p>
 	</header>
 
@@ -209,7 +209,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 				</div>
 				<h2>{flagship.title}</h2>
 				<p>{flagship.description}</p>
-				<span class="card-link card-link--featured">Open the demo →</span>
+				<span class="card-link card-link--featured">Open the demo</span>
 			</a>
 		{/each}
 	</div>
@@ -230,7 +230,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 						</div>
 						<h3>{demo.title}</h3>
 						<p>{demo.description}</p>
-						<span class="card-link">View demo →</span>
+						<span class="card-link">View demo</span>
 					</a>
 				{/each}
 			</div>
@@ -253,7 +253,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 				>
 					{#if copied}
 						<Icon name="check" size={14} />
-						<span>Copied!</span>
+						<span>Copied</span>
 					{:else}
 						<Icon name="copy" size={14} />
 						<span>Copy</span>
@@ -261,7 +261,7 @@ import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';`;
 				</button>
 			</div>
 			<!-- Syntax-highlighted via the library tokenizer (same token classes as the
-			     landing page). Read-only HTML — far lighter than mounting a live editor. -->
+			     landing page). Read-only HTML, far lighter than mounting a live editor. -->
 			<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 			<pre class="code-block"><code>{@html quickStartHTML}</code></pre>
 		</div>

@@ -1,9 +1,9 @@
 # API: Components
 
-This is the complete component reference for `@nocturnium/svelte-ide`. Every component listed here is enumerated directly from the package's real export barrels. Components are grouped by domain (Core, Editor, AI, LSP, Agents, VFS, Plugins, Layout). For each one you get its import paths — both from the package root (`@nocturnium/svelte-ide`) and from its domain subpath (e.g. `@nocturnium/svelte-ide/components/core`) — a one-line description, and a stability marker:
+This is the complete component reference for `@nocturnium/svelte-ide`. Every component listed here is enumerated directly from the package's real export barrels. Components are grouped by domain (Core, Editor, AI, LSP, Agents, VFS, Plugins, Layout). For each one you get its import paths, both from the package root (`@nocturnium/svelte-ide`) and from its domain subpath (e.g. `@nocturnium/svelte-ide/components/core`), a one-line description, and a stability marker:
 
-- **`@public`** — stable API; safe to depend on.
-- **`@experimental`** — usable today, but the API may change in a future release.
+- **`@public`**: stable API; safe to depend on.
+- **`@experimental`**: usable today, but the API may change in a future release.
 
 Stability is taken from the JSDoc tags on the root export in [`src/lib/index.ts`](https://github.com/nocturnium/svelte-ide/blob/main/src/lib/index.ts). A handful of components are exported only from a domain subpath barrel and not from the package root; these are called out inline and can only be imported via their subpath.
 
@@ -19,7 +19,7 @@ See [Getting Started](../getting-started.md) for first-run setup and [Theming](.
 
 ## Importing components
 
-Every component is re-exported from the package root, so the simplest import is:
+Every component except `CollaborativeEditor` and the three AI components noted below is re-exported from the package root, so the simplest import is:
 
 ```svelte
 <script>
@@ -50,7 +50,7 @@ The package exposes these component subpaths (from `package.json` `exports`):
 | Plugins | `@nocturnium/svelte-ide/components/plugins` |
 | Layout  | `@nocturnium/svelte-ide/components/layout`  |
 
-> Always import from the published package paths above. Do **not** import from `$lib/...` — that path only exists inside this repository's source tree, not in the installed package.
+> Always import from the published package paths above. Do **not** import from `$lib/...`, that path only exists inside this repository's source tree, not in the installed package.
 
 ---
 
@@ -86,7 +86,7 @@ Foundational, framework-agnostic UI primitives used throughout the library and s
 
 ## Editor
 
-The custom-built code editor and its surrounding chrome (tabs, panes, file tree, file icons). The editor is built from scratch — no CodeMirror — with its own tokenizer, folding, and multi-cursor support. Import from the root or from `@nocturnium/svelte-ide/components/editor`.
+The custom-built code editor and its surrounding chrome (tabs, panes, file tree, file icons). The editor is built from scratch, no CodeMirror, with its own tokenizer, folding, and multi-cursor support. Import from the root or from `@nocturnium/svelte-ide/components/editor`. `CollaborativeEditor` is the exception: import it from `@nocturnium/svelte-ide/crdt`.
 
 ```svelte
 <script>
@@ -96,17 +96,17 @@ The custom-built code editor and its surrounding chrome (tabs, panes, file tree,
 </script>
 ```
 
-| Component             | Description                                                          | Stability       |
-| --------------------- | -------------------------------------------------------------------- | --------------- |
-| `Editor`              | High-level code editor component.                                    | `@public`       |
-| `CustomEditor`        | Low-level editor with full keyboard/mouse handling and multi-cursor. | `@public`       |
-| `CollaborativeEditor` | Editor wired for CRDT realtime collaboration (requires Yjs peers).   | `@experimental` |
-| `EditorTabs`          | Tab bar for switching between open editor buffers.                   | `@experimental` |
-| `EditorPane`          | Container that hosts an editor (and its tabs) as a pane.             | `@public`       |
-| `FileIcon`            | File-type icon derived from a filename/extension.                    | `@experimental` |
-| `FileExplorer`        | File-tree sidebar with optional Git change status.                   | `@public`       |
+| Component             | Description                                                                                                   | Stability       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- | --------------- |
+| `Editor`              | High-level code editor component.                                                                             | `@public`       |
+| `CustomEditor`        | Low-level editor with full keyboard/mouse handling and multi-cursor.                                          | `@public`       |
+| `CollaborativeEditor` | Editor wired for CRDT realtime collaboration (requires Yjs peers). Import from `@nocturnium/svelte-ide/crdt`. | `@experimental` |
+| `EditorTabs`          | Tab bar for switching between open editor buffers.                                                            | `@experimental` |
+| `EditorPane`          | Container that hosts an editor (and its tabs) as a pane.                                                      | `@public`       |
+| `FileIcon`            | File-type icon derived from a filename/extension.                                                             | `@experimental` |
+| `FileExplorer`        | File-tree sidebar with optional Git change status.                                                            | `@public`       |
 
-> `FileExplorer` also exports two associated types from the same module: `FileChangeStatus` (`@public`) and `GitFileStatus` (`@experimental`). The editor domain barrel additionally re-exports editor-core utilities, theme helpers, language config, and tokenizer functions — those are documented under [Types & Utils](./types-and-utils.md), not here.
+> `FileExplorer` also exports two associated types from the same module: `FileChangeStatus` (`@public`) and `GitFileStatus` (`@experimental`). The editor domain barrel additionally re-exports editor-core utilities, theme helpers, language config, and tokenizer functions, those are documented under [Types & Utils](./types-and-utils.md), not here.
 
 Related guides: [Editor](../guides/editor.md), [Syntax Highlighting](../guides/syntax-highlighting.md), [Code Folding](../guides/code-folding.md), [Multi-Cursor](../guides/multi-cursor.md), and [Collaboration](../guides/collaboration.md) for `CollaborativeEditor`.
 
@@ -124,17 +124,17 @@ Components for an in-editor AI assistant: a chat panel, message rendering, tool-
 </script>
 ```
 
-| Component            | Description                                                              | Stability       | Notes                                                 |
-| -------------------- | ------------------------------------------------------------------------ | --------------- | ----------------------------------------------------- |
-| `AIPanel`            | Full AI assistant chat panel.                                            | `@public`       |                                                       |
-| `AIMessage`          | Renders a single AI/user chat message.                                   | `@experimental` |                                                       |
-| `AIToolCallDisplay`  | Renders an AI tool/function call and its result.                         | `@experimental` |                                                       |
-| `AIEditPreview`      | Preview of a proposed AI code edit before applying.                      | `@experimental` |                                                       |
-| `AIInlineEdit`       | Inline AI edit affordance within the editor.                             | `@experimental` |                                                       |
-| `AISuggestionWidget` | Floating widget surfacing an AI suggestion.                              | `@experimental` |                                                       |
-| `AIMessageContent`   | Sanitized message body renderer (escapes HTML, whitelists link schemes). | `@experimental` | Subpath only — `@nocturnium/svelte-ide/components/ai` |
-| `AIMessageActions`   | Action toolbar (copy, retry, etc.) for a message.                        | `@experimental` | Subpath only — `@nocturnium/svelte-ide/components/ai` |
-| `AIConversationList` | List/switcher of AI conversations.                                       | `@experimental` | Subpath only — `@nocturnium/svelte-ide/components/ai` |
+| Component            | Description                                                              | Stability       | Notes                                                |
+| -------------------- | ------------------------------------------------------------------------ | --------------- | ---------------------------------------------------- |
+| `AIPanel`            | Full AI assistant chat panel.                                            | `@public`       |                                                      |
+| `AIMessage`          | Renders a single AI/user chat message.                                   | `@experimental` |                                                      |
+| `AIToolCallDisplay`  | Renders an AI tool/function call and its result.                         | `@experimental` |                                                      |
+| `AIEditPreview`      | Preview of a proposed AI code edit before applying.                      | `@experimental` |                                                      |
+| `AIInlineEdit`       | Inline AI edit affordance within the editor.                             | `@experimental` |                                                      |
+| `AISuggestionWidget` | Floating widget surfacing an AI suggestion.                              | `@experimental` |                                                      |
+| `AIMessageContent`   | Sanitized message body renderer (escapes HTML, whitelists link schemes). | `@experimental` | Subpath only, `@nocturnium/svelte-ide/components/ai` |
+| `AIMessageActions`   | Action toolbar (copy, retry, etc.) for a message.                        | `@experimental` | Subpath only, `@nocturnium/svelte-ide/components/ai` |
+| `AIConversationList` | List/switcher of AI conversations.                                       | `@experimental` | Subpath only, `@nocturnium/svelte-ide/components/ai` |
 
 > The last three components (`AIMessageContent`, `AIMessageActions`, `AIConversationList`) are exported from the `@nocturnium/svelte-ide/components/ai` barrel but are **not** re-exported from the package root. Import them via the subpath:
 >
@@ -254,7 +254,7 @@ Top-level structural shell components: the IDE layout frame and the status bar. 
 | `StatusBar` | Bottom status bar.                                     | `@public` |
 
 `IDELayout` regions are provided as [snippet](https://svelte.dev/docs/svelte/snippet) props
-(`activityBar`, `leftSidebar`, `editor`, `bottomPanel`, `rightSidebar`, `statusBar`) — each is
+(`activityBar`, `leftSidebar`, `editor`, `bottomPanel`, `rightSidebar`, `statusBar`), each is
 optional, and the sidebars / bottom panel / status bar render only when their corresponding
 [layout store](./stores.md) visibility flag is on:
 
@@ -273,10 +273,10 @@ optional, and the sidebars / bottom panel / status bar render only when their co
 
 ## See also
 
-- [Getting Started](../getting-started.md) — install, theme, and render your first editor.
-- [Architecture](../architecture.md) — how the modules fit together.
-- [Theming](../theming.md) — design tokens and retheming.
-- [Stores reference](./stores.md) — reactive stores that back these components.
-- [Services reference](./services.md) — LSP, VFS, and other backend clients.
-- [Types & Utils reference](./types-and-utils.md) — exported types and utility functions.
-- [Docs hub](../README.md) — full table of contents.
+- [Getting Started](../getting-started.md): install, theme, and render your first editor.
+- [Architecture](../architecture.md): how the modules fit together.
+- [Theming](../theming.md): design tokens and retheming.
+- [Stores reference](./stores.md): reactive stores that back these components.
+- [Services reference](./services.md): LSP, VFS, and other backend clients.
+- [Types & Utils reference](./types-and-utils.md): exported types and utility functions.
+- [Docs hub](../README.md): full table of contents.

@@ -100,7 +100,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 	// CRDT awareness layer and editor cursor rendering (not just CSS), so they
 	// can't be var(--ide-*). These mirror the real design tokens: the brand
 	// interactive blue (--ide-interactive / --color-nocturnium-wave) for the
-	// local user — the accent stays BLUE by owner decision — and the aurora
+	// local user, the accent stays BLUE by owner decision, and the aurora
 	// green (--ide-success / --color-nocturnium-aurora-green) for the reviewer.
 	const primaryUser = {
 		id: 'local-user',
@@ -199,7 +199,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 		// has real, scrubbable history on first paint: three earlier drafts (minutes
 		// ago) by ALTERNATING authors, leading up to the present SAMPLE_CODE. Distinct,
 		// spread-out timestamps give every marker a unique key AND land a marker for
-		// BOTH authors in the visible middle of the track — the earliest marker sits at
+		// BOTH authors in the visible middle of the track, the earliest marker sits at
 		// position 0 (tucked under the rewind control), so a single-author history would
 		// hide one collaborator on first paint.
 		const sliceTo = (marker: string) => {
@@ -360,7 +360,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 		const next = timelinePosition + delta / PLAYBACK_DURATION_MS;
 		if (next >= 1) {
-			// Reached the present — stop and snap to live.
+			// Reached the present, stop and snap to live.
 			handleGoLive();
 			return;
 		}
@@ -373,7 +373,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 
 	function handlePlay() {
 		if (isPlaying) return;
-		// Nothing to replay once we're already live — rewind to the start first.
+		// Nothing to replay once we're already live, rewind to the start first.
 		if (timelinePosition >= 1) {
 			timelinePosition = 0;
 			isPlayback = true;
@@ -413,7 +413,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 		playbackContent = '';
 	}
 
-	// Inline usage snippet for the Shared Editors exhibit — two CollaborativeEditor
+	// Inline usage snippet for the Shared Editors exhibit, two CollaborativeEditor
 	// instances bound to one shared Y.Doc, with awareness relayed between them.
 	const sharedEditorsCode = `<script lang="ts">
   import { CollaborativeEditor } from '@nocturnium/svelte-ide';
@@ -868,7 +868,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 	}
 
 	/* The editor demo lives inside a DemoExhibit, which supplies its own window
-	   frame — drop this section's card chrome so we don't double-frame it. */
+	   frame, drop this section's card chrome so we don't double-frame it. */
 	.demo-section--frameless {
 		background: transparent;
 		border: none;
@@ -905,7 +905,7 @@ export function applyDiscount(order: Order, percent: number): Order {
 		overflow: hidden;
 	}
 
-	/* Let the editor host fill — its internal scroll owns long lines */
+	/* Let the editor host fill, its internal scroll owns long lines */
 	.editor-container :global(.custom-editor) {
 		min-width: 0;
 		box-sizing: border-box;

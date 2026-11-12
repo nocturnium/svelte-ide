@@ -1,6 +1,6 @@
 # Theming
 
-`@nocturnium/svelte-ide` ships its entire visual identity as a single stylesheet of CSS custom properties (design tokens). The components themselves render structurally — backgrounds, text colors, borders, syntax highlighting, agent cursors, plugin badges, and layout sizes all read from tokens defined on `:root`. Import the theme once and you get the built-in dark "Nocturnium" look; override any token in your own CSS (loaded afterward) to retheme without forking. This guide walks through importing the theme, the full token catalog, how to build a custom or light theme, and the editor's programmatic syntax-theme exports.
+`@nocturnium/svelte-ide` ships its entire visual identity as a single stylesheet of CSS custom properties (design tokens). The components themselves render structurally, backgrounds, text colors, borders, syntax highlighting, agent cursors, plugin badges, and layout sizes all read from tokens defined on `:root`. Import the theme once and you get the built-in dark "Nocturnium" look; override any token in your own CSS (loaded afterward) to retheme without forking. This guide walks through importing the theme, the full token catalog, how to build a custom or light theme, and the editor's programmatic syntax-theme exports.
 
 ## Importing the theme
 
@@ -29,8 +29,8 @@ This single file defines all tokens, the animation `@keyframes`, and a small set
 
 Every token is a CSS variable on `:root`. There are two prefixes:
 
-- `--color-nocturnium-*` — the raw brand palette (the "paint").
-- `--ide-*` — semantic tokens consumed by the components. Most `--ide-*` color tokens are defined in terms of the brand palette (e.g. `--ide-bg-primary: var(--color-nocturnium-night)`).
+- `--color-nocturnium-*`: the raw brand palette (the "paint").
+- `--ide-*`: semantic tokens consumed by the components. Most `--ide-*` color tokens are defined in terms of the brand palette (e.g. `--ide-bg-primary: var(--color-nocturnium-night)`).
 
 Because everything cascades from these variables, you retheme by **redefining tokens after** importing `theme.css`. Override the brand palette to recolor everything at once, or override individual `--ide-*` tokens for surgical changes.
 
@@ -337,7 +337,7 @@ Toggling `data-theme` between values (or removing it to fall back to the dark de
 
 ## The editor syntax theme
 
-Syntax highlighting in the [custom editor](./guides/editor.md) is driven by the same token system: the editor renders each token with a `token-*` CSS class whose color rules resolve to `--color-nocturnium-*` / `--ide-*` variables. So the override techniques above re-theme syntax highlighting too — change `--color-nocturnium-aurora-purple`, for example, and keywords recolor.
+Syntax highlighting in the [custom editor](./guides/editor.md) is driven by the same token system: the editor renders each token with a `token-*` CSS class whose color rules resolve to `--color-nocturnium-*` / `--ide-*` variables. So the override techniques above re-theme syntax highlighting too, change `--color-nocturnium-aurora-purple`, for example, and keywords recolor.
 
 Alongside the CSS, the package exports a small, typed module that describes the editor's color model programmatically. It is available from the root entry and from the editor entry:
 
@@ -362,16 +362,16 @@ import {
 
 ### What each export is
 
-- **`tokenColors`** — a readonly object mapping syntax categories to CSS values. Each value is a `var(--...)` reference into the design tokens, so the syntax theme inherits any token override you make. Keys include `comment`, `string`, `stringTemplate`, `stringRegex`, `stringEscape`, `number`, `keyword`, `keywordControl`, `keywordDefinition`, `keywordModule`, `operator`, `variable`, `variableDefinition`, `variableParameter`, `function`, `functionCall`, `functionDefinition`, `property`, `type`, `typeClass`, `typeBuiltin`, `constant`, `constantBoolean`, `constantNull`, `punctuation`, `tag`, `tagAttribute`, `tagAttributeValue`, `markupHeading`, `markupLink`, `markupCode`, `markupQuote`, `markupList`, and `invalid`.
+- **`tokenColors`**: a readonly object mapping syntax categories to CSS values. Each value is a `var(--...)` reference into the design tokens, so the syntax theme inherits any token override you make. Keys include `comment`, `string`, `stringTemplate`, `stringRegex`, `stringEscape`, `number`, `keyword`, `keywordControl`, `keywordDefinition`, `keywordModule`, `operator`, `variable`, `variableDefinition`, `variableParameter`, `function`, `functionCall`, `functionDefinition`, `property`, `type`, `typeClass`, `typeBuiltin`, `constant`, `constantBoolean`, `constantNull`, `punctuation`, `tag`, `tagAttribute`, `tagAttributeValue`, `markupHeading`, `markupLink`, `markupCode`, `markupQuote`, `markupList`, and `invalid`.
 
   ```ts
   tokenColors.keyword; // 'var(--color-nocturnium-aurora-purple)'
   tokenColors.string; // 'var(--color-nocturnium-aurora-green)'
   ```
 
-- **`editorColors`** — a readonly object mapping editor-chrome surfaces (background, text, cursor, selection, search match, bracket match, gutter, line numbers, active line, border) to token references. For example `editorColors.cursor` is `var(--ide-interactive)` and `editorColors.activeLine` is `var(--ide-bg-elevated)`.
+- **`editorColors`**: a readonly object mapping editor-chrome surfaces (background, text, cursor, selection, search match, bracket match, gutter, line numbers, active line, border) to token references. For example `editorColors.cursor` is `var(--ide-interactive)` and `editorColors.activeLine` is `var(--ide-bg-elevated)`.
 
-- **`EditorTheme`** — the interface describing a theme object:
+- **`EditorTheme`**: the interface describing a theme object:
 
   ```ts
   interface EditorTheme {
@@ -382,9 +382,9 @@ import {
   }
   ```
 
-- **`nocturniumTheme`** — the default `EditorTheme` instance (`name: 'nocturnium'`, `isDark: true`). It is also the module's default export.
+- **`nocturniumTheme`**: the default `EditorTheme` instance (`name: 'nocturnium'`, `isDark: true`). It is also the module's default export.
 
-- **`getThemeCSS(theme?)`** — takes an `EditorTheme` (defaulting to `nocturniumTheme`) and returns a string of `--editor-token-*` and `--editor-*` CSS custom-property declarations derived from that theme's `tokenColors` and `editorColors`. Use it when you want to emit a flat set of editor variables into a scope you control — for instance injecting a derived theme into a `<style>` block or a container's inline style.
+- **`getThemeCSS(theme?)`**: takes an `EditorTheme` (defaulting to `nocturniumTheme`) and returns a string of `--editor-token-*` and `--editor-*` CSS custom-property declarations derived from that theme's `tokenColors` and `editorColors`. Use it when you want to emit a flat set of editor variables into a scope you control, for instance injecting a derived theme into a `<style>` block or a container's inline style.
 
   ```svelte
   <script>
@@ -400,12 +400,12 @@ import {
   </div>
   ```
 
-Because both `tokenColors` and `editorColors` resolve through `var(--...)` references, the simplest way to retheme the editor remains overriding the underlying `--color-nocturnium-*` / `--ide-*` tokens — the programmatic exports are there for when you need the values in JS/TS or want to derive a flattened, editor-scoped variable set.
+Because both `tokenColors` and `editorColors` resolve through `var(--...)` references, the simplest way to retheme the editor remains overriding the underlying `--color-nocturnium-*` / `--ide-*` tokens, the programmatic exports are there for when you need the values in JS/TS or want to derive a flattened, editor-scoped variable set.
 
 ## Related guides
 
-- [Getting Started](./getting-started.md) — install, import the theme, and render your first editor.
-- [Architecture](./architecture.md) — where the styling layer fits in the module map.
-- [Editor guide](./guides/editor.md) — the editor and layout components that consume layout-size tokens.
-- [Syntax highlighting](./guides/syntax-highlighting.md) — the tokenizer, languages, and token classes the syntax theme colors.
+- [Getting Started](./getting-started.md): install, import the theme, and render your first editor.
+- [Architecture](./architecture.md): where the styling layer fits in the module map.
+- [Editor guide](./guides/editor.md): the editor and layout components that consume layout-size tokens.
+- [Syntax highlighting](./guides/syntax-highlighting.md): the tokenizer, languages, and token classes the syntax theme colors.
 - [API: Components](./api/components.md) · [Stores](./api/stores.md) · [Services](./api/services.md) · [Types & Utils](./api/types-and-utils.md)

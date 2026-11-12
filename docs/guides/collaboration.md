@@ -1,6 +1,6 @@
 # Realtime Collaboration (CRDT)
 
-`@nocturnium/svelte-ide` ships an optional, conflict-free realtime collaboration layer built on [Yjs](https://docs.yjs.dev/). It lets multiple people (and AI agents) edit the same document at once, with character-level merge resolution, shared undo/redo, and live presence (cursors and selections). The CRDT layer is **opt-in**: it lives behind its own entry point (`@nocturnium/svelte-ide/crdt`) and behind a set of _optional_ peer dependencies, so consumers who do not need collaboration pay nothing for it. Crucially, **no collaboration server URL is baked into the library** — every `serverUrl` you see below is supplied by you at runtime, pointing at a Yjs WebSocket backend you operate.
+`@nocturnium/svelte-ide` ships an optional, conflict-free realtime collaboration layer built on [Yjs](https://docs.yjs.dev/). It lets multiple people (and AI agents) edit the same document at once, with character-level merge resolution, shared undo/redo, and live presence (cursors and selections). The CRDT layer is **opt-in**: it lives behind its own entry point (`@nocturnium/svelte-ide/crdt`) and behind a set of _optional_ peer dependencies, so consumers who do not need collaboration pay nothing for it. Crucially, **no collaboration server URL is baked into the library**, every `serverUrl` you see below is supplied by you at runtime, pointing at a Yjs WebSocket backend you operate.
 
 ## Contents
 
@@ -18,7 +18,7 @@
 
 ## Install the optional peer dependencies
 
-The CRDT module depends on three packages that are declared as **optional** peer dependencies. They are not installed by default — add them only when you want collaboration:
+The CRDT module depends on three packages that are declared as **optional** peer dependencies. They are not installed by default, add them only when you want collaboration:
 
 ```bash
 npm install yjs y-websocket y-protocols
@@ -34,7 +34,7 @@ If these packages are absent, the rest of the library still works; only imports 
 
 ## The `/crdt` entry point
 
-Import the collaboration primitives from the dedicated subpath. Use the **published package path** — never `$lib`.
+Import the collaboration primitives from the dedicated subpath. Use the **published package path**, never `$lib`.
 
 ```ts
 import {
@@ -55,18 +55,27 @@ import type {
 } from '@nocturnium/svelte-ide/crdt';
 ```
 
-The `/crdt` barrel exports exactly these four runtime values:
+The `/crdt` barrel exports these runtime values:
 
-| Export                    | Kind     | Summary                                                                                  |
-| ------------------------- | -------- | ---------------------------------------------------------------------------------------- |
-| `CollaborativeDocument`   | class    | Wraps a `Y.Doc` with text helpers, snapshots, and built-in undo.                         |
-| `CollaborativeProvider`   | class    | Wraps `y-websocket`'s `WebsocketProvider` + `Awareness`, with status/sync subscriptions. |
-| `createAwarenessProtocol` | function | Builds a presence helper (users, cursors, selections) over a `Y.Doc`.                    |
-| `createUndoManager`       | function | Builds a standalone undo manager bound to a `CollaborativeDocument`.                     |
+| Export                    | Kind      | Summary                                                                                       |
+| ------------------------- | --------- | --------------------------------------------------------------------------------------------- |
+| `CollaborativeDocument`   | class     | Wraps a `Y.Doc` with text helpers, snapshots, and built-in undo.                              |
+| `CollaborativeProvider`   | class     | Wraps `y-websocket`'s `WebsocketProvider` + `Awareness`, with status/sync subscriptions.      |
+| `createAwarenessProtocol` | function  | Builds a presence helper (users, cursors, selections) over a `Y.Doc`.                         |
+| `createUndoManager`       | function  | Builds a standalone undo manager bound to a `CollaborativeDocument`.                          |
+| `createUserUndoManager`   | function  | Builds an undo manager scoped to one user's origin, so you can undo only that user's changes. |
+| `createProvider`          | function  | Creates a provider with defaults for IDE usage.                                               |
+| `generateUserColor`       | function  | Returns a random color for a user.                                                            |
+| `getInitials`             | function  | Returns initials for a name.                                                                  |
+| `CollaborativeEditor`     | component | The editor component wired for CRDT collaboration (see below).                                |
+| `CRDTBinding`             | class     | Syncs editor state with Yjs.                                                                  |
+| `createCRDTBinding`       | function  | Creates a `CRDTBinding` from a `CRDTBindingConfig`.                                           |
+| `createRelativePosition`  | function  | Creates a relative position from an editor position.                                          |
+| `resolveRelativePosition` | function  | Resolves a relative position back to an editor position.                                      |
 
 ...plus the TypeScript types listed above (`DocumentOptions`, `ProviderOptions`, `AwarenessState`, `ConnectionStatus`, `CRDTChange`, `SyncState`, `CRDTEventMap`).
 
-The high-level `<CollaborativeEditor>` Svelte component is exported from the package root (and from `@nocturnium/svelte-ide/components/editor`), not from `/crdt`:
+The high-level `<CollaborativeEditor>` Svelte component is exported only from `@nocturnium/svelte-ide/crdt`, because it imports Yjs and the root entry must not load the optional Yjs peers:
 
 ```ts
 import { CollaborativeEditor } from '@nocturnium/svelte-ide/crdt';
@@ -113,38 +122,38 @@ Open the same `serverUrl` + `roomId` in two browser tabs and edits merge live.
 
 ## `<CollaborativeEditor>`
 
-`<CollaborativeEditor>` wraps the [custom editor](./editor.md) with a Yjs binding so the editor's buffer stays in sync with a `Y.Text`. It does **not** open a network connection by itself — you pair it with a `CollaborativeProvider` (or any `WebsocketProvider`) that syncs the same `Y.Doc`.
+`<CollaborativeEditor>` wraps the [custom editor](./editor.md) with a Yjs binding so the editor's buffer stays in sync with a `Y.Text`. It does **not** open a network connection by itself, you pair it with a `CollaborativeProvider` (or any `WebsocketProvider`) that syncs the same `Y.Doc`.
 
 ### Props
 
 | Prop             | Type                                     | Default       | Description                                                                                                                       |
 | ---------------- | ---------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `doc`            | `Y.Doc`                                  | _(internal)_  | The shared Yjs document. If omitted, the component creates an internal, **un-synced** doc — pass your own `doc` to collaborate.   |
-| `provider`       | `CollaborativeProvider`                  | —             | An existing provider; its awareness is used for transmitted presence.                                                             |
-| `awareness`      | `Awareness`                              | —             | An existing provider-attached awareness instance.                                                                                 |
-| `serverUrl`      | `string`                                 | —             | WebSocket URL, when the component should create the provider itself.                                                              |
-| `roomId`         | `string`                                 | —             | WebSocket room id, paired with `serverUrl`.                                                                                       |
-| `documentId`     | `string`                                 | —             | Optional identifier for standalone mode.                                                                                          |
+| `doc`            | `Y.Doc`                                  | _(internal)_  | The shared Yjs document. If omitted, the component creates an internal, **un-synced** doc, pass your own `doc` to collaborate.    |
+| `provider`       | `CollaborativeProvider`                  | none          | An existing provider; its awareness is used for transmitted presence.                                                             |
+| `awareness`      | `Awareness`                              | none          | An existing provider-attached awareness instance.                                                                                 |
+| `serverUrl`      | `string`                                 | none          | WebSocket URL, when the component should create the provider itself.                                                              |
+| `roomId`         | `string`                                 | none          | WebSocket room id, paired with `serverUrl`.                                                                                       |
+| `documentId`     | `string`                                 | none          | Optional identifier for standalone mode.                                                                                          |
 | `initialContent` | `string`                                 | `''`          | Seed content used when the component creates its own internal doc.                                                                |
 | `textName`       | `string`                                 | `'content'`   | The key of the `Y.Text` inside the doc to bind to. Must match what your other peers and `CollaborativeDocument.getText(key)` use. |
 | `language`       | `string`                                 | `'plaintext'` | Language id for syntax highlighting (see [Syntax Highlighting](./syntax-highlighting.md)).                                        |
 | `readonly`       | `boolean`                                | `false`       | Disable local editing while still receiving remote updates.                                                                       |
 | `preferences`    | `Partial<EditorPreferences>`             | `{}`          | Editor preferences (tab size, insert-spaces, etc.).                                                                               |
 | `class`          | `string`                                 | `''`          | Extra CSS class on the wrapper.                                                                                                   |
-| `currentUser`    | `CollaborationUser`                      | —             | Local user info used for cursor display.                                                                                          |
-| `viewingFile`    | `string`                                 | —             | Path broadcast as the file this user is viewing.                                                                                  |
-| `editingFile`    | `string`                                 | —             | Path broadcast as the file this user is editing.                                                                                  |
+| `currentUser`    | `CollaborationUser`                      | none          | Local user info used for cursor display.                                                                                          |
+| `viewingFile`    | `string`                                 | none          | Path broadcast as the file this user is viewing.                                                                                  |
+| `editingFile`    | `string`                                 | none          | Path broadcast as the file this user is editing.                                                                                  |
 | `remoteCursors`  | `RemoteCursor[]`                         | `[]`          | Other people's carets, name flags and selections, drawn inside the document. See below.                                           |
-| `onChange`       | `(content: string) => void`              | —             | Fires when the document content changes.                                                                                          |
-| `onCursorChange` | `(line: number, column: number) => void` | —             | Fires when the local cursor moves.                                                                                                |
-| `onSave`         | `() => void`                             | —             | Fires on the save shortcut (`Ctrl`/`Cmd`+`S`).                                                                                    |
+| `onChange`       | `(content: string) => void`              | none          | Fires when the document content changes.                                                                                          |
+| `onCursorChange` | `(line: number, column: number) => void` | none          | Fires when the local cursor moves.                                                                                                |
+| `onSave`         | `() => void`                             | none          | Fires on the save shortcut (`Ctrl`/`Cmd`+`S`).                                                                                    |
 
-> Pass the **same `doc` instance** to `<CollaborativeEditor>` that you attach to your provider. If you let the component create its own internal doc, edits are local-only — the component never connects to a server on its own.
+> Pass the **same `doc` instance** to `<CollaborativeEditor>` that you attach to your provider. If you let the component create its own internal doc, edits are local-only, the component never connects to a server on its own.
 
 ### Drawing other people's carets
 
-`remoteCursors` renders peers **inside** the document — a coloured caret, a name
-flag above it, and any selection they hold — so they scroll with the text and
+`remoteCursors` renders peers **inside** the document, a coloured caret, a name
+flag above it, and any selection they hold, so they scroll with the text and
 survive folding. It is available on `<CollaborativeEditor>` and on
 `<CustomEditor>` directly, alongside `showRemoteCursorLabels` (default `true`) to
 hide the flags.
@@ -176,7 +185,7 @@ becomes a caret:
 ```
 
 Note the line basis: `RemoteCursor.line` and `.column` are **1-based**, which
-matches `onCursorChange` — unlike the editor's internal `Position` and the AI
+matches `onCursorChange`, unlike the editor's internal `Position` and the AI
 awareness API, which are 0-based. Off-by-one here puts every peer one row high.
 
 `RemoteCursor` is not re-exported from the package root; import it from the editor
@@ -190,7 +199,7 @@ import type { CollaborationUser } from '@nocturnium/svelte-ide';
 
 ## `CollaborativeDocument`
 
-If you want to manage the Yjs document yourself — or build a non-editor surface (preview, diff, terminal) over the same shared text — use `CollaborativeDocument`. It wraps a `Y.Doc`, exposes a `Y.Text` per key, and bundles a built-in `Y.UndoManager`.
+If you want to manage the Yjs document yourself, or build a non-editor surface (preview, diff, terminal) over the same shared text, use `CollaborativeDocument`. It wraps a `Y.Doc`, exposes a `Y.Text` per key, and bundles a built-in `Y.UndoManager`.
 
 ```ts
 import { CollaborativeDocument } from '@nocturnium/svelte-ide/crdt';
@@ -232,7 +241,7 @@ document.destroy();
 | Field                | Type      | Default      | Description                                                              |
 | -------------------- | --------- | ------------ | ------------------------------------------------------------------------ |
 | `documentId`         | `string`  | _(required)_ | Logical id for the document.                                             |
-| `initialContent`     | `string`  | —            | Seed text inserted into the `'content'` text on creation.                |
+| `initialContent`     | `string`  | none         | Seed text inserted into the `'content'` text on creation.                |
 | `enableUndo`         | `boolean` | `true`       | Create a built-in `Y.UndoManager` tracking `null` and `'local'` origins. |
 | `undoCaptureTimeout` | `number`  | `500`        | Coalesce window (ms) for grouping edits into one undo step.              |
 
@@ -280,7 +289,7 @@ const provider = new CollaborativeProvider({
 | `roomId`         | `string`                 | _(required)_ | Room/document name appended to the connection.                   |
 | `doc`            | `Y.Doc`                  | _(required)_ | The document to synchronize.                                     |
 | `awareness`      | `Awareness`              | _(new)_      | Reuse an existing awareness instance; one is created if omitted. |
-| `params`         | `Record<string, string>` | —            | Query params on the WS URL (e.g. auth tokens).                   |
+| `params`         | `Record<string, string>` | none         | Query params on the WS URL (e.g. auth tokens).                   |
 | `connect`        | `boolean`                | `true`       | Connect on construction.                                         |
 | `resyncInterval` | `number`                 | `30000`      | Interval (ms) for periodic full resync.                          |
 | `maxBackoffTime` | `number`                 | `10000`      | Cap (ms) on reconnect backoff.                                   |
@@ -312,7 +321,7 @@ The `ConnectionStatus` type is `'connecting' | 'connected' | 'disconnected'`.
 
 ## Awareness & presence
 
-Presence — who is in the room, where their cursors and selections are, and what file they are looking at — rides on the Yjs **awareness** protocol. There are two ways to drive it.
+Presence, who is in the room, where their cursors and selections are, and what file they are looking at, rides on the Yjs **awareness** protocol. There are two ways to drive it.
 
 ### 1. Via the provider's awareness helpers
 
@@ -408,7 +417,7 @@ off();
 undo.destroy();
 ```
 
-To scope undo to a single participant's edits in a multi-user room, set `trackedOrigins` to that user's origin (e.g. `new Set(['user-7'])`) and tag that user's transactions with the same origin.
+To scope undo to a single participant's edits in a multi-user room, set `trackedOrigins` to that user's origin (e.g. `new Set(['user-7'])`) and tag that user's transactions with the same origin. `createUserUndoManager(document, userId)` does the first half for you: it sets `trackedOrigins` to `new Set([userId])`.
 
 ## Bring your own server
 
@@ -444,7 +453,7 @@ const provider = new CollaborativeProvider({
 
 ## Cleanup
 
-Collaboration objects hold sockets, observers, and awareness entries. Always tear them down — in a Svelte component, do this in `onDestroy`:
+Collaboration objects hold sockets, observers, and awareness entries. Always tear them down, in a Svelte component, do this in `onDestroy`:
 
 ```svelte
 <script lang="ts">
@@ -464,11 +473,11 @@ Destroying the provider also broadcasts the local client's departure, so other p
 
 ## Related guides
 
-- [Editor](./editor.md) — the editor surface `<CollaborativeEditor>` wraps.
-- [Syntax Highlighting](./syntax-highlighting.md) — language ids and token classes.
-- [Multi-cursor & Selections](./multi-cursor.md) — local multi-cursor editing.
-- [AI & Agents](./ai-and-agents.md) — AI participants and agent presence.
-- [LSP](./lsp.md) — language intelligence (uses the separate `backend/` bridge).
-- [Architecture](../architecture.md) — where the CRDT module fits in the system.
-- [Theming](../theming.md) — design tokens, including collaboration cursor colors.
+- [Editor](./editor.md): the editor surface `<CollaborativeEditor>` wraps.
+- [Syntax Highlighting](./syntax-highlighting.md): language ids and token classes.
+- [Multi-cursor & Selections](./multi-cursor.md): local multi-cursor editing.
+- [AI & Agents](./ai-and-agents.md): AI participants and agent presence.
+- [LSP](./lsp.md): language intelligence (uses the separate `backend/` bridge).
+- [Architecture](../architecture.md): where the CRDT module fits in the system.
+- [Theming](../theming.md): design tokens, including collaboration cursor colors.
 - [Components reference](../api/components.md) · [Stores reference](../api/stores.md) · [Services reference](../api/services.md) · [Types & Utils](../api/types-and-utils.md)

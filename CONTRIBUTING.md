@@ -1,6 +1,6 @@
 # Contributing to @nocturnium/svelte-ide
 
-Thanks for your interest in contributing! This document explains how to set up
+Thanks for your interest in contributing. This document explains how to set up
 the project, the conventions we follow, and how to get a change merged.
 
 By participating you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.md).
@@ -18,12 +18,12 @@ By participating you agree to abide by our [Code of Conduct](./CODE_OF_CONDUCT.m
 
 ## Ways to contribute
 
-- **Bug reports** — open an issue with a minimal reproduction.
-- **Bug fixes & features** — open (or comment on) an issue first so we can agree
+- **Bug reports**: open an issue with a minimal reproduction.
+- **Bug fixes & features**: open (or comment on) an issue first so we can agree
   on the approach, then send a PR.
-- **Documentation** — fixes and additions under [`docs/`](./docs) and the README
+- **Documentation**: fixes and additions under [`docs/`](./docs) and the README
   are always welcome and a great first contribution.
-- **Examples** — the demo app under `src/routes/` is a good place to showcase a
+- **Examples**: the demo app under `src/routes/` is a good place to demonstrate a
   component or pattern.
 
 ## Project layout
@@ -43,7 +43,7 @@ docs/               # user & contributor documentation
 tests/              # Playwright end-to-end tests
 ```
 
-Only `dist/` (compiled from `src/lib/`) is published to npm — see the `files`
+Only `dist/` (compiled from `src/lib/`) is published to npm, see the `files`
 field in `package.json`.
 
 ## Development setup
@@ -101,7 +101,7 @@ npm run check && npm run lint && npm test
 
 - **Svelte 5 + runes.** Use `$state`, `$derived`, `$props`, `$effect`. Avoid
   legacy stores/reactive statements in new code.
-- **Zero runtime UI dependencies.** Core components are built from scratch — do
+- **Zero runtime UI dependencies.** Core components are built from scratch, do
   not add UI/component libraries. The only optional runtime deps are the Yjs
   family, behind the `./crdt` entry point.
 - **TypeScript everywhere.** Public API should be fully typed; prefer explicit
@@ -112,7 +112,7 @@ npm run check && npm run lint && npm test
 - **Public API hygiene.** Anything exported from `src/lib/index.ts` ships in the
   published type declarations. Tag exports `@public` (stable) or `@experimental`
   in JSDoc, and keep comments free of internal/private references.
-- **Formatting & linting** are enforced by Prettier and ESLint — run
+- **Formatting & linting** are enforced by Prettier and ESLint, run
   `npm run format` and `npm run lint:fix` before committing.
 
 ## Tests
@@ -137,4 +137,4 @@ npm run check && npm run lint && npm test
 ## Reporting bugs & requesting features
 
 Use the GitHub issue templates. For security-sensitive reports, **do not** open a
-public issue — follow [SECURITY.md](./SECURITY.md) instead.
+public issue, follow [SECURITY.md](./SECURITY.md) instead.

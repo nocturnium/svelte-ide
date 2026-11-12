@@ -63,7 +63,7 @@ export function triageLoad(
 	// real CustomEditor once it scrolls near the viewport and the main thread is idle.
 	let heroEditorHost = $state<HTMLDivElement | null>(null);
 	// The hero's overlays are aria-hidden (they are decoration over text that is
-	// already readable), and it mounts no meter — so without this the entire
+	// already readable), and it mounts no meter, so without this the entire
 	// complexity story was invisible to assistive technology, under an h1 that
 	// promises "See your code's cognitive load".
 	let heroMetrics = $state<ComplexityMetrics | null>(null);
@@ -129,7 +129,7 @@ export function triageLoad(
 			icon: '◷',
 			title: 'Zero editor dependencies',
 			description:
-				'No CodeMirror, no Monaco, no WASM. A purpose-built editor core in pure Svelte 5 — small, fast, and fully yours to theme.'
+				'No CodeMirror, no Monaco, no WASM. A purpose-built editor core in pure Svelte 5, small, fast, and fully yours to theme.'
 		},
 		{
 			icon: '⟡',
@@ -153,17 +153,17 @@ export function triageLoad(
 			icon: '◐',
 			title: 'Syntax for 12 languages',
 			description:
-				'JavaScript, TypeScript, JSX, TSX, HTML, XML, CSS, JSON, Python, Go, Markdown, and Svelte — tokenized with a Nocturnium-tuned palette.'
+				'JavaScript, TypeScript, JSX, TSX, HTML, XML, CSS, JSON, Python, Go, Markdown, and Svelte, tokenized with a Nocturnium-tuned palette.'
 		},
 		{
 			icon: '⌘',
 			title: 'Runes-first API',
 			description:
-				'Bindable props, snippet slots, and typed callbacks. Drop a component in, wire $state, and ship — no wrappers required.'
+				'Bindable props, snippet slots, and typed callbacks. Drop a component in, wire $state, and ship, no wrappers required.'
 		}
 	];
 
-	// Four QUANTITIES. The fourth used to read "Svelte 5 / Runes throughout" — an
+	// Four QUANTITIES. The fourth used to read "Svelte 5 / Runes throughout", an
 	// adjective in a row of numbers, which wrapped its value onto two lines and
 	// dropped its label ~28px below the other three, breaking the row's baseline.
 	// A stat row whose fourth stat isn't a stat is a template that was filled in.
@@ -191,7 +191,7 @@ export function triageLoad(
 <CustomEditor bind:content={code} language="typescript" folding multiCursor />`;
 
 	// Quick start tabs: real syntax highlighting via the library tokenizer (read-only
-	// HTML — far lighter than mounting an editor). Each tab is a tablist/tabpanel pair.
+	// HTML, far lighter than mounting an editor). Each tab is a tablist/tabpanel pair.
 	const quickTabs = [
 		{
 			id: 'install',
@@ -265,7 +265,7 @@ export function triageLoad(
 
 	<!-- Top bar -->
 	<header class="topbar">
-		<a class="brand" href={resolve('/')} aria-label="Nocturnium Svelte IDE — home">
+		<a class="brand" href={resolve('/')} aria-label="Nocturnium Svelte IDE: home">
 			<BrandMark size={26} />
 			<span class="brand-name">Nocturnium</span>
 			<span class="brand-sub">Svelte IDE</span>
@@ -290,7 +290,7 @@ export function triageLoad(
 				</h1>
 				<p class="lede">
 					A from-scratch, Svelte 5-native editor for code editors, AI assistants, and collaborative
-					tools. No CodeMirror, no Monaco, zero runtime editor deps — just Svelte, fast, themeable,
+					tools. No CodeMirror, no Monaco, zero runtime editor deps, just Svelte, fast, themeable,
 					and production-ready.
 				</p>
 				<div class="hero-actions">
@@ -302,7 +302,7 @@ export function triageLoad(
 					</Button>
 				</div>
 				<a class="hero-tertiary" href={resolve('/demo/playground')}>
-					Or see the full IDE playground <span aria-hidden="true">→</span>
+					Or see the full IDE playground <span aria-hidden="true"></span>
 				</a>
 				<dl class="hero-stats">
 					{#each stats as stat, i (i)}
@@ -413,7 +413,7 @@ export function triageLoad(
 					>
 						{#if copiedTab === activeQuickTab.id}
 							<Icon name="check" size={14} />
-							<span>Copied!</span>
+							<span>Copied</span>
 						{:else}
 							<Icon name="copy" size={14} />
 							<span>Copy</span>
@@ -436,7 +436,7 @@ export function triageLoad(
 			</div>
 			<div class="quickstart-cta">
 				<Button variant="primary" size="md" onclick={() => goto(resolve('/demo/editor'))}>
-					See it in action →
+					See it in action
 				</Button>
 			</div>
 		</section>
@@ -630,6 +630,10 @@ export function triageLoad(
 		text-decoration: none;
 		transition: color var(--ide-transition-fast);
 	}
+	.hero-tertiary span::before {
+		content: '\2192';
+	}
+
 	.hero-tertiary span {
 		transition: transform var(--ide-transition-fast);
 	}
@@ -742,7 +746,7 @@ export function triageLoad(
 		tab-size: 2;
 	}
 
-	/* Legend sits inside the window frame, directly under the code it explains —
+	/* Legend sits inside the window frame, directly under the code it explains,
 	   the eyebrow copy is 500px away in the other column and was never read as
 	   describing the widget. */
 	.window-legend {
@@ -770,7 +774,7 @@ export function triageLoad(
 		z-index: 0;
 		/* The brand ember, NOT --ide-error. The largest colour gesture in the hero
 		   sat directly behind the complexity demo in the exact token that means
-		   "this code does not parse" — the rule the overlay enforces was broken by
+		   "this code does not parse", the rule the overlay enforces was broken by
 		   the room lighting. */
 		background: radial-gradient(
 			ellipse at center,

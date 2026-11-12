@@ -1,12 +1,12 @@
 # AI Panel & Agents
 
-`@nocturnium/svelte-ide` ships two complementary feature sets for building AI-aware editors: a **chat assistant** (the `<AIPanel>` component plus the `ai` store, which talk to _your_ chat backend) and a set of **multi-agent presence** components (`AgentAvatar`, `AgentActivityPanel`, `AgentPresenceBar`, `AgentCursor`) that visualize other actors — human or AI — working alongside the user. Neither feature bundles a server or a model: you bring your own chat endpoint and your own source of agent state, and the library renders the UI and manages reactive state around it. This guide covers wiring both, the message/tool-call/edit-preview pieces, the HTML-safety guarantees of the rendered message content, and the agent types.
+`@nocturnium/svelte-ide` ships two complementary feature sets for building AI-aware editors: a **chat assistant** (the `<AIPanel>` component plus the `ai` store, which talk to _your_ chat backend) and a set of **multi-agent presence** components (`AgentAvatar`, `AgentActivityPanel`, `AgentPresenceBar`, `AgentCursor`) that visualize other actors, human or AI, working alongside the user. Neither feature bundles a server or a model: you bring your own chat endpoint and your own source of agent state, and the library renders the UI and manages reactive state around it. This guide covers wiring both, the message/tool-call/edit-preview pieces, the HTML-safety guarantees of the rendered message content, and the agent types.
 
 ---
 
 ## Quick start
 
-Install the package and import the theme once (components are unstyled without the design tokens — see [Theming](../theming.md)):
+Install the package and import the theme once (components are unstyled without the design tokens, see [Theming](../theming.md)):
 
 ```ts
 import '@nocturnium/svelte-ide/theme.css';
@@ -56,7 +56,7 @@ Everything the AI/agents features expose is also re-exported from the package ro
 | `showSidebar` | `boolean` | `false` | Show the conversation list sidebar (toggleable from the header). |
 | `class`       | `string`  | `''`    | Extra class applied to the panel root.                           |
 
-The panel reads and drives the `ai` store directly — it calls `sendMessage()` on submit, renders `getMessages()`, shows `getIsStreaming()` while a response streams, and surfaces `getError()` in the banner. You don't pass messages in as props; you configure the store and let the panel react.
+The panel reads and drives the `ai` store directly, it calls `sendMessage()` on submit, renders `getMessages()`, shows `getIsStreaming()` while a response streams, and surfaces `getError()` in the banner. You don't pass messages in as props; you configure the store and let the panel react.
 
 Conversation history is persisted locally (via the panel's built-in persistence layer) so the sidebar survives reloads. Conversations can be created, selected, renamed, starred, deleted, and exported to Markdown or JSON from the sidebar UI.
 
@@ -124,12 +124,12 @@ When you call `sendMessage(content, context?)`, the store appends the user messa
 }
 ```
 
-Your backend owns everything beyond this contract — authentication, the actual model provider, rate limiting, and prompt assembly. The library never embeds a host or an API key.
+Your backend owns everything beyond this contract, authentication, the actual model provider, rate limiting, and prompt assembly. The library never embeds a host or an API key.
 
 The response is handled two ways depending on `config.streaming`:
 
-- **Streaming (`streaming: true`)** — the store reads `response.body` as a stream and decodes each chunk as UTF-8 text, appending it to the assistant message as it arrives. Your endpoint should write the assistant's text directly to the response body.
-- **Non-streaming (`streaming: false`)** — the store calls `response.json()` and expects an object like `{ content, toolCalls?, metadata? }`. Any `toolCalls` returned are executed against tools you registered (see below), and the results are appended as `tool`-role messages.
+- **Streaming (`streaming: true`)**: the store reads `response.body` as a stream and decodes each chunk as UTF-8 text, appending it to the assistant message as it arrives. Your endpoint should write the assistant's text directly to the response body.
+- **Non-streaming (`streaming: false`)**: the store calls `response.json()` and expects an object like `{ content, toolCalls?, metadata? }`. Any `toolCalls` returned are executed against tools you registered (see below), and the results are appended as `tool`-role messages.
 
 A non-2xx response sets `aiError` and marks the assistant message with an `error`. Clear it with `clearAIError()`.
 
@@ -172,7 +172,7 @@ You normally let `<AIPanel>` compose these, but each is exported from `@nocturni
 
 ### `<AIMessage>`
 
-Renders a single `AIMessage` — avatar, role label, relative timestamp, body, any tool calls, tool-result badge, and metadata (model / tokens / latency). User and assistant messages are styled distinctly; errors render an inline error block.
+Renders a single `AIMessage`, avatar, role label, relative timestamp, body, any tool calls, tool-result badge, and metadata (model / tokens / latency). User and assistant messages are styled distinctly; errors render an inline error block.
 
 ```svelte
 <script lang="ts">
@@ -192,7 +192,7 @@ Renders a single `AIMessage` — avatar, role label, relative timestamp, body, a
 />
 ```
 
-Props: `message` (required), `showActions` (default `true`), and the optional callbacks `onCopy`, `onEdit`, `onRetry`, `onDelete`, `onBranch` — each receives the `AIMessage`. (`onEdit` is only wired for user messages.)
+Props: `message` (required), `showActions` (default `true`), and the optional callbacks `onCopy`, `onEdit`, `onRetry`, `onDelete`, `onBranch`, each receives the `AIMessage`. (`onEdit` is only wired for user messages.)
 
 ### `<AIMessageContent>` and the HTML-safety model
 
@@ -213,11 +213,11 @@ Props: `content` (required `string`) and `isStreaming` (default `false`, which a
 1. **HTML is escaped first.** Before any formatting is applied, `&`, `<`, `>`, `"`, and `'` are replaced with entities, so raw markup in the model's reply is shown as literal text and never interpreted as DOM. Only a small, fixed set of inline elements the component generates itself (`<strong>`, `<em>`, links, `<br>`) is re-introduced afterward.
 2. **Link schemes are whitelisted.** Markdown links are only emitted as `<a>` when the href is a relative/anchor URL (`/…`, `#…`, `./…`, `../…`) or uses `http:`, `https:`, or `mailto:`. Anything else (`javascript:`, `data:`, `vbscript:`, …) degrades to plain text. Emitted links always carry `target="_blank" rel="noopener noreferrer"`.
 
-This protects against markup injected _through_ the model's response. It does **not** establish trust in the endpoint itself — you still own the security of the backend you point `endpoint` at (authentication, what the model is allowed to return, and any tool side effects). Treat the chat backend as part of your trust boundary.
+This protects against markup injected _through_ the model's response. It does **not** establish trust in the endpoint itself, you still own the security of the backend you point `endpoint` at (authentication, what the model is allowed to return, and any tool side effects). Treat the chat backend as part of your trust boundary.
 
 ### `<AIToolCallDisplay>`
 
-A collapsible card for a single `AIToolCall`: tool name, a status badge, optional duration, and — when expanded — the arguments, result (truncated past ~500 chars with a "Show full" toggle), error, and timing.
+A collapsible card for a single `AIToolCall`: tool name, a status badge, optional duration, and, when expanded, the arguments, result (truncated past ~500 chars with a "Show full" toggle), error, and timing.
 
 ```svelte
 <script lang="ts">
@@ -242,7 +242,7 @@ Props: `toolCall` (required), `status` (`'pending' | 'running' | 'completed' | '
 
 ### `<AIEditPreview>`
 
-Shows a proposed file edit from an `AIEditSession` — file path, a diff, a status badge, and Apply / Reject buttons while the session is in the `reviewing` state. Apply/Reject call `resolveEditSession` on the store for you.
+Shows a proposed file edit from an `AIEditSession`, file path, a diff, a status badge, and Apply / Reject buttons while the session is in the `reviewing` state. Apply/Reject call `resolveEditSession` on the store for you.
 
 ```svelte
 <script lang="ts">
@@ -303,7 +303,7 @@ Props: `suggestion` (required), `onAccept` (required, `() => void`), `onDismiss`
 
 ## Multi-agent presence
 
-The agent components visualize _other_ actors in the workspace. They are pure presentation: you feed them `Agent` objects (and activities/cursors), and they render avatars, panels, bars, and remote cursors. Where the agent state comes from — a websocket, the `agents` store, your own polling — is up to you. The agents store (also under `/stores`) provides reactive state and mutators (`addAgent`, `updateAgent`, `setAgentStatus`, `setAgentTask`, `updateAgentProgress`, `getFilteredAgents`, …) if you want a ready-made source.
+The agent components visualize _other_ actors in the workspace. They are pure presentation: you feed them `Agent` objects (and activities/cursors), and they render avatars, panels, bars, and remote cursors. Where the agent state comes from, a websocket, the `agents` store, your own polling, is up to you. The agents store (also under `/stores`) provides reactive state and mutators (`addAgent`, `updateAgent`, `setAgentStatus`, `setAgentTask`, `updateAgentProgress`, `getFilteredAgents`, …) if you want a ready-made source.
 
 All four components are imported from `@nocturnium/svelte-ide/components/agents`, and the types from `@nocturnium/svelte-ide/types`.
 
@@ -381,7 +381,7 @@ Props: `agents` (required `Agent[]`); `maxVisible` (default `5`); `orientation` 
 
 ### `<AgentActivityPanel>`
 
-A full panel: filterable agent grid/list, a selected-agent detail view with task progress, and a real-time activity feed. The component is controlled — selection, filter, and view mode are props with change callbacks, so you keep the state.
+A full panel: filterable agent grid/list, a selected-agent detail view with task progress, and a real-time activity feed. The component is controlled, selection, filter, and view mode are props with change callbacks, so you keep the state.
 
 ```svelte
 <script lang="ts">
@@ -409,7 +409,7 @@ Props: `agents` (required `Agent[]`), `activities` (required `AgentActivity[]`),
 
 ### `<AgentCursor>`
 
-A remote cursor overlay for collaborative editing — a colored caret, a name label (with an "AI" badge for non-coordinator agents), an optional selection highlight, and a typing animation. It is absolutely positioned, so render it inside a positioned container layered over your editor and feed it the editor's metrics.
+A remote cursor overlay for collaborative editing, a colored caret, a name label (with an "AI" badge for non-coordinator agents), an optional selection highlight, and a typing animation. It is absolutely positioned, so render it inside a positioned container layered over your editor and feed it the editor's metrics.
 
 ```svelte
 <script lang="ts">
@@ -422,9 +422,9 @@ A remote cursor overlay for collaborative editing — a colored caret, a name la
 <AgentCursor {agent} {position} charWidth={8} lineHeight={20} gutterWidth={50} isTyping={false} />
 ```
 
-Props: `agent` (required), `position` (required `CursorPosition` — `{ line, column }`), `charWidth` (required), `lineHeight` (required); optional `selection` (`CursorSelection`), `isTyping` (default `false`), `scrollX`/`scrollY` (default `0`), `gutterWidth` (default `50`), `class`. The caret color comes from `agent.color`, falling back to a theme token.
+Props: `agent` (required), `position` (required `CursorPosition`, `{ line, column }`), `charWidth` (required), `lineHeight` (required); optional `selection` (`CursorSelection`), `isTyping` (default `false`), `scrollX`/`scrollY` (default `0`), `gutterWidth` (default `50`), `class`. The caret color comes from `agent.color`, falling back to a theme token.
 
-> For human (rather than agent) real-time presence — shared cursors and selections driven by Yjs — see the CRDT [Collaboration](collaboration.md) guide, which provides its own `<CollaborativeEditor>` and presence store. `<AgentCursor>` is the lower-level overlay primitive you can drive from any source.
+> For human (rather than agent) real-time presence, shared cursors and selections driven by Yjs, see the CRDT [Collaboration](collaboration.md) guide, which provides its own `<CollaborativeEditor>` and presence store. `<AgentCursor>` is the lower-level overlay primitive you can drive from any source.
 
 ---
 
@@ -432,7 +432,7 @@ Props: `agent` (required), `position` (required `CursorPosition` — `{ line, co
 
 `<AgentCursor>` above is an overlay you position yourself. **Ghost Pair** is the
 built-in alternative: hand the editor a list of agents and it draws them inside
-the document — a ghost caret with a glow, a name-and-activity label, and an
+the document, a ghost caret with a glow, a name-and-activity label, and an
 optional shaded region showing what the agent is reading.
 
 It is three props on `CustomEditor`, `Editor` and `EditorPane`, and all three
@@ -481,9 +481,9 @@ as "the focus feature is broken" rather than "the focus feature is off".
 />
 ```
 
-`createAIAwareness(agentId, agentName, options)` fills in sensible defaults —
+`createAIAwareness(agentId, agentName, options)` fills in sensible defaults,
 a colour derived from the name, `attentionType: 'reading'`, `confidence: 0.5`,
-`isActive: true` — so you only pass what you are actually driving. `attentionType`
+`isActive: true`, so you only pass what you are driving. `attentionType`
 (`reading` | `thinking` | `writing` | `reviewing` | `waiting`) picks both the
 label's indicator glyph and the region's colour and animation.
 
@@ -504,7 +504,7 @@ import { createAIAwareness, type AIAwareness } from '@nocturnium/svelte-ide/comp
 ```
 
 There is a live version of all of this on the
-[cognitive complexity demo](https://ide.nocturnium.ai/demo/cognitive-load) — the
+[cognitive complexity demo](https://ide.nocturnium.ai/demo/cognitive-load), the
 agent there is a scripted cursor on a timer, not a model, which is exactly what
 this API is: a rendering layer for presence you supply.
 
@@ -518,10 +518,10 @@ Every component here is unstyled until the theme tokens are present. Import `@no
 
 ## See also
 
-- [Getting started](../getting-started.md) — install, theme, and your first editor
-- [Architecture](../architecture.md) — how the modules fit together
-- [Editor guide](editor.md) — the editor components AI edits and cursors sit on top of
-- [Syntax highlighting](syntax-highlighting.md) — the tokenizer that renders code blocks in messages
-- [Collaboration (CRDT)](collaboration.md) — Yjs-based human presence and shared editing
-- [Plugins](plugins.md) — extend the IDE with a bring-your-own backend
+- [Getting started](../getting-started.md): install, theme, and your first editor
+- [Architecture](../architecture.md): how the modules fit together
+- [Editor guide](editor.md): the editor components AI edits and cursors sit on top of
+- [Syntax highlighting](syntax-highlighting.md): the tokenizer that renders code blocks in messages
+- [Collaboration (CRDT)](collaboration.md): Yjs-based human presence and shared editing
+- [Plugins](plugins.md): extend the IDE with a bring-your-own backend
 - [Component reference](../api/components.md) · [Stores reference](../api/stores.md) · [Types & utils](../api/types-and-utils.md)

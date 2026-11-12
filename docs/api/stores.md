@@ -1,17 +1,17 @@
 # API: Stores
 
-`@nocturnium/svelte-ide` ships seven rune-based state stores — **layout**, **editor**, **ai**, **plugin**, **collaboration**, **vfs**, and **agents** — that back the IDE components but are also usable directly. Each store is a plain ES module that holds its state in a single Svelte 5 `$state` rune and exposes that state through exported reactive **accessors** plus **action functions** that mutate it. There is no class to instantiate and no provider to wrap your app in: importing a binding and using it reads or writes a process-wide singleton. Only the **layout** store is part of the stable `@public` surface; every other store is marked `@experimental` and its signatures may change before 1.0. Everything documented here is exported from the package entry point `@nocturnium/svelte-ide/stores` (and re-exported from the root `@nocturnium/svelte-ide`).
+`@nocturnium/svelte-ide` ships seven rune-based state stores, **layout**, **editor**, **ai**, **plugin**, **collaboration**, **vfs**, and **agents**, that back the IDE components but are also usable directly. Each store is a plain ES module that holds its state in a single Svelte 5 `$state` rune and exposes that state through exported reactive **accessors** plus **action functions** that mutate it. There is no class to instantiate and no provider to wrap your app in: importing a binding and using it reads or writes a process-wide singleton. Only the **layout** store is part of the stable `@public` surface; every other store is marked `@experimental` and its signatures may change before 1.0. Everything documented here is exported from the package entry point `@nocturnium/svelte-ide/stores` (and re-exported from the root `@nocturnium/svelte-ide`).
 
-> Reading the source: every store lives in `src/lib/stores/*.svelte.ts`, and the namespaced re-exports (including all the `as`-renamed names below) are assembled in `src/lib/stores/index.ts`. **The barrel in `index.ts` is the published surface** — a binding only exists at the package boundary if `index.ts` re-exports it, even when the store module itself defines more.
+> Reading the source: every store lives in `src/lib/stores/*.svelte.ts`, and the namespaced re-exports (including all the `as`-renamed names below) are assembled in `src/lib/stores/index.ts`. **The barrel in `index.ts` is the published surface**, a binding only exists at the package boundary if `index.ts` re-exports it, even when the store module itself defines more.
 
 ---
 
 ## Two ways state is exposed: `.current` accessors and `get*()` functions
 
-Svelte 5 modules **cannot directly export `$derived` (or `$state`) values**. A `$derived` rune only stays reactive while it is read inside a reactive context (a component, an `$effect`, or another rune) in the module where it was declared — re-exporting the value itself snapshots it and breaks reactivity across the module boundary. Each store works around this in two complementary ways:
+Svelte 5 modules **cannot directly export `$derived` (or `$state`) values**. A `$derived` rune only stays reactive while it is read inside a reactive context (a component, an `$effect`, or another rune) in the module where it was declared, re-exporting the value itself snapshots it and breaks reactivity across the module boundary. Each store works around this in two complementary ways:
 
-1. A **`.current` accessor object** per piece of state — a small object with a single `current` getter that reads the rune on each access. These are exported from every store and are the most broadly available way to read state across the package boundary.
-2. Internal **`get*()` functions** that read the rune on each call. Some of these are re-exported from the barrel (notably all of the **layout** store, most of **vfs** and **agents**, plus argument-taking lookups like `getTab(id)`), but for the **editor**, **ai**, **plugin**, and **collaboration** stores the plain state `get*()` readers are _not_ re-exported — use the `.current` accessors instead.
+1. A **`.current` accessor object** per piece of state, a small object with a single `current` getter that reads the rune on each access. These are exported from every store and are the most broadly available way to read state across the package boundary.
+2. Internal **`get*()` functions** that read the rune on each call. Some of these are re-exported from the barrel (notably all of the **layout** store, most of **vfs** and **agents**, plus argument-taking lookups like `getTab(id)`), but for the **editor**, **ai**, **plugin**, and **collaboration** stores the plain state `get*()` readers are _not_ re-exported, use the `.current` accessors instead.
 
 Read either form **inside** a reactive context in your own component and Svelte tracks the dependency for you:
 
@@ -42,27 +42,27 @@ For stores whose state `get*()` readers are not exported, read the `.current` ac
 
 ### Which accessors each store exports
 
-| Store             | Re-exported `get*()` state readers                  | `.current` accessors                                         | Argument lookups                                  |
-| ----------------- | --------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- |
-| **layout**        | All (`getLeftSidebarVisible()`, …) — via `export *` | none                                                         | `getEditorAreaStyle()` (no arg)                   |
-| **editor**        | none (state readers stay internal)                  | yes (`tabs`, `activeTab`, …)                                 | `getTab(id)`, `getTabByPath(path)`                |
-| **ai**            | none                                                | yes (`messages`, `aiConfig`, …)                              | none                                              |
-| **plugin**        | none                                                | yes (`proposals`, `instances`, …)                            | `getProposal(id)`, `getInstance(id)`              |
-| **collaboration** | none                                                | yes (`users`, `cursors`, …)                                  | `getDocumentSnapshots(id)`, `getUserColor(index)` |
-| **vfs**           | most (`getWorkspace()`, `getFiles()`, …)            | a subset (`workspace`, `files`, `connected→vfsConnected`, …) | `getFile(path)`, `getLock(path)`, …               |
-| **agents**        | most (`getAgents()`, `getOnlineAgents()`, …)        | a subset (`agents`, `events→agentEvents`, …)                 | `getAgent(id)`, `getCursor(id)→getAgentCursor`, … |
+| Store             | Re-exported `get*()` state readers                 | `.current` accessors                                         | Argument lookups                                  |
+| ----------------- | -------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- |
+| **layout**        | All (`getLeftSidebarVisible()`, …), via `export *` | none                                                         | `getEditorAreaStyle()` (no arg)                   |
+| **editor**        | none (state readers stay internal)                 | yes (`tabs`, `activeTab`, …)                                 | `getTab(id)`, `getTabByPath(path)`                |
+| **ai**            | none                                               | yes (`messages`, `aiConfig`, …)                              | none                                              |
+| **plugin**        | none                                               | yes (`proposals`, `instances`, …)                            | `getProposal(id)`, `getInstance(id)`              |
+| **collaboration** | none                                               | yes (`users`, `cursors`, …)                                  | `getDocumentSnapshots(id)`, `getUserColor(index)` |
+| **vfs**           | most (`getWorkspace()`, `getFiles()`, …)           | a subset (`workspace`, `files`, `connected→vfsConnected`, …) | `getFile(path)`, `getLock(path)`, …               |
+| **agents**        | most (`getAgents()`, `getOnlineAgents()`, …)       | a subset (`agents`, `events→agentEvents`, …)                 | `getAgent(id)`, `getCursor(id)→getAgentCursor`, … |
 
-The per-store sections below list, for each piece of state, the binding(s) you can actually import.
+The per-store sections below list, for each piece of state, the binding(s) you can import.
 
 ### Name collisions across stores
 
-Several stores export the same generic names (`error`, `connect`, `disconnect`, `reset`, `clearError`, `onEvent`, `updateCursor`, `config`, `connected`, `setError`, `setConnected`, …). Because all seven stores are flattened into one barrel, `src/lib/stores/index.ts` renames the colliding ones on the way out. The renamed public names are called out in each section below — for instance the editor store's `error` accessor is exported as **`editorError`**, and the collaboration store's `disconnect` as **`disconnectCollab`**. (Where a name does _not_ collide it is exported unchanged — for example the plugin store keeps the bare `connected` accessor, while vfs and agents had to rename theirs to `vfsConnected` / `agentsConnected`.)
+Several stores export the same generic names (`error`, `connect`, `disconnect`, `reset`, `clearError`, `onEvent`, `updateCursor`, `config`, `connected`, `setError`, `setConnected`, …). Because all seven stores are flattened into one barrel, `src/lib/stores/index.ts` renames the colliding ones on the way out. The renamed public names are called out in each section below, for instance the editor store's `error` accessor is exported as **`editorError`**, and the collaboration store's `disconnect` as **`disconnectCollab`**. (Where a name does _not_ collide it is exported unchanged, for example the plugin store keeps the bare `connected` accessor, while vfs and agents had to rename theirs to `vfsConnected` / `agentsConnected`.)
 
 ---
 
-## Layout store — the stable `@public` set
+## Layout store, the stable `@public` set
 
-Source: `src/lib/stores/layout.svelte.ts`. Manages IDE chrome: sidebars, bottom panel, activity bar, status bar, full-screen / zen mode, and the command-palette / search / settings overlays. This is the **only store whose functions are part of the stable public API** (per the `@public` annotation on the `./stores` re-export in `src/lib/index.ts`); the explicitly-blessed stable functions are `toggleLeftSidebar`, `toggleRightSidebar`, `toggleBottomPanel`, `setLeftSidebarPanel`, `setRightSidebarPanel`, `setBottomPanelTab`, `getLeftSidebarVisible`, `getLeftSidebarActivePanel`, `getRightSidebarVisible`, `getRightSidebarActivePanel`, `getBottomPanelVisible`, `getBottomPanelActiveTab`, `openCommandPalette`, `closeCommandPalette`, `getCommandPaletteOpen`, `focusAIPanel`, `focusTerminal`, and `focusExplorer`. The remaining layout helpers below are exported too and follow the same conventions. Unlike the other stores, layout is re-exported with `export *`, so **all** of its `get*()` functions are importable and the names below are unchanged. The layout store does **not** provide `.current` accessors — use the getters.
+Source: `src/lib/stores/layout.svelte.ts`. Manages IDE chrome: sidebars, bottom panel, activity bar, status bar, full-screen / zen mode, and the command-palette / search / settings overlays. This is the **only store whose functions are part of the stable public API** (per the `@public` annotation on the `./stores` re-export in `src/lib/index.ts`); the explicitly-blessed stable functions are `toggleLeftSidebar`, `toggleRightSidebar`, `toggleBottomPanel`, `setLeftSidebarPanel`, `setRightSidebarPanel`, `setBottomPanelTab`, `getLeftSidebarVisible`, `getLeftSidebarActivePanel`, `getRightSidebarVisible`, `getRightSidebarActivePanel`, `getBottomPanelVisible`, `getBottomPanelActiveTab`, `openCommandPalette`, `closeCommandPalette`, `getCommandPaletteOpen`, `focusAIPanel`, `focusTerminal`, and `focusExplorer`. The remaining layout helpers below are exported too and follow the same conventions. Unlike the other stores, layout is re-exported with `export *`, so **all** of its `get*()` functions are importable and the names below are unchanged. The layout store does **not** provide `.current` accessors, use the getters.
 
 ```ts
 import {
@@ -76,25 +76,25 @@ import {
 
 ### Getters
 
-| Function                       | Returns                                                                                                       |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `getLeftSidebarVisible()`      | `boolean` — left sidebar shown (false in zen mode).                                                           |
-| `getLeftSidebarWidth()`        | `number` — left sidebar width in px.                                                                          |
-| `getLeftSidebarActivePanel()`  | `string` — active left panel id (e.g. `'explorer'`, `'search'`).                                              |
-| `getRightSidebarVisible()`     | `boolean` — right sidebar shown (false in zen mode).                                                          |
-| `getRightSidebarWidth()`       | `number` — right sidebar width in px.                                                                         |
-| `getRightSidebarActivePanel()` | `string` — active right panel id (e.g. `'ai'`).                                                               |
-| `getBottomPanelVisible()`      | `boolean` — bottom panel shown (false in zen mode).                                                           |
-| `getBottomPanelHeight()`       | `number` — bottom panel height in px.                                                                         |
-| `getBottomPanelActiveTab()`    | `string` — active bottom tab (e.g. `'terminal'`).                                                             |
-| `getActivityBarPosition()`     | `'left' \| 'hidden'`.                                                                                         |
-| `getStatusBarVisible()`        | `boolean` — status bar shown (false in zen mode).                                                             |
-| `getIsFullScreen()`            | `boolean`.                                                                                                    |
-| `getZenMode()`                 | `boolean` — distraction-free mode active.                                                                     |
-| `getCommandPaletteOpen()`      | `boolean`.                                                                                                    |
-| `getSearchPanelOpen()`         | `boolean`.                                                                                                    |
-| `getSettingsOpen()`            | `boolean`.                                                                                                    |
-| `getEditorAreaStyle()`         | `{ marginLeft, marginRight, marginBottom }` — computed CSS margins that reserve space for the visible chrome. |
+| Function                       | Returns                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `getLeftSidebarVisible()`      | `boolean`, left sidebar shown (false in zen mode).                                                           |
+| `getLeftSidebarWidth()`        | `number`, left sidebar width in px.                                                                          |
+| `getLeftSidebarActivePanel()`  | `string`, active left panel id (e.g. `'explorer'`, `'search'`).                                              |
+| `getRightSidebarVisible()`     | `boolean`, right sidebar shown (false in zen mode).                                                          |
+| `getRightSidebarWidth()`       | `number`, right sidebar width in px.                                                                         |
+| `getRightSidebarActivePanel()` | `string`, active right panel id (e.g. `'ai'`).                                                               |
+| `getBottomPanelVisible()`      | `boolean`, bottom panel shown (false in zen mode).                                                           |
+| `getBottomPanelHeight()`       | `number`, bottom panel height in px.                                                                         |
+| `getBottomPanelActiveTab()`    | `string`, active bottom tab (e.g. `'terminal'`).                                                             |
+| `getActivityBarPosition()`     | `'left' \| 'hidden'`.                                                                                        |
+| `getStatusBarVisible()`        | `boolean`, status bar shown (false in zen mode).                                                             |
+| `getIsFullScreen()`            | `boolean`.                                                                                                   |
+| `getZenMode()`                 | `boolean`, distraction-free mode active.                                                                     |
+| `getCommandPaletteOpen()`      | `boolean`.                                                                                                   |
+| `getSearchPanelOpen()`         | `boolean`.                                                                                                   |
+| `getSettingsOpen()`            | `boolean`.                                                                                                   |
+| `getEditorAreaStyle()`         | `{ marginLeft, marginRight, marginBottom }`, computed CSS margins that reserve space for the visible chrome. |
 
 ### Actions
 
@@ -137,26 +137,26 @@ Source: `src/lib/stores/editor.svelte.ts`. Manages open tabs, the active file, s
 import { openFile, tabs, activeTab, editorError } from '@nocturnium/svelte-ide/stores';
 ```
 
-> The editor store's plain state `get*()` readers (`getTabs`, `getActiveTab`, `getError`, …) are **not** re-exported from the package — read state via the `.current` accessors listed below. The argument-taking lookups `getTab(id)` and `getTabByPath(path)` _are_ exported.
+> The editor store's plain state `get*()` readers (`getTabs`, `getActiveTab`, `getError`, …) are **not** re-exported from the package, read state via the `.current` accessors listed below. The argument-taking lookups `getTab(id)` and `getTabByPath(path)` _are_ exported.
 >
-> Renamed on export to avoid collisions: the `error` accessor is exported as **`editorError`**, `setError` → **`setEditorError`**, `updateCursor` → **`updateEditorCursor`**.
+> Renamed on export to avoid collisions: the `error` accessor is exported as **`editorError`**, `setError` becomes **`setEditorError`**, `updateCursor` becomes **`updateEditorCursor`**.
 
 ### State accessors
 
 Read these inside a reactive context (`$derived(...)`):
 
-| `.current` accessor    | Returns                                      | Backed by                       |
-| ---------------------- | -------------------------------------------- | ------------------------------- |
-| `tabs.current`         | `EditorTab[]` — all open tabs.               | `getTabs()`                     |
-| `activeTabId.current`  | `string \| null`.                            | `getActiveTabId()`              |
-| `activeTab.current`    | `EditorTab \| null`.                         | `getActiveTab()`                |
-| `splitMode.current`    | `SplitMode`.                                 | `getSplitMode()`                |
-| `preferences.current`  | `EditorPreferences`.                         | `getPreferences()`              |
-| `recentFiles.current`  | `string[]` — recently opened paths (max 20). | `getRecentFiles()`              |
-| `loading.current`      | `boolean`.                                   | `getLoading()`                  |
-| `editorError.current`  | `string \| null`.                            | `getError()` (renamed accessor) |
-| `dirtyTabs.current`    | `EditorTab[]` — tabs with unsaved changes.   | `getDirtyTabs()`                |
-| `hasDirtyTabs.current` | `boolean`.                                   | `getHasDirtyTabs()`             |
+| `.current` accessor    | Returns                                     | Backed by                       |
+| ---------------------- | ------------------------------------------- | ------------------------------- |
+| `tabs.current`         | `EditorTab[]`, all open tabs.               | `getTabs()`                     |
+| `activeTabId.current`  | `string \| null`.                           | `getActiveTabId()`              |
+| `activeTab.current`    | `EditorTab \| null`.                        | `getActiveTab()`                |
+| `splitMode.current`    | `SplitMode`.                                | `getSplitMode()`                |
+| `preferences.current`  | `EditorPreferences`.                        | `getPreferences()`              |
+| `recentFiles.current`  | `string[]`, recently opened paths (max 20). | `getRecentFiles()`              |
+| `loading.current`      | `boolean`.                                  | `getLoading()`                  |
+| `editorError.current`  | `string \| null`.                           | `getError()` (renamed accessor) |
+| `dirtyTabs.current`    | `EditorTab[]`, tabs with unsaved changes.   | `getDirtyTabs()`                |
+| `hasDirtyTabs.current` | `boolean`.                                  | `getHasDirtyTabs()`             |
 
 Argument lookups (exported as functions): `getTab(tabId)` and `getTabByPath(path)`, each returning `EditorTab | undefined`.
 
@@ -192,47 +192,47 @@ Source: `src/lib/stores/ai.svelte.ts`. Manages AI conversations, messages, regis
 import { sendMessage, messages, aiConfig, updateConfig } from '@nocturnium/svelte-ide/stores';
 ```
 
-> The AI store exports **no** `get*()` functions — read state via the `.current` accessors below.
+> The AI store exports **no** `get*()` functions, read state via the `.current` accessors below.
 >
-> Renamed on export: the `config` accessor → **`aiConfig`**, `error` accessor → **`aiError`**, `clearError` → **`clearAIError`**.
+> Renamed on export: the `config` accessor becomes **`aiConfig`**, `error` accessor becomes **`aiError`**, `clearError` becomes **`clearAIError`**.
 
 ### State accessors
 
-| `.current` accessor            | Returns                                              | Backed by                        |
-| ------------------------------ | ---------------------------------------------------- | -------------------------------- |
-| `conversations.current`        | `AIConversation[]`.                                  | `getConversations()`             |
-| `activeConversationId.current` | `string \| null`.                                    | `getActiveConversationId()`      |
-| `activeConversation.current`   | `AIConversation \| null`.                            | `getActiveConversation()`        |
-| `messages.current`             | `AIMessage[]` — messages of the active conversation. | `getMessages()`                  |
-| `tools.current`                | `AITool[]` — registered tools.                       | `getTools()`                     |
-| `aiConfig.current`             | `AIPanelConfig`.                                     | `getConfig()` (renamed accessor) |
-| `editSessions.current`         | `AIEditSession[]`.                                   | `getEditSessions()`              |
-| `activeEditSessions.current`   | `AIEditSession[]` — sessions in `'editing'` state.   | `getActiveEditSessions()`        |
-| `suggestions.current`          | `AISuggestion[]`.                                    | `getSuggestions()`               |
-| `isStreaming.current`          | `boolean`.                                           | `getIsStreaming()`               |
-| `isPanelOpen.current`          | `boolean`.                                           | `getIsPanelOpen()`               |
-| `aiError.current`              | `string \| null`.                                    | `getError()` (renamed accessor)  |
+| `.current` accessor            | Returns                                             | Backed by                        |
+| ------------------------------ | --------------------------------------------------- | -------------------------------- |
+| `conversations.current`        | `AIConversation[]`.                                 | `getConversations()`             |
+| `activeConversationId.current` | `string \| null`.                                   | `getActiveConversationId()`      |
+| `activeConversation.current`   | `AIConversation \| null`.                           | `getActiveConversation()`        |
+| `messages.current`             | `AIMessage[]`, messages of the active conversation. | `getMessages()`                  |
+| `tools.current`                | `AITool[]`, registered tools.                       | `getTools()`                     |
+| `aiConfig.current`             | `AIPanelConfig`.                                    | `getConfig()` (renamed accessor) |
+| `editSessions.current`         | `AIEditSession[]`.                                  | `getEditSessions()`              |
+| `activeEditSessions.current`   | `AIEditSession[]`, sessions in `'editing'` state.   | `getActiveEditSessions()`        |
+| `suggestions.current`          | `AISuggestion[]`.                                   | `getSuggestions()`               |
+| `isStreaming.current`          | `boolean`.                                          | `getIsStreaming()`               |
+| `isPanelOpen.current`          | `boolean`.                                          | `getIsPanelOpen()`               |
+| `aiError.current`              | `string \| null`.                                   | `getError()` (renamed accessor)  |
 
 ### Actions
 
-| Function                                                                    | Description                                                                                                                       |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `createConversation(title?, context?)`                                      | Create and activate a conversation; returns its id.                                                                               |
-| `setActiveConversation(conversationId \| null)`                             | Switch the active conversation.                                                                                                   |
-| `deleteConversation(conversationId)`                                        | Remove a conversation.                                                                                                            |
-| `addMessage(message)`                                                       | Append a message (without `id`/`timestamp`) to the active conversation; returns the new id.                                       |
-| `updateMessage(messageId, updates)`                                         | Patch a message in place (used during streaming).                                                                                 |
-| `sendMessage(content, context?)`                                            | `async` — add the user message, POST the conversation to `config.endpoint`, and stream the assistant reply (handling tool calls). |
-| `registerTool(tool)` / `unregisterTool(toolName)`                           | Add or remove an `AITool` the model may call.                                                                                     |
-| `updateConfig(updates)`                                                     | Merge a partial `AIPanelConfig` (endpoint, model, system prompt, streaming, etc.).                                                |
-| `togglePanel()` / `openPanel()` / `closePanel()`                            | Control AI panel visibility.                                                                                                      |
-| `startEditSession(conversationId, filePath, originalContent)`               | Begin an AI edit session; returns its id.                                                                                         |
-| `updateEditSession(sessionId, updates)`                                     | Patch a session.                                                                                                                  |
-| `completeEditSession(sessionId, proposedContent, diff?)`                    | Move a session to `'reviewing'` with proposed output.                                                                             |
-| `resolveEditSession(sessionId, apply)`                                      | Mark a session `'applied'` or `'rejected'`.                                                                                       |
-| `addSuggestion(suggestion)` / `removeSuggestion(id)` / `clearSuggestions()` | Manage inline suggestions.                                                                                                        |
-| `updateContext(context)`                                                    | Merge context into the active conversation.                                                                                       |
-| `clearAIError()`                                                            | (`clearError`) Clear the error string.                                                                                            |
+| Function                                                                    | Description                                                                                                                      |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `createConversation(title?, context?)`                                      | Create and activate a conversation; returns its id.                                                                              |
+| `setActiveConversation(conversationId \| null)`                             | Switch the active conversation.                                                                                                  |
+| `deleteConversation(conversationId)`                                        | Remove a conversation.                                                                                                           |
+| `addMessage(message)`                                                       | Append a message (without `id`/`timestamp`) to the active conversation; returns the new id.                                      |
+| `updateMessage(messageId, updates)`                                         | Patch a message in place (used during streaming).                                                                                |
+| `sendMessage(content, context?)`                                            | `async`, add the user message, POST the conversation to `config.endpoint`, and stream the assistant reply (handling tool calls). |
+| `registerTool(tool)` / `unregisterTool(toolName)`                           | Add or remove an `AITool` the model may call.                                                                                    |
+| `updateConfig(updates)`                                                     | Merge a partial `AIPanelConfig` (endpoint, model, system prompt, streaming, etc.).                                               |
+| `togglePanel()` / `openPanel()` / `closePanel()`                            | Control AI panel visibility.                                                                                                     |
+| `startEditSession(conversationId, filePath, originalContent)`               | Begin an AI edit session; returns its id.                                                                                        |
+| `updateEditSession(sessionId, updates)`                                     | Patch a session.                                                                                                                 |
+| `completeEditSession(sessionId, proposedContent, diff?)`                    | Move a session to `'reviewing'` with proposed output.                                                                            |
+| `resolveEditSession(sessionId, apply)`                                      | Mark a session `'applied'` or `'rejected'`.                                                                                      |
+| `addSuggestion(suggestion)` / `removeSuggestion(id)` / `clearSuggestions()` | Manage inline suggestions.                                                                                                       |
+| `updateContext(context)`                                                    | Merge context into the active conversation.                                                                                      |
+| `clearAIError()`                                                            | (`clearError`) Clear the error string.                                                                                           |
 
 ---
 
@@ -244,26 +244,26 @@ Source: `src/lib/stores/plugin.svelte.ts`. Manages the proposal-based plugin lif
 import { connect, fetchProposals, loadPlugin, pluginError } from '@nocturnium/svelte-ide/stores';
 ```
 
-> The plugin store's plain state `get*()` readers are **not** re-exported — read state via the `.current` accessors below. The argument lookups `getProposal(id)` and `getInstance(id)` _are_ exported.
+> The plugin store's plain state `get*()` readers are **not** re-exported, read state via the `.current` accessors below. The argument lookups `getProposal(id)` and `getInstance(id)` _are_ exported.
 >
-> Renamed on export: the `error` accessor → **`pluginError`**, `disconnect` → **`disconnectPlugins`**, `onEvent` → **`onPluginEvent`**, `clearError` → **`clearPluginError`**. (`connect` is **not** renamed.)
+> Renamed on export: the `error` accessor becomes **`pluginError`**, `disconnect` becomes **`disconnectPlugins`**, `onEvent` becomes **`onPluginEvent`**, `clearError` becomes **`clearPluginError`**. (`connect` is **not** renamed.)
 
 ### State accessors
 
-| `.current` accessor          | Returns                                                    | Backed by                       |
-| ---------------------------- | ---------------------------------------------------------- | ------------------------------- |
-| `proposals.current`          | `PluginProposal[]`.                                        | `getProposals()`                |
-| `instances.current`          | `PluginInstance[]`.                                        | `getInstances()`                |
-| `activeInstances.current`    | `PluginInstance[]` — instances with `status === 'active'`. | `getActiveInstances()`          |
-| `commands.current`           | `PluginCommand[]`.                                         | `getCommands()`                 |
-| `panels.current`             | `PluginPanel[]`.                                           | `getPanels()`                   |
-| `connected.current`          | `boolean` — SSE stream connected.                          | `getConnected()`                |
-| `loadingProposals.current`   | `boolean`.                                                 | `getLoadingProposals()`         |
-| `loadingInstance.current`    | `string \| null` — id of the plugin currently loading.     | `getLoadingInstance()`          |
-| `pluginError.current`        | `string \| null`.                                          | `getError()` (renamed accessor) |
-| `draftProposals.current`     | `PluginProposal[]` — `status === 'draft'`.                 | `getDraftProposals()`           |
-| `reviewingProposals.current` | `PluginProposal[]` — `status === 'reviewing'`.             | `getReviewingProposals()`       |
-| `deployedProposals.current`  | `PluginProposal[]` — `status === 'deployed'`.              | `getDeployedProposals()`        |
+| `.current` accessor          | Returns                                                   | Backed by                       |
+| ---------------------------- | --------------------------------------------------------- | ------------------------------- |
+| `proposals.current`          | `PluginProposal[]`.                                       | `getProposals()`                |
+| `instances.current`          | `PluginInstance[]`.                                       | `getInstances()`                |
+| `activeInstances.current`    | `PluginInstance[]`, instances with `status === 'active'`. | `getActiveInstances()`          |
+| `commands.current`           | `PluginCommand[]`.                                        | `getCommands()`                 |
+| `panels.current`             | `PluginPanel[]`.                                          | `getPanels()`                   |
+| `connected.current`          | `boolean`, SSE stream connected.                          | `getConnected()`                |
+| `loadingProposals.current`   | `boolean`.                                                | `getLoadingProposals()`         |
+| `loadingInstance.current`    | `string \| null`, id of the plugin currently loading.     | `getLoadingInstance()`          |
+| `pluginError.current`        | `string \| null`.                                         | `getError()` (renamed accessor) |
+| `draftProposals.current`     | `PluginProposal[]`, `status === 'draft'`.                 | `getDraftProposals()`           |
+| `reviewingProposals.current` | `PluginProposal[]`, `status === 'reviewing'`.             | `getReviewingProposals()`       |
+| `deployedProposals.current`  | `PluginProposal[]`, `status === 'deployed'`.              | `getDeployedProposals()`        |
 
 Argument lookups (exported as functions): `getProposal(proposalId)` and `getInstance(pluginId)`.
 
@@ -274,13 +274,13 @@ Argument lookups (exported as functions): `getProposal(proposalId)` and `getInst
 | `connect(endpoint?)`                                                    | Open the plugin host's SSE stream (default `/api/plugins/stream`).                         |
 | `disconnectPlugins()`                                                   | (`disconnect`) Close the SSE stream.                                                       |
 | `onPluginEvent(type, handler)`                                          | (`onEvent`) Subscribe to a `PluginEvent` type (or `'*'`); returns an unsubscribe function. |
-| `fetchProposals()`                                                      | `async` — load all proposals from the host (`GET /api/plugins/proposals`).                 |
-| `createProposal(proposal)`                                              | `async` — POST a new proposal; returns its id or `null`.                                   |
-| `submitProposal(proposalId)`                                            | `async` — submit a draft for review; returns `boolean`.                                    |
-| `loadPlugin(proposalId)`                                                | `async` — instantiate a deployed plugin (refusing non-deployed ones); returns `boolean`.   |
+| `fetchProposals()`                                                      | `async`, load all proposals from the host (`GET /api/plugins/proposals`).                  |
+| `createProposal(proposal)`                                              | `async`, POST a new proposal; returns its id or `null`.                                    |
+| `submitProposal(proposalId)`                                            | `async`, submit a draft for review; returns `boolean`.                                     |
+| `loadPlugin(proposalId)`                                                | `async`, instantiate a deployed plugin (refusing non-deployed ones); returns `boolean`.    |
 | `unloadPlugin(proposalId)`                                              | Dispose an instance and unregister its contributions.                                      |
 | `registerCommand(pluginId, command)` / `registerPanel(pluginId, panel)` | Register plugin contributions (namespaced as `pluginId:id`).                               |
-| `executeCommand(commandId)`                                             | `async` — run a registered command's handler.                                              |
+| `executeCommand(commandId)`                                             | `async`, run a registered command's handler.                                               |
 | `clearPluginError()`                                                    | (`clearError`) Clear the error string.                                                     |
 
 ---
@@ -293,9 +293,9 @@ Source: `src/lib/stores/collaboration.svelte.ts`. Manages CRDT-based real-time c
 import { initialize, addUser, setLocalCursor, collabConfig } from '@nocturnium/svelte-ide/stores';
 ```
 
-> The collaboration store's plain state `get*()` readers are **not** re-exported — read state via the `.current` accessors below. The argument lookups `getDocumentSnapshots(id)` and `getUserColor(index)` _are_ exported. (This store has no `clearError` function.)
+> The collaboration store's plain state `get*()` readers are **not** re-exported, read state via the `.current` accessors below. The argument lookups `getDocumentSnapshots(id)` and `getUserColor(index)` _are_ exported. (This store has no `clearError` function.)
 >
-> Renamed on export: the `config` accessor → **`collabConfig`**, `error` accessor → **`collabError`**, `updateCursor` → **`updateCollabCursor`**, `disconnect` → **`disconnectCollab`**, `onEvent` → **`onCollabEvent`**. (`initialize` and `reset` are **not** renamed.)
+> Renamed on export: the `config` accessor becomes **`collabConfig`**, `error` accessor becomes **`collabError`**, `updateCursor` becomes **`updateCollabCursor`**, `disconnect` becomes **`disconnectCollab`**, `onEvent` becomes **`onCollabEvent`**. (`initialize` and `reset` are **not** renamed.)
 
 ### State accessors
 
@@ -309,12 +309,12 @@ import { initialize, addUser, setLocalCursor, collabConfig } from '@nocturnium/s
 | `cursors.current`          | `CollaboratorCursor[]`.                                                 | `getCursors()`                   |
 | `awareness.current`        | `CollaboratorAwareness[]`.                                              | `getAwareness()`                 |
 | `aiSessions.current`       | `AICollaborationSession[]`.                                             | `getAISessions()`                |
-| `activeAISessions.current` | `AICollaborationSession[]` — `status === 'active'`.                     | `getActiveAISessions()`          |
+| `activeAISessions.current` | `AICollaborationSession[]`, `status === 'active'`.                      | `getActiveAISessions()`          |
 | `pendingChanges.current`   | `AIProposedChange[]`.                                                   | `getPendingChanges()`            |
 | `snapshots.current`        | `DocumentSnapshot[]`.                                                   | `getSnapshots()`                 |
 | `localUser.current`        | `CollaborationUser \| null`.                                            | `getLocalUser()`                 |
-| `isConnected.current`      | `boolean` — `status === 'connected'`.                                   | `getIsConnected()`               |
-| `otherUsers.current`       | `CollaborationUser[]` — everyone but the local user.                    | `getOtherUsers()`                |
+| `isConnected.current`      | `boolean`, `status === 'connected'`.                                    | `getIsConnected()`               |
+| `otherUsers.current`       | `CollaborationUser[]`, everyone but the local user.                     | `getOtherUsers()`                |
 
 Argument lookups (exported as functions): `getDocumentSnapshots(documentId)` and `getUserColor(index)`.
 
@@ -351,41 +351,41 @@ Source: `src/lib/stores/vfs.svelte.ts`. Manages a virtual-filesystem workspace: 
 import { initializeVFS, getFileTree, acquireLock, vfsError } from '@nocturnium/svelte-ide/stores';
 ```
 
-> Renamed on export: the `connected` accessor → **`vfsConnected`**, `error` accessor → **`vfsError`**, `clearError` → **`clearVFSError`**, `connect` → **`connectVFS`**, `disconnect` → **`disconnectVFS`**, `onEvent` → **`onVFSEvent`**, `reset` → **`resetVFS`**, and `initialize` → **`initializeVFS`**. Note that `getConnected()` and `getError()` are **not** re-exported — read connection state via `vfsConnected.current` and the error via `vfsError.current`.
+> Renamed on export: the `connected` accessor becomes **`vfsConnected`**, `error` accessor becomes **`vfsError`**, `clearError` becomes **`clearVFSError`**, `connect` becomes **`connectVFS`**, `disconnect` becomes **`disconnectVFS`**, `onEvent` becomes **`onVFSEvent`**, `reset` becomes **`resetVFS`**, and `initialize` becomes **`initializeVFS`**. Note that `getConnected()` and `getError()` are **not** re-exported, read connection state via `vfsConnected.current` and the error via `vfsError.current`.
 
 ### Getters
 
-Most of the VFS state `get*()` functions **are** re-exported and can be imported directly: `getWorkspace()`, `getWorkspaceLoading()`, `getFiles()`, `getFileTree()`, `getLocks()`, `getDirtyFiles()`, `getActiveTransactions()`, and `getSyncing()`. Each also has a `.current` accessor (`workspace`, `workspaceLoading`, `files`, `fileTree`, `locks`, `dirtyFiles`, `activeTransactions`, `syncing`). Connection state and the error are exposed **only** through the renamed accessors **`vfsConnected`** (`.current`) and **`vfsError`** (`.current`) — the underlying `getConnected()` / `getError()` are not exported.
+Most of the VFS state `get*()` functions **are** re-exported and can be imported directly: `getWorkspace()`, `getWorkspaceLoading()`, `getFiles()`, `getFileTree()`, `getLocks()`, `getDirtyFiles()`, `getActiveTransactions()`, and `getSyncing()`. Each also has a `.current` accessor (`workspace`, `workspaceLoading`, `files`, `fileTree`, `locks`, `dirtyFiles`, `activeTransactions`, `syncing`). Connection state and the error are exposed **only** through the renamed accessors **`vfsConnected`** (`.current`) and **`vfsError`** (`.current`), the underlying `getConnected()` / `getError()` are not exported.
 
 Additional getters (argument lookups / scalars, exported as functions, no `.current` accessor):
 
-| Function                                                          | Returns                                                 |
-| ----------------------------------------------------------------- | ------------------------------------------------------- |
-| `getFile(path)`                                                   | `VFSFileInfo \| undefined`.                             |
-| `getLock(path)`                                                   | `VFSFileLock \| undefined`.                             |
-| `getLockStatus(path)`                                             | `VFSLockStatus`.                                        |
-| `isLocked(path)` / `isLockedByMe(path)` / `isLockedByOther(path)` | `boolean`.                                              |
-| `getMyLocks()` / `getOtherLocks()`                                | `VFSFileLock[]`.                                        |
-| `isDirty(path)`                                                   | `boolean`.                                              |
-| `getTransactionHistory()`                                         | `VFSTransaction[]` — completed transactions (last 100). |
-| `getVersion()`                                                    | `number` — workspace version for conflict detection.    |
-| `getReconnectAttempts()`                                          | `number`.                                               |
-| `getLockedFiles()` / `getMyLockedFiles()`                         | `VFSFileInfo[]`.                                        |
-| `getDirectories()`                                                | `VFSFileInfo[]`.                                        |
-| `getFilesInDirectory(dirPath)`                                    | `VFSFileInfo[]` — immediate children of a directory.    |
+| Function                                                          | Returns                                                |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
+| `getFile(path)`                                                   | `VFSFileInfo \| undefined`.                            |
+| `getLock(path)`                                                   | `VFSFileLock \| undefined`.                            |
+| `getLockStatus(path)`                                             | `VFSLockStatus`.                                       |
+| `isLocked(path)` / `isLockedByMe(path)` / `isLockedByOther(path)` | `boolean`.                                             |
+| `getMyLocks()` / `getOtherLocks()`                                | `VFSFileLock[]`.                                       |
+| `isDirty(path)`                                                   | `boolean`.                                             |
+| `getTransactionHistory()`                                         | `VFSTransaction[]`, completed transactions (last 100). |
+| `getVersion()`                                                    | `number`, workspace version for conflict detection.    |
+| `getReconnectAttempts()`                                          | `number`.                                              |
+| `getLockedFiles()` / `getMyLockedFiles()`                         | `VFSFileInfo[]`.                                       |
+| `getDirectories()`                                                | `VFSFileInfo[]`.                                       |
+| `getFilesInDirectory(dirPath)`                                    | `VFSFileInfo[]`, immediate children of a directory.    |
 
 ### Actions
 
 | Function                                                                                 | Description                                                                                                |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `initializeVFS(userId, workspaceId?)`                                                    | (`initialize`) Set the current user and optionally load a workspace.                                       |
-| `loadWorkspace(workspaceId)`                                                             | `async` — fetch a workspace and connect its SSE stream.                                                    |
+| `loadWorkspace(workspaceId)`                                                             | `async`, fetch a workspace and connect its SSE stream.                                                     |
 | `updateFileInfo(fileInfo)` / `removeFileInfo(path)`                                      | Upsert or remove a file entry.                                                                             |
 | `markDirty(path)` / `markClean(path)`                                                    | Toggle a file's local-changes flag.                                                                        |
 | `setFiles(files)`                                                                        | Replace the whole file list.                                                                               |
 | `setLock(lock)` / `removeLock(path)` / `setLockStatus(path, status)` / `setLocks(locks)` | Manage lock state (own locks auto-refresh before TTL expiry).                                              |
-| `acquireLock(path, purpose?)`                                                            | `async` — request a lock; returns the lock or `null`.                                                      |
-| `releaseLock(path)` / `releaseAllMyLocks()`                                              | `async` — release one or all of your locks.                                                                |
+| `acquireLock(path, purpose?)`                                                            | `async`, request a lock; returns the lock or `null`.                                                       |
+| `releaseLock(path)` / `releaseAllMyLocks()`                                              | `async`, release one or all of your locks.                                                                 |
 | `startTransaction(transaction)` / `completeTransaction(txId, status)`                    | Track multi-file transactions.                                                                             |
 | `setSyncing(syncing)`                                                                    | Set the syncing flag.                                                                                      |
 | `connectVFS(workspaceId)`                                                                | (`connect`) Open the workspace SSE stream `…/workspaces/{id}/stream` (with exponential-backoff reconnect). |
@@ -404,7 +404,7 @@ Source: `src/lib/stores/agents.svelte.ts`. Manages multi-agent coordination: an 
 import { addAgent, getOnlineAgents, onTeamEvent, agentsError } from '@nocturnium/svelte-ide/stores';
 ```
 
-> Renamed on export: the `events` accessor → **`agentEvents`**, `cursors` accessor → **`agentCursors`**, `filter` accessor → **`agentFilter`**, `connected` accessor → **`agentsConnected`**, `error` accessor → **`agentsError`**, `getEvents` → **`getAgentEvents`**, `getCursors` → **`getAgentCursors`**, `getCursor` → **`getAgentCursor`**, `getFilter` → **`getAgentFilter`**, `updateCursor` → **`updateAgentCursor`**, `removeCursor` → **`removeAgentCursor`**, `addEvent` → **`addAgentEvent`**, `setFilter` → **`setAgentFilter`**, `clearEvents` → **`clearAgentEvents`**, `setConnected` → **`setAgentsConnected`**, `setError` → **`setAgentsError`**, `clearError` → **`clearAgentsError`**, and `reset` → **`resetAgents`**. Note `getConnected()` and `getError()` are **not** re-exported — read connection state via `agentsConnected.current` and the error via `agentsError.current`.
+> Renamed on export: the `events` accessor becomes **`agentEvents`**, `cursors` accessor becomes **`agentCursors`**, `filter` accessor becomes **`agentFilter`**, `connected` accessor becomes **`agentsConnected`**, `error` accessor becomes **`agentsError`**, `getEvents` becomes **`getAgentEvents`**, `getCursors` becomes **`getAgentCursors`**, `getCursor` becomes **`getAgentCursor`**, `getFilter` becomes **`getAgentFilter`**, `updateCursor` becomes **`updateAgentCursor`**, `removeCursor` becomes **`removeAgentCursor`**, `addEvent` becomes **`addAgentEvent`**, `setFilter` becomes **`setAgentFilter`**, `clearEvents` becomes **`clearAgentEvents`**, `setConnected` becomes **`setAgentsConnected`**, `setError` becomes **`setAgentsError`**, `clearError` becomes **`clearAgentsError`**, and `reset` becomes **`resetAgents`**. Note `getConnected()` and `getError()` are **not** re-exported, read connection state via `agentsConnected.current` and the error via `agentsError.current`.
 
 ### Getters
 
@@ -412,19 +412,19 @@ Most of the agents state `get*()` functions **are** re-exported and can be impor
 
 Additional getters (exported as functions, no `.current` accessor):
 
-| Function                                                        | Returns                                          |
-| --------------------------------------------------------------- | ------------------------------------------------ |
-| `getAgent(agentId)`                                             | `Agent \| undefined`.                            |
-| `getOfflineAgents()` / `getStalledAgents()`                     | `Agent[]`.                                       |
-| `getAgentsByType(type)`                                         | `Agent[]`.                                       |
-| `getAgentsWorkingOnFile(filePath)`                              | `Agent[]`.                                       |
-| `getActivitiesForAgent(agentId)` / `getRecentActivities(count)` | `AgentActivity[]`.                               |
-| `getAgentCursor(agentId)`                                       | `AgentCursor \| undefined`.                      |
-| `getCursorsForFile(filePath)`                                   | `AgentCursor[]`.                                 |
-| `getFilteredAgents()`                                           | `Agent[]` — agents matching the current filter.  |
-| `getActiveTasksCount()`                                         | `number`.                                        |
-| `getTotalProgress()`                                            | `number` — mean progress of busy agents (0–100). |
-| `getAgentCount()` / `getOnlineCount()`                          | `number`.                                        |
+| Function                                                        | Returns                                         |
+| --------------------------------------------------------------- | ----------------------------------------------- |
+| `getAgent(agentId)`                                             | `Agent \| undefined`.                           |
+| `getOfflineAgents()` / `getStalledAgents()`                     | `Agent[]`.                                      |
+| `getAgentsByType(type)`                                         | `Agent[]`.                                      |
+| `getAgentsWorkingOnFile(filePath)`                              | `Agent[]`.                                      |
+| `getActivitiesForAgent(agentId)` / `getRecentActivities(count)` | `AgentActivity[]`.                              |
+| `getAgentCursor(agentId)`                                       | `AgentCursor \| undefined`.                     |
+| `getCursorsForFile(filePath)`                                   | `AgentCursor[]`.                                |
+| `getFilteredAgents()`                                           | `Agent[]`, agents matching the current filter.  |
+| `getActiveTasksCount()`                                         | `number`.                                       |
+| `getTotalProgress()`                                            | `number`, mean progress of busy agents (0–100). |
+| `getAgentCount()` / `getOnlineCount()`                          | `number`.                                       |
 
 ### Actions
 
@@ -454,9 +454,9 @@ Additional getters (exported as functions, no `.current` accessor):
 
 ## See also
 
-- [Getting started](../getting-started.md) — install, theme, and your first editor.
-- [Architecture overview](../architecture.md) — how the stores fit the module map.
-- [Component reference](./components.md) — the components these stores back.
-- [Services reference](./services.md) — the VFS / network clients the stores call.
-- [Types & utils reference](./types-and-utils.md) — the `EditorTab`, `AIPanelConfig`, `VFSFileInfo`, `Agent`, and related types referenced above.
+- [Getting started](../getting-started.md): install, theme, and your first editor.
+- [Architecture overview](../architecture.md): how the stores fit the module map.
+- [Component reference](./components.md): the components these stores back.
+- [Services reference](./services.md): the VFS / network clients the stores call.
+- [Types & utils reference](./types-and-utils.md): the `EditorTab`, `AIPanelConfig`, `VFSFileInfo`, `Agent`, and related types referenced above.
 - [Editor guide](../guides/editor.md) · [AI & agents guide](../guides/ai-and-agents.md) · [Collaboration guide](../guides/collaboration.md) · [Plugins guide](../guides/plugins.md).

@@ -311,7 +311,7 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 
 <Seo
 	title="Editor"
-	description="A real mini-IDE built from the Nocturnium Svelte editor: a language switcher, sample files, and live feature toggles — syntax highlighting, folding, multi-cursor, and more."
+	description="A real mini-IDE built from the Nocturnium Svelte editor: a language switcher, sample files, and live feature toggles, syntax highlighting, folding, multi-cursor, and more."
 />
 
 <div class="editor-demo">
@@ -320,7 +320,7 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 			<Badge variant="primary">Flagship</Badge>
 			<h1>Code Editor</h1>
 			<p>
-				A real mini-IDE built entirely from <strong>@nocturnium/svelte-ide</strong> primitives — switch
+				A real mini-IDE built entirely from <strong>@nocturnium/svelte-ide</strong> primitives, switch
 				files, change languages, and toggle features live.
 			</p>
 		</div>
@@ -507,7 +507,7 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 	<section class="component-section" aria-labelledby="caps-title">
 		<h2 id="caps-title">What's inside the editor core</h2>
 		<div class="features-list">
-			{#each [{ t: 'Syntax highlighting', d: 'Tokenizers for TypeScript, JavaScript, Python, Go, HTML, CSS, JSON, Markdown and more.' }, { t: 'Multi-cursor & selection', d: 'Add cursors, select occurrences, and edit in parallel with full selection support.' }, { t: 'Code folding', d: 'Bracket- and indentation-aware folds with semantic presets.' }, { t: 'Find & replace', d: 'Incremental search, regex, case sensitivity, and replace-all.' }, { t: 'Virtualized rendering', d: 'Only the visible window renders — smooth at 10k+ lines.' }, { t: 'No editor-engine dependency', d: 'No CodeMirror, no Monaco — the editor core is pure Svelte 5. Real-time collaboration is an optional peer (yjs).' }] as feature, i (i)}
+			{#each [{ t: 'Syntax highlighting', d: 'Tokenizers for TypeScript, JavaScript, Python, Go, HTML, CSS, JSON, Markdown and more.' }, { t: 'Multi-cursor & selection', d: 'Add cursors, select occurrences, and edit in parallel with full selection support.' }, { t: 'Code folding', d: 'Bracket- and indentation-aware folds with semantic presets.' }, { t: 'Find & replace', d: 'Incremental search, regex, case sensitivity, and replace-all.' }, { t: 'Virtualized rendering', d: 'Only the visible window renders, smooth at 10k+ lines.' }, { t: 'No editor-engine dependency', d: 'No CodeMirror, no Monaco, the editor core is pure Svelte 5. Real-time collaboration is an optional peer (yjs).' }] as feature, i (i)}
 				<div class="feature">
 					<span class="feature-icon" aria-hidden="true">✓</span>
 					<div>
@@ -643,7 +643,7 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 		box-shadow: 0 0 8px color-mix(in srgb, var(--ide-accent) 70%, transparent);
 	}
 	/* Read-only is a mode change, not a benign feature flag, so its on-state reads in
-	   warning amber instead of the accent so enabling it is unmistakable at a glance —
+	   warning amber instead of the accent so enabling it is unmistakable at a glance,
 	   not a same-looking pill confirmed only by a one-word status swap. */
 	.toggle--mode.on {
 		border-color: color-mix(in srgb, var(--ide-warning) 60%, var(--ide-border));
@@ -752,7 +752,7 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 		position: relative;
 	}
 	/* When read-only is active, a faint amber inset ring on the surface reinforces the
-	   mode beyond the toolbar toggle + status word — the editor itself looks locked. */
+	   mode beyond the toolbar toggle + status word, the editor itself looks locked. */
 	.editor-host--readonly {
 		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ide-warning) 32%, transparent);
 	}
@@ -816,11 +816,11 @@ A Svelte 5 IDE component library with a **dependency-free editor core**.
 		border-top: 1px solid var(--ide-border);
 		font-size: var(--ide-font-size-xs);
 		/* AA: the secondary metrics (Ln/Col, line count, UTF-8) inherit this base color and
-		   carry real data, so it must clear 4.5:1 — full-opacity secondary, not muted. */
+		   carry real data, so it must clear 4.5:1, full-opacity secondary, not muted. */
 		color: var(--ide-text-secondary);
 		font-family: var(--ide-font-mono);
 		min-height: 1.75rem;
-		/* Pinned to the bottom of the editor pane — never shrink or scroll away. */
+		/* Pinned to the bottom of the editor pane, never shrink or scroll away. */
 		flex: 0 0 auto;
 	}
 	.status-item {

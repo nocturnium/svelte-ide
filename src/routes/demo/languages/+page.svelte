@@ -35,13 +35,13 @@
 <DemoPage
 	eyebrow="Syntax Highlighting"
 	title="Language Gallery"
-	description="{totalLanguages} languages, highlighted by the editor's own zero-dependency tokenizer — no Prism, no Highlight.js, no CodeMirror grammar packs."
-	metaDescription="Nocturnium Svelte IDE highlights {totalLanguages} languages out of the box — JavaScript, TypeScript, Python, Rust, Go, Java, C/C++, C#, Ruby, PHP, SQL, YAML, and more — with a built-in zero-dependency tokenizer."
+	description="{totalLanguages} languages, highlighted by the editor's own zero-dependency tokenizer, no Prism, no Highlight.js, no CodeMirror grammar packs."
+	metaDescription="Nocturnium Svelte IDE highlights {totalLanguages} languages by default, JavaScript, TypeScript, Python, Rust, Go, Java, C/C++, C#, Ruby, PHP, SQL, YAML, and more, with a built-in zero-dependency tokenizer."
 >
 	<p class="intro">
-		Every snippet below is rendered by the same tokenizer that powers the editor — pure,
-		synchronous, and SSR-safe, so it highlights {totalLanguages} languages on first paint with zero extra
-		dependencies. Detection maps file extensions to these automatically (open a <code>.rs</code>,
+		Every snippet below is rendered by the same tokenizer that powers the editor, pure, synchronous,
+		and SSR-safe, so it highlights {totalLanguages} languages on first paint with zero extra dependencies.
+		Detection maps file extensions to these automatically (open a <code>.rs</code>,
 		<code>.sql</code>, or <code>.yaml</code> file and it just works).
 	</p>
 
@@ -84,8 +84,8 @@
 	<p class="scope-note">
 		Every language here gets full syntax highlighting, file-type detection, and comment-toggle.
 		Structural editing (folding, bracket matching) works across the brace-based languages; the
-		deeper refactoring tools — extract function, organize imports — are currently tuned for
-		JavaScript &amp; TypeScript.
+		deeper refactoring tools, extract function, organize imports, are currently tuned for JavaScript
+		&amp; TypeScript.
 	</p>
 </DemoPage>
 

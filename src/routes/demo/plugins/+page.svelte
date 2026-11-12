@@ -5,7 +5,7 @@
 	 * `GET /api/plugins/proposals` (`{ proposals: [...] }`). Every proposal carries
 	 * an IN-FLIGHT status (draft → submitted → reviewing → approved → testing) and
 	 * never 'deployed': a proposal under review can't already be shipped, and the
-	 * Install CTA / 'Available' tab are reserved for deployed plugins only — so the
+	 * Install CTA / 'Available' tab are reserved for deployed plugins only, so the
 	 * panel never shows a 'deployed' badge beside an 'Install' button.
 	 */
 	const SAMPLE_PROPOSALS = [
@@ -121,7 +121,7 @@
 	// Populate the embedded <PluginPanel> deterministically on this static host.
 	// Seeding the plugin store fills it with sample proposals AND flips it to an
 	// offline mode, so the panel's own connect()/fetchProposals() no-op rather than
-	// hitting a backend that doesn't exist here. No network, no global patching —
+	// hitting a backend that doesn't exist here. No network, no global patching,
 	// the panel renders a populated, connected list with no spinner and no error.
 	if (browser) {
 		seedProposals(SAMPLE_PROPOSALS as unknown as PluginProposal[]);
@@ -140,7 +140,7 @@
 		author: p.author
 	}));
 
-	// Forward lifecycle, in order — mirrors the Plugin Lifecycle stepper below.
+	// Forward lifecycle, in order, mirrors the Plugin Lifecycle stepper below.
 	const lifecycleStatuses: PluginStatus[] = [
 		'draft',
 		'submitted',
@@ -297,7 +297,7 @@
 					<p>Create and edit your plugin proposal</p>
 				</div>
 			</div>
-			<div class="lifecycle-arrow">→</div>
+			<div class="lifecycle-arrow" aria-hidden="true"></div>
 			<div class="lifecycle-step">
 				<div class="step-number">2</div>
 				<div class="step-content">
@@ -305,7 +305,7 @@
 					<p>Submit for community review</p>
 				</div>
 			</div>
-			<div class="lifecycle-arrow">→</div>
+			<div class="lifecycle-arrow" aria-hidden="true"></div>
 			<div class="lifecycle-step">
 				<div class="step-number">3</div>
 				<div class="step-content">
@@ -313,7 +313,7 @@
 					<p>Community votes and feedback</p>
 				</div>
 			</div>
-			<div class="lifecycle-arrow">→</div>
+			<div class="lifecycle-arrow" aria-hidden="true"></div>
 			<div class="lifecycle-step">
 				<div class="step-number">4</div>
 				<div class="step-content">
@@ -321,7 +321,7 @@
 					<p>Automated tests and validation</p>
 				</div>
 			</div>
-			<div class="lifecycle-arrow">→</div>
+			<div class="lifecycle-arrow" aria-hidden="true"></div>
 			<div class="lifecycle-step">
 				<div class="step-number">5</div>
 				<div class="step-content">
@@ -452,7 +452,7 @@ unloadPlugin('prettier-format');`}</code
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		/* Small (11px) section label — use the AA-safe secondary token, not the
+		/* Small (11px) section label, use the AA-safe secondary token, not the
 		   ~3:1 muted token, so the group headings stay legible. */
 		color: var(--ide-text-secondary);
 	}
@@ -518,7 +518,7 @@ unloadPlugin('prettier-format');`}</code
 
 	.category-card p {
 		font-size: 0.75rem;
-		/* 12px description carries real taxonomy copy — keep it >=AA with the
+		/* 12px description carries real taxonomy copy, keep it >=AA with the
 		   secondary token rather than the washed-out muted token. */
 		color: var(--ide-text-secondary);
 		margin: 0;
@@ -550,7 +550,7 @@ unloadPlugin('prettier-format');`}</code
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		/* Filled accent disc with DARK (night) text — dark-on-wave passes AA, so
+		/* Filled accent disc with DARK (night) text, dark-on-wave passes AA, so
 		   the standard interactive token is correct here (no -strong needed, which
 		   is reserved for white-on-accent fills). */
 		background: var(--ide-interactive);
@@ -568,9 +568,13 @@ unloadPlugin('prettier-format');`}</code
 
 	.step-content p {
 		font-size: 0.75rem;
-		/* 12px lifecycle description — AA-safe secondary, not muted. */
+		/* 12px lifecycle description, AA-safe secondary, not muted. */
 		color: var(--ide-text-secondary);
 		margin: 0;
+	}
+
+	.lifecycle-arrow::before {
+		content: '\2192';
 	}
 
 	.lifecycle-arrow {
@@ -672,7 +676,7 @@ unloadPlugin('prettier-format');`}</code
 
 		/* On the narrowest phones, drop the cramped two-up icon grid for a
 		   single-column labeled list: icon on the left, name + description
-		   left-aligned and comfortably legible — reads as taxonomy, not filler. */
+		   left-aligned and comfortably legible, reads as taxonomy, not filler. */
 		.categories-grid {
 			grid-template-columns: 1fr;
 			gap: 0.5rem;

@@ -27,7 +27,7 @@
 				<div class="panel__header">Left Panel</div>
 				<div class="panel__content">
 					<p>Width: {leftPanelWidth}px</p>
-					<p class="panel__hint">Drag the edge to resize →</p>
+					<p class="panel__hint">Drag the edge to resize</p>
 					<div class="panel__readout" aria-hidden="true">{leftPanelWidth}<span>px</span></div>
 				</div>
 			</div>

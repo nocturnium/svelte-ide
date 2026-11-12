@@ -56,6 +56,7 @@
 	}
 
 	function handleFocusOut() {
+		describedEl = null;
 		hide();
 	}
 
@@ -78,7 +79,6 @@
 		return () => {
 			if (previous) el.setAttribute('aria-describedby', previous);
 			else el.removeAttribute('aria-describedby');
-			describedEl = null;
 		};
 	});
 </script>

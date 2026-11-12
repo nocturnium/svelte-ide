@@ -32,7 +32,7 @@ interface Cursor {
 
 `Cursor`, `Position`, and `Selection` are all type-only exports from the package root. The runtime helpers and the `CursorManager` class described below live behind the editor subpath entry point, `@nocturnium/svelte-ide/components/editor`.
 
-> Direction matters for _extending_ a selection (Shift+Arrow moves the `head`), but most range questions — "where does this selection start/end?" — should go through the helper functions below, which normalize anchor/head order for you.
+> Direction matters for _extending_ a selection (Shift+Arrow moves the `head`), but most range questions, "where does this selection start/end?", should go through the helper functions below, which normalize anchor/head order for you.
 
 ## The CursorManager
 
@@ -85,7 +85,7 @@ cursors.addCursorAbove(lineCount); // returns false if already on the first line
 cursors.addCursorBelow(lineCount); // returns false if already on the last line
 ```
 
-`addCursor` accepts a second `makePrimary` argument; passing `true` promotes the new cursor to primary and demotes the previous one. When the set is already at `maxCursors`, `addCursor` does **not** add another caret — it returns the existing cursor closest to the requested position instead, so the call always yields a usable `Cursor`. Both `addCursorAbove`/`addCursorBelow` operate from the primary cursor's `head` and place the new caret at the same column on the adjacent line (the editor clamps that column to the target line's length).
+`addCursor` accepts a second `makePrimary` argument; passing `true` promotes the new cursor to primary and demotes the previous one. When the set is already at `maxCursors`, `addCursor` does **not** add another caret, it returns the existing cursor closest to the requested position instead, so the call always yields a usable `Cursor`. Both `addCursorAbove`/`addCursorBelow` operate from the primary cursor's `head` and place the new caret at the same column on the adjacent line (the editor clamps that column to the target line's length).
 
 ### Removing cursors
 
@@ -113,7 +113,7 @@ cursors.batchUpdateCursors([
 ]);
 ```
 
-To collapse everything down to one cursor in a single step, use the "single" helpers — they clear all secondary cursors and then position the primary:
+To collapse everything down to one cursor in a single step, use the "single" helpers, they clear all secondary cursors and then position the primary:
 
 ```ts
 cursors.setSingleCursor(position); // one caret, no selection
@@ -179,15 +179,15 @@ Because `getSelectionStart`/`getSelectionEnd` normalize direction, prefer them o
 
 ## Merging on overlap
 
-After any change to the set, the manager runs a merge pass. It sorts cursors by start position and folds each one into the previous if their selections overlap **or touch** (adjacency counts — `selectionsOverlap` returns `true` when one range's start is `<=` the other's end). Two touching selections become a single selection spanning their union via `mergeSelections`. If the primary cursor is absorbed into another during a merge, the surviving cursor becomes primary, so you never lose your primary.
+After any change to the set, the manager runs a merge pass. It sorts cursors by start position and folds each one into the previous if their selections overlap **or touch** (adjacency counts, `selectionsOverlap` returns `true` when one range's start is `<=` the other's end). Two touching selections become a single selection spanning their union via `mergeSelections`. If the primary cursor is absorbed into another during a merge, the surviving cursor becomes primary, so you never lose your primary.
 
 This means:
 
-- Adding a cursor inside an existing selection will not create a duplicate — it collapses into that selection.
+- Adding a cursor inside an existing selection will not create a duplicate, it collapses into that selection.
 - Moving two carets onto the same position leaves you with one caret there.
 - You cannot end up with overlapping highlighted ranges; the visible selection set is always disjoint.
 
-You get this behavior for free through every `addCursor*`, `setCursor`, `setSelection`, `extendSelection`, and `batchUpdateCursors` call — there is no separate "merge" step to invoke.
+You get this behavior for free through every `addCursor*`, `setCursor`, `setSelection`, `extendSelection`, and `batchUpdateCursors` call, there is no separate "merge" step to invoke.
 
 ## Using cursors through EditorState
 
@@ -220,7 +220,7 @@ state.getSelectedTextFromAllCursors(); // every non-empty selection, joined by "
 state.cursorManager.setSelection(state.primaryCursor.id, anchor, head);
 ```
 
-Note that `state.setCursor`, `state.setSelection`, and `state.extendSelection` operate on the **primary cursor only** and clear secondary cursors first — they are single-cursor operations. To move or extend a specific secondary cursor, go through `state.cursorManager`.
+Note that `state.setCursor`, `state.setSelection`, and `state.extendSelection` operate on the **primary cursor only** and clear secondary cursors first, they are single-cursor operations. To move or extend a specific secondary cursor, go through `state.cursorManager`.
 
 For the full `EditorState` surface (history, editing, navigation), see the [Editor guide](./editor.md) and the [stores reference](../api/stores.md).
 
@@ -250,7 +250,7 @@ For the full `EditorState` surface (history, editing, navigation), see the [Edit
 | `Ctrl/Cmd+U`             | Remove the most recently added cursor                                           |
 | `Escape`                 | Collapse back to a single primary cursor (when multiple are active)             |
 
-`Ctrl/Cmd+D` and `Ctrl/Cmd+Shift+L` work on the current selection; if nothing is selected, they first select the word under the primary caret and then match against it. Matching is case-sensitive and literal (not regex). When several cursors are active, ordinary navigation (arrows, Home/End) and text edits apply to **all** of them at once — type a character and it appears at every caret; press Backspace and it deletes at every caret.
+`Ctrl/Cmd+D` and `Ctrl/Cmd+Shift+L` work on the current selection; if nothing is selected, they first select the word under the primary caret and then match against it. Matching is case-sensitive and literal (not regex). When several cursors are active, ordinary navigation (arrows, Home/End) and text edits apply to **all** of them at once, type a character and it appears at every caret; press Backspace and it deletes at every caret.
 
 ### Configuring multi-cursor on the component
 
@@ -273,9 +273,9 @@ For the full `EditorState` surface (history, editing, navigation), see the [Edit
 <p>Active cursors: {cursors.length}</p>
 ```
 
-- `multiCursor` (default `true`) — enable the gestures above. When `false`, the editor is held to a single cursor (`maxCursors` is forced to `1` internally).
-- `maxCursors` (default `100`) — the ceiling enforced by the underlying `CursorManager`.
-- `onCursorsChange(cursors: readonly Cursor[])` — fires whenever the cursor set changes, giving you the live set for your own UI.
+- `multiCursor` (default `true`), enable the gestures above. When `false`, the editor is held to a single cursor (`maxCursors` is forced to `1` internally).
+- `maxCursors` (default `100`), the ceiling enforced by the underlying `CursorManager`.
+- `onCursorsChange(cursors: readonly Cursor[])`: fires whenever the cursor set changes, giving you the live set for your own UI.
 
 The higher-level `<Editor>` wrapper does not expose `multiCursor`/`maxCursors`; reach for `<CustomEditor>` when you need to configure them.
 
@@ -283,8 +283,8 @@ The higher-level `<Editor>` wrapper does not expose `multiCursor`/`maxCursors`; 
 
 ## See also
 
-- [Editor guide](./editor.md) — `Editor`, `CustomEditor`, `EditorPane`, `EditorTabs`
-- [Syntax highlighting](./syntax-highlighting.md) — the tokenizer that powers word selection
-- [Code folding](./code-folding.md) — folding strategies and gestures
+- [Editor guide](./editor.md): `Editor`, `CustomEditor`, `EditorPane`, `EditorTabs`
+- [Syntax highlighting](./syntax-highlighting.md): the tokenizer that powers word selection
+- [Code folding](./code-folding.md): folding strategies and gestures
 - [Components reference](../api/components.md) and [stores reference](../api/stores.md)
-- [Getting started](../getting-started.md) — installation and theming
+- [Getting started](../getting-started.md): installation and theming

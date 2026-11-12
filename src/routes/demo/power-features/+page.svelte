@@ -156,7 +156,7 @@ renderStatus(status);`);
 
 		// Seed the echo demo so it is populated on first paint instead of an empty
 		// log: enable echo, drop two echo points, then replay a short sample of REAL
-		// recorded keystrokes (the manager replays them into the echo mirror buffers —
+		// recorded keystrokes (the manager replays them into the echo mirror buffers,
 		// honest, not faked log lines). The user can keep typing from here.
 		echoManager.enable();
 		echoEnabled = true;
@@ -404,7 +404,7 @@ renderStatus(status);`);
 							{/if}
 
 							<p class="mock-caption" role="note">
-								Each echo's buffer above is a real EditorState mirror — keystrokes you type in the
+								Each echo's buffer above is a real EditorState mirror, keystrokes you type in the
 								source replay into it after the echo's delay.
 							</p>
 						</div>
@@ -537,7 +537,7 @@ renderStatus(status);`);
 			<div class="section-header">
 				<h2>Plugin Preview</h2>
 				<p>
-					Preview a plugin's transformation — see the diff and stats — before applying it to your
+					Preview a plugin's transformation, see the diff and stats, before applying it to your
 					code. Trusted plugin code runs in this editor's realm, not an isolated sandbox.
 				</p>
 			</div>
@@ -619,7 +619,7 @@ renderStatus(status);`);
 		border-bottom-color: var(--ide-interactive);
 	}
 
-	/* Section — frameless grouping container; the DemoExhibit (or inner cards)
+	/* Section, frameless grouping container; the DemoExhibit (or inner cards)
 	   supplies the only frame, so this no longer draws its own card chrome. */
 	.demo-section {
 		background: transparent;
