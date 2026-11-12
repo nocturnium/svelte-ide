@@ -62,7 +62,7 @@ npm install @nocturnium/svelte-ide
 
 ## Entry points
 
-Nearly everything is re-exported from the package root (`CollaborativeEditor` is the exception, see below), but you can import from a narrower entry point to keep bundles lean:
+Nearly everything is re-exported from the package root (`CollaborativeEditor` and the AI components `AIMessageContent`, `AIMessageActions` and `AIConversationList` are the exceptions, see their reference pages), but you can import from a narrower entry point to keep bundles lean:
 
 ```ts
 // Everything (root)
