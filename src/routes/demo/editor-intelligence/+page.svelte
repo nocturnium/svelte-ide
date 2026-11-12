@@ -159,12 +159,12 @@ export const DEFAULT_CONFIG = {
 	/**
 	 * Tokenized copies of every sample this page renders by hand.
 	 *
-	 * These previews are hand-built code viewports rather than real editors — they
+	 * These previews are hand-built code viewports rather than real editors, they
 	 * exist to sit under a minimap, a breadcrumb bar or a ghost-bracket overlay
 	 * without dragging a full CustomEditor along. They interpolated each line as
 	 * raw text, so the page that demonstrates the editor's intelligence rendered
-	 * every sample in one flat colour, while the minimap beside it — which
-	 * tokenizes internally — showed the colours the code beneath it did not.
+	 * every sample in one flat colour, while the minimap beside it, which
+	 * tokenizes internally, showed the colours the code beneath it did not.
 	 *
 	 * `TokenRenderer` is the same component the editor itself uses, so these now
 	 * paint from the identical tokenizer and theme tokens, and it renders tokens as
@@ -253,7 +253,7 @@ export const formatSession = (session: UserSession): string => {
 	// Breadcrumbs state
 	// The file's two top-level symbols and getUser's sibling methods, defined ONCE
 	// so navigation can rebuild the trail (and keep the sibling dropdowns working)
-	// as you jump around — see handleBreadcrumbNavigate.
+	// as you jump around, see handleBreadcrumbNavigate.
 	const classSiblings: BreadcrumbSymbol[] = [
 		{ id: 'class-usermanager', name: 'UserManager', type: 'class', line: 17 },
 		{ id: 'fn-useuserprofile', name: 'useUserProfile', type: 'function', line: 65 }
@@ -285,7 +285,7 @@ export const formatSession = (session: UserSession): string => {
 	]);
 	// Seed the cursor on the active breadcrumb's definition line (getUser, line
 	// index 25) so the breadcrumb "Ln" chip, the "Current: Line N" label, and the
-	// editor highlight all agree on one answer to "where am I" — the page's whole
+	// editor highlight all agree on one answer to "where am I", the page's whole
 	// theme is navigation precision, so the indicators must not contradict.
 	let cursorLine = $state(25);
 
@@ -517,7 +517,7 @@ function renderInvoice(order) {
 
 	function handleBreadcrumbNavigate(symbol: BreadcrumbSymbol) {
 		cursorLine = symbol.line;
-		// Rebuild the trail so the breadcrumb path AND its "Ln" chip follow the jump —
+		// Rebuild the trail so the breadcrumb path AND its "Ln" chip follow the jump,
 		// otherwise clicking a sibling moves the cursor but the trail keeps lying about
 		// where you are. Keep the sibling lists attached so the dropdowns still work.
 		if (symbol.type === 'file') return; // file root → scroll to top, trail unchanged
@@ -585,13 +585,13 @@ function renderInvoice(order) {
 			}
 			case 'refactor.rename':
 				return {
-					text: 'Rename needs project-wide symbol resolution — not wired in this build.',
+					text: 'Rename needs project-wide symbol resolution, not wired in this build.',
 					ok: false
 				};
 			case 'source.fixAll':
 				return { text: 'No live diagnostics in this demo, so there is nothing to fix.', ok: false };
 			default:
-				return { text: `${action.title} — preview only in this build.`, ok: false };
+				return { text: `${action.title}, preview only in this build.`, ok: false };
 		}
 	}
 
@@ -931,7 +931,7 @@ function renderInvoice(order) {
 					<p class="qa-callout">
 						<span class="qa-callout__glint" aria-hidden="true">💡</span>
 						<span
-							>This is a live editor — <strong>select code</strong> or click a line, then open the lightbulb
+							>This is a live editor, <strong>select code</strong> or click a line, then open the lightbulb
 							to run a real refactor.</span
 						>
 					</p>
@@ -973,16 +973,19 @@ function renderInvoice(order) {
 							<li>
 								<span class="qa-triggers__do">select <code>subtotal * order.taxRate</code></span>
 								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
+								<!-- copy-scan:ignore decorative -->
 								<span class="qa-triggers__action">Extract to variable</span>
 							</li>
 							<li>
 								<span class="qa-triggers__do">select the three <code>const</code> lines</span>
 								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
+								<!-- copy-scan:ignore decorative -->
 								<span class="qa-triggers__action">Extract to function</span>
 							</li>
 							<li>
 								<span class="qa-triggers__do">click into the imports</span>
 								<span class="qa-triggers__arrow" aria-hidden="true">→</span>
+								<!-- copy-scan:ignore decorative -->
 								<span class="qa-triggers__action">Organize imports</span>
 								<span class="qa-triggers__note">(removes the duplicate)</span>
 							</li>
@@ -1006,10 +1009,10 @@ function renderInvoice(order) {
 				</div>
 
 				<div class="feature-info">
-					<h4>What actually runs here</h4>
+					<h4>What runs here</h4>
 					<div class="action-categories">
 						<div class="category">
-							<h5 class="category-title category-title--real">Wired — genuinely applied</h5>
+							<h5 class="category-title category-title--real">Wired: applied</h5>
 							<ul class="action-list action-list--real">
 								<li>Extract to variable</li>
 								<li>Extract to function</li>
@@ -1017,10 +1020,10 @@ function renderInvoice(order) {
 							</ul>
 						</div>
 						<div class="category">
-							<h5 class="category-title category-title--preview">Preview only — not wired</h5>
+							<h5 class="category-title category-title--preview">Preview only: not wired</h5>
 							<ul class="action-list action-list--preview">
-								<li>Rename symbol — needs project-wide resolution</li>
-								<li>Fix all problems — needs live diagnostics</li>
+								<li>Rename symbol: needs project-wide resolution</li>
+								<li>Fix all problems: needs live diagnostics</li>
 								<li>Add semicolon / remove unused</li>
 								<li>Convert to arrow, generate JSDoc</li>
 							</ul>
@@ -1028,8 +1031,8 @@ function renderInvoice(order) {
 					</div>
 					<p class="qa-honesty">
 						Wired actions apply a real, single-undo edit and refuse (amber) when the selection isn't
-						safe. Preview-only items show the menu surface but don't modify code in this build —
-						they say so when chosen rather than faking success.
+						safe. Preview-only items show the menu surface but don't modify code in this build, they
+						say so when chosen rather than faking success.
 					</p>
 				</div>
 			</div>
@@ -1211,8 +1214,8 @@ function renderInvoice(order) {
 					<h4>What It Shows</h4>
 					<p>
 						The <code>return &#123;</code> object on line 3 is never closed. The healer marks the
-						break and floats a glowing ghost <code>&#125;</code> where it expects the structure to recover
-						— so you see the missing brace before the document drifts further.
+						break and floats a glowing ghost <code>&#125;</code> where it expects the structure to recover,
+						so you see the missing brace before the document drifts further.
 					</p>
 				</div>
 			</div>
@@ -1325,7 +1328,7 @@ function renderInvoice(order) {
 		background: color-mix(in srgb, var(--ide-interactive) 14%, transparent);
 	}
 
-	/* Section: a flat grouping container — the DemoExhibit (and each panel's own
+	/* Section: a flat grouping container, the DemoExhibit (and each panel's own
 	   inner cards) supply the only frame, so the wrapper stays frameless to avoid
 	   a card-on-card double frame. */
 	.demo-section {
@@ -1543,7 +1546,7 @@ function renderInvoice(order) {
 	.line-num {
 		/* width == gutterWidth (50). box-sizing is border-box, so line-content
 		   starts exactly where the editor overlays (echo lane, complexity layer)
-		   are anchored — otherwise the lane leaves a leading-glyph seam. */
+		   are anchored, otherwise the lane leaves a leading-glyph seam. */
 		width: 50px;
 		padding-right: 8px;
 		text-align: right;
@@ -1909,8 +1912,8 @@ function renderInvoice(order) {
 	   inferred brace at opacity 0.5 in the confidence color, which on this dark
 	   panel sits too close to real glyphs to read as a suggestion. Lift the
 	   resting opacity and add an accent glow so the ghost brace announces itself
-	   at a glance. (The component still owns the deeper fix — anchoring the
-	   marker on the unclosed line — tracked as a component change.) */
+	   at a glance. (The component still owns the deeper fix, anchoring the
+	   marker on the unclosed line, tracked as a component change.) */
 	.overlay-editor :global(.ghost-bracket__char) {
 		opacity: 0.92;
 		font-weight: 700;
@@ -1921,7 +1924,7 @@ function renderInvoice(order) {
 	   The component ships position:fixed (bottom/right:16px), which leaves the
 	   "~ N echos" chip clinging to the section's outer right edge, detached from
 	   the editor it reports on. Pin it to the overlay editor's top-right corner
-	   so it reads like the Context Lens / Ghost markers — a status chip bound to
+	   so it reads like the Context Lens / Ghost markers, a status chip bound to
 	   its surface. (.overlay-editor is position:relative.) */
 	.overlay-editor :global(.echo-mode-indicator) {
 		position: absolute;

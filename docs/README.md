@@ -1,6 +1,6 @@
-# @nocturnium/svelte-ide — Documentation
+# @nocturnium/svelte-ide, Documentation
 
-`@nocturnium/svelte-ide` is a Svelte 5-native code editor component library with **zero required runtime dependencies beyond the Svelte 5 peer**. It ships a custom editor (no CodeMirror) with syntax highlighting for 31 languages, code folding, multi-cursor editing, and find & replace, plus optional layers for LSP, real-time CRDT collaboration, AI panels, a virtual filesystem, and a proposal-based plugin system. Styling is plain CSS custom properties — no CSS framework required — and the only other runtime dependency is the optional Yjs collaboration stack, pulled in only if you use the realtime-collaboration components. This page is the navigational hub for the docs — start with **Getting started**, then dig into the guides and API reference below.
+`@nocturnium/svelte-ide` is a Svelte 5-native code editor component library with **zero required runtime dependencies beyond the Svelte 5 peer**. It ships a custom editor (no CodeMirror) with syntax highlighting for 31 languages, code folding, multi-cursor editing, and find & replace, plus optional layers for LSP, real-time CRDT collaboration, AI panels, a virtual filesystem, and a proposal-based plugin system. Styling is plain CSS custom properties, no CSS framework required, and the only other runtime dependency is the optional Yjs collaboration stack, pulled in only if you use the realtime-collaboration components. This page is the navigational hub for the docs, start with **Getting started**, then dig into the guides and API reference below.
 
 ```bash
 npm install @nocturnium/svelte-ide
@@ -17,7 +17,7 @@ npm install @nocturnium/svelte-ide
 <CustomEditor content={code} language="javascript" onChange={(next) => (code = next)} />
 ```
 
-> Components are unstyled until you import the shipped theme. Load `@nocturnium/svelte-ide/theme.css` once at your app root, then override its CSS custom properties to retheme — see [Theming](theming.md).
+> Components are unstyled until you import the shipped theme. Load `@nocturnium/svelte-ide/theme.css` once at your app root, then override its CSS custom properties to retheme, see [Theming](theming.md).
 
 ## Getting started
 
@@ -27,23 +27,23 @@ npm install @nocturnium/svelte-ide
 
 ## Architecture & theming
 
-| Doc                             | Description                                                                                          |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [Architecture](architecture.md) | System overview and module map — how the editor, stores, services, and optional layers fit together. |
-| [Theming](theming.md)           | Design tokens (`--ide-*` / `--color-nocturnium-*` CSS custom properties) and how to customize them.  |
+| Doc                             | Description                                                                                         |
+| ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [Architecture](architecture.md) | System overview and module map, how the editor, stores, services, and optional layers fit together. |
+| [Theming](theming.md)           | Design tokens (`--ide-*` / `--color-nocturnium-*` CSS custom properties) and how to customize them. |
 
 ## Guides
 
-| Doc                                                  | Description                                                                       |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [Editor](guides/editor.md)                           | The editor components — `Editor`, `CustomEditor`, `EditorPane`, and `EditorTabs`. |
-| [Syntax Highlighting](guides/syntax-highlighting.md) | The built-in tokenizer, supported languages, and token classes.                   |
-| [Code Folding](guides/code-folding.md)               | Folding strategies — bracket, indentation, comment, and region.                   |
-| [Multi-Cursor](guides/multi-cursor.md)               | Multiple cursors and selections.                                                  |
-| [LSP](guides/lsp.md)                                 | `createLSPClient` / `LSPClient` and `<LSPEditor>` over a WebSocket LSP bridge.    |
-| [Collaboration](guides/collaboration.md)             | Real-time CRDT collaboration with Yjs and `<CollaborativeEditor>`.                |
-| [AI & Agents](guides/ai-and-agents.md)               | The `<AIPanel>` component, the `ai` store, and agent presence layers.             |
-| [Plugins](guides/plugins.md)                         | The proposal-based plugin lifecycle and bring-your-own-backend plugin host.       |
+| Doc                                                  | Description                                                                      |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [Editor](guides/editor.md)                           | The editor components, `Editor`, `CustomEditor`, `EditorPane`, and `EditorTabs`. |
+| [Syntax Highlighting](guides/syntax-highlighting.md) | The built-in tokenizer, supported languages, and token classes.                  |
+| [Code Folding](guides/code-folding.md)               | Folding strategies, bracket, indentation, comment, and region.                   |
+| [Multi-Cursor](guides/multi-cursor.md)               | Multiple cursors and selections.                                                 |
+| [LSP](guides/lsp.md)                                 | `createLSPClient` / `LSPClient` and `<LSPEditor>` over a WebSocket LSP bridge.   |
+| [Collaboration](guides/collaboration.md)             | Real-time CRDT collaboration with Yjs and `<CollaborativeEditor>`.               |
+| [AI & Agents](guides/ai-and-agents.md)               | The `<AIPanel>` component, the `ai` store, and agent presence layers.            |
+| [Plugins](guides/plugins.md)                         | The proposal-based plugin lifecycle and bring-your-own-backend plugin host.      |
 
 ## API reference
 
@@ -82,7 +82,7 @@ Available entry points: `.` · `./theme.css` · `./stores` · `./components/edit
 
 ## Backend (separate)
 
-Optional features that need a server bring their own backend — none is bundled with the npm package. The repo includes a standalone Go `lsp-bridge` WebSocket server under [`backend/`](../backend) for LSP, and the [LSP guide](guides/lsp.md) covers how to connect to it (or any LSP-over-WebSocket server).
+Optional features that need a server bring their own backend, none is bundled with the npm package. The repo includes a standalone Go `lsp-bridge` WebSocket server under [`backend/`](../backend) for LSP, and the [LSP guide](guides/lsp.md) covers how to connect to it (or any LSP-over-WebSocket server).
 
 ---
 

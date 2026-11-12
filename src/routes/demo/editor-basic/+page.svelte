@@ -6,10 +6,10 @@
 </script>
 
 <DemoPage
-	eyebrow="Stable editor harness"
+	eyebrow="Stable editor example"
 	title="Basic Code Editor"
 	docTitle="Basic Editor Demo"
-	description="A standalone CustomEditor with line numbers and per-language syntax highlighting — switch languages to watch the tokenizer repaint, then open the Code tab to see exactly how it's wired."
+	description="A standalone CustomEditor with line numbers and per-language syntax highlighting, switch languages to watch the tokenizer repaint, then open the Code tab to see exactly how it's wired."
 >
 	<DemoExhibit code={exampleSource} language="svelte" filename="Example.svelte">
 		<Example />

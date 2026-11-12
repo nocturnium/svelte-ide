@@ -8,7 +8,7 @@
 <DemoPage
 	eyebrow="Core layout"
 	title="Resizable Panes"
-	description="Drag the handles between panels to resize — the edge follows your cursor live and content fades to hide reflow. Open the Code tab for the ResizeHandle wiring."
+	description="Drag the handles between panels to resize, the edge follows your cursor live and content fades to hide reflow. Open the Code tab for the ResizeHandle wiring."
 >
 	<p class="touch-note" role="note">
 		Tip: resize handles are drag-driven. On a touch device, view this demo on a wider screen to drag

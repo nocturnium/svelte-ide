@@ -1,11 +1,11 @@
 <script lang="ts">
 	/**
-	 * DemoPage — the shared template every prose/demo route renders inside.
+	 * DemoPage, the shared template every prose/demo route renders inside.
 	 *
 	 * Owns the one canonical page head (left-aligned eyebrow → H1 → description) so
 	 * sibling demos can't drift in alignment or depth, and sets the document
 	 * `<title>` declaratively (on load, not after interaction). Full-bleed app-shell
-	 * routes (the editor / playground) do NOT use this — they render their own chrome.
+	 * routes (the editor / playground) do NOT use this, they render their own chrome.
 	 */
 	import type { Snippet } from 'svelte';
 	import Seo from '../../_components/Seo.svelte';

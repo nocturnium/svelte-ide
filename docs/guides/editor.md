@@ -1,6 +1,6 @@
 # Editor Guide
 
-The editor is the heart of `@nocturnium/svelte-ide`: a custom-built, zero-dependency code editor for Svelte 5 with its own tokenizer, code folding, and multi-cursor editing — no CodeMirror, no Monaco. This guide covers the two component layers you will actually use (`Editor` and `CustomEditor`), every prop and callback they expose, controlled-vs-uncontrolled patterns with runes, the multi-file `EditorPane` / `EditorTabs` components, and the low-level `editor-core` utilities (`createEditorState`, `createNavigation`, `createKeyboardHandler`, `createDefaultKeybindings`) for when you need to drive an editing surface yourself.
+The editor is the main component of `@nocturnium/svelte-ide`: a custom-built, zero-dependency code editor for Svelte 5 with its own tokenizer, code folding, and multi-cursor editing, no CodeMirror, no Monaco. This guide covers the two component layers you will use (`Editor` and `CustomEditor`), every prop and callback they expose, controlled-vs-uncontrolled patterns with runes, the multi-file `EditorPane` / `EditorTabs` components, and the low-level `editor-core` utilities (`createEditorState`, `createNavigation`, `createKeyboardHandler`, `createDefaultKeybindings`) for when you need to drive an editing surface yourself.
 
 > Components ship **unstyled**. Import the theme once in your app root so the design tokens resolve:
 >
@@ -22,7 +22,7 @@ There are two components, and the distinction matters:
 | Surface area | Small, curated prop set                      | Every feature flag                                                                                                |
 | Use when     | You want a code editor and sensible defaults | You need folding flags, multi-cursor limits, complexity highlighting, AI-presence layers, or per-cursor callbacks |
 
-`Editor` simply wraps `CustomEditor`, forwarding `content`, `language`, `readonly`, `preferences`, `onChange`, `onCursorChange`, and `onSave`, and applying the `.ide-editor` container. It is the recommended entry point — start here and reach for `CustomEditor` only when you need a prop that `Editor` does not surface.
+`Editor` simply wraps `CustomEditor`, forwarding `content`, `language`, `readonly`, `preferences`, `onChange`, `onCursorChange`, and `onSave`, and applying the `.ide-editor` container. It is the recommended entry point, start here and reach for `CustomEditor` only when you need a prop that `Editor` does not surface.
 
 Both are exported from the package root and from the `./components/editor` subpath:
 
@@ -50,7 +50,7 @@ These are the exact props from the `Editor` component's `Props` interface:
 
 | Prop                 | Type                                     | Default       | Description                                                                                                                                                           |
 | -------------------- | ---------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`            | `string`                                 | — (required)  | Document text to display.                                                                                                                                             |
+| `content`            | `string`                                 | required      | Document text to display.                                                                                                                                             |
 | `language`           | `string`                                 | `"plaintext"` | Language id for syntax highlighting (e.g. `"typescript"`, `"python"`, `"go"`, `"svelte"`). See [Syntax highlighting](./syntax-highlighting.md) for the supported set. |
 | `readonly`           | `boolean`                                | `false`       | Disables editing; navigation/selection keybindings still work.                                                                                                        |
 | `preferences`        | `Partial<EditorPreferences>`             | `{}`          | Per-instance overrides for font, tabs, word wrap, line numbers, etc. See [Editor preferences](#editor-preferences).                                                   |
@@ -60,12 +60,12 @@ These are the exact props from the `Editor` component's `Props` interface:
 | `maxCursors`         | `number`                                 | `100`         | Upper bound on simultaneous cursors.                                                                                                                                  |
 | `aiAgents`           | `AIAwareness[]`                          | `[]`          | AI agents to visualize. See [Ghost Pair](./ai-and-agents.md#ghost-pair-agents-in-the-editor).                                                                         |
 | `showAILabels`       | `boolean`                                | `true`        | Show the name label beside each AI cursor.                                                                                                                            |
-| `showAIFocusRegions` | `boolean`                                | `false`       | Shade the region an agent is focused on. Off by default — you must opt in.                                                                                            |
-| `onChange`           | `(content: string) => void`              | —             | Fired (debounced) whenever the document text changes.                                                                                                                 |
-| `onCursorChange`     | `(line: number, column: number) => void` | —             | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                         |
-| `onSave`             | `() => void`                             | —             | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself — this is your hook to write the buffer wherever it belongs.  |
+| `showAIFocusRegions` | `boolean`                                | `false`       | Shade the region an agent is focused on. Off by default, you must opt in.                                                                                             |
+| `onChange`           | `(content: string) => void`              | none          | Fired (debounced) whenever the document text changes.                                                                                                                 |
+| `onCursorChange`     | `(line: number, column: number) => void` | none          | Fired when the primary cursor moves. `line`/`column` are reported as the editor exposes them.                                                                         |
+| `onSave`             | `() => void`                             | none          | Fired when the save keybinding (Ctrl/Cmd+S) is pressed. The editor does **not** persist anything itself, this is your hook to write the buffer wherever it belongs.   |
 
-There are no Svelte `createEventDispatcher` events on these components — all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
+There are no Svelte `createEventDispatcher` events on these components, all interaction is through the callback props above. This is the idiomatic Svelte 5 pattern (callback props instead of `on:` events).
 
 ---
 
@@ -73,25 +73,25 @@ There are no Svelte `createEventDispatcher` events on these components — all i
 
 `CustomEditor` is a superset of `Editor`. It accepts everything `Editor` does **plus** the following feature flags and extra callbacks (defaults shown are the component's own defaults):
 
-| Prop                     | Type                                           | Default | Description                                                                                                         |
-| ------------------------ | ---------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `folding`                | `boolean`                                      | `true`  | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md).  |
-| `multiCursor`            | `boolean`                                      | `true`  | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md).                                                |
-| `maxCursors`             | `number`                                       | `100`   | Upper bound on simultaneous cursors.                                                                                |
-| `complexityHighlighting` | `boolean`                                      | `false` | Highlights high-complexity regions inline.                                                                          |
-| `complexityThreshold`    | `number`                                       | `5`     | Lowest raw Cognitive Complexity that gets a mark. Not the deprecated 0-100 score — 5/10/15 are the band boundaries. |
-| `complexityProvider`     | `ComplexityProvider`                           | —       | Optional pluggable analysis; refines the built-in reading. See below.                                               |
-| `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize. See [Ghost Pair](./ai-and-agents.md#ghost-pair-agents-in-the-editor).                       |
-| `showAILabels`           | `boolean`                                      | `true`  | Show name labels next to AI cursors.                                                                                |
-| `showAIFocusRegions`     | `boolean`                                      | `false` | Shade the region an AI agent is focused on. Off by default — you must opt in.                                       |
-| `remoteCursors`          | `RemoteCursor[]`                               | `[]`    | Other collaborators' carets, name flags and selections. See [Collaboration](./collaboration.md).                    |
-| `showRemoteCursorLabels` | `boolean`                                      | `true`  | Show the name flag above each remote caret.                                                                         |
-| `onCursorsChange`        | `(cursors: readonly Cursor[]) => void`         | —       | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`.   |
-| `onComplexityChange`     | `(metrics: ComplexityMetrics \| null) => void` | —       | Fired when computed complexity metrics change.                                                                      |
+| Prop                     | Type                                           | Default | Description                                                                                                        |
+| ------------------------ | ---------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `folding`                | `boolean`                                      | `true`  | Enables code folding (bracket / indentation / comment / region strategies). See [Code folding](./code-folding.md). |
+| `multiCursor`            | `boolean`                                      | `true`  | Enables multi-cursor editing. See [Multi-cursor](./multi-cursor.md).                                               |
+| `maxCursors`             | `number`                                       | `100`   | Upper bound on simultaneous cursors.                                                                               |
+| `complexityHighlighting` | `boolean`                                      | `false` | Highlights high-complexity regions inline.                                                                         |
+| `complexityThreshold`    | `number`                                       | `5`     | Lowest raw Cognitive Complexity that gets a mark. Not the deprecated 0-100 score, 5/10/15 are the band boundaries. |
+| `complexityProvider`     | `ComplexityProvider`                           | none    | Optional pluggable analysis; refines the built-in reading. See below.                                              |
+| `aiAgents`               | `AIAwareness[]`                                | `[]`    | AI agents to visualize. See [Ghost Pair](./ai-and-agents.md#ghost-pair-agents-in-the-editor).                      |
+| `showAILabels`           | `boolean`                                      | `true`  | Show name labels next to AI cursors.                                                                               |
+| `showAIFocusRegions`     | `boolean`                                      | `false` | Shade the region an AI agent is focused on. Off by default, you must opt in.                                       |
+| `remoteCursors`          | `RemoteCursor[]`                               | `[]`    | Other collaborators' carets, name flags and selections. See [Collaboration](./collaboration.md).                   |
+| `showRemoteCursorLabels` | `boolean`                                      | `true`  | Show the name flag above each remote caret.                                                                        |
+| `onCursorsChange`        | `(cursors: readonly Cursor[]) => void`         | none    | Fired when the **set** of cursors changes (multi-cursor aware), complementing the single-cursor `onCursorChange`.  |
+| `onComplexityChange`     | `(metrics: ComplexityMetrics \| null) => void` | none    | Fired when computed complexity metrics change.                                                                     |
 
 > `ComplexityMetrics` **is** re-exported from the package root, along with
 > `ComplexityRegion`, `ComplexityContribution` and the rest of the complexity
-> surface. `AIAwareness` and `RemoteCursor` are not — pull those from the editor
+> surface. `AIAwareness` and `RemoteCursor` are not, pull those from the editor
 > subpath: `import type { AIAwareness, RemoteCursor } from "@nocturnium/svelte-ide/components/editor"`.
 
 Reach for `CustomEditor` directly when you want, for example, to cap cursors, disable folding, or wire up AI presence:
@@ -189,7 +189,7 @@ The constant is exported as `DEFAULT_EDITOR_PREFERENCES` if you want to start fr
 </div>
 ```
 
-The `EditorPreferences` **type** is available from the package root and from the `./types` subpath. The runtime constant `DEFAULT_EDITOR_PREFERENCES` is a value, so import it from the `./types` subpath (`@nocturnium/svelte-ide/types`) as shown above — the package root re-exports editor types only, not this value. See [Types and utils](../api/types-and-utils.md).
+The `EditorPreferences` **type** is available from the package root and from the `./types` subpath. The runtime constant `DEFAULT_EDITOR_PREFERENCES` is a value, so import it from the `./types` subpath (`@nocturnium/svelte-ide/types`) as shown above, the package root re-exports editor types only, not this value. See [Types and utils](../api/types-and-utils.md).
 
 ---
 
@@ -199,7 +199,7 @@ The editor maintains its own internal document state, so you get to choose how t
 
 ### Controlled
 
-You hold the source of truth in `$state` and write back to it inside `onChange`. The `content` prop reflects your state; your state reflects user edits. This is the right default — it keeps your model authoritative and lets you transform, validate, or persist on every change.
+You hold the source of truth in `$state` and write back to it inside `onChange`. The `content` prop reflects your state; your state reflects user edits. This is the right default, it keeps your model authoritative and lets you transform, validate, or persist on every change.
 
 ```svelte
 <script lang="ts">
@@ -280,8 +280,8 @@ For a multi-file experience, the library ships a tab-aware pair backed by the ed
 | `maxCursors`         | `number`                                           | `100`   | Forwarded.                                                                                                                     |
 | `aiAgents`           | `AIAwareness[]`                                    | `[]`    | Forwarded. See [Ghost Pair](./ai-and-agents.md#ghost-pair-agents-in-the-editor).                                               |
 | `showAILabels`       | `boolean`                                          | `true`  | Forwarded.                                                                                                                     |
-| `showAIFocusRegions` | `boolean`                                          | `false` | Forwarded. Off by default — you must opt in.                                                                                   |
-| `onSave`             | `(path: string, content: string) => Promise<void>` | —       | Called with the active tab's path and content when Ctrl/Cmd+S fires. The pane marks the tab clean after your promise resolves. |
+| `showAIFocusRegions` | `boolean`                                          | `false` | Forwarded. Off by default, you must opt in.                                                                                    |
+| `onSave`             | `(path: string, content: string) => Promise<void>` | none    | Called with the active tab's path and content when Ctrl/Cmd+S fires. The pane marks the tab clean after your promise resolves. |
 | `class`              | `string`                                           | `""`    | Extra CSS class on the pane container.                                                                                         |
 
 `EditorPane` already wires content edits and cursor moves back into the store and shows a "No files open" empty state when there are no tabs. A tab whose `aiEditing` flag is set is rendered read-only.
@@ -312,11 +312,11 @@ Open files through the store and the pane updates itself:
 
 The editor store actions you will use most (all exported from `@nocturnium/svelte-ide/stores`):
 
-- `openFile(path, content, options?)` — open or focus a tab. `options` is `{ language?: string; focus?: boolean }`. Returns the tab id; language is auto-detected from the filename when omitted.
-- `setActiveTab(tabId)` / `nextTab()` / `prevTab()` — switch the focused tab.
-- `closeTab(tabId)` / `closeOtherTabs(keepTabId)` / `closeAllTabs()` — close tabs (dirty tabs are protected; `forceCloseTab` skips that check).
-- `updateContent(tabId, content)` / `markSaved(tabId, newContent?)` — mutate buffer / clear the dirty flag.
-- `updatePreferences(updates)` / `resetPreferences()` — global preference state.
+- `openFile(path, content, options?)`: open or focus a tab. `options` is `{ language?: string; focus?: boolean }`. Returns the tab id; language is auto-detected from the filename when omitted.
+- `setActiveTab(tabId)` / `nextTab()` / `prevTab()`, switch the focused tab.
+- `closeTab(tabId)` / `closeOtherTabs(keepTabId)` / `closeAllTabs()`, close tabs (dirty tabs are protected; `forceCloseTab` skips that check).
+- `updateContent(tabId, content)` / `markSaved(tabId, newContent?)`, mutate buffer / clear the dirty flag.
+- `updatePreferences(updates)` / `resetPreferences()`, global preference state.
 
 > The cursor-update action is exported under a renamed alias (`updateEditorCursor`) to avoid clashing with the collaboration and agent stores; the same is true of a few other names (e.g. `editorError`, `setEditorError`). `EditorPane` calls these internally, so you rarely need them directly.
 
@@ -338,16 +338,16 @@ See [Stores reference](../api/stores.md) for the full editor-store API.
 
 ### `EditorTabs`
 
-`EditorTabs` is the presentational tab strip. Unlike `EditorPane`, it is fully **prop-driven** — pass it the tab list and callbacks, and it owns no store coupling. Useful when you maintain tab state yourself or want the tab UI without the editor body.
+`EditorTabs` is the presentational tab strip. Unlike `EditorPane`, it is fully **prop-driven**, pass it the tab list and callbacks, and it owns no store coupling. Useful when you maintain tab state yourself or want the tab UI without the editor body.
 
-| Prop            | Type                                         | Default      | Description                                           |
-| --------------- | -------------------------------------------- | ------------ | ----------------------------------------------------- |
-| `tabs`          | `EditorTab[]`                                | — (required) | Tabs to render.                                       |
-| `activeTabId`   | `string \| null`                             | — (required) | Id of the active tab.                                 |
-| `onSelect`      | `(tabId: string) => void`                    | — (required) | Called when a tab is clicked / activated by keyboard. |
-| `onClose`       | `(tabId: string) => void`                    | — (required) | Called when a tab's close button is clicked.          |
-| `onContextMenu` | `(tabId: string, event: MouseEvent) => void` | —            | Optional right-click handler.                         |
-| `class`         | `string`                                     | `""`         | Extra CSS class.                                      |
+| Prop            | Type                                         | Default  | Description                                           |
+| --------------- | -------------------------------------------- | -------- | ----------------------------------------------------- |
+| `tabs`          | `EditorTab[]`                                | required | Tabs to render.                                       |
+| `activeTabId`   | `string \| null`                             | required | Id of the active tab.                                 |
+| `onSelect`      | `(tabId: string) => void`                    | required | Called when a tab is clicked / activated by keyboard. |
+| `onClose`       | `(tabId: string) => void`                    | required | Called when a tab's close button is clicked.          |
+| `onContextMenu` | `(tabId: string, event: MouseEvent) => void` | none     | Optional right-click handler.                         |
+| `class`         | `string`                                     | `""`     | Extra CSS class.                                      |
 
 Each tab renders a `FileIcon`, the name (italicized when `isDirty`), a dirty dot, a sparkles indicator when `aiEditing` is set, and a close button.
 
@@ -422,13 +422,13 @@ A file tree (`FileExplorer`) and a per-extension icon (`FileIcon`) round out a t
 </div>
 ```
 
-`FileExplorer` also accepts lock/agent/status maps (`lockStatuses`, `agentsByFile`, `fileStatuses`) for collaborative scenarios — see the [VFS](../api/services.md) and [collaboration](./collaboration.md) docs.
+`FileExplorer` also accepts lock/agent/status maps (`lockStatuses`, `agentsByFile`, `fileStatuses`) for collaborative scenarios, see the [VFS](../api/services.md) and [collaboration](./collaboration.md) docs.
 
 ---
 
 ## Editor-core utilities
 
-Everything above is built on a headless core under `./components/editor/core`, re-exported from the package root. Use it directly when you are building a bespoke editing surface, embedding the model in a non-standard view, or writing tools/tests against editor state. These are plain TypeScript classes and factories — no Svelte required.
+Everything above is built on a headless core under `./components/editor/core`, re-exported from the package root. Use it directly when you are building a bespoke editing surface, embedding the model in a non-standard view, or writing tools/tests against editor state. These are plain TypeScript classes and factories, no Svelte required.
 
 The four factories you will reach for:
 
@@ -452,7 +452,7 @@ import type {
 
 ### `createEditorState(config?)`
 
-Creates the document model — content, cursors, selections, and undo/redo history. It is multi-cursor aware and merges overlapping cursors automatically.
+Creates the document model, content, cursors, selections, and undo/redo history. It is multi-cursor aware and merges overlapping cursors automatically.
 
 ```ts
 const state = createEditorState({
@@ -474,7 +474,7 @@ state.redo();
 
 ### `createNavigation(state)`
 
-Wraps an `EditorState` with cursor movement. Every movement method takes an optional `extend` boolean — pass `true` to extend the selection instead of collapsing it.
+Wraps an `EditorState` with cursor movement. Every movement method takes an optional `extend` boolean, pass `true` to extend the selection instead of collapsing it.
 
 ```ts
 const nav = createNavigation(state);
@@ -547,25 +547,25 @@ interface Keybinding {
 
 > Modifier matching treats Cmd (meta) on macOS as Ctrl, so a binding with `{ ctrl: true }` fires on Ctrl (Windows/Linux) and Cmd (macOS) alike. Returning `false` from a `handler` signals "not handled" and lets the original key event proceed.
 
-Beyond these four, the `core` barrel also exports utilities for folding (`createFoldManager`), search, multi-cursor management, CRDT binding (`createCRDTBinding`), and more — covered in [Code folding](./code-folding.md), [Multi-cursor](./multi-cursor.md), and [Collaboration](./collaboration.md).
+Beyond these four, the `core` barrel also exports utilities for folding (`createFoldManager`), search, multi-cursor management, CRDT binding (`createCRDTBinding`), and more, covered in [Code folding](./code-folding.md), [Multi-cursor](./multi-cursor.md), and [Collaboration](./collaboration.md).
 
 ---
 
 ## Related guides
 
-- [Getting started](../getting-started.md) — install, theme, and your first editor.
-- [Syntax highlighting](./syntax-highlighting.md) — the tokenizer, supported languages, and token classes.
-- [Code folding](./code-folding.md) — folding strategies and the fold manager.
-- [Multi-cursor](./multi-cursor.md) — multi-cursor editing and selections.
-- [LSP](./lsp.md) — `LSPEditor` and connecting to an LSP-over-WebSocket bridge.
-- [Collaboration](./collaboration.md) — CRDT / Yjs realtime editing with `CollaborativeEditor`.
-- [AI and agents](./ai-and-agents.md) — AI presence layers and the AI panel.
+- [Getting started](../getting-started.md): install, theme, and your first editor.
+- [Syntax highlighting](./syntax-highlighting.md): the tokenizer, supported languages, and token classes.
+- [Code folding](./code-folding.md): folding strategies and the fold manager.
+- [Multi-cursor](./multi-cursor.md): multi-cursor editing and selections.
+- [LSP](./lsp.md): `LSPEditor` and connecting to an LSP-over-WebSocket bridge.
+- [Collaboration](./collaboration.md): CRDT / Yjs realtime editing with `CollaborativeEditor`.
+- [AI and agents](./ai-and-agents.md): AI presence layers and the AI panel.
 - API reference: [Components](../api/components.md) · [Stores](../api/stores.md) · [Types and utils](../api/types-and-utils.md).
 
 ## Cognitive complexity
 
 The editor measures [SonarSource Cognitive
-Complexity](https://www.sonarsource.com/docs/CognitiveComplexity.pdf) — how hard
+Complexity](https://www.sonarsource.com/docs/CognitiveComplexity.pdf), how hard
 code is to hold in your head, not how many paths it has. Higher is worse, the
 number is unbounded, and `15` is SonarSource's published threshold for a function
 that has grown too complex to keep.
@@ -593,7 +593,7 @@ parser, and it is worth being precise about how far the verification reaches,
 because a single number would flatter it:
 
 - The tokenizer knows **31** languages plus plaintext. Cognitive Complexity has dedicated rules
-  for **four** of them — JavaScript, TypeScript, Python and Go. Every other
+  for **four** of them, JavaScript, TypeScript, Python and Go. Every other
   language is scored with the **JavaScript** rules.
 - Only **JavaScript and TypeScript** are pinned exactly. A differential harness
   runs an independent AST oracle over a shared corpus on every build, and the
@@ -603,7 +603,7 @@ because a single number would flatter it:
   the original. The oracle never sees the Go or Python source, so these are
   measured against the same independent reference as JavaScript rather than
   against the scanner's own output. They also carry targeted cases for shapes
-  that were found wrong and fixed — Go region detection around `interface{}` /
+  that were found wrong and fixed, Go region detection around `interface{}` /
   `struct{}` and generics, Python `match` and `lambda`. Broad, not exhaustive:
   constructs with no JavaScript equivalent are not covered this way.
 - The remaining **28** are unverified. On a language whose syntax diverges from
@@ -629,7 +629,7 @@ const provider = createOpenAICompatibleComplexityProvider({
 });
 ```
 
-Anything that turns a string into a string works — a language server, your own
+Anything that turns a string into a string works, a language server, your own
 AST pass, a queue:
 
 ```ts
@@ -657,7 +657,7 @@ built on `fetch` alone; there is no default endpoint and no default key, and no
 code leaves the machine unless you wire it to. The package keeps zero runtime
 dependencies either way.
 
-Replies are validated, never trusted — malformed JSON, negative or fractional
+Replies are validated, never trusted, malformed JSON, negative or fractional
 scores, and out-of-range line spans are refused, and the provider declines rather
 than render them. `metrics.source` tells you which reading you are looking at
 (`'builtin'` or `'provider'`) and `metrics.sourceName` carries the model or tool
@@ -669,7 +669,7 @@ instruction sent to a model.
 ### Measured: do not use an LLM for this particular metric
 
 The seam was validated against a local llama.cpp OpenAI-compatible proxy across
-77 models. The honest result is that a language model is the **wrong tool for
+77 models. The result is that a language model is the **wrong tool for
 Cognitive Complexity**, and the numbers are worth stating plainly:
 
 |                      | exact       | declined | latency |
@@ -686,22 +686,22 @@ Worse than the accuracy is the stability. Asked the same function three times at
 A metric that changes when nothing changed is not a metric.
 
 This is not really a surprise in hindsight. Cognitive Complexity is mechanical
-counting over a syntax tree — precisely what a parser is good at and a language
+counting over a syntax tree, precisely what a parser is good at and a language
 model is bad at. The failure mode is also the dangerous one: the faster model
 never declined, so it produced confidently wrong numbers rather than admitting
 it did not know.
 
 **So use this seam to plug in a parser**, not a model: tree-sitter, a language
 server, or your own AST pass. That is where the accuracy the built-in scanner
-cannot reach on its 28 unverified languages actually lives. The chat transports
-remain because the seam is generic and the plumbing is useful — but if you wire
+cannot reach on its 28 unverified languages lives. The chat transports
+remain because the seam is generic and the plumbing is useful, but if you wire
 one up for complexity scoring, measure it against a reference before you trust
 a number it produces.
 
 ### The rules, for any parser
 
 Parsing is a solved problem with a dozen good libraries. Implementing Campbell's
-rules correctly is not — it took this repository four review rounds and a
+rules correctly is not, it took this repository four review rounds and a
 differential harness to get the token scanner there, and every defect found was
 in the rules, not the parsing. So the rules ship here, and you bring the tree.
 
@@ -728,10 +728,10 @@ const provider = createAstComplexityProvider({
 });
 ```
 
-`createEstreeAdapter` covers anything emitting ESTree — acorn, espree, meriyah,
-`@typescript-eslint/parser` — so JS, JSX, TS and TSX. For a parser with its own
+`createEstreeAdapter` covers anything emitting ESTree, acorn, espree, meriyah,
+`@typescript-eslint/parser`, so JS, JSX, TS and TSX. For a parser with its own
 node shapes, write your own. The one below is a working sketch rather than a
-tested adapter — the node type names are grammar-specific, and you should check
+tested adapter, the node type names are grammar-specific, and you should check
 each against the grammar you install:
 
 ```ts
@@ -793,7 +793,7 @@ The parser is always **your** dependency. This package still installs nothing.
 If `bodyOf` names a node that is not among that node's own `childrenOf`, the
 walker raises `ComplexityAdapterError` rather than continuing. It has to match the
 two to decide what raises nesting, and continuing means silently dropping the
-nesting penalty — the difference between this metric and a cyclomatic count —
+nesting penalty, the difference between this metric and a cyclomatic count,
 and reporting a smaller, entirely believable number. Measured on one tree with
 nothing but object identity changed: **10 with stable nodes, 4 without**. Through
 a provider the throw is harmless (the editor keeps its built-in reading); called
@@ -808,21 +808,21 @@ bugs caught by the sweep below rather than by reasoning:
 - `bodyOf` names which child raises nesting. A loop's init clause and an `if`'s
   condition are not the body, so a ternary in either is not charged for depth it
   does not create. It is required rather than optional precisely because the
-  default — nesting everything — is wrong in a way nothing would tell you.
+  default, nesting everything, is wrong in a way nothing would tell you.
 - `mergedIncrementOf` covers a node that is two things at once. ESTree has no
-  `else` node, so `else while (x) {}` is a loop sitting in the `alternate` slot —
+  `else` node, so `else while (x) {}` is a loop sitting in the `alternate` slot,
   it must score as both, and at the same depth as `else { while (x) {} }`, because
   adding braces must never change the number.
 
-You can also use the rules outside an editor entirely — a CI gate, a report, a
-pre-commit hook — with `astComplexityMetrics(tree, adapter)`.
+You can also use the rules outside an editor entirely, a CI gate, a report, a
+pre-commit hook, with `astComplexityMetrics(tree, adapter)`.
 
 #### The breakdown comes with it
 
 `analyzeAstComplexity` returns a `contributions` array beside each score: one
 entry per increment, with its line, kind, increment and nesting depth. The hover
 tooltip renders it, so a parser-backed reading explains itself exactly as fully as
-the built-in one — you get the number **and** the per-line arithmetic that
+the built-in one, you get the number **and** the per-line arithmetic that
 produced it.
 
 If you write a provider by hand rather than from a tree, fill
@@ -838,32 +838,32 @@ import { summarizeContributions, getComplexityContributionLabel } from '@nocturn
 const { maxNesting, incrementCount, total } = summarizeContributions(region.contributions);
 ```
 
-`summarizeContributions` counts only increments that actually scored. A nested
-function contributes `0` — it exists in the list to explain why the lines under it
-cost more — so counting it would report more increments than the score has.
+`summarizeContributions` counts only increments that scored. A nested
+function contributes `0`, it exists in the list to explain why the lines under it
+cost more, so counting it would report more increments than the score has.
 
 #### Decisions this library made
 
 Cognitive Complexity is published as a rule set, not a specification, and a few
 constructs have no citable rule. Where that happens this library made a call, and
-these are the calls — recorded here rather than only at the code site, so you can
+these are the calls, recorded here rather than only at the code site, so you can
 disagree with a specific decision instead of a number.
 
-| Construct                                | Decision                                                                                                      | Basis                                                                                                                                                                                                     |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `\|\|=` / `&&=` / `??=`                  | Score **0**, and cannot start or extend a boolean run.                                                        | Convention. Encoded in the shared corpus, so acorn independently agrees.                                                                                                                                  |
-| A construct in a **parameter default**   | **Is** scored, at the function's **own** nesting level — a default sits at the boundary, not inside the body. | Convention. All three implementations agree; four corpus cases pin it.                                                                                                                                    |
-| An **arrow in a parameter default**      | Still a nested function: raises nesting for its own body.                                                     | Follows from the whitepaper's treatment of nested functions.                                                                                                                                              |
-| Go `type X struct {` / `interface {`     | The keyword before the brace decides whether it opens a body, not the last `)`.                               | Convention, from fixing regions that reported `cc=0`.                                                                                                                                                     |
-| Go `select`                              | **Scored as a `switch`** — one increment plus nesting.                                                        | Convention. It is a multi-way branch a reader must consider case by case.                                                                                                                                 |
-| Python `for...else` / `while...else`     | **Scored**, as an `else`.                                                                                     | Convention. It is the idiomatic Python spelling of the labelled `continue` in the whitepaper's own `sumOfPrimes`; excluding it makes that same algorithm score 6 in Python against a published 7 in Java. |
-| Python comprehension `if`, `case` guards | **Not scored.**                                                                                               | No citable SonarSource rule for either.                                                                                                                                                                   |
+| Construct                                | Decision                                                                                                     | Basis                                                                                                                                                                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `\|\|=` / `&&=` / `??=`                  | Score **0**, and cannot start or extend a boolean run.                                                       | Convention. Encoded in the shared corpus, so acorn independently agrees.                                                                                                                                  |
+| A construct in a **parameter default**   | **Is** scored, at the function's **own** nesting level, a default sits at the boundary, not inside the body. | Convention. All three implementations agree; four corpus cases pin it.                                                                                                                                    |
+| An **arrow in a parameter default**      | Still a nested function: raises nesting for its own body.                                                    | Follows from the whitepaper's treatment of nested functions.                                                                                                                                              |
+| Go `type X struct {` / `interface {`     | The keyword before the brace decides whether it opens a body, not the last `)`.                              | Convention, from fixing regions that reported `cc=0`.                                                                                                                                                     |
+| Go `select`                              | **Scored as a `switch`**, one increment plus nesting.                                                        | Convention. It is a multi-way branch a reader must consider case by case.                                                                                                                                 |
+| Python `for...else` / `while...else`     | **Scored**, as an `else`.                                                                                    | Convention. It is the idiomatic Python spelling of the labelled `continue` in the whitepaper's own `sumOfPrimes`; excluding it makes that same algorithm score 6 in Python against a published 7 in Java. |
+| Python comprehension `if`, `case` guards | **Not scored.**                                                                                              | No citable SonarSource rule for either.                                                                                                                                                                   |
 
 If SonarSource's own plugin scores `||=`, then this library has moved away from
 Sonar and toward its own oracle on that construct. That is a decision, not an
 accident, and it is why it is written down.
 
-The **advice thresholds** behind `region.suggestion` are conventions too — deep
+The **advice thresholds** behind `region.suggestion` are conventions too, deep
 nesting at 3 levels (SonarSource's S134 defaults to a maximum of 3), more than 10
 increments, 3 or more multi-operator conditions, more than 50 lines. They select
 which sentence to show and **change no score**.
@@ -872,7 +872,7 @@ which sentence to show and **change no score**.
 
 The walker is checked against an independent AST implementation of the
 SonarSource rules on a 37-case curated corpus **and on every function in this
-repository** — over 300 comparisons, asserting exact score agreement, on every
+repository**, over 300 comparisons, asserting exact score agreement, on every
 build. Both sides consume the same transpiled JavaScript through the same parser,
 so there is no approximation to forgive and any disagreement is a real
 disagreement about the rules.
@@ -880,14 +880,14 @@ disagreement about the rules.
 That sweep is not decorative. Writing it turned up four genuine defects that
 review had not: recursion judged against the wrong function (a `setTimeout`
 callback calling its enclosing `connect()` is still recursion), an `else` that
-changed score depending on braces, and — in the reference implementation that had
-been gating this feature all along — a blind spot for expression-bodied arrow
+changed score depending on braces, and, in the reference implementation that had
+been gating this feature all along, a blind spot for expression-bodied arrow
 functions, which scored `(a, b) => a && b` as 0.
 
 #### Go and Python, against the same reference
 
 An acorn walk cannot read Go or Python, so those two languages were originally
-asserted only against the scanner's own output — a restatement, not evidence, and
+asserted only against the scanner's own output, a restatement, not evidence, and
 on the two languages with the fewest eyes on them.
 
 A **30-case parity corpus** closes that. Each case is a Go or Python translation
@@ -896,20 +896,20 @@ JavaScript original, and the scanner must reach the same number from source acor
 never parses.
 
 Nine of the 30 score differently if the scanner is told the wrong language, which
-is asserted — so the corpus is known to exercise the language-specific rules
+is asserted, so the corpus is known to exercise the language-specific rules
 (`elif`, Python's `x if c else y`, `try`/`except`, recursion detection,
 nested-function nesting) rather than to coincide with the shared core. The other
 twenty-one still pin the score; they just do not discriminate, because brace- and
 keyword-shaped constructs fall out of the scanner's shared core either way.
 
 Not translated, deliberately: parameter-shaped cases (Go has no defaults and
-Python's differ), and comprehension `if` and `case` guards — there is no citable
+Python's differ), and comprehension `if` and `case` guards, there is no citable
 SonarSource rule for either, so a corpus entry would invent an answer and then
 agree with itself.
 
 Go `select` and Python `for...else` ARE both scored. They were listed here as
 excluded while the code scored them, which is a documentation defect rather than a
-metric one; the decisions table above now records what actually happens and why.
+metric one; the decisions table above now records what happens and why.
 
 ### Building a provider chain
 
@@ -934,7 +934,7 @@ const provider = withComplexityCache(
 `composeComplexityProviders` takes the first provider that answers; one that
 declines or throws is skipped, so a failing network provider cannot mask a
 working local one. `withComplexityCache` keys on content and language, so it is
-always coherent — there is no invalidation to get wrong. `withComplexityTimeout`
+always coherent, there is no invalidation to get wrong. `withComplexityTimeout`
 aborts the inner provider rather than merely ignoring it.
 
 There is deliberately **no retry combinator**. One model averaged 44.7 seconds

@@ -52,7 +52,7 @@
 			selection: { anchor: { line: 8, column: 3 }, head: { line: 8, column: 16 } },
 			lastActivity: new Date()
 		},
-		// Deliberately past the fold. The editor window is 350px — roughly 17 rows —
+		// Deliberately past the fold. The editor window is 350px, roughly 17 rows,
 		// and `getAwareness` is on line 28, so this caret only renders if the remote
 		// cursor layer spans the whole document instead of one viewport. Both other
 		// samples sit in the first screenful, which is why the clipping bug survived
@@ -81,7 +81,7 @@
 	// Live local caret position, driven by the editor's real onCursorChange callback.
 	let localCursor = $state({ line: 1, column: 1 });
 
-	// Connection-status indicators. These are demo controls you can drive below —
+	// Connection-status indicators. These are demo controls you can drive below,
 	// the embedded editor runs standalone (no server), so toggling these simulates
 	// the presence/sync UI rather than reflecting a real socket.
 	let connectionStatus = $state<'disconnected' | 'connecting' | 'connected'>('connected');
@@ -241,15 +241,15 @@ class CollaborationSession {
 	eyebrow="Collaboration & AI"
 	title="Collaboration"
 	docTitle="Real-time Collaboration"
-	description="CRDT-based collaborative editing with Yjs — presence, cursor awareness, and AI sessions, all backed by the real collaboration store."
+	description="CRDT-based collaborative editing with Yjs, presence, cursor awareness, and AI sessions, all backed by the real collaboration store."
 >
 	<!-- Status Bar -->
 	<section class="component-section">
 		<h2>Connection Status</h2>
 		<p class="section-desc">
 			Sync-status indicator components. Drive them with the controls below to see each
-			connection/sync state — the embedded editor runs standalone, so these reflect demo state, not
-			a live socket.
+			connection/sync state, the embedded editor runs standalone, so these reflect demo state, not a
+			live socket.
 		</p>
 
 		<div class="status-demo">
@@ -290,9 +290,9 @@ class CollaborationSession {
 		<h2>Collaborative Editor</h2>
 		<p class="section-desc">
 			The editor is CRDT-backed (Yjs) and exposes a live <code>onCursorChange</code> callback. Other collaborators'
-			carets (Alice, Bob) are rendered right in the editor — coloured, named, and selection-aware — at
-			illustrative sample positions, since this instance runs standalone with no provider. Your own caret
-			position is genuinely live.
+			carets (Alice, Bob) are rendered right in the editor, coloured, named, and selection-aware, at illustrative
+			sample positions, since this instance runs standalone with no provider. Your own caret position
+			is live.
 		</p>
 
 		<DemoExhibit code={editorCode} language="svelte" filename="collaboration.ts" padded={false}>
@@ -389,7 +389,7 @@ class CollaborationSession {
 			<div class="session-changes">
 				{#if sessionChanges.length === 0}
 					<div class="change-item">
-						<span>No pending changes — the session has been closed.</span>
+						<span>No pending changes: the session has been closed.</span>
 					</div>
 				{:else}
 					{#each sessionChanges as change (change.id)}
@@ -485,7 +485,7 @@ import { createSnapshot } from '$lib/stores/collaboration.svelte';
 
 createSnapshot('doc-id', currentDocumentText, 'manual');
 
-// AI collaboration session — pass an AI user; returns the session id
+// AI collaboration session, pass an AI user; returns the session id
 import { startAISession, proposeAIChange } from '$lib/stores/collaboration.svelte';
 
 const sessionId = startAISession('doc-id', {
@@ -670,7 +670,7 @@ proposeAIChange(sessionId, {
 
 	.editor-container {
 		height: 350px;
-		/* No frame of its own — the exhibit is the only window. */
+		/* No frame of its own, the exhibit is the only window. */
 		overflow: hidden;
 	}
 

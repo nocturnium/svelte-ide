@@ -182,7 +182,7 @@
 <DemoPage
 	eyebrow="Core UI"
 	title="Core Components"
-	description="The essential UI primitives — buttons, inputs, badges, and more. Every example pairs the live component with its copy-paste source."
+	description="The essential UI primitives, buttons, inputs, badges, and more. Every example pairs the live component with its copy-paste source."
 >
 	<!-- Button -->
 	<section class="component-section">
@@ -229,7 +229,7 @@
 		</DemoExhibit>
 
 		<div class="playground-block">
-			<h3 class="playground-block__heading">Try it live — edit the props</h3>
+			<h3 class="playground-block__heading">Try it live: edit the props</h3>
 			<p class="playground-block__sub">
 				This editor is the library's own <code>CustomEditor</code>. Change the JSON and the button
 				re-renders instantly.
@@ -345,9 +345,9 @@
 		</DemoExhibit>
 
 		<div class="playground-block">
-			<h3 class="playground-block__heading">Try it live — edit the props</h3>
+			<h3 class="playground-block__heading">Try it live: edit the props</h3>
 			<p class="playground-block__sub">
-				Toggle <code>dot</code>, swap the <code>variant</code>, rename the label — the badge updates
+				Toggle <code>dot</code>, swap the <code>variant</code>, rename the label, the badge updates
 				as you type.
 			</p>
 			<PropsPlayground initial={badgePlayground} usage={badgeUsage} previewMinHeight="120px">
@@ -454,6 +454,7 @@
 			<span class="footer-next__label">Next</span>
 			<span class="footer-next__title">Resizable Panes</span>
 			<span class="footer-next__arrow" aria-hidden="true">&rarr;</span>
+			<!-- copy-scan:ignore decorative -->
 		</a>
 		<a
 			class="footer-source"

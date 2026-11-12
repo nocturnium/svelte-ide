@@ -2,11 +2,11 @@
 	/**
 	 * Live-editable props playground. The visitor edits a JSON props object in the
 	 * library's OWN editor (dogfooding) and the preview re-renders instantly. We edit
-	 * *props*, not arbitrary source — there's no in-browser Svelte compiler — so the
+	 * *props*, not arbitrary source, there's no in-browser Svelte compiler, so the
 	 * input is strict JSON (parsed with JSON.parse, never eval'd) and the last VALID
 	 * value keeps rendering while you mistype.
 	 *
-	 * SCOPE — only for components whose props are JSON-serializable primitives/enums
+	 * SCOPE, only for components whose props are JSON-serializable primitives/enums
 	 * (variant/size, booleans, strings, plain labels). Do NOT wire this onto
 	 * components with event handlers, snippet/function props, or `bind:value`: JSON
 	 * can't express those, so the playground would render a control that silently
@@ -23,7 +23,7 @@
 		preview: Snippet<[T]>;
 		/** Optional: derive a read-only usage snippet from the current props. */
 		usage?: (props: T) => string;
-		/** Fixed height for the editor pane — the editor needs a definite height. */
+		/** Fixed height for the editor pane, the editor needs a definite height. */
 		editorHeight?: string;
 		/** Reserve preview height so there's no layout shift before hydration. */
 		previewMinHeight?: string;
@@ -97,7 +97,7 @@
 			{#if error}
 				⚠ {error}
 			{:else}
-				● Live — edits render instantly
+				● Live: edits render instantly
 			{/if}
 		</p>
 	</div>
@@ -248,7 +248,7 @@
 	}
 
 	/* In the cramped two-column regime the usage line would scroll its closing tag
-	   out of view with no affordance — let it wrap instead of silently truncating. */
+	   out of view with no affordance, let it wrap instead of silently truncating. */
 	@media (max-width: 1000px) {
 		.props-playground__usage code {
 			white-space: pre-wrap;

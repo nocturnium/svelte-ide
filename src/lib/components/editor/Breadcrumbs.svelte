@@ -71,6 +71,7 @@
 	let activeDropdown = $state<string | null>(null);
 	let dropdownPosition = $state({ top: 0, left: 0 });
 	let navEl = $state<HTMLElement | null>(null);
+	let navWidth = $state(0);
 
 	// Keep the current (last) symbol visible when the crumbs still overflow
 	// (for example a very long file name): scroll the list to its end.
@@ -204,6 +205,8 @@
 {#if enabled}
 	<nav
 		class="breadcrumbs"
+		class:breadcrumbs--narrow={navWidth > 0 && navWidth <= 480}
+		bind:clientWidth={navWidth}
 		style={maxWidth ? `max-width: ${maxWidth}px;` : ''}
 		aria-label="Code navigation breadcrumbs"
 		bind:this={navEl}
@@ -300,8 +303,6 @@
 
 <style>
 	.breadcrumbs {
-		/* Lets the narrow-width rules below respond to the bar's own width */
-		container-type: inline-size;
 		display: flex;
 		align-items: center;
 		gap: 2px;
@@ -397,19 +398,19 @@
 		display: none;
 	}
 
-	@container (max-width: 480px) {
-		/* Keep the file and the current symbol; fold the middle into an ellipsis */
-		.breadcrumb-collapsible {
-			display: none;
-		}
+	/* Narrow bar: keep the file and the current symbol; fold the middle into an ellipsis.
+	   Driven by a measured class, not a container query, because container-type
+	   would clip the position: fixed sibling dropdown. */
+	.breadcrumbs--narrow .breadcrumb-collapsible {
+		display: none;
+	}
 
-		.breadcrumb-collapsed-only {
-			display: inline;
-		}
+	.breadcrumbs--narrow .breadcrumb-collapsed-only {
+		display: inline;
+	}
 
-		.breadcrumb-position {
-			display: none;
-		}
+	.breadcrumbs--narrow .breadcrumb-position {
+		display: none;
 	}
 
 	.breadcrumb-position {

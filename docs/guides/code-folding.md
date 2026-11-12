@@ -18,7 +18,7 @@ Folding is enabled by default on `CustomEditor` and `LSPEditor`. Pass `folding={
 
 Once enabled, lines that start a foldable region show a chevron in the gutter. Click it to collapse or expand that region. See [Interacting with folds](#interacting-with-folds) below for the keyboard shortcuts.
 
-> Note: the higher-level `Editor` component (`<Editor>`) is a thin wrapper that does not forward a `folding` prop — it uses the editor's default behavior. To control folding explicitly, use `CustomEditor` (or `LSPEditor`). See the [Editor guide](./editor.md) for the differences between these components.
+> Note: the higher-level `Editor` component (`<Editor>`) is a thin wrapper that does not forward a `folding` prop, it uses the editor's default behavior. To control folding explicitly, use `CustomEditor` (or `LSPEditor`). See the [Editor guide](./editor.md) for the differences between these components.
 
 ## Folding strategies
 
@@ -36,11 +36,11 @@ A few strategies always run regardless of language (region markers and multi-lin
 
 ### Bracket folding
 
-For most languages the editor pairs opening and closing brackets — `{}`, `[]`, and `()` — and creates a fold from the line of the opening bracket to the line of its matching closing bracket. The scanner is aware of:
+For most languages the editor pairs opening and closing brackets, `{}`, `[]`, and `()`, and creates a fold from the line of the opening bracket to the line of its matching closing bracket. The scanner is aware of:
 
-- **Strings** — `"`, `'`, and `` ` `` delimited strings are skipped, with proper backslash-escape handling, so a brace inside a string literal does not open a fold.
-- **Line comments** — everything after `//` on a line is ignored.
-- **Nesting** — a closing bracket only matches if it corresponds to the bracket on top of the stack, so mismatched/unbalanced brackets are ignored rather than producing bad folds.
+- **Strings**: `"`, `'`, and `` ` `` delimited strings are skipped, with proper backslash-escape handling, so a brace inside a string literal does not open a fold.
+- **Line comments**: everything after `//` on a line is ignored.
+- **Nesting**: a closing bracket only matches if it corresponds to the bracket on top of the stack, so mismatched/unbalanced brackets are ignored rather than producing bad folds.
 
 The fold's `level` reflects how deeply nested it is.
 
@@ -48,7 +48,7 @@ The fold's `level` reflects how deeply nested it is.
 
 Pure markup languages (`html`, `xml`, `xhtml`, `svg`) use tag matching instead of simple bracket matching: opening tags are paired with their corresponding closing tags to produce a fold spanning the element. The tag scanner skips HTML comments, ignores self-closing tags and HTML5 void elements (`<br>`, `<img>`, `<input>`, etc.), and tolerates malformed nesting. Tag folds are reported with `type: 'bracket'`.
 
-Mixed languages — `vue`, `svelte`, `jsx`, `tsx` — run **both** the tag strategy and the bracket strategy, so you get folds for markup elements and for the surrounding JavaScript/TypeScript braces.
+Mixed languages, `vue`, `svelte`, `jsx`, `tsx`, run **both** the tag strategy and the bracket strategy, so you get folds for markup elements and for the surrounding JavaScript/TypeScript braces.
 
 ### Indentation folding
 
@@ -78,7 +78,7 @@ A document is folded in two passes.
 1. **Detection.** Each enabled strategy scans the lines and emits its own `FoldRegion` list.
 2. **Merge.** All regions are concatenated, sorted by start line (longest region first when two regions start on the same line), and then de-duplicated so that **at most one fold begins on any given line**. Nested folds are kept as long as their start lines differ.
 
-A region must span at least `minLines` (default `2`) — measured as `endLine - startLine` — to be kept. Single-line braces, one-line comments, and shallow blocks are not foldable.
+A region must span at least `minLines` (default `2`), measured as `endLine - startLine`, to be kept. Single-line braces, one-line comments, and shallow blocks are not foldable.
 
 ### The `FoldRegion` shape
 
@@ -105,7 +105,7 @@ When a region is collapsed, every line from `startLine + 1` through `endLine` is
 
 ## Public folding API
 
-Everything below is exported from the `./components/editor` entry point. You only need these if you are building custom folding UI or computing folds outside the editor — the bundled editor wires them up for you.
+Everything below is exported from the `./components/editor` entry point. You only need these if you are building custom folding UI or computing folds outside the editor, the bundled editor wires them up for you.
 
 ```ts
 import {
@@ -129,7 +129,7 @@ function detectFoldRegions(
 ): FoldRegion[];
 ```
 
-Runs the strategies appropriate for `language` and returns the merged, de-duplicated, sorted list of fold regions. `lines` is the editor's line model — an array of `{ number, text }` objects (the `Line` type, exported from the package root `@nocturnium/svelte-ide`). `config` lets you turn individual strategies on or off and set the minimum region length:
+Runs the strategies appropriate for `language` and returns the merged, de-duplicated, sorted list of fold regions. `lines` is the editor's line model, an array of `{ number, text }` objects (the `Line` type, exported from the package root `@nocturnium/svelte-ide`). `config` lets you turn individual strategies on or off and set the minimum region length:
 
 ```ts
 import { detectFoldRegions } from '@nocturnium/svelte-ide/components/editor';
@@ -190,32 +190,32 @@ unsubscribe();
 
 **Region access**
 
-- `updateRegions(lines, language, config?)` — recompute regions from the document. Collapsed state is preserved for any region whose `startLine` is unchanged.
-- `getRegions(): readonly FoldRegion[]` — all current regions.
-- `getRegionAtLine(line): FoldRegion | undefined` — the region that **starts** on `line`, if any.
-- `hasFoldIndicator(line): boolean` — whether a fold begins on `line` (i.e. whether to draw an indicator there).
+- `updateRegions(lines, language, config?)`: recompute regions from the document. Collapsed state is preserved for any region whose `startLine` is unchanged.
+- `getRegions(): readonly FoldRegion[]`: all current regions.
+- `getRegionAtLine(line): FoldRegion | undefined`: the region that **starts** on `line`, if any.
+- `hasFoldIndicator(line): boolean`: whether a fold begins on `line` (i.e. whether to draw an indicator there).
 
 **Collapse / expand**
 
-- `toggleFold(line): boolean` — flip the fold that starts on `line`. Returns `false` if there is no fold there.
-- `collapse(line): boolean` / `expand(line): boolean` — collapse or expand the fold starting on `line`. Return `false` if there is no such fold or it is already in that state.
-- `collapseAll()` / `expandAll()` — collapse or expand every region.
-- `collapseLevel(level)` — collapse every region at a given nesting `level`.
+- `toggleFold(line): boolean`: flip the fold that starts on `line`. Returns `false` if there is no fold there.
+- `collapse(line): boolean` / `expand(line): boolean`, collapse or expand the fold starting on `line`. Return `false` if there is no such fold or it is already in that state.
+- `collapseAll()` / `expandAll()`, collapse or expand every region.
+- `collapseLevel(level)`: collapse every region at a given nesting `level`.
 
 **Visibility queries**
 
-- `isFoldCollapsed(line): boolean` — whether the fold starting on `line` is collapsed.
-- `isLineHidden(line): boolean` — whether `line` is hidden inside some collapsed fold.
-- `getVisibleLines(totalLines): number[]` — the 0-based indices of every line that should be rendered.
-- `getHiddenLineCount(startLine): number` — how many lines are hidden by the collapsed fold starting on `startLine` (0 if not collapsed).
+- `isFoldCollapsed(line): boolean`: whether the fold starting on `line` is collapsed.
+- `isLineHidden(line): boolean`: whether `line` is hidden inside some collapsed fold.
+- `getVisibleLines(totalLines): number[]`: the 0-based indices of every line that should be rendered.
+- `getHiddenLineCount(startLine): number`: how many lines are hidden by the collapsed fold starting on `startLine` (0 if not collapsed).
 
 **Subscriptions**
 
-- `onChange(callback): () => void` — subscribe to collapse/expand changes (not detection). Returns an unsubscribe function. Always call it on teardown; the manager caps listeners and will warn (or throw, in development) if you leak subscriptions.
+- `onChange(callback): () => void`: subscribe to collapse/expand changes (not detection). Returns an unsubscribe function. Always call it on teardown; the manager caps listeners and will warn (or throw, in development) if you leak subscriptions.
 
 ## Interacting with folds
 
-Inside the editor, folding is driven entirely by the gutter indicators and keyboard shortcuts — you do not normally touch the `FoldManager` yourself.
+Inside the editor, folding is driven entirely by the gutter indicators and keyboard shortcuts, you do not normally touch the `FoldManager` yourself.
 
 ### Gutter indicators
 
@@ -236,11 +236,11 @@ When you collapse the region the cursor is inside, the cursor is moved to the fo
 
 ### Performance
 
-Fold detection re-runs when the document changes, debounced (~250 ms) so that typing in large files stays responsive. You do not need to manage this — the editor schedules updates internally whenever `folding` is on.
+Fold detection re-runs when the document changes, debounced (~250 ms) so that typing in large files stays responsive. You do not need to manage this, the editor schedules updates internally whenever `folding` is on.
 
 ## Related
 
-- [Editor guide](./editor.md) — the `Editor`, `CustomEditor`, `EditorPane`, and `EditorTabs` components and their props.
-- [Syntax highlighting](./syntax-highlighting.md) — the tokenizer and language detection that also feed the editor's `language` prop.
-- [Multi-cursor & selections](./multi-cursor.md) — the other core editing capability.
-- [Component reference](../api/components.md) and [editor core / types reference](../api/types-and-utils.md) — full export listings.
+- [Editor guide](./editor.md): the `Editor`, `CustomEditor`, `EditorPane`, and `EditorTabs` components and their props.
+- [Syntax highlighting](./syntax-highlighting.md): the tokenizer and language detection that also feed the editor's `language` prop.
+- [Multi-cursor & selections](./multi-cursor.md): the other core editing capability.
+- [Component reference](../api/components.md) and [editor core / types reference](../api/types-and-utils.md), full export listings.

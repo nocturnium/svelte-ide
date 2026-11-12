@@ -18,7 +18,7 @@
 
 	// Site-wide structured data (same on every page) for rich results. The wrapping
 	// script tags are assembled from split string fragments so the file never
-	// contains a literal opening or closing script tag — Svelte's tokenizer would
+	// contains a literal opening or closing script tag, Svelte's tokenizer would
 	// otherwise treat it as a second script element.
 	const jsonLdData = JSON.stringify({
 		'@context': 'https://schema.org',

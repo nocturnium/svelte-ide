@@ -22,7 +22,7 @@ You supply three things:
 2. An **`LSPClient`**, created with `createLSPClient(...)` and pointed at that bridge.
 3. An **`<LSPEditor>`** (or the lower-level client API) that consumes the client.
 
-The WebSocket URL is always caller-supplied — nothing is baked into the package.
+The WebSocket URL is always caller-supplied, nothing is baked into the package.
 
 ---
 
@@ -75,7 +75,7 @@ import type {
 
 ## The `LSPClient` API
 
-`createLSPClient(config)` returns an `LSPClient` instance. (`new LSPClient(config)` is equivalent — the factory is the conventional entry point.)
+`createLSPClient(config)` returns an `LSPClient` instance. (`new LSPClient(config)` is equivalent, the factory is the conventional entry point.)
 
 ### Configuration
 
@@ -100,8 +100,8 @@ const client = createLSPClient({
 
 | Field                  | Type      | Default | Description                                                                                   |
 | ---------------------- | --------- | ------- | --------------------------------------------------------------------------------------------- |
-| `serverUrl`            | `string`  | —       | WebSocket URL of the bridge. Required.                                                        |
-| `rootUri`              | `string`  | —       | `file://` URI of the workspace root. Required.                                                |
+| `serverUrl`            | `string`  | none    | WebSocket URL of the bridge. Required.                                                        |
+| `rootUri`              | `string`  | none    | `file://` URI of the workspace root. Required.                                                |
 | `autoReconnect`        | `boolean` | `true`  | Reconnect on unexpected disconnect.                                                           |
 | `reconnectDelay`       | `number`  | `1000`  | Backoff base in ms; delay grows linearly with the attempt count (`reconnectDelay × attempt`). |
 | `maxReconnectAttempts` | `number`  | `5`     | Stop reconnecting after this many failures.                                                   |
@@ -116,7 +116,7 @@ await client.connect(); // opens the socket and performs the LSP initialize hand
 await client.disconnect(); // sends shutdown/exit, closes the socket, stops reconnecting
 ```
 
-`connect()` resolves once the server has responded to `initialize` and the client has sent `initialized` — at that point `client.isReady` is `true`. The connection moves through these states (`LSPConnectionState`):
+`connect()` resolves once the server has responded to `initialize` and the client has sent `initialized`, at that point `client.isReady` is `true`. The connection moves through these states (`LSPConnectionState`):
 
 ```
 disconnected → connecting → connected → initializing → ready
@@ -166,7 +166,7 @@ const offErr = client.on('onError', (err) => {
 // Later: offState(); offDiag(); offCaps(); offErr();
 ```
 
-> Only one handler per event name is retained — registering a new handler for the same event replaces the previous one. For diagnostics you usually subscribe once at the client level (or let `<LSPEditor>` handle it for you).
+> Only one handler per event name is retained, registering a new handler for the same event replaces the previous one. For diagnostics you usually subscribe once at the client level (or let `<LSPEditor>` handle it for you).
 
 ### Document synchronization
 
@@ -189,7 +189,7 @@ When you drive the editor through `<LSPEditor>`, all four of these are called fo
 
 ### Language features
 
-Every feature method first checks the relevant server capability and short-circuits (returning `[]` or `null`) when the server does not advertise it — so you can call them unconditionally. Positions are **zero-based** (`{ line, character }`).
+Every feature method first checks the relevant server capability and short-circuits (returning `[]` or `null`) when the server does not advertise it, so you can call them unconditionally. Positions are **zero-based** (`{ line, character }`).
 
 ```ts
 // Autocomplete — returns CompletionItem[]
@@ -247,7 +247,7 @@ client.getCompletionTriggerCharacters(); // string[] e.g. ['.', '"']
 client.getSignatureHelpTriggerCharacters(); // string[] e.g. ['(', ',']
 ```
 
-`ServerCapabilities` mirrors the LSP spec — `completionProvider`, `hoverProvider`, `signatureHelpProvider`, `definitionProvider`, `referencesProvider`, `codeActionProvider`, `renameProvider`, `documentFormattingProvider`, and so on. Inspect `client.capabilities` after `connect()` to see exactly what your server offers.
+`ServerCapabilities` mirrors the LSP spec, `completionProvider`, `hoverProvider`, `signatureHelpProvider`, `definitionProvider`, `referencesProvider`, `codeActionProvider`, `renameProvider`, `documentFormattingProvider`, and so on. Inspect `client.capabilities` after `connect()` to see exactly what your server offers.
 
 ### Position utilities
 
@@ -302,23 +302,23 @@ const { start, end } = rangeToOffsets(content, range);
 
 | Prop              | Type                                     | Default       | Description                                                                            |
 | ----------------- | ---------------------------------------- | ------------- | -------------------------------------------------------------------------------------- |
-| `content`         | `string`                                 | —             | The editor's text. Required.                                                           |
-| `uri`             | `string`                                 | —             | `file://` URI used in all LSP requests for this document. Required.                    |
+| `content`         | `string`                                 | none          | The editor's text. Required.                                                           |
+| `uri`             | `string`                                 | none          | `file://` URI used in all LSP requests for this document. Required.                    |
 | `language`        | `string`                                 | `"plaintext"` | Language id (`"go"`, `"typescript"`, `"python"`, …).                                   |
-| `lspClient`       | `LSPClient`                              | —             | A connected client. Without it, the editor behaves as a plain `CustomEditor`.          |
+| `lspClient`       | `LSPClient`                              | none          | A connected client. Without it, the editor behaves as a plain `CustomEditor`.          |
 | `readonly`        | `boolean`                                | `false`       | Disable editing.                                                                       |
 | `preferences`     | `Partial<EditorPreferences>`             | `{}`          | Editor preferences (theme, tab size, etc.). See [Editor guide](./editor.md).           |
 | `folding`         | `boolean`                                | `true`        | Enable [code folding](./code-folding.md).                                              |
 | `multiCursor`     | `boolean`                                | `true`        | Enable [multi-cursor editing](./multi-cursor.md).                                      |
 | `maxCursors`      | `number`                                 | `100`         | Upper bound on simultaneous cursors.                                                   |
 | `class`           | `string`                                 | `""`          | Extra CSS class on the wrapper.                                                        |
-| `onChange`        | `(content: string) => void`              | —             | Fires on every edit; the editor also forwards the change to the client as `didChange`. |
-| `onCursorChange`  | `(line: number, column: number) => void` | —             | Fires when the primary cursor moves (1-based line/column).                             |
-| `onCursorsChange` | `(cursors: readonly Cursor[]) => void`   | —             | Fires when the multi-cursor set changes.                                               |
-| `onSave`          | `() => void`                             | —             | Fires on Ctrl+S / Cmd+S.                                                               |
-| `onDiagnostics`   | `(diagnostics: Diagnostic[]) => void`    | —             | Fires when diagnostics for this document arrive.                                       |
+| `onChange`        | `(content: string) => void`              | none          | Fires on every edit; the editor also forwards the change to the client as `didChange`. |
+| `onCursorChange`  | `(line: number, column: number) => void` | none          | Fires when the primary cursor moves (1-based line/column).                             |
+| `onCursorsChange` | `(cursors: readonly Cursor[]) => void`   | none          | Fires when the multi-cursor set changes.                                               |
+| `onSave`          | `() => void`                             | none          | Fires on Ctrl+S / Cmd+S.                                                               |
+| `onDiagnostics`   | `(diagnostics: Diagnostic[]) => void`    | none          | Fires when diagnostics for this document arrive.                                       |
 
-`<LSPEditor>` opens the document (`didOpen`) when it mounts with a client, forwards edits as `didChange`, subscribes to `onDiagnostics` for the matching `uri`, and calls `didClose` on teardown — you do not call those methods yourself when using the component.
+`<LSPEditor>` opens the document (`didOpen`) when it mounts with a client, forwards edits as `didChange`, subscribes to `onDiagnostics` for the matching `uri`, and calls `didClose` on teardown, you do not call those methods yourself when using the component.
 
 ### Switching languages
 
@@ -438,7 +438,7 @@ A single inline squiggle or gutter marker for one diagnostic.
 
 ## Running an LSP bridge
 
-A browser cannot launch `gopls` or `tsserver` itself. The repo ships a standalone Go bridge in [`backend/`](../../backend/README.md) that accepts WebSocket connections and proxies JSON-RPC to a native language server over stdio. It is a separate Go module and is **not** part of the npm package — you run it yourself (or substitute any LSP-over-WebSocket server).
+A browser cannot launch `gopls` or `tsserver` itself. The repo ships a standalone Go bridge in [`backend/`](../../backend/README.md) that accepts WebSocket connections and proxies JSON-RPC to a native language server over stdio. It is a separate Go module and is **not** part of the npm package, you run it yourself (or substitute any LSP-over-WebSocket server).
 
 ### Prerequisites
 
@@ -465,7 +465,7 @@ By default it listens on `127.0.0.1:8765` (loopback only) and exposes:
 | `GET /health`                             | `{"status":"ok",...}`                                 |
 | `GET /info`                               | Registered language servers.                          |
 
-Out of the box, `language=go` routes to `gopls` and `language=typescript` (also `javascript`, `typescriptreact`, `javascriptreact`) routes to `typescript-language-server`. Each WebSocket client gets its own language-server process, started on connect and stopped on disconnect.
+By default, `language=go` routes to `gopls` and `language=typescript` (also `javascript`, `typescriptreact`, `javascriptreact`) routes to `typescript-language-server`. Each WebSocket client gets its own language-server process, started on connect and stopped on disconnect.
 
 ### Flags
 
@@ -491,7 +491,7 @@ The bridge runs language servers against your filesystem, so it ships with a **l
 go run ./cmd/lsp-bridge -allowed-origins https://app.example.com,https://staging.example.com
 ```
 
-`-allowed-origins '*'` permits any origin, but this is strongly discouraged and intended only for throwaway local experiments — never expose a `*` bridge publicly. For production, terminate TLS at a reverse proxy (so the editor connects over `wss://`), keep the origin allow-list tight, and treat the bridge as a trusted-network service.
+`-allowed-origins '*'` permits any origin, but this is strongly discouraged and intended only for throwaway local experiments, never expose a `*` bridge publicly. For production, terminate TLS at a reverse proxy (so the editor connects over `wss://`), keep the origin allow-list tight, and treat the bridge as a trusted-network service.
 
 ### Adding more languages
 
@@ -512,8 +512,8 @@ For the underlying message flow, request/response shapes, and a web-worker integ
 
 ## Related guides
 
-- [Getting Started](../getting-started.md) — install, theme, and your first editor.
-- [Editor](./editor.md) — the `CustomEditor` that `<LSPEditor>` wraps.
-- [Architecture](../architecture.md) — where LSP sits in the module map.
+- [Getting Started](../getting-started.md): install, theme, and your first editor.
+- [Editor](./editor.md): the `CustomEditor` that `<LSPEditor>` wraps.
+- [Architecture](../architecture.md): where LSP sits in the module map.
 - [Components API reference](../api/components.md) and [Services API reference](../api/services.md).
-- [LSP_INTEGRATION.md](../LSP_INTEGRATION.md) — low-level protocol detail.
+- [LSP_INTEGRATION.md](../LSP_INTEGRATION.md): low-level protocol detail.

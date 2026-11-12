@@ -239,7 +239,7 @@ button:hover {
 			content: `{
   "name": "@nocturnium/svelte-ide",
   "version": "0.1.0",
-  "description": "A powerful IDE built with Svelte",
+  "description": "An IDE built with Svelte",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -344,7 +344,7 @@ MIT License - see LICENSE file for details
 				rightPanelOpen = false;
 				bottomPanelOpen = false;
 			} else {
-				// Back to a wide layout — restore the tiled file + AI panels.
+				// Back to a wide layout, restore the tiled file + AI panels.
 				leftPanelOpen = true;
 				rightPanelOpen = true;
 			}
@@ -361,7 +361,7 @@ MIT License - see LICENSE file for details
 	// The playground always opens full page: the CSS overlay below
 	// (.playground--full-page) fills the browser window so it reads as a real IDE,
 	// consistently, however you arrive at the route. Exiting restores the demo
-	// chrome — the docs sidebar on desktop, the sticky mobile bar and its drawer
+	// chrome, the docs sidebar on desktop, the sticky mobile bar and its drawer
 	// toggle below 861px. There is intentionally NO OS-level fullscreen
 	// (requestFullscreen): it behaved differently from the windowed overlay (OS
 	// fullscreen on click vs a windowed overlay on load), which is the very
@@ -396,7 +396,7 @@ MIT License - see LICENSE file for details
 	// ref-counted mock the dedicated AI demo uses: it intercepts that one request
 	// and streams a canned reply. Installed synchronously during setup (before the
 	// panel can send anything) and released on teardown, so nothing leaks to other
-	// routes. NOT an $effect — updating store state from inside one self-invalidates.
+	// routes. NOT an $effect, updating store state from inside one self-invalidates.
 	onDestroy(installScopedChatMock());
 
 	// On mobile, only one drawer may be open at a time (single-pane overlay model).
@@ -514,7 +514,7 @@ MIT License - see LICENSE file for details
 
 <Seo
 	title="Playground"
-	description="The full Nocturnium IDE composed from the library — file explorer, tabbed editors, an AI panel, and a live status bar — all in pure Svelte 5."
+	description="The full Nocturnium IDE composed from the library, file explorer, tabbed editors, an AI panel, and a live status bar, all in pure Svelte 5."
 />
 
 <div
@@ -825,7 +825,7 @@ MIT License - see LICENSE file for details
 		position: fixed;
 		inset: 0;
 		z-index: 1000;
-		/* Size from `inset: 0` alone — it resolves against the *visible* viewport.
+		/* Size from `inset: 0` alone, it resolves against the *visible* viewport.
 		   Do NOT reintroduce width/height here: `100vh` overshoots the visible area
 		   on mobile browsers that exclude the address bar, which pushed the
 		   status-bar exit off-screen (both exits sat in the last 32px), and `100vw`
@@ -891,7 +891,7 @@ MIT License - see LICENSE file for details
 	.activity-btn.active {
 		opacity: 1;
 		/* Filled active state with white glyph: use the deeper blue token
-		   (--ide-interactive-strong, ocean) — white on it is ~5.3:1, clearing AA;
+		   (--ide-interactive-strong, ocean), white on it is ~5.3:1, clearing AA;
 		   white on plain --ide-interactive (#4a8db7) is only ~3.4:1. */
 		color: #fff;
 		background: var(--ide-interactive-strong);
@@ -996,7 +996,7 @@ MIT License - see LICENSE file for details
 
 	.tree-file.active {
 		/* Filled selected row carries white text, so use the deeper blue token
-		   (--ide-interactive-strong) for AA — see activity-btn.active above. */
+		   (--ide-interactive-strong) for AA, see activity-btn.active above. */
 		background: var(--ide-interactive-strong);
 		color: #fff;
 	}
@@ -1203,13 +1203,13 @@ MIT License - see LICENSE file for details
 
 	/* ===== Narrow shell: single-pane with drawer overlays =====
 	   Driven by the playground's OWN width (the .is-narrow class set via
-	   ResizeObserver), not the viewport — so it triggers correctly whether the
+	   ResizeObserver), not the viewport, so it triggers correctly whether the
 	   shell is inset beside the demo sidebar, embedded, or maximized. */
 	/* `position: relative` here only exists to give the drawer overlays a containing
 	   block. Full page already provides one via `position: fixed`, so stand down
 	   rather than out-specify it: `.playground.is-narrow` (0,2,0) would otherwise
 	   beat `.playground--full-page` (0,1,0) and silently disable full page on every
-	   viewport under 1040px — which is what shipped in v1.16.0. */
+	   viewport under 1040px, which is what shipped in v1.16.0. */
 	.playground.is-narrow:not(.playground--full-page) {
 		position: relative;
 	}
@@ -1227,7 +1227,7 @@ MIT License - see LICENSE file for details
 	}
 
 	/* Editor sits BESIDE the 48px activity rail and owns the remaining width.
-	   flex-basis must be 0 (not 100%) — with the shell's flex-wrap:wrap a 100%
+	   flex-basis must be 0 (not 100%), with the shell's flex-wrap:wrap a 100%
 	   basis would wrap main-content onto a new row below the full-height rail,
 	   leaving it zero height and the editor blank. */
 	.playground.is-narrow .main-content {

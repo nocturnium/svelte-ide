@@ -174,7 +174,7 @@ function privateHelper(value) {
 			relatedInfo: [
 				{
 					range: { start: { line: 7, column: 6 }, end: { line: 7, column: 12 } },
-					message: "'string' is used here — the sibling 'id' property",
+					message: "'string' is used here, the sibling 'id' property",
 					filePath
 				}
 			],
@@ -233,7 +233,7 @@ function privateHelper(value) {
 			]
 		},
 		{
-			// 'err.message' sits at cols 17-28 on this line — point the squiggle there.
+			// 'err.message' sits at cols 17-28 on this line, point the squiggle there.
 			range: { start: { line: 24, column: 17 }, end: { line: 24, column: 28 } },
 			severity: 'error',
 			message: "Property 'message' does not exist on type 'unknown'",
@@ -242,7 +242,7 @@ function privateHelper(value) {
 			relatedInfo: [
 				{
 					range: { start: { line: 23, column: 15 }, end: { line: 23, column: 18 } },
-					message: "'err' is typed 'unknown' here — narrow it before reading .message",
+					message: "'err' is typed 'unknown' here, narrow it before reading .message",
 					filePath
 				}
 			],
@@ -300,7 +300,7 @@ function privateHelper(value) {
 		}
 	];
 
-	// Live working set of diagnostics — a quick fix removes the one it resolves so
+	// Live working set of diagnostics, a quick fix removes the one it resolves so
 	// the inline message, squiggle, and Problems panel all update for real.
 	let activeDiagnostics = $state<Omit<Diagnostic, 'id'>[]>([]);
 
@@ -433,7 +433,7 @@ function privateHelper(value) {
 
 		addConsoleEntry(
 			'info',
-			`Applied quick fix "${fix.title}" — ${activeDiagnostics.length} diagnostic${
+			`Applied quick fix "${fix.title}", ${activeDiagnostics.length} diagnostic${
 				activeDiagnostics.length === 1 ? '' : 's'
 			} remaining`,
 			{ file: filePath, line: diagnostic.range.start.line + 1 }
@@ -493,9 +493,9 @@ function privateHelper(value) {
 			<div class="section-header">
 				<h2>Inline Diagnostics</h2>
 				<p>
-					The message rides at the end of its line — always visible, no pixel-hunting for a
-					squiggle. Hover or focus the line for the full detail and quick fixes; click to jump to
-					the location.
+					The message rides at the end of its line, always visible, no pixel-hunting for a squiggle.
+					Hover or focus the line for the full detail and quick fixes; click to jump to the
+					location.
 				</p>
 			</div>
 
@@ -578,7 +578,7 @@ function privateHelper(value) {
 					<h4>Features</h4>
 					<ul>
 						<li>Always-visible inline messages (Error Lens style)</li>
-						<li>Full-line hover/focus/click target — no squiggle-hunting</li>
+						<li>Full-line hover/focus/click target: no squiggle-hunting</li>
 						<li>Squiggly underlines + gutter icons with diagnostic count</li>
 						<li>Detailed tooltip with related info and quick fixes</li>
 						<li>Severity-colored via shared band tokens; keyboard accessible</li>
@@ -731,7 +731,7 @@ function privateHelper(value) {
 				<div class="feature-info">
 					<h4>Features</h4>
 					<ul>
-						<li>Pluggable evaluate handler — wire your own runtime (simulated here)</li>
+						<li>Pluggable evaluate handler: wire your own runtime (simulated here)</li>
 						<li>Command history (Up/Down arrows)</li>
 						<li>Filter by message type</li>
 						<li>Expandable object inspection</li>
@@ -782,7 +782,7 @@ function privateHelper(value) {
 		box-shadow: inset 0 -2px 0 var(--ide-accent, #4a8db7);
 	}
 
-	/* Section — frameless: the DemoExhibit (and the demo content) is the only frame */
+	/* Section, frameless: the DemoExhibit (and the demo content) is the only frame */
 	.demo-section {
 		background: transparent;
 		border: none;

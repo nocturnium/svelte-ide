@@ -10,11 +10,11 @@
 
 <script lang="ts">
 	/**
-	 * DemoExhibit — a live demo paired with the exact source that produces it.
+	 * DemoExhibit, a live demo paired with the exact source that produces it.
 	 *
 	 * A [ Preview | Code ] tab toggle: the Preview face renders the live `children`
 	 * (the demo itself); the Code face shows `code` highlighted by the library's own
-	 * tokenizer — the docs eat their own dog food. Pass each demo's own
+	 * tokenizer, the docs eat their own dog food. Pass each demo's own
 	 * `Example.svelte?raw` as `code` and `<Example />` as the children, so the shown
 	 * source IS the executed source and can never drift.
 	 *
@@ -28,7 +28,7 @@
 	import type { Snippet } from 'svelte';
 
 	interface Props {
-		/** Source shown in the Code tab — pass the demo's own `Example.svelte?raw`. */
+		/** Source shown in the Code tab, pass the demo's own `Example.svelte?raw`. */
 		code: string;
 		/** Tokenizer language for the Code tab (defaults to svelte). */
 		language?: string;
@@ -171,7 +171,7 @@
 		>
 			{#if copied}
 				<Icon name="check" size={14} />
-				<span>Copied!</span>
+				<span>Copied</span>
 			{:else}
 				<Icon name="copy" size={14} />
 				<span>Copy</span>

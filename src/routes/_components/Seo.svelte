@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Seo — the single source of per-route head metadata.
+	 * Seo, the single source of per-route head metadata.
 	 *
 	 * Emits title, description, canonical, Open Graph and Twitter-card tags. The
 	 * canonical/OG URL is derived from the current route, so callers only pass the

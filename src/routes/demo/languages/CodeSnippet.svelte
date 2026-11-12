@@ -1,7 +1,7 @@
 <script lang="ts">
 	/**
 	 * Read-only highlighted code block for the language gallery. Highlighted by the
-	 * library's own tokenizer — pure + SSR-safe, so each card prerenders to real
+	 * library's own tokenizer, pure + SSR-safe, so each card prerenders to real
 	 * highlighted HTML (good for crawlers and instant first paint, no hydration wait).
 	 */
 	import { tokenize } from '$components/editor/tokenizer';

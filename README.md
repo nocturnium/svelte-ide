@@ -1,6 +1,6 @@
 # @nocturnium/svelte-ide
 
-Lightweight, Svelte 5-native code editor components — a simpler alternative to
+Lightweight, Svelte 5-native code editor components, a simpler alternative to
 CodeMirror when you want a fast, themeable editor without dragging in a full IDE
 framework.
 
@@ -17,17 +17,17 @@ full IDE experience.
 
 ## Features
 
-- **Custom code editor** — no CodeMirror, no Monaco; pure Svelte 5.
+- **Custom code editor**: no CodeMirror, no Monaco; pure Svelte 5.
 - **Syntax highlighting** for 31 languages via a built-in tokenizer (plus plaintext).
-- **Code folding** — bracket, indentation, comment, and region strategies.
+- **Code folding**: bracket, indentation, comment, and region strategies.
 - **Multi-cursor editing** with overlap merging and configurable limits.
 - **Find & replace** with regex support.
-- **LSP client** — autocomplete, hover, signatures, diagnostics over WebSocket.
-- **Realtime collaboration** (optional) — CRDT/Yjs, tree-shakeable.
+- **LSP client**: autocomplete, hover, signatures, diagnostics over WebSocket.
+- **Realtime collaboration** (optional), CRDT/Yjs, tree-shakeable.
 - **AI panel & agent presence** layers for assistant UI and presence patterns.
 - **Plugin system** with a proposal-based lifecycle (bring your own backend).
-- **Themeable** — every color/size is a CSS custom property you can override.
-- **Minimal footprint** — no required runtime dependencies beyond the Svelte 5
+- **Themeable**: every color/size is a CSS custom property you can override.
+- **Minimal footprint**: no required runtime dependencies beyond the Svelte 5
   peer; styling is plain CSS variables (no CSS framework). The Yjs collaboration
   stack is the only other runtime dependency, and it's an optional peer.
 
@@ -39,7 +39,7 @@ npm install @nocturnium/svelte-ide
 
 Requires **Svelte 5** (declared as a peer dependency).
 
-Collaboration is optional and tree-shakeable — install these only if you use the
+Collaboration is optional and tree-shakeable, install these only if you use the
 `./crdt` entry point or `<CollaborativeEditor>`:
 
 ```bash
@@ -48,20 +48,20 @@ npm install yjs y-websocket y-protocols
 
 ## Dependencies
 
-The published package carries **no top-level `dependencies`** — it ships with
+The published package carries **no top-level `dependencies`**, it ships with
 zero required runtime dependencies beyond the Svelte 5 peer.
 
-- **`svelte` `^5.0.0`** — the one required peer. Your app already has it.
-- **`yjs`, `y-protocols`, `y-websocket`** — _optional_ peers, marked
+- **`svelte` `^5.0.0`**: the one required peer. Your app already has it.
+- **`yjs`, `y-protocols`, `y-websocket`**: _optional_ peers, marked
   `optional: true`. They are imported only by the realtime-collaboration code
   (`<CollaborativeEditor>` and the `./crdt` entry), so they're pulled in only if
-  you actually use collaboration. The rest of the library never touches them.
+  you use collaboration. The rest of the library never touches them.
 - **No CSS framework at runtime.** Styling is plain CSS custom properties
-  shipped in `@nocturnium/svelte-ide/theme.css` — no Tailwind, no `@apply`, no
+  shipped in `@nocturnium/svelte-ide/theme.css`, no Tailwind, no `@apply`, no
   utility-class runtime. (Tailwind is used only to build this repo's demo site.)
 
-Everything else in `package.json` — Vite, ESLint, TypeScript, Vitest,
-Playwright, semantic-release, Tailwind, Prettier, and the rest — is a
+Everything else in `package.json`, Vite, ESLint, TypeScript, Vitest,
+Playwright, semantic-release, Tailwind, Prettier, and the rest, is a
 `devDependency` used to build, test, and lint the library. None of it is
 published: only the `dist/` folder ships (`"files": ["dist"]`).
 
@@ -87,7 +87,7 @@ without the design tokens):
 
 > **Theme it your way:** all tokens are CSS variables on `:root` (prefixed
 > `--ide-*` and `--color-nocturnium-*`). Override them in a stylesheet loaded
-> after `theme.css` — see [Theming](https://github.com/nocturnium/svelte-ide/blob/main/docs/theming.md).
+> after `theme.css`, see [Theming](https://github.com/nocturnium/svelte-ide/blob/main/docs/theming.md).
 
 ## Language support
 
@@ -145,7 +145,7 @@ You supply the LSP bridge. A ready-to-run Go WebSocket bridge lives in
 />
 ```
 
-The collaboration server URL is always caller-supplied — nothing is baked in.
+The collaboration server URL is always caller-supplied, nothing is baked in.
 See the [Collaboration guide](https://github.com/nocturnium/svelte-ide/blob/main/docs/guides/collaboration.md).
 
 ### AI assistant panel
@@ -169,7 +169,7 @@ link-scheme whitelisting before rendering. See the
 ## Entry points
 
 The package root exposes the **stable core**. Backend-dependent and
-experimental subsystems live behind dedicated subpaths — this keeps intent
+experimental subsystems live behind dedicated subpaths, this keeps intent
 explicit and tree-shaking clean.
 
 | Import                             | Contents                                                                                                                                                           |
@@ -198,7 +198,7 @@ stable core and a set of experimental subpaths.
 SemVer and only change with a major version bump:
 
 - Editors: `Editor`, `CustomEditor`, `LSPEditor` (`CollaborativeEditor` is
-  experimental — see below).
+  experimental, see below).
 - Composition: `EditorPane`, `EditorTabs`, `FileExplorer`, `FileIcon`,
   `IDELayout`, `StatusBar`.
 - Core UI primitives: `Button`, `Icon`, `Input`, `Textarea`, `Tooltip`, `Kbd`,
@@ -213,18 +213,18 @@ SemVer and only change with a major version bump:
 **Experimental (subpath entries).** These are reachable only via their
 subpaths and **may change in minor versions**:
 
-- `./components/agents` — agent presence UI
-- `./components/vfs` — virtual-filesystem lock/conflict UI
-- `./components/plugins` — plugin UI components
-- `./plugins` — plugin runtime/loader
-- `./crdt` and `<CollaborativeEditor>` — realtime collaboration (requires Yjs)
+- `./components/agents`: agent presence UI
+- `./components/vfs`: virtual-filesystem lock/conflict UI
+- `./components/plugins`: plugin UI components
+- `./plugins`: plugin runtime/loader
+- `./crdt` and `<CollaborativeEditor>`, realtime collaboration (requires Yjs)
 
 The full store, type, and util surfaces exposed via `./stores`, `./types`, and
 `./utils` beyond the curated root set are likewise experimental.
 
 ## Documentation
 
-- **[Documentation hub](https://github.com/nocturnium/svelte-ide/blob/main/docs/README.md)** — full table of contents
+- **[Documentation hub](https://github.com/nocturnium/svelte-ide/blob/main/docs/README.md)**: full table of contents
 - [Getting started](https://github.com/nocturnium/svelte-ide/blob/main/docs/getting-started.md)
 - [Architecture](https://github.com/nocturnium/svelte-ide/blob/main/docs/architecture.md)
 - [Theming](https://github.com/nocturnium/svelte-ide/blob/main/docs/theming.md)
@@ -245,8 +245,8 @@ The full store, type, and util surfaces exposed via `./stores`, `./types`, and
 
 [`backend/`](https://github.com/nocturnium/svelte-ide/tree/main/backend) is a standalone Go "lsp-bridge" WebSocket server that
 proxies browser editors to native language servers (gopls,
-typescript-language-server, …). It is a separate module — **not** part of the
-npm package — and accepts `localhost` origins only by default. See
+typescript-language-server, …). It is a separate module, **not** part of the
+npm package, and accepts `localhost` origins only by default. See
 [`backend/README.md`](https://github.com/nocturnium/svelte-ide/blob/main/backend/README.md).
 
 ## Try the demo
@@ -258,11 +258,11 @@ npm install
 npm run dev   # http://localhost:5173
 ```
 
-The SvelteKit app under `src/routes/` showcases every feature.
+The SvelteKit app under `src/routes/` demonstrates every feature.
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](https://github.com/nocturnium/svelte-ide/blob/main/CONTRIBUTING.md) for setup,
+Contributions are welcome. See [CONTRIBUTING.md](https://github.com/nocturnium/svelte-ide/blob/main/CONTRIBUTING.md) for setup,
 scripts, and conventions, and our [Code of Conduct](https://github.com/nocturnium/svelte-ide/blob/main/CODE_OF_CONDUCT.md).
 Security issues: please follow [SECURITY.md](https://github.com/nocturnium/svelte-ide/blob/main/SECURITY.md).
 

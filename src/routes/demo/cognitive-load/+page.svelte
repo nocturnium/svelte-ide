@@ -253,7 +253,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	 * something the rest of the page is already talking about.
 	 *
 	 * It used to roam lines 45-90 with a focus region over 40-95. The editor window
-	 * is 500px — about 25 rows — so every one of those rows was below the fold, and
+	 * is 500px, about 25 rows, so every one of those rows was below the fold, and
 	 * the layer's own clipping bug meant they would not have painted even if you
 	 * scrolled. Two independent reasons the feature looked dead.
 	 */
@@ -322,7 +322,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 					: null,
 				// `attentionType` is NOT touched here. It used to be reassigned at
 				// random every tick, which silently overwrote whatever "Cycle
-				// Attention State" had just set — while leaving `activity` and the
+				// Attention State" had just set, while leaving `activity` and the
 				// focus region's type at the cycled value. The rail then read
 				// "Verifying changes" beside a canvas drawing the reading glyph, and
 				// the screen-reader prefix announced the wrong state. A control whose
@@ -392,7 +392,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 <DemoPage
 	eyebrow="Intelligence"
 	title="Cognitive complexity"
-	description="See which functions are hard to hold in your head, scored as you type against SonarSource's published metric — and watch an AI agent's attention move through the same gutter."
+	description="See which functions are hard to hold in your head, scored as you type against SonarSource's published metric, and watch an AI agent's attention move through the same gutter."
 	docTitle="Cognitive complexity & ghost pair"
 >
 	<!-- Cognitive complexity meter -->
@@ -401,7 +401,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		<p class="section-desc">
 			Regions at or above the Moderate band get a coloured edge in the gutter and a slight lift of
 			the background. The code itself is never washed over, so nothing becomes harder to read: in
-			the busiest region a comment — the faintest token — measures 7.4:1, against 8.8:1 on unmarked
+			the busiest region a comment, the faintest token, measures 7.4:1, against 8.8:1 on unmarked
 			code.
 		</p>
 
@@ -451,7 +451,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		</div>
 
 		<!-- One legend component, shared with the hero, driven by the analyzer's own
-		     exported band constants — so the key cannot drift from what is painted.
+		     exported band constants, so the key cannot drift from what is painted.
 		     The hand-authored swatches this replaces named 0-49/50-69/70-84/85+ on
 		     the deprecated score and coloured them with the four semantic tokens
 		     the overlay no longer uses. -->
@@ -460,17 +460,17 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	<!-- Ghost Pair Demo -->
 	<section class="component-section">
-		<h2>Ghost pair — AI presence</h2>
+		<h2>Ghost pair: AI presence</h2>
 		<p class="section-desc">
 			Visualize AI agents working alongside you: a ghost cursor, a focus-region glow, and an
-			activity label showing where an agent is looking. <strong>The agent here is simulated</strong> —
-			a scripted cursor on a timer, not a model. It demonstrates the rendering layer your own agent would
-			drive.
+			activity label showing where an agent is looking. <strong>The agent here is simulated</strong
+			>, a scripted cursor on a timer, not a model. It demonstrates the rendering layer your own
+			agent would drive.
 		</p>
 
 		<p class="section-desc section-desc--pointer">
 			The controls sit beside the editor below, next to the canvas they drive. They used to live
-			here, two sections above the only surface that renders an agent — so toggling one appeared to
+			here, two sections above the only surface that renders an agent, so toggling one appeared to
 			do nothing at all.
 		</p>
 	</section>
@@ -479,7 +479,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	<section class="component-section">
 		<h2>Try it on your own code</h2>
 		<p class="section-desc">
-			Edit or paste over the sample — every number above updates as you type. This is the library's
+			Edit or paste over the sample, every number above updates as you type. This is the library's
 			own editor, not a textarea: the page that argues for building an editor from scratch should
 			not ask you to type into the browser's default one.
 		</p>
@@ -556,11 +556,11 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 						</span>
 					</div>
 				{:else}
-					<span class="ai-status-hidden">AI cursor hidden — enable to see Claude's focus</span>
+					<span class="ai-status-hidden">AI cursor hidden, enable to see Claude's focus</span>
 				{/if}
 
 				<p class="ghost-rail__note">
-					Claude reads <code>processUser</code> — a region the gutter also marks — so the ghost cursor
+					Claude reads <code>processUser</code>, a region the gutter also marks, so the ghost cursor
 					lands on rows that are on screen.
 				</p>
 			</aside>
@@ -662,7 +662,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 				</div>
 				<h3>Activity Visualization</h3>
 				<p>
-					A distinct cursor glyph and focus-glow color for each activity state — reading, thinking,
+					A distinct cursor glyph and focus-glow color for each activity state, reading, thinking,
 					writing, and reviewing.
 				</p>
 			</div>
@@ -696,7 +696,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 	/* Meter Showcase */
 	/* One plane, one hierarchy. The supporting counts used to sit in their own
-	   --ide-bg-tertiary card — a surface twice as bright as the strip around it —
+	   --ide-bg-tertiary card, a surface twice as bright as the strip around it,
 	   so a line count rendered larger and lighter than the headline it supports,
 	   and the eye landed on 117 before it found 113. */
 	.meter-showcase {
@@ -756,7 +756,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		transition: color 0.15s ease;
 	}
 
-	/* Same plane as the meter, no card, no elevation — these are footnotes. */
+	/* Same plane as the meter, no card, no elevation, these are footnotes. */
 	.metrics-summary {
 		display: flex;
 		gap: 1.5rem;
@@ -782,7 +782,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	}
 
 	/* "Hotspot Lines" was a bare count with no denominator, and because regions
-	   overlap it could exceed the file's own length — measured 12 flagged lines in
+	   overlap it could exceed the file's own length, measured 12 flagged lines in
 	   an 8-line file. Deduplicated in the analyzer; given a denominator here. */
 	.metric-of {
 		margin-left: 4px;
@@ -806,8 +806,8 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	/* Canvas on the left, the controls that drive it on the right.
 
 	   The editor column carries a min-width and the breakpoint sits at 1140px, not
-	   900px. At 900 the two-column grid still applied while the rail — a checkbox
-	   and one button — held a fixed 260px and refused to yield any of it, so the
+	   900px. At 900 the two-column grid still applied while the rail, a checkbox
+	   and one button, held a fixed 260px and refused to yield any of it, so the
 	   editor kept shrinking: at 920px it was cutting `function processUser(user:
 	   Us` mid-token with no fade and no scroll cue, and the score chip had marched
 	   left into the code. The rail was starving the thing it exists to control. */
@@ -865,7 +865,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		}
 
 		.ghost-rail {
-			/* A horizontal bar once it is full width — it reads as a toolbar for the
+			/* A horizontal bar once it is full width, it reads as a toolbar for the
 			   canvas rather than a card stranded beneath it. */
 			flex-direction: row;
 			flex-wrap: wrap;
@@ -1045,7 +1045,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		border-color: color-mix(in srgb, var(--ide-success) 35%, transparent);
 	}
 
-	/* The extract action is a refactor, not an AI control — use the page's
+	/* The extract action is a refactor, not an AI control, use the page's
 	   interactive accent instead of the shared .control-btn AI-purple. */
 	.extract-btn:hover:not(:disabled) {
 		border-color: var(--ide-interactive);
@@ -1055,7 +1055,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		outline-color: var(--ide-interactive-focus);
 	}
 
-	/* Editor Container — the definite height the CustomEditor needs to render;
+	/* Editor Container, the definite height the CustomEditor needs to render;
 	   DemoExhibit (padded={false}) supplies the surrounding frame. */
 	.editor-container {
 		height: 500px;
@@ -1069,11 +1069,11 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 		gap: 1rem;
 	}
 
-	/* Feature cards are descriptive content, not links/buttons — keep the hover
+	/* Feature cards are descriptive content, not links/buttons, keep the hover
 	   subtle (border tint only). The translateY lift + box-shadow read as a press
 	   affordance and promise an action these <div>s don't have. */
-	/* No per-card accent. The complexity ramp is ORDINAL — cyan to terracotta means
-	   increasing severity, which is the entire argument for it existing — and
+	/* No per-card accent. The complexity ramp is ORDINAL, cyan to terracotta means
+	   increasing severity, which is the entire argument for it existing, and
 	   spending it as decorative variety across four cards with no severity
 	   relationship is the same category error as the --ide-error it replaced. */
 	.feature-card {
@@ -1156,7 +1156,7 @@ const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 	@media (max-width: 640px) {
 		/* Give the checkbox and buttons a 48px touch target. The checkbox is the
 		   master switch for the whole section and was the only control here without
-		   one — a ~20px hit area directly above a comfortable 48px button. */
+		   one, a ~20px hit area directly above a comfortable 48px button. */
 		.toggle-control {
 			min-height: 48px;
 			padding: 0 0.25rem;

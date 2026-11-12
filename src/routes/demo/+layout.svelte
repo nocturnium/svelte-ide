@@ -165,7 +165,7 @@
 		style="width: {sidebarWidth}px;"
 	>
 		<div class="demo-header">
-			<a class="demo-logo" href={resolve('/')} aria-label="Nocturnium Svelte IDE — home">
+			<a class="demo-logo" href={resolve('/')} aria-label="Nocturnium Svelte IDE: home">
 				<BrandMark size={24} />
 				<span class="logo-text">Nocturnium</span>
 			</a>
@@ -483,7 +483,7 @@
 	}
 
 	/* Shared rhythm for every routed demo page: one max-width, centered, with
-	   consistent gutters — so individual pages don't each re-implement it.
+	   consistent gutters, so individual pages don't each re-implement it.
 	   Uses min-height (never a fixed height) so full-height editor demos that
 	   set `height: 100%` still resolve correctly without being clipped. */
 	.demo-content__inner {
@@ -516,7 +516,7 @@
 
 	/* Center each routed page's content column. The layout owns horizontal
 	   rhythm (consistent gutters), but a page's own scoped max-width wins over
-	   this reset on specificity — so instead of fighting it we just force the
+	   this reset on specificity, so instead of fighting it we just force the
 	   column to center (!important beats the page's own margin) rather than
 	   letting it sit left-shifted, which most pages did. Bleed pages have
 	   full-width children, so the auto margin is a no-op there. Vertical spacing
@@ -528,7 +528,7 @@
 	}
 
 	/* Full-bleed pages (app shells, multi-panel dashboards) fill the entire content
-	   area instead of the centered reading column — no max-width, no gutters — and
+	   area instead of the centered reading column, no max-width, no gutters, and
 	   stretch vertically so their own height:100% / flex chrome resolves against the
 	   viewport. Driven by FULL_BLEED_PATHS in the script above. */
 	.demo-content--bleed .demo-content__inner {

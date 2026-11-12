@@ -1,6 +1,6 @@
 # API: Services
 
-Services are the plain-TypeScript layer that talks to your backends — the virtual filesystem, the language server, and the cross-store glue that wires it all together — plus a pair of pure utility services (error handling and optimistic updates) that have no network of their own. Every service is zero-dependency and framework-agnostic: it ships as ordinary functions and classes you can call from a Svelte component, a store, or even a plain Node script. The four namespaced services (`vfsClient`, `ideIntegration`, `errorHandling`, `optimistic`) are experimental and exported as `import * as` namespaces from the `@nocturnium/svelte-ide/services` entry. The LSP client is exported as named symbols from both the package root and `/services`. All HTTP/WebSocket endpoints default to a same-origin path and are configurable — the library never bakes in a host. Each service is detailed below; for deeper, task-oriented walkthroughs see the [LSP](../guides/lsp.md), [collaboration](../guides/collaboration.md), and [plugins](../guides/plugins.md) guides.
+Services are the plain-TypeScript layer that talks to your backends, the virtual filesystem, the language server, and the cross-store glue that wires it all together, plus a pair of pure utility services (error handling and optimistic updates) that have no network of their own. Every service is zero-dependency and framework-agnostic: it ships as ordinary functions and classes you can call from a Svelte component, a store, or even a plain Node script. The four namespaced services (`vfsClient`, `ideIntegration`, `errorHandling`, `optimistic`) are experimental and exported as `import * as` namespaces from the `@nocturnium/svelte-ide/services` entry. The LSP client is exported as named symbols from both the package root and `/services`. All HTTP/WebSocket endpoints default to a same-origin path and are configurable, the library never bakes in a host. Each service is detailed below; for deeper, task-oriented walkthroughs see the [LSP](../guides/lsp.md), [collaboration](../guides/collaboration.md), and [plugins](../guides/plugins.md) guides.
 
 > The namespaced services are imported from `@nocturnium/svelte-ide/services`. The LSP client is stable and also available from the package root. Import paths below use the published package; never use `$lib`.
 
@@ -8,7 +8,7 @@ Services are the plain-TypeScript layer that talks to your backends — the virt
 
 ## `vfsClient`
 
-A namespaced HTTP client for a virtual-filesystem (VFS) backend. It is a module of standalone async functions — there is no class to instantiate; a single module-level config object is shared across all calls.
+A namespaced HTTP client for a virtual-filesystem (VFS) backend. It is a module of standalone async functions, there is no class to instantiate; a single module-level config object is shared across all calls.
 
 **Source:** `src/lib/services/vfs-client.ts`
 
@@ -29,7 +29,7 @@ const file = await vfsClient.readFile('workspace-1', '/src/main.ts');
 await vfsClient.writeFile('workspace-1', '/src/main.ts', updatedSource, file.info.version);
 ```
 
-Each request is sent as JSON over `fetch`, guarded by an `AbortController` timeout. Non-2xx responses are thrown as a `VFSError` whose `code` is mapped from the HTTP status (404 → `FILE_NOT_FOUND`, 403 → `PERMISSION_DENIED`, 409 → `VERSION_CONFLICT`, 423 → `FILE_LOCKED`, otherwise `NETWORK_ERROR`).
+Each request is sent as JSON over `fetch`, guarded by an `AbortController` timeout. Non-2xx responses are thrown as a `VFSError` whose `code` is mapped from the HTTP status (404 gives `FILE_NOT_FOUND`, 403 gives `PERMISSION_DENIED`, 409 gives `VERSION_CONFLICT`, 423 gives `FILE_LOCKED`, otherwise `NETWORK_ERROR`).
 
 ### Configuration
 
@@ -78,13 +78,13 @@ These hit the `/quick/files` route and wrap a single write/delete in a server-si
 
 Group multiple operations atomically. `executeTransaction` is the convenience wrapper: it begins a transaction, commits the operations, and rolls back automatically if the commit throws.
 
-| Function              | Signature                                                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `beginTransaction`    | `(workspaceId: string) => Promise<string>` — returns a transaction id                                                           |
-| `commitTransaction`   | `(transactionId: string, operations: VFSOperation[]) => Promise<VFSTransactionResult>`                                          |
-| `rollbackTransaction` | `(transactionId: string) => Promise<void>`                                                                                      |
-| `getTransaction`      | `(transactionId: string) => Promise<VFSTransaction>`                                                                            |
-| `executeTransaction`  | `(workspaceId: string, operations: VFSOperation[]) => Promise<VFSTransactionResult>` — begin + commit, auto-rollback on failure |
+| Function              | Signature                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `beginTransaction`    | `(workspaceId: string) => Promise<string>`, returns a transaction id                                                           |
+| `commitTransaction`   | `(transactionId: string, operations: VFSOperation[]) => Promise<VFSTransactionResult>`                                         |
+| `rollbackTransaction` | `(transactionId: string) => Promise<void>`                                                                                     |
+| `getTransaction`      | `(transactionId: string) => Promise<VFSTransaction>`                                                                           |
+| `executeTransaction`  | `(workspaceId: string, operations: VFSOperation[]) => Promise<VFSTransactionResult>`, begin + commit, auto-rollback on failure |
 
 ### Locks
 
@@ -95,7 +95,7 @@ Advisory locks coordinate concurrent edits. `acquireLock` retries while the file
 | `acquireLock`      | `(workspaceId: string, path: string, holder: string, options?: VFSLockAcquisitionOptions) => Promise<VFSFileLock>` |
 | `releaseLock`      | `(workspaceId: string, path: string, holder: string) => Promise<void>`                                             |
 | `refreshLock`      | `(workspaceId: string, path: string, holder: string) => Promise<VFSFileLock>`                                      |
-| `getLockInfo`      | `(workspaceId: string, path: string) => Promise<VFSFileLock \| null>` — returns `null` when no lock exists         |
+| `getLockInfo`      | `(workspaceId: string, path: string) => Promise<VFSFileLock \| null>`, returns `null` when no lock exists          |
 | `listLocks`        | `(workspaceId: string) => Promise<VFSFileLock[]>`                                                                  |
 | `forceReleaseLock` | `(workspaceId: string, path: string, adminId: string) => Promise<void>`                                            |
 
@@ -139,13 +139,13 @@ interface VFSSearchResult {
 }
 ```
 
-> **Note** — `VFSError` thrown by this client carries a `.code` (a `VFSErrorCode`) you can branch on. The separate [`errorHandling`](#errorhandling) service offers a richer, user-facing error model with recovery options. The VFS components (`LockIndicator`, `LockConflictDialog`, `VersionConflictDialog`) are documented in [API: Components](./components.md).
+> **Note**, `VFSError` thrown by this client carries a `.code` (a `VFSErrorCode`) you can branch on. The separate [`errorHandling`](#errorhandling) service offers a richer, user-facing error model with recovery options. The VFS components (`LockIndicator`, `LockConflictDialog`, `VersionConflictDialog`) are documented in [API: Components](./components.md).
 
 ---
 
 ## `ideIntegration`
 
-A stateful coordination service that connects the VFS, agents, and collaboration stores into one system and routes events between them. Unlike `vfsClient`, this service holds a single internal session — call `initialize` once, then `cleanup` when you tear the IDE down.
+A stateful coordination service that connects the VFS, agents, and collaboration stores into one system and routes events between them. Unlike `vfsClient`, this service holds a single internal session, call `initialize` once, then `cleanup` when you tear the IDE down.
 
 **Source:** `src/lib/services/ide-integration.ts`
 
@@ -167,7 +167,7 @@ ideIntegration.initialize({
 ideIntegration.cleanup();
 ```
 
-Once initialized, it subscribes to VFS, team (agent), and collaboration events and forwards them across stores — for example, when an agent acquires a VFS lock the corresponding agent is marked `busy`, and when an AI user joins via collaboration it is registered as an agent.
+Once initialized, it subscribes to VFS, team (agent), and collaboration events and forwards them across stores, for example, when an agent acquires a VFS lock the corresponding agent is marked `busy`, and when an AI user joins via collaboration it is registered as an agent.
 
 | Function                    | Signature                                                                              | Notes                                                                                                     |
 | --------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -197,17 +197,17 @@ interface IDEIntegrationConfig {
 }
 ```
 
-> **Usage note** — `ideIntegration` is the glue layer; the stores it coordinates (VFS, agents, collaboration) are documented in [API: Stores](./stores.md), and the higher-level behavior is covered in [AI & agents](../guides/ai-and-agents.md).
+> **Usage note**, `ideIntegration` is the glue layer; the stores it coordinates (VFS, agents, collaboration) are documented in [API: Stores](./stores.md), and the higher-level behavior is covered in [AI & agents](../guides/ai-and-agents.md).
 
 ---
 
 ## `errorHandling`
 
-A pure (no-network) service for turning raw errors into a structured, user-presentable `VFSError` model — complete with retryability, a human-readable message, and a list of recovery options. It also keeps a small in-memory error log.
+A pure (no-network) service for turning raw errors into a structured, user-presentable `VFSError` model, complete with retryability, a human-readable message, and a list of recovery options. It also keeps a small in-memory error log.
 
 **Source:** `src/lib/services/error-handling.ts`
 
-**Default endpoint:** none — this service performs no I/O.
+**Default endpoint:** none, this service performs no I/O.
 
 ```ts
 import { errorHandling } from '@nocturnium/svelte-ide/services';
@@ -264,11 +264,11 @@ A `RecoveryOption` is `{ id, label, description, action, recommended?, dangerous
 
 ## `optimistic`
 
-A pure service for optimistic UI updates with automatic rollback: apply a change locally, attempt to commit it to the server with retries, and revert if every attempt fails. No network of its own — you supply the `commit` function.
+A pure service for optimistic UI updates with automatic rollback: apply a change locally, attempt to commit it to the server with retries, and revert if every attempt fails. No network of its own, you supply the `commit` function.
 
 **Source:** `src/lib/services/optimistic.ts`
 
-**Default endpoint:** none — the `commit` callback you pass does the I/O.
+**Default endpoint:** none, the `commit` callback you pass does the I/O.
 
 ```ts
 import { optimistic, vfsClient } from '@nocturnium/svelte-ide/services';
@@ -321,11 +321,11 @@ The service tracks in-flight operations in a module-level queue.
 
 ## LSP client
 
-The Language Server Protocol client speaks JSON-RPC over a WebSocket to any LSP-over-WebSocket bridge — for example the standalone Go `lsp-bridge` server in [`backend/`](../../backend) (defaults to `127.0.0.1:8765`). Unlike the four namespaced services above, the LSP client is exported as named symbols (`LSPClient`, `createLSPClient`, and three position helpers), and is part of the **stable** public API.
+The Language Server Protocol client speaks JSON-RPC over a WebSocket to any LSP-over-WebSocket bridge, for example the standalone Go `lsp-bridge` server in [`backend/`](../../backend) (defaults to `127.0.0.1:8765`). Unlike the four namespaced services above, the LSP client is exported as named symbols (`LSPClient`, `createLSPClient`, and three position helpers), and is part of the **stable** public API.
 
 **Source:** `src/lib/services/lsp-client.ts`
 
-**Default endpoint:** none baked in — `serverUrl` is always caller-supplied (a `ws://` or `wss://` URL). See the [LSP guide](../guides/lsp.md) and [LSP_INTEGRATION.md](../LSP_INTEGRATION.md) for the bridge protocol.
+**Default endpoint:** none baked in, `serverUrl` is always caller-supplied (a `ws://` or `wss://` URL). See the [LSP guide](../guides/lsp.md) and [LSP_INTEGRATION.md](../LSP_INTEGRATION.md) for the bridge protocol.
 
 ```ts
 import { createLSPClient } from '@nocturnium/svelte-ide';
@@ -350,7 +350,7 @@ client.didOpen('file:///workspace/main.ts', 'typescript', 1, sourceText);
 const items = await client.completion('file:///workspace/main.ts', { line: 10, character: 4 });
 ```
 
-For most apps you do not instantiate this directly — drop in the `<LSPEditor>` component (see [API: Components](./components.md)) and it manages a client for you. Use the raw client when you need lower-level control.
+For most apps you do not instantiate this directly, drop in the `<LSPEditor>` component (see [API: Components](./components.md)) and it manages a client for you. Use the raw client when you need lower-level control.
 
 ### Factory
 
@@ -360,7 +360,7 @@ For most apps you do not instantiate this directly — drop in the `<LSPEditor>`
 
 `LSPClientConfig` (from the LSP types): `{ serverUrl, rootUri, autoReconnect?, reconnectDelay?, maxReconnectAttempts?, requestTimeout?, debug? }`. `serverUrl` and `rootUri` are required.
 
-### `LSPClient` — connection
+### `LSPClient`, connection
 
 | Member                    | Signature                                                            | Notes                                                                                                                     |
 | ------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -374,7 +374,7 @@ For most apps you do not instantiate this directly — drop in the `<LSPEditor>`
 
 The client auto-reconnects on unexpected close (when `autoReconnect` is set), with the delay scaling per attempt up to `maxReconnectAttempts`.
 
-### `LSPClient` — document sync
+### `LSPClient`, document sync
 
 | Method      | Signature                                                                           |
 | ----------- | ----------------------------------------------------------------------------------- |
@@ -383,7 +383,7 @@ The client auto-reconnects on unexpected close (when `autoReconnect` is set), wi
 | `didSave`   | `(uri: string, text?: string) => void`                                              |
 | `didClose`  | `(uri: string) => void`                                                             |
 
-### `LSPClient` — language features
+### `LSPClient`, language features
 
 Each feature first checks the negotiated `ServerCapabilities` and resolves to an empty/`null` result if the server does not advertise support.
 
@@ -401,7 +401,7 @@ Each feature first checks the negotiated `ServerCapabilities` and resolves to an
 | `rename`            | `(uri, position, newName) => Promise<WorkspaceEdit \| null>`                    |
 | `formatting`        | `(uri, options?) => Promise<TextEdit[]>`                                        |
 
-### `LSPClient` — diagnostics & capability helpers
+### `LSPClient`, diagnostics & capability helpers
 
 | Method                              | Signature                                        | Notes                                |
 | ----------------------------------- | ------------------------------------------------ | ------------------------------------ |
@@ -413,7 +413,7 @@ Each feature first checks the negotiated `ServerCapabilities` and resolves to an
 
 ### Position helpers
 
-Pure functions for converting between LSP `Position`/`Range` (line + character) and string offsets — handy when applying `TextEdit`s to in-memory content.
+Pure functions for converting between LSP `Position`/`Range` (line + character) and string offsets, handy when applying `TextEdit`s to in-memory content.
 
 ```ts
 import { positionToOffset, offsetToPosition, rangeToOffsets } from '@nocturnium/svelte-ide';
@@ -433,10 +433,10 @@ const { start, end } = rangeToOffsets(content, edit.range);
 
 ## See also
 
-- [API: Components](./components.md) — `LSPEditor`, the VFS lock dialogs, and other UI that consume these services
-- [API: Stores](./stores.md) — the VFS, agents, and collaboration stores that `ideIntegration` coordinates
-- [API: Types & Utils](./types-and-utils.md) — `VFSError`, `Position`, `Range`, `Diagnostic`, and related types
-- [Guide: LSP](../guides/lsp.md) and [LSP_INTEGRATION.md](../LSP_INTEGRATION.md) — the LSP client, `<LSPEditor>`, and the backend bridge
-- [Guide: Collaboration](../guides/collaboration.md) — CRDT collaboration that pairs with VFS locks
-- [Guide: AI & agents](../guides/ai-and-agents.md) — the agent presence layer wired up by `ideIntegration`
-- [Architecture](../architecture.md) — where the service layer sits in the system
+- [API: Components](./components.md): `LSPEditor`, the VFS lock dialogs, and other UI that consume these services
+- [API: Stores](./stores.md): the VFS, agents, and collaboration stores that `ideIntegration` coordinates
+- [API: Types & Utils](./types-and-utils.md): `VFSError`, `Position`, `Range`, `Diagnostic`, and related types
+- [Guide: LSP](../guides/lsp.md) and [LSP_INTEGRATION.md](../LSP_INTEGRATION.md), the LSP client, `<LSPEditor>`, and the backend bridge
+- [Guide: Collaboration](../guides/collaboration.md): CRDT collaboration that pairs with VFS locks
+- [Guide: AI & agents](../guides/ai-and-agents.md): the agent presence layer wired up by `ideIntegration`
+- [Architecture](../architecture.md): where the service layer sits in the system

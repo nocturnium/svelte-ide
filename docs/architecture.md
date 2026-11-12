@@ -1,6 +1,6 @@
 # Architecture
 
-`@nocturnium/svelte-ide` is a Svelte 5-native editor toolkit with **zero required runtime dependencies beyond the Svelte 5 peer** (the optional Yjs collaboration stack is the only other runtime dependency, and it's pulled in only if you use the CRDT module). It ships as plain Svelte components, runes-based stores, and small service modules — no UI framework, no CSS framework, no CodeMirror, and no bundled server. Every feature that needs a backend (language servers, real-time collaboration, a virtual filesystem, a plugin host, an AI chat endpoint) talks to a network boundary that _you_ supply; nothing is reachable until you wire it up. This page is the contributor's and advanced user's map of how the pieces are layered, how editor state flows through runes, where the optional networked seams are, and how the package is built and published.
+`@nocturnium/svelte-ide` is a Svelte 5-native editor toolkit with **zero required runtime dependencies beyond the Svelte 5 peer** (the optional Yjs collaboration stack is the only other runtime dependency, and it's pulled in only if you use the CRDT module). It ships as plain Svelte components, runes-based stores, and small service modules, no UI framework, no CSS framework, no CodeMirror, and no bundled server. Every feature that needs a backend (language servers, real-time collaboration, a virtual filesystem, a plugin host, an AI chat endpoint) talks to a network boundary that _you_ supply; nothing is reachable until you wire it up. This page is the contributor's and advanced user's map of how the pieces are layered, how editor state flows through runes, where the optional networked seams are, and how the package is built and published.
 
 ## Table of contents
 
@@ -70,9 +70,9 @@ Most of the published surface is re-exported from `src/lib/index.ts` (the root `
 | `services`           | I/O and coordination: `lsp-client`, `vfs-client`, `ide-integration`, `optimistic`, `error-handling`.                                                                                                  | `./services` (namespaces `vfsClient`, `ideIntegration`, `optimistic`, `errorHandling`); the LSP client is also exported by name from `.` |
 | `crdt`               | Yjs wrappers for real-time collaboration: `CollaborativeDocument`, `CollaborativeProvider`, `createAwarenessProtocol`, `createUndoManager`. Requires optional peers.                                  | `./crdt` **only**                                                                                                                        |
 | `plugins`            | Client-side plugin runtime: `pluginRegistry`, `createPluginLoader`, `definePlugin`, `defineCommand`, `definePanel`. Requires a caller-supplied plugin host.                                           | `./plugins` **only**                                                                                                                     |
-| `types`              | Type-only modules: `editor`, `filesystem`, `vfs`, `ai`, `plugin`, `crdt`, `lsp`, `events`, `agents`.                                                                                                  | `./types` (full set); the root `.` re-exports most of these — `editor`, `filesystem`, `ai`, `plugin`, `crdt`, `events`, `lsp`            |
+| `types`              | Type-only modules: `editor`, `filesystem`, `vfs`, `ai`, `plugin`, `crdt`, `lsp`, `events`, `agents`.                                                                                                  | `./types` (full set); the root `.` re-exports most of these, `editor`, `filesystem`, `ai`, `plugin`, `crdt`, `events`, `lsp`             |
 | `utils`              | Pure helpers: `language` (detection), `format`, `keybindings`.                                                                                                                                        | `./utils`, `.`                                                                                                                           |
-| `styles`             | `theme.css` — the design tokens (CSS custom properties on `:root`).                                                                                                                                   | `./theme.css`                                                                                                                            |
+| `styles`             | `theme.css`, the design tokens (CSS custom properties on `:root`).                                                                                                                                    | `./theme.css`                                                                                                                            |
 
 > **Note on `CollaborativeEditor`.** The `<CollaborativeEditor>` component lives under `components/editor` but is exported only from `@nocturnium/svelte-ide/crdt`, because it imports Yjs and the root entry must not load the optional Yjs peers. The Yjs document/provider _wrappers_ it pairs with (`CollaborativeDocument`, `CollaborativeProvider`) live in the `crdt` module and are imported from `@nocturnium/svelte-ide/crdt`, which is where the optional `yjs`/`y-websocket`/`y-protocols` peers come in. See [The networked boundaries](#the-networked-boundaries).
 
@@ -80,15 +80,15 @@ Most of the published surface is re-exported from `src/lib/index.ts` (the root `
 
 The editor is the densest subtree, so it deserves a closer look. It is split into pure logic (`core/`, `tokenizer/`) and the `.svelte` layers that render it:
 
-- **`core/`** — framework-agnostic editor logic, each in its own testable module: `state` (the editor document model), `navigation`, `keybindings`, `search`, `folding`, `multi-cursor`, `diagnostics`, `crdt-binding`, and several enhancement subsystems (`semantic-analyzer`, `complexity-analyzer`, `git-blame`, `snippet-manager`, and more). The publicly exported surface is the curated set from `./components/editor/core` (`createEditorState`, `createNavigation`, `createKeyboardHandler`, `createDefaultKeybindings`, `createCRDTBinding`, and their types).
-- **`tokenizer/`** — the hand-written, per-language tokenizer (`getTokenizer`, `tokenize`, `getTokenClass`, `tokensToHTML`). This is what replaces CodeMirror's highlighting. See [Syntax highlighting](guides/syntax-highlighting.md).
-- **`languages.ts`** — language registry and detection helpers (`resolveLanguage`, `getLanguageFromFilename`, …).
-- **`theme.ts`** — editor token color maps (`nocturniumTheme`, `getThemeCSS`), distinct from the global `styles/theme.css` tokens.
-- **The `.svelte` files** — `CustomEditor.svelte` is the keyboard/mouse engine; `Editor.svelte` wraps it; `CollaborativeEditor.svelte` wraps it with a CRDT binding; `EditorPane`, `EditorTabs`, `EditorGutter`, `EditorLines`, `Minimap`, `FindReplace`, and the various overlay layers compose around it.
+- **`core/`**: framework-agnostic editor logic, each in its own testable module: `state` (the editor document model), `navigation`, `keybindings`, `search`, `folding`, `multi-cursor`, `diagnostics`, `crdt-binding`, and several enhancement subsystems (`semantic-analyzer`, `complexity-analyzer`, `git-blame`, `snippet-manager`, and more). The publicly exported surface is the curated set from `./components/editor/core` (`createEditorState`, `createNavigation`, `createKeyboardHandler`, `createDefaultKeybindings`, `createCRDTBinding`, and their types).
+- **`tokenizer/`**: the hand-written, per-language tokenizer (`getTokenizer`, `tokenize`, `getTokenClass`, `tokensToHTML`). This is what replaces CodeMirror's highlighting. See [Syntax highlighting](guides/syntax-highlighting.md).
+- **`languages.ts`**: language registry and detection helpers (`resolveLanguage`, `getLanguageFromFilename`, …).
+- **`theme.ts`**: editor token color maps (`nocturniumTheme`, `getThemeCSS`), distinct from the global `styles/theme.css` tokens.
+- **The `.svelte` files**: `CustomEditor.svelte` is the keyboard/mouse engine; `Editor.svelte` wraps it; `CollaborativeEditor.svelte` wraps it with a CRDT binding; `EditorPane`, `EditorTabs`, `EditorGutter`, `EditorLines`, `Minimap`, `FindReplace`, and the various overlay layers compose around it.
 
 ## How editor state and runes flow
 
-State lives in **module-scoped runes**, not in component instances. A store like `editor.svelte.ts` declares a single `let state = $state<EditorState>({ … })` at module scope, then exposes reactivity through **getter functions** and small `{ get current() }` accessor objects. This pattern exists because Svelte 5 modules cannot directly export a `$derived` value — wrapping the read in a getter keeps the reactivity intact across the module boundary.
+State lives in **module-scoped runes**, not in component instances. A store like `editor.svelte.ts` declares a single `let state = $state<EditorState>({ … })` at module scope, then exposes reactivity through **getter functions** and small `{ get current() }` accessor objects. This pattern exists because Svelte 5 modules cannot directly export a `$derived` value, wrapping the read in a getter keeps the reactivity intact across the module boundary.
 
 ```ts
 // Reading reactive store state in a component
@@ -118,15 +118,15 @@ CustomEditor.svelte  ──uses──►  editor/core (state · navigation · mu
              • CRDT binding mirrors the change into the shared Yjs doc
 ```
 
-The editor document model in `editor/core/state` (`createEditorState`, `EditorState`, `Position`, `Selection`, `Line`, `ChangeEvent`) is deliberately plain — it is not a rune. Components own the runes; `core/` owns the algorithms. That separation is why every `core/` module is unit-tested in isolation (`*.test.ts` siblings) without a DOM. When you contribute editor logic, prefer adding it to `core/` as a pure function and let a `.svelte` file bind it to `$state`/`$derived`/`$effect`.
+The editor document model in `editor/core/state` (`createEditorState`, `EditorState`, `Position`, `Selection`, `Line`, `ChangeEvent`) is deliberately plain, it is not a rune. Components own the runes; `core/` owns the algorithms. That separation is why every `core/` module is unit-tested in isolation (`*.test.ts` siblings) without a DOM. When you contribute editor logic, prefer adding it to `core/` as a pure function and let a `.svelte` file bind it to `$state`/`$derived`/`$effect`.
 
-> The editor store has no explicit "mark dirty" call: `updateContent(tabId, content)` sets the tab's `isDirty` field by comparing the new content against the saved content, and `markSaved()` clears it. The `dirtyTabs` accessor is derived from those tab flags. (The separate VFS store _does_ expose a `markDirty()` for filesystem-level dirty tracking — don't confuse the two.)
+> The editor store has no explicit "mark dirty" call: `updateContent(tabId, content)` sets the tab's `isDirty` field by comparing the new content against the saved content, and `markSaved()` clears it. The `dirtyTabs` accessor is derived from those tab flags. (The separate VFS store _does_ expose a `markDirty()` for filesystem-level dirty tracking, don't confuse the two.)
 
 For deeper, feature-specific flow see [Editor](guides/editor.md), [Multi-cursor](guides/multi-cursor.md), [Code folding](guides/code-folding.md), and the stores reference (`docs/api/stores.md`).
 
 ## The networked boundaries
 
-Each networked feature is isolated behind exactly one seam, so you can adopt them independently. None of these connect on import — you must call the connect/configure function with your own endpoint.
+Each networked feature is isolated behind exactly one seam, so you can adopt them independently. None of these connect on import, you must call the connect/configure function with your own endpoint.
 
 | Feature     | Client surface                                                                        | Transport                   | Default / endpoint                                              | Backend you provide                                                |
 | ----------- | ------------------------------------------------------------------------------------- | --------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -165,7 +165,7 @@ const provider = new CollaborativeProvider({
 });
 ```
 
-The `ide-integration` service is the one place these seams are stitched together: it wires the `vfs`, `agents`, and `collaboration` stores into a single coordinated context (locks → presence → awareness) so a host app can light up the whole multi-user experience from one config object. It is optional; you can use any store on its own.
+The `ide-integration` service is the one place these seams are stitched together: it wires the `vfs`, `agents`, and `collaboration` stores into a single coordinated context (locks, then presence, then awareness) so a host app can light up the whole multi-user experience from one config object. It is optional; you can use any store on its own.
 
 For end-to-end setup of each boundary, see [LSP](guides/lsp.md), Collaboration (`docs/guides/collaboration.md`), [Plugins](guides/plugins.md), [AI and agents](guides/ai-and-agents.md), and the low-level [LSP integration notes](LSP_INTEGRATION.md). Service signatures are catalogued in the [services reference](api/services.md).
 
@@ -173,16 +173,16 @@ For end-to-end setup of each boundary, see [LSP](guides/lsp.md), Collaboration (
 
 A few seams handle untrusted input and are worth knowing about when reviewing changes:
 
-- **AI rendering** — `AIMessageContent` escapes HTML and whitelists link schemes _before_ any `{@html}`, so model output can never inject markup.
-- **Untrusted plugin code** — the library ships **no** client-side sandbox. The former in-realm `createSandbox` (`new Function`) evaluator was removed in v1.0.0 because it was not a real security boundary. Run untrusted plugin code on the host (out of band, via `loadModule`) or in `<iframe sandbox>`/Web Worker isolation you control — see the [plugins guide](guides/plugins.md#running-untrusted-plugin-code).
-- **CRDT relay & LSP bridge** — because the URLs are caller-supplied, origin and auth policy are entirely your backend's responsibility. The reference Go bridge in `backend/` defaults to localhost-only origins.
+- **AI rendering**: `AIMessageContent` escapes HTML and whitelists link schemes _before_ any `{@html}`, so model output can never inject markup.
+- **Untrusted plugin code**: the library ships **no** client-side sandbox. The former in-realm `createSandbox` (`new Function`) evaluator was removed in v1.0.0 because it was not a real security boundary. Run untrusted plugin code on the host (out of band, via `loadModule`) or in `<iframe sandbox>`/Web Worker isolation you control, see the [plugins guide](guides/plugins.md#running-untrusted-plugin-code).
+- **CRDT relay & LSP bridge**: because the URLs are caller-supplied, origin and auth policy are entirely your backend's responsibility. The reference Go bridge in `backend/` defaults to localhost-only origins.
 
 ## Build and publish model
 
 The repository is two independent units:
 
-1. **The npm package** — everything under `src/lib`. It is compiled to `dist/` by `@sveltejs/package` (`svelte-package`) and validated by `publint`. The `package` script runs `svelte-kit sync && svelte-package && publint`; `prepublishOnly` additionally runs `svelte-check`. Only `dist` is published (`"files": ["dist"]`), and every `exports` subpath maps to a `dist/**` file.
-2. **The backend** — `backend/` is a _standalone Go module_ (`lsp-bridge`), not part of the npm package and never bundled. Run it separately with `go run ./cmd/lsp-bridge` (listens on `127.0.0.1:8765`, localhost-only origins by default; add more with `-allowed-origins`). It is one possible implementation of the LSP boundary; any LSP-over-WebSocket server works.
+1. **The npm package**: everything under `src/lib`. It is compiled to `dist/` by `@sveltejs/package` (`svelte-package`) and validated by `publint`. The `package` script runs `svelte-kit sync && svelte-package && publint`; `prepublishOnly` additionally runs `svelte-check`. Only `dist` is published (`"files": ["dist"]`), and every `exports` subpath maps to a `dist/**` file.
+2. **The backend**: `backend/` is a _standalone Go module_ (`lsp-bridge`), not part of the npm package and never bundled. Run it separately with `go run ./cmd/lsp-bridge` (listens on `127.0.0.1:8765`, localhost-only origins by default; add more with `-allowed-origins`). It is one possible implementation of the LSP boundary; any LSP-over-WebSocket server works.
 
 ```
  src/lib/  ──(svelte-package + publint)──►  dist/  ──(npm publish)──►  @nocturnium/svelte-ide
@@ -199,7 +199,7 @@ The repository is two independent units:
 
 Notes for contributors:
 
-- Inside the library, internal imports use the SvelteKit aliases `$lib`, `$types`, `$utils`. **Published consumers must never use `$lib`** — they import from `@nocturnium/svelte-ide` or one of its subpath exports. Examples in docs always use the published paths.
+- Inside the library, internal imports use the SvelteKit aliases `$lib`, `$types`, `$utils`. **Published consumers must never use `$lib`**, they import from `@nocturnium/svelte-ide` or one of its subpath exports. Examples in docs always use the published paths.
 - `"sideEffects": false` lets bundlers tree-shake unused exports, including the entire `crdt` module when collaboration is not used.
 - `svelte` and the three Yjs packages (`yjs`, `y-websocket`, `y-protocols`) are **peer dependencies**; the Yjs trio is marked optional and only needed by the `./crdt` entry point.
 - The demo app under `src/routes/` (`npm run dev`, http://localhost:5173) exercises every feature and is the fastest way to see a change in context. It is public in the repo but excluded from the npm tarball.
@@ -208,7 +208,7 @@ Common scripts: `dev`, `build`, `package`, `check`, `test` (Vitest), `test:e2e` 
 
 ## Where to go next
 
-- Getting started (`docs/getting-started.md`) — install, import the theme, render your first editor.
-- Theming (`docs/theming.md`) — the design tokens and how to retheme.
+- Getting started (`docs/getting-started.md`), install, import the theme, render your first editor.
+- Theming (`docs/theming.md`), the design tokens and how to retheme.
 - Component reference (`docs/api/components.md`) · Stores reference (`docs/api/stores.md`) · [Services reference](api/services.md) · Types and utils (`docs/api/types-and-utils.md`)
-- Documentation hub (`docs/README.md`) — full table of contents.
+- Documentation hub (`docs/README.md`), full table of contents.

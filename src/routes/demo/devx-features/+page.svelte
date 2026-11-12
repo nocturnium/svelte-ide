@@ -50,7 +50,7 @@
 	// Selected change, set when a diff indicator's onChangeClick fires.
 	let selectedChange = $state<DiffChange | null>(null);
 
-	// Sample code for demos — idiomatic Svelte 5 (runes), so the DevX demos
+	// Sample code for demos, idiomatic Svelte 5 (runes), so the DevX demos
 	// showcase the product's own language rather than React/JSX.
 	const sampleCode = `<script lang="ts">
   import { fetchData, processResults } from './api';
@@ -595,7 +595,7 @@ ${'<'}/script>
 		border-bottom-color: var(--ide-interactive);
 	}
 
-	/* Section — frameless: the DemoExhibit (Git Blame) is the sole window frame,
+	/* Section, frameless: the DemoExhibit (Git Blame) is the sole window frame,
 	   so the wrapper drops its own card chrome to avoid a card-on-card. Vertical
 	   rhythm comes from the section-header margin and inner grid gaps. */
 	.demo-section {
@@ -644,7 +644,7 @@ ${'<'}/script>
 		outline-offset: 2px;
 	}
 
-	/* Filled states use white text — pair with the deeper ocean blue (AA-safe). */
+	/* Filled states use white text, pair with the deeper ocean blue (AA-safe). */
 	.control-btn.active,
 	.control-btn.primary {
 		background: var(--ide-interactive-strong);
