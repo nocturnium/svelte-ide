@@ -96,15 +96,15 @@ The custom-built code editor and its surrounding chrome (tabs, panes, file tree,
 </script>
 ```
 
-| Component             | Description                                                          | Stability       |
-| --------------------- | -------------------------------------------------------------------- | --------------- |
-| `Editor`              | High-level code editor component.                                    | `@public`       |
-| `CustomEditor`        | Low-level editor with full keyboard/mouse handling and multi-cursor. | `@public`       |
-| `CollaborativeEditor` | Editor wired for CRDT realtime collaboration (requires Yjs peers).   | `@experimental` |
-| `EditorTabs`          | Tab bar for switching between open editor buffers.                   | `@experimental` |
-| `EditorPane`          | Container that hosts an editor (and its tabs) as a pane.             | `@public`       |
-| `FileIcon`            | File-type icon derived from a filename/extension.                    | `@experimental` |
-| `FileExplorer`        | File-tree sidebar with optional Git change status.                   | `@public`       |
+| Component             | Description                                                                                                   | Stability       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- | --------------- |
+| `Editor`              | High-level code editor component.                                                                             | `@public`       |
+| `CustomEditor`        | Low-level editor with full keyboard/mouse handling and multi-cursor.                                          | `@public`       |
+| `CollaborativeEditor` | Editor wired for CRDT realtime collaboration (requires Yjs peers). Import from `@nocturnium/svelte-ide/crdt`. | `@experimental` |
+| `EditorTabs`          | Tab bar for switching between open editor buffers.                                                            | `@experimental` |
+| `EditorPane`          | Container that hosts an editor (and its tabs) as a pane.                                                      | `@public`       |
+| `FileIcon`            | File-type icon derived from a filename/extension.                                                             | `@experimental` |
+| `FileExplorer`        | File-tree sidebar with optional Git change status.                                                            | `@public`       |
 
 > `FileExplorer` also exports two associated types from the same module: `FileChangeStatus` (`@public`) and `GitFileStatus` (`@experimental`). The editor domain barrel additionally re-exports editor-core utilities, theme helpers, language config, and tokenizer functions, those are documented under [Types & Utils](./types-and-utils.md), not here.
 

@@ -55,14 +55,23 @@ import type {
 } from '@nocturnium/svelte-ide/crdt';
 ```
 
-The `/crdt` barrel exports exactly these four runtime values:
+The `/crdt` barrel exports these runtime values:
 
-| Export                    | Kind     | Summary                                                                                  |
-| ------------------------- | -------- | ---------------------------------------------------------------------------------------- |
-| `CollaborativeDocument`   | class    | Wraps a `Y.Doc` with text helpers, snapshots, and built-in undo.                         |
-| `CollaborativeProvider`   | class    | Wraps `y-websocket`'s `WebsocketProvider` + `Awareness`, with status/sync subscriptions. |
-| `createAwarenessProtocol` | function | Builds a presence helper (users, cursors, selections) over a `Y.Doc`.                    |
-| `createUndoManager`       | function | Builds a standalone undo manager bound to a `CollaborativeDocument`.                     |
+| Export                    | Kind      | Summary                                                                                   |
+| ------------------------- | --------- | ----------------------------------------------------------------------------------------- |
+| `CollaborativeDocument`   | class     | Wraps a `Y.Doc` with text helpers, snapshots, and built-in undo.                          |
+| `CollaborativeProvider`   | class     | Wraps `y-websocket`'s `WebsocketProvider` + `Awareness`, with status/sync subscriptions.  |
+| `createAwarenessProtocol` | function  | Builds a presence helper (users, cursors, selections) over a `Y.Doc`.                     |
+| `createUndoManager`       | function  | Builds a standalone undo manager bound to a `CollaborativeDocument`.                      |
+| `createUserUndoManager`   | function  | Builds an undo manager that tracks multiple users, so you can undo only your own changes. |
+| `createProvider`          | function  | Creates a provider with defaults for IDE usage.                                           |
+| `generateUserColor`       | function  | Returns a random color for a user.                                                        |
+| `getInitials`             | function  | Returns initials for a name.                                                              |
+| `CollaborativeEditor`     | component | The editor component wired for CRDT collaboration (see below).                            |
+| `CRDTBinding`             | class     | Syncs editor state with Yjs.                                                              |
+| `createCRDTBinding`       | function  | Creates a `CRDTBinding` from a `CRDTBindingConfig`.                                       |
+| `createRelativePosition`  | function  | Creates a relative position from an editor position.                                      |
+| `resolveRelativePosition` | function  | Resolves a relative position back to an editor position.                                  |
 
 ...plus the TypeScript types listed above (`DocumentOptions`, `ProviderOptions`, `AwarenessState`, `ConnectionStatus`, `CRDTChange`, `SyncState`, `CRDTEventMap`).
 
